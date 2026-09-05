@@ -1,0 +1,64 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// i18n/pt — pt-BR, and the base every other locale falls back to.
+//
+// THE WORDS ARE THIS PROJECT'S OWN. They are not a translation of the original's strings, which belong
+// to Microsoft and are not carried here; they are written for this table from what each mission asks
+// the player to do. See `i18n/keys`.
+//
+// SHORT ON PURPOSE. ADR-0002 gives the mission text a 63-pixel column — about fifteen characters a
+// line over four lines. Writing to that width is the HUD decision arriving as a writing constraint, and
+// a test refuses anything longer.
+//
+// `{n}` is what remains to be done and `{points}` a score. The FRAME translates and the NUMBER passes
+// through, which is the engine's own rule for parameters.
+
+const pt: Record<string, string> = {
+  /* ===================== MISSIONS ===================== */
+  'pinball.mission.bumpers.run': 'Acerte os para-choques: faltam {n}',
+  'pinball.mission.practice.done': 'Treino concluído.',
+  'pinball.mission.alienMenace2.done': 'Ameaça repelida.',
+
+  'pinball.mission.launchTraining.run': 'Suba a rampa: faltam {n}',
+  'pinball.mission.launchTraining.done': 'Lançamento aprovado.',
+  'pinball.mission.reentryTraining.run': 'Passe pelas pistas: faltam {n}',
+  'pinball.mission.reentryTraining.done': 'Reentrada aprovada.',
+  'pinball.mission.science.run': 'Alvos de pesquisa: faltam {n}',
+  'pinball.mission.science.done': 'Pesquisa concluída.',
+  'pinball.mission.bugHunt.run': 'Caça aos insetos: faltam {n}',
+  'pinball.mission.bugHunt.done': 'Praga eliminada.',
+  'pinball.mission.satellite.run': 'Reative o satélite: faltam {n}',
+  'pinball.mission.satellite.done': 'Satélite no ar.',
+  'pinball.mission.recon.run': 'Reconhecimento: faltam {n}',
+  'pinball.mission.recon.done': 'Setor mapeado.',
+  'pinball.mission.doomsday.run': 'Desarme a máquina: faltam {n}',
+  'pinball.mission.doomsday.done': 'Máquina desarmada.',
+  'pinball.mission.plague.run': 'Gire as bandeiras: faltam {n}',
+  'pinball.mission.plague2.run': 'Leve a amostra ao laboratório.',
+  'pinball.mission.plague2.done': 'Praga contida.',
+  'pinball.mission.secretYellow.run': 'Entre no poço amarelo.',
+  'pinball.mission.secretRed.run': 'Entre no poço vermelho.',
+  'pinball.mission.secretGreen.run': 'Entre no poço verde.',
+  'pinball.mission.secretGreen.done': 'Missão secreta cumprida.',
+  'pinball.mission.timeWarp.run': 'Bata nos amortecedores: faltam {n}',
+
+  'pinball.mission.maelstrom1.run': 'Maelstrom: alvos da esquerda, faltam {n}',
+  'pinball.mission.maelstrom2.run': 'Maelstrom: alvos da direita, faltam {n}',
+  'pinball.mission.maelstrom3.run': 'Maelstrom: as pistas, faltam {n}',
+  'pinball.mission.maelstrom4.run': 'Maelstrom: o rolo de combustível.',
+  'pinball.mission.maelstrom5.run': 'Maelstrom: suba a rampa.',
+  'pinball.mission.maelstrom6.run': 'Maelstrom: gire as bandeiras.',
+  'pinball.mission.maelstrom7.run': 'Maelstrom: qualquer poço.',
+  'pinball.mission.maelstrom8.run': 'Maelstrom: o chute final.',
+  'pinball.mission.maelstrom8.info': 'Hiperespaço liberado.',
+
+  'pinball.award.scored': '{points} pontos',
+
+  /* ===================== HUD ===================== */
+  'pinball.hud.player': 'Jogador {n}',
+  'pinball.hud.balls': 'Bolas: {n}',
+  'pinball.hud.gameOver': 'Fim de jogo',
+  'pinball.hud.shootAgain': 'Jogue de novo',
+  'pinball.hud.waiting': 'Puxe o êmbolo.',
+};
+
+export default pt;

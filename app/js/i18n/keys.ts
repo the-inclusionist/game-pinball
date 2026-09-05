@@ -1,0 +1,71 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// i18n/keys — from the original's resource identifiers to ours.
+//
+// ========================= THE IDENTIFIERS ARE FAITHFUL, THE WORDS ARE NOT =========================
+// `control/mission-table` carries `STRING208`, `STRING179` and thirty-three others, because those are
+// what the original's controllers name and transcribing them is what makes the table checkable against
+// the C++. What those numbers pointed AT is Microsoft's text, and this repository does not carry it.
+//
+// So the numbers are kept as the join, and this table maps each one to a key of ours. Everything a
+// player reads is written for this project, in `i18n/pt`, `i18n/en` and `i18n/es`. A translator never
+// sees `STRING208`; a reader of the mission table never sees a sentence.
+//
+// ========================= AND TWO MISSIONS SHARE A KEY, BECAUSE THEY SHARE A SENTENCE =========================
+// `STRING208` is the running text of both the practice mission and Alien Menace part two: the same
+// bumpers, the same instruction, one line in the original. That survives here — both map to
+// `pinball.mission.bumpers.run` — and a test checks the two are still the same key, because if they
+// ever diverge it should be a decision and not a slip.
+//
+// ========================= THE COLUMN IS SIXTY-THREE PIXELS WIDE =========================
+// ADR-0002 put the hint and the mission text in a 63-pixel column: roughly fifteen characters a line
+// over four lines. These strings are written short on purpose, and that is the HUD decision arriving as
+// a writing constraint rather than as a truncation bug. A test holds them to it.
+
+/** The original's identifier, and the key this project reads instead. */
+export const RESOURCE_KEYS: Readonly<Record<string, string>> = {
+  // Shared by the practice mission and Alien Menace part two — see this module's header.
+  STRING208: 'pinball.mission.bumpers.run',
+  STRING209: 'pinball.mission.practice.done',
+  STRING231: 'pinball.mission.alienMenace2.done',
+
+  STRING211: 'pinball.mission.launchTraining.run',
+  STRING212: 'pinball.mission.launchTraining.done',
+  STRING213: 'pinball.mission.reentryTraining.run',
+  STRING214: 'pinball.mission.reentryTraining.done',
+  STRING215: 'pinball.mission.science.run',
+  STRING216: 'pinball.mission.science.done',
+  STRING226: 'pinball.mission.bugHunt.run',
+  STRING227: 'pinball.mission.bugHunt.done',
+  STRING233: 'pinball.mission.satellite.run',
+  STRING234: 'pinball.mission.satellite.done',
+  STRING235: 'pinball.mission.recon.run',
+  STRING237: 'pinball.mission.recon.done',
+  STRING238: 'pinball.mission.doomsday.run',
+  STRING239: 'pinball.mission.doomsday.done',
+  STRING240: 'pinball.mission.plague.run',
+  STRING241: 'pinball.mission.plague2.run',
+  STRING242: 'pinball.mission.plague2.done',
+  STRING243: 'pinball.mission.secretYellow.run',
+  STRING244: 'pinball.mission.secretRed.run',
+  STRING245: 'pinball.mission.secretGreen.run',
+  STRING246: 'pinball.mission.secretGreen.done',
+  STRING247: 'pinball.mission.timeWarp.run',
+
+  STRING249: 'pinball.mission.maelstrom1.run',
+  STRING250: 'pinball.mission.maelstrom2.run',
+  STRING251: 'pinball.mission.maelstrom3.run',
+  STRING252: 'pinball.mission.maelstrom4.run',
+  STRING253: 'pinball.mission.maelstrom5.run',
+  STRING254: 'pinball.mission.maelstrom6.run',
+  STRING255: 'pinball.mission.maelstrom7.run',
+  STRING256: 'pinball.mission.maelstrom8.run',
+  STRING149: 'pinball.mission.maelstrom8.info',
+
+  /** The shared "you scored N" line, which nearly every rewarded mission names. */
+  STRING179: 'pinball.award.scored',
+};
+
+/** The key a resource identifier resolves to, or the identifier itself when nothing is mapped. */
+export function keyOf(resourceId: string): string {
+  return RESOURCE_KEYS[resourceId] ?? resourceId;
+}
