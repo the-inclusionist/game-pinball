@@ -51,7 +51,9 @@ function table(over: Partial<AuthoredTable> = {}): AuthoredTable {
     name: 'test table',
     size: { width: 183, height: 235 },
     ballRadius: 3,
-    lamps: ['lamp1', 'lamp2'],
+    // ⚠️ ONLY THE LAMPS A COMPONENT NAMES. `lamp2` used to be here and nothing named it, which is now
+    // refused: a lamp the table declares and no component can turn on looks like a broken feature.
+    lamps: ['lamp1'],
     components: [
       piece({ name: 'drain1', kind: 'drain', role: 'hazard', bounds: { x: 80, y: 225, width: 20, height: 8 } }),
       piece({ name: 'plunger1', kind: 'plunger', role: 'structure', bounds: { x: 170, y: 200, width: 8, height: 30 } }),
@@ -59,7 +61,9 @@ function table(over: Partial<AuthoredTable> = {}): AuthoredTable {
       // ⚠️ `role: 'key'` rather than `structure`, because a table must declare SOMETHING TO PURSUE: the
       // contract's fifth field is what the sonar reads, and a fixture without one describes a table
       // that could not open.
-      piece({ name: 'bump1', kind: 'bumper', role: 'key', lamps: ['lamp1'] }),
+      // ⚠️ WITH A CONTROL, because declaring a lamp is promising feedback and only a control can light
+      // one. A fixture without it describes a table that could not open.
+      piece({ name: 'bump1', kind: 'bumper', role: 'key', lamps: ['lamp1'], control: 'BumperControl' }),
     ],
     ...over,
   };
@@ -296,16 +300,57 @@ describe('⚠️ a score nothing can pay is not a score', () => {
     expect(problems.some((p) => p.includes('bumper1') && p.includes('score'))).toBe(true);
   });
 
-  test('but a component with no score and no control is fine, because it is scenery', () => {
+  test('but a component with no score, no control and no lamp is fine, because it is scenery', () => {
     // A wall. Most of a table is scenery and the rule must not ask it to earn its keep.
+    //
+    // ⚠️ THE LAMP HAD TO JOIN THE LIST. Stripping the score and the control and leaving the lamp
+    // describes something that is not scenery at all: a lamp is state the player reads, so a component
+    // carrying one is promising feedback whatever else it has given up.
     const table = {
       ...LOW_ORBIT,
+      lamps: LOW_ORBIT.lamps.filter((l) => !(LOW_ORBIT.components.find((c) => c.name === 'bumper1')!.lamps ?? []).includes(l)),
       components: LOW_ORBIT.components.map((c) =>
-        c.name === 'bumper1' ? { ...c, control: undefined, scores: undefined } : c),
+        c.name === 'bumper1' ? { ...c, control: undefined, scores: undefined, lamps: undefined } : c),
     };
 
     const problems = validateTable(table, { viewHeight: 180 });
 
     expect(problems.filter((p) => p.includes('bumper1'))).toEqual([]);
+  });
+});
+
+describe('⚠️ a lamp nothing can light is not a lamp', () => {
+  test('a lamp the table declares and no component names is reported', () => {
+    // `low-orbit` carried three: lamp.bonus, lamp.shootAgain, lamp.spare. They are the 1995 drain
+    // cascade's `lite58`, `lite200` and `lite199`, kept when the table was sketched from that one, and
+    // an authored table has no cascade to drive them. They were entries in a list and nothing else.
+    const table = { ...LOW_ORBIT, lamps: [...LOW_ORBIT.lamps, 'lamp.invented'] };
+
+    const problems = validateTable(table, { viewHeight: 180 });
+
+    expect(problems.some((p) => p.includes('lamp.invented'))).toBe(true);
+  });
+
+  test('⚠️ and so is a component whose control cannot light one', () => {
+    // The subtler half, and the one that was actually wrong in every table. A lamp is STATE THE PLAYER
+    // READS, so a component declaring one is promising feedback. `DrainControl` does nothing at all by
+    // design — a drain never collides — so a drain that names a lamp is promising something no code
+    // path can deliver.
+    const table = {
+      ...LOW_ORBIT,
+      lamps: [...LOW_ORBIT.lamps, 'lamp.forTheDrain'],
+      components: LOW_ORBIT.components.map((c) =>
+        c.kind === 'drain' ? { ...c, lamps: ['lamp.forTheDrain'] } : c),
+    };
+
+    const problems = validateTable(table, { viewHeight: 180 });
+
+    expect(problems.some((p) => p.includes('drain') && p.includes('light'))).toBe(true);
+  });
+
+  test('every table in the catalogue can light every lamp it declares', () => {
+    for (const table of CATALOG) {
+      expect(validateTable(table, { viewHeight: 180 }), table.name).toEqual([]);
+    }
   });
 });

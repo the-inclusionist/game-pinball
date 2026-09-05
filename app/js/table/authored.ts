@@ -47,7 +47,7 @@ import type { ComponentKind } from '../i18n/names.js';
 import type { Rect } from '../shell/hud.js';
 import type { DeclaredBall, DeclaredComponent } from '../shell/declaration.js';
 import type { LiveTable } from '../shell/boot.js';
-import { controlNamed, AUTHORED_CONTROL_NAMES } from '../control/registry.js';
+import { controlNamed, AUTHORED_CONTROL_NAMES, LIGHTING_CONTROLS } from '../control/registry.js';
 
 /**
  * ⚠️ A LINE IS ONE-SIDED, AND ITS WINDING DECIDES WHICH SIDE.
@@ -212,6 +212,13 @@ export function validateTable(table: AuthoredTable, o: ValidationOptions): strin
       problems.push(`${component.name}: names control "${component.control}", which an authored table`
         + ` cannot supply. The ones it can: ${AUTHORED_CONTROL_NAMES.join(', ')}`);
     }
+    // ⚠️ A LAMP IS STATE THE PLAYER READS, so declaring one is a promise of feedback. A component whose
+    // control cannot light anything is making a promise no code path can keep — `DrainControl` and
+    // `PlungerControl` do nothing at all by design, so a drain that names a lamp names it for nobody.
+    if (component.lamps?.length && !LIGHTING_CONTROLS.includes(component.control ?? '')) {
+      problems.push(`${component.name}: declares lamps but its control cannot light one`
+        + ` — only these can: ${LIGHTING_CONTROLS.join(', ')}`);
+    }
     for (const lamp of component.lamps ?? []) {
       if (!table.lamps.includes(lamp)) {
         problems.push(`${component.name}: names lamp "${lamp}", which the table does not have`);
@@ -235,6 +242,19 @@ export function validateTable(table: AuthoredTable, o: ValidationOptions): strin
       if (!shapeInside(shape, table)) {
         problems.push(`${component.name}: collision shape outside the table`);
       }
+    }
+  }
+
+  // ⚠️ AND THE OTHER DIRECTION. The rule above stops a component naming a lamp the table does not have;
+  // this one stops the table declaring a lamp no component names. `low-orbit` carried three that way —
+  // lamp.bonus, lamp.shootAgain, lamp.spare, which are the 1995 drain cascade's lite58, lite200 and
+  // lite199, kept when the table was sketched from that one. They were entries in a list and nothing
+  // else, and a dead lamp is worse than a missing one because it looks like a feature that is broken.
+  const named = new Set(table.components.flatMap((c) => c.lamps ?? []));
+  for (const lamp of table.lamps) {
+    if (!named.has(lamp)) {
+      problems.push(`lamp "${lamp}": declared by the table and named by no component, so nothing can`
+        + ' ever turn it on');
     }
   }
 

@@ -87,6 +87,22 @@ describe('the lamps are the table’s own', () => {
     expect(live.context.light(lit)!.on).toBe(true);
   });
 
+  test('⚠️ a BUMPER lights too, which it did not', () => {
+    // Every bumper in the catalogue declared a lamp and none ever lit. In the original a bumper lights
+    // ITSELF through `TBumperSetBmpIndex` on the component, and the control function has nothing to do
+    // with it; an authored bumper has no component behind it — the control IS the component — so it
+    // happens in the wrapper or nowhere, and it was happening nowhere.
+    //
+    // Written as its own test because a mutation that removed the lighting survived everything else:
+    // the validator's new rule only asks whether a control CAN light, not whether it does.
+    const live = controls();
+    const bumper = LOW_ORBIT.components.find((c) => c.kind === 'bumper' && c.lamps?.length)!;
+
+    live.hit(bumper.name);
+
+    expect(live.context.light(bumper.lamps![0]!)!.on).toBe(true);
+  });
+
   test('a lamp the table never declared is simply absent', () => {
     // `light()` returns undefined and every control uses `?.`, which is the original's shape too: a
     // missing global lamp there is a null pointer nobody dereferences.

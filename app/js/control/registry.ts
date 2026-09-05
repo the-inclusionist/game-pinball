@@ -55,6 +55,11 @@ function sound(caller: ControlledComponent, ctx: ControlContext): void {
   if (voice) ctx.playSound(voice);
 }
 
+/** And lights it the same way. A lamp is state the player reads; declaring one is a promise. */
+function light(caller: ControlledComponent, ctx: ControlContext): void {
+  for (const lamp of selfOf(caller)?.lamps ?? []) ctx.light(lamp)?.turnOn();
+}
+
 const selfOf = (caller: ControlledComponent): AuthoredSelf | undefined =>
   caller.self as AuthoredSelf | undefined;
 
@@ -125,9 +130,26 @@ export const plungerControl: ControlFunc = () => {};
  * authored table wraps them rather than editing them: the transcription stays a transcription.
  */
 const withSound = (inner: ControlFunc): ControlFunc => (code, caller, ctx) => {
-  if (code === 'ControlCollision') sound(caller, ctx);
+  if (code === 'ControlCollision') {
+    sound(caller, ctx);
+    // ⚠️ AND LIGHTS IT. Every bumper in the catalogue declared a lamp and none of them ever lit: in the
+    // original a bumper lights ITSELF, through `TBumperSetBmpIndex` on the component, and the control
+    // function has nothing to do with it. An authored bumper has no component behind it — the control
+    // IS the component — so the lighting has to happen here or nowhere, and it was happening nowhere.
+    light(caller, ctx);
+  }
   inner(code, caller, ctx);
 };
+
+/**
+ * ⚠️ WHICH CONTROLS CAN LIGHT A LAMP, so `validateTable` can refuse a component that names one and has
+ * no way to turn it on. `DrainControl` and `PlungerControl` do nothing by design — a drain never
+ * collides and a launch is the game's — so a drain that declares a lamp is promising feedback no code
+ * path can deliver.
+ */
+export const LIGHTING_CONTROLS: readonly string[] = [
+  'BumperControl', 'RebounderControl', 'TargetControl', 'RampControl', 'LaneControl',
+];
 
 export const AUTHORED_CONTROLS: Readonly<Record<string, ControlFunc>> = Object.freeze({
   BumperControl: withSound(bumperControl),

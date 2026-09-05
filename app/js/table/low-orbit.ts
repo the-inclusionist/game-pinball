@@ -58,7 +58,7 @@ export const LOW_ORBIT: AuthoredTable = {
   ballRadius: BALL_RADIUS,
 
   lamps: [
-    'lamp.mission', 'lamp.bonus', 'lamp.jackpot', 'lamp.shootAgain', 'lamp.spare',
+    'lamp.mission', 'lamp.jackpot',
     'lamp.bumper1', 'lamp.bumper2', 'lamp.bumper3',
     'lamp.target1', 'lamp.target2', 'lamp.target3',
     'lamp.lane1', 'lamp.lane2', 'lamp.lane3',
