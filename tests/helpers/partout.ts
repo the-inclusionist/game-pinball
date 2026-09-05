@@ -162,3 +162,31 @@ export function zmap16(z: ZMapSintetico): Uint8Array {
   for (let i = 0; i < dados.length; i++) dv.setUint16(14 + i * 2, dados[i]!, true);
   return buf;
 }
+
+/* ===================== FLUXO SPLICED ===================== */
+
+export interface CorridaSpliced {
+  /** Quantos pixels de destino pular antes desta corrida. */
+  readonly salto: number;
+  readonly pixels: readonly { readonly profundidade: number; readonly indice: number }[];
+}
+
+/**
+ * Monta o fluxo spliced do upstream. Cada corrida e [salto:int16][quantos:uint16] seguida de
+ * `quantos` pixels de TRES bytes: [profundidade:uint16][indice:uint8]. Um salto negativo encerra.
+ *
+ * Os tres bytes por pixel sao o ponto: uma corrida de tamanho impar deixa o fluxo em posicao IMPAR,
+ * e a proxima corrida le seu int16 desalinhado. Um leitor indexado em palavras de 16 bits nao tem como
+ * expressar isso.
+ */
+export function fluxoSpliced(corridas: readonly CorridaSpliced[]): Uint8Array {
+  const bytes: number[] = [];
+  const push16 = (v: number) => { bytes.push(v & 0xff, (v >> 8) & 0xff); };
+  for (const c of corridas) {
+    push16(c.salto);
+    push16(c.pixels.length);
+    for (const p of c.pixels) { push16(p.profundidade); bytes.push(p.indice & 0xff); }
+  }
+  push16(0xffff); // salto -1: encerra
+  return new Uint8Array(bytes);
+}
