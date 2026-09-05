@@ -20,6 +20,9 @@ import { bootPinball, type Phase } from './shell/boot.js';
 import { CATALOG, DEFAULT_TABLE, tableNamed } from './table/catalog.js';
 import { toLiveTable, validateTable, type TableState } from './table/authored.js';
 import { DEFAULT_CAMERA } from './shell/camera.js';
+import { DEFAULT_HUD } from './shell/hud.js';
+import { createFramebuffer } from './gfx/framebuffer.js';
+import { drawTable, blitView, drawBall } from './gfx/table-view.js';
 
 // `?table=wide-arc` opens another one of the five. There is no menu yet, and a query parameter is
 // enough to look at all of them without one.
@@ -61,6 +64,25 @@ if (shell.problems.length) {
   console.warn('[pinball] host markup incomplete:', shell.problems.join(', '));
 }
 
+/* ===================== THE PICTURE ===================== */
+//
+// The screen is a 320x180 framebuffer put on a canvas with nearest-neighbour scaling. The TABLE is
+// drawn once, at its own size, and the camera copies a window of it every frame — see `gfx/table-view`
+// for why that is a window rather than a transform.
+
+const screen = createFramebuffer(DEFAULT_HUD.screenWidth, DEFAULT_HUD.screenHeight);
+const canvas = document.createElement('canvas');
+canvas.width = screen.width;
+canvas.height = screen.height;
+canvas.style.width = '100%';
+canvas.style.imageRendering = 'pixelated';
+document.getElementById('game-region')!.appendChild(canvas);
+const context = canvas.getContext('2d')!;
+const image = context.createImageData(screen.width, screen.height);
+
+// Redrawn only when what it shows changes, which today is when the mission's targets change.
+let tablePicture = drawTable({ table: authored, missionTargets: state.missionTargets });
+
 // `update(dt)` counts FRAMES, not seconds — see `shell/boot`. The engine hands the count through and
 // the camera's damping is per frame, so this passes it on untouched.
 let previous = performance.now();
@@ -68,6 +90,16 @@ function frame(now: number): void {
   const frames = Math.min(4, (now - previous) / (1000 / 60));
   previous = now;
   if (phase === 'playing') shell.advance(frames);
+
+  blitView(screen, tablePicture, shell.hud.playfield, 0, shell.camera.offset);
+  for (const ball of state.balls) {
+    drawBall(screen, ball, authored.ballRadius, shell.hud.playfield, 0, shell.camera.offset);
+  }
+  // One `ImageData`, reused. Allocating one per frame would be sixty allocations a second of the
+  // same 230 KB, and the copy is what the canvas wants anyway.
+  image.data.set(screen.bytes);
+  context.putImageData(image, 0, 0);
+
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
@@ -82,6 +114,13 @@ Object.assign(window as unknown as Record<string, unknown>, {
     tables: CATALOG.map((t) => t.name),
     declaration: shell.declaration,
     setPhase(next: Phase) { phase = next; },
+    /** Exposed so the browser gate can look at the pixels rather than at a screenshot. */
+    get screen() { return screen; },
+    get picture() { return tablePicture; },
+    setState(next: Partial<TableState>) {
+      state = { ...state, ...next };
+      tablePicture = drawTable({ table: authored, missionTargets: state.missionTargets });
+    },
   },
 });
 
