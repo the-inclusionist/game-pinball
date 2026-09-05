@@ -26,8 +26,8 @@ function build() {
     timer: t.timer, frameCount: 3,
     darkDelay: 0.2, litDelay: 0.05,
     setSprite: (i) => sprites.push(i),
-    onTimeout: () => timeouts.push(1),
   });
+  light.control = () => timeouts.push(1);
   light.reset();
   sprites.length = 0;
   t.asked.length = 0;

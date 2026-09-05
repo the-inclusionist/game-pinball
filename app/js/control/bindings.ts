@@ -598,8 +598,14 @@ export interface LampBinding {
   readonly component: string;
   /** The lamps, IN THE ORDER the control function expects them. */
   readonly lamps: readonly string[];
-  /** Which message the control answers. Only `ControlCollision` has a source in this build. */
-  readonly onMessage: 'ControlCollision' | 'ControlBallReleased' | 'TLightResetAndTurnOn';
+  /**
+   * Which message the control answers. `ControlTimerExpired` reaches a lamp when its own timed
+   * override runs out — see `Light.control` — and that is how an award with a clock ends.
+   */
+  readonly onMessage:
+    | 'ControlCollision' | 'ControlBallReleased' | 'TLightResetAndTurnOn' | 'ControlTimerExpired';
+  /** For the two accumulator lamps: which flag the lamp going dark switches off. */
+  readonly accumulator?: 'bonus' | 'jackpot';
 }
 
 export const LAMP_BINDINGS: readonly LampBinding[] = [
@@ -609,6 +615,24 @@ export const LAMP_BINDINGS: readonly LampBinding[] = [
     onMessage: 'TLightResetAndTurnOn' },
   { control: 'LaunchRampHoleControl', component: 'ramp_hole', lamps: ['lite54'],
     onMessage: 'ControlBallReleased' },
+  /**
+   * ⚠️ THE TWO ACCUMULATOR LAMPS, WHICH ARE THE OTHER HALF OF AN AWARD. `table_set_bonus` arms
+   * `bonusScoreFlag` and lights `lite59` for sixty seconds; the lamp going dark is what the player
+   * sees, and clearing the flag is what actually ends it. Wire the award without these and the bonus
+   * accumulates for the rest of the ball, long after there is anything on screen to explain it.
+   */
+  { control: 'BonusLightControl', component: 'lite59', lamps: ['lite59'],
+    onMessage: 'ControlTimerExpired', accumulator: 'bonus' },
+  { control: 'JackpotLightControl', component: 'lite60', lamps: ['lite60'],
+    onMessage: 'ControlTimerExpired', accumulator: 'jackpot' },
+  /**
+   * `ShootAgainLightControl`: a latch against its own fade. The skill shot's entry lights `lite200`
+   * for five seconds; when that runs out the lamp flashes for five MORE and records that it did, and
+   * the second expiry lets it go. The message field is the latch, and without it the lamp would
+   * re-flash for ever.
+   */
+  { control: 'ShootAgainLightControl', component: 'lite200', lamps: ['lite200'],
+    onMessage: 'ControlTimerExpired' },
 ];
 
 /**

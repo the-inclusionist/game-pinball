@@ -1062,3 +1062,73 @@ describe('⚠️ the multiplier falls again too, and so do the medals', () => {
     expect(w.score.scoreMultiplier, 'and took nothing with it').toBe(2);
   });
 });
+
+describe('⚠️ an award with a clock ends when the clock does, not when the lamp goes dark', () => {
+  const grantBonus = (w: NonNullable<ReturnType<typeof wired>>) => {
+    // The booster chain's third rung is `table_set_bonus`, which arms the flag and lights `lite59`
+    // for sixty seconds. Two rungs are already granted so the third is the one this completion wins.
+    w.components.lights.get('lite61')!.turnOn();
+    w.components.lights.get('lite60')!.turnOn();
+    for (const target of BOOSTER_BANK.targets) w.dispatch.hit(target);
+  };
+
+  test('the bonus flag is armed by the award and CLEARED when the lamp times out', () => {
+    // Without `BonusLightControl` the lamp goes dark and the flag stays set, so every score for the
+    // rest of the ball keeps piling into a bonus the player has no reason to think is still running.
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+
+    grantBonus(w);
+    expect(w.score.bonusScoreFlag).toBe(true);
+    expect(w.components.lights.get('lite59')!.lit).toBe(true);
+
+    w.components.advance(61);
+
+    expect(w.components.lights.get('lite59')!.lit, 'the lamp is out').toBe(false);
+    expect(w.score.bonusScoreFlag, 'and so is the flag').toBe(false);
+  });
+
+  test('⚠️ and it holds for the whole sixty seconds, not a moment less', () => {
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    grantBonus(w);
+
+    w.components.advance(59);
+
+    expect(w.score.bonusScoreFlag).toBe(true);
+  });
+
+  test('the jackpot lamp clears its OWN flag and not the other one', () => {
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    // Only the flag-lights rung is granted, so this completion wins the jackpot.
+    w.components.lights.get('lite61')!.turnOn();
+    for (const target of BOOSTER_BANK.targets) w.dispatch.hit(target);
+    expect(w.score.jackpotScoreFlag).toBe(true);
+    w.score.bonusScoreFlag = true;
+
+    w.components.advance(61);
+
+    expect(w.score.jackpotScoreFlag).toBe(false);
+    expect(w.score.bonusScoreFlag, 'the other flag is not this lamp’s business').toBe(true);
+  });
+
+  test('⚠️ the shoot-again lamp flashes ONCE more and then lets go', () => {
+    // A latch against its own fade: the first expiry starts a five-second flash and records that it
+    // did; the second expiry finds the record and clears it instead of flashing again. Without the
+    // latch the lamp re-flashes for ever, five seconds at a time.
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    w.dispatch.hit(SKILL_SHOT.entry.component); // lights lite200 for five seconds
+    const lamp = w.components.lights.get('lite200')!;
+
+    w.components.advance(6);
+    expect(lamp.flashing, 'the fade turns into a flash').toBe(true);
+    expect(lamp.messageField).toBe(1);
+
+    w.components.advance(6);
+
+    expect(lamp.flashing).toBe(false);
+    expect(lamp.messageField, 'the latch is let go').toBe(0);
+  });
+});

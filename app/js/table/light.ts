@@ -38,10 +38,21 @@ export interface LightOptions {
   readonly litDelay: number;
   readonly setSprite?: (index: number) => void;
   /** Fired when a timed command runs out. The mission logic listens for it. */
-  readonly onTimeout?: () => void;
+
 }
 
 export interface Light {
+  /**
+   * ⚠️ `control::handler(ControlTimerExpired, this)`, WHICH IS HOW AN AWARD ENDS. A lamp lit with
+   * `TLightTurnOnTimed` is an award with a clock — `table_set_bonus` lights `lite59` for sixty seconds
+   * — and the lamp going dark is only half of it. The other half is the FLAG being cleared, and that
+   * happens here. Without it the bonus keeps accumulating long after the player can see any reason to
+   * think it should.
+   *
+   * A field rather than an option, like `Gate.control` and `Kickback.control`: the lamp is built from
+   * the archive and its control is bound later, by the dispatcher.
+   */
+  control: (() => void) | null;
   /**
    * Layer 1 alone: `LightOnFlag`. What the GAME means, and the only thing a light GROUP reads —
    * `next_light_up`, `next_light_down` and `TLightGroupGetOnCount` all count this flag and nothing
@@ -166,13 +177,14 @@ export function createLight(o: LightOptions): Light {
       light.turnOff();
       light.resetTimed();
     }
-    o.onTimeout?.();
+    light.control?.();
   }
 
   /** True while some layer-2 override is hiding the persistent state. */
   const overridden = (): boolean => flashing || toggledOff || toggledOn;
 
   const light: Light = {
+    control: null,
     get on() { return lightOn; },
     get lit() { return lightOn || toggledOn || flashing; },
     get flashing() { return flashing; },

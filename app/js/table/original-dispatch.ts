@@ -40,12 +40,12 @@ import {
 } from '../control/controls.js';
 import { makeMedalTargetControl, makeBoosterTargetControl, type AwardChainStep } from '../control/banks.js';
 import {
-  makeDecayingLightGroupControl, makeMultiplierLightGroupControl, DECAY_PERIODS,
-  type DecayingGroup,
+  makeDecayingLightGroupControl, makeMultiplierLightGroupControl, makeAccumulatorLampControl,
+  DECAY_PERIODS, type DecayingGroup,
 } from '../control/light-groups.js';
 import {
   makeSkillShotEntryControl, makeSkillShotGateControl, makeSkillShotCollectControl,
-  makeSkillShotLostControl, type SkillShotGroup,
+  makeSkillShotLostControl, makeShootAgainLightControl, type SkillShotGroup,
 } from '../control/launch.js';
 import {
   BUMPER_LANE_BINDINGS, LAMP_BINDINGS, RETURN_LANES, FUEL_ROLLOVERS, FUEL_BARGRAPH,
@@ -744,6 +744,24 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
 
       register(SKILL_SHOT.lost.component, makeSkillShotLostControl({ group }));
     }
+  }
+
+  // ⚠️ THE LAMPS WHOSE OWN CLOCK RUNS THEIR CONTROL. A lamp lit with `TLightTurnOnTimed` is an award
+  // with a clock, and the lamp going dark is only what the player SEES — clearing the flag is what
+  // ends it. `lite59` and `lite60` were being lit by the booster chain and their flags were never
+  // cleared, so the bonus went on accumulating for the rest of the ball.
+  //
+  // None of this is in `wired`: no collision reaches a lamp's timer.
+  for (const binding of LAMP_BINDINGS) {
+    if (binding.onMessage !== 'ControlTimerExpired') continue;
+    const lamp = o.components.lights.get(binding.component);
+    if (!lamp) continue;
+
+    const caller: ControlledComponent = { name: binding.component, scores: [], control: null };
+    const control = binding.accumulator
+      ? makeAccumulatorLampControl({ flag: binding.accumulator })
+      : makeShootAgainLightControl({ lamp });
+    lamp.control = () => control('ControlTimerExpired', caller, o.context);
   }
 
   return {
