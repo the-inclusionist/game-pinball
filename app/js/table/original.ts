@@ -28,6 +28,7 @@ import {
 import { installWall } from '../physics/wall.js';
 import { basicCollision } from '../physics/collision.js';
 import { createBall, type Ball, type StepContext } from '../physics/step.js';
+import type { Vector2 } from '../maths/maths.js';
 import type { Component } from '../physics/edges.js';
 import { EntryType, type Group } from '../dat/partman.js';
 import { floatAttribute, groupNamed } from '../dat/attributes.js';
@@ -121,6 +122,17 @@ export interface OriginalOptions {
    * else on the table.
    */
   readonly geometryFor?: (groupName: string, data: readonly number[]) => readonly number[] | undefined;
+  /**
+   * ⚠️ THE FIELDS THAT PULL, WHICH ARE ADDED TO GRAVITY AND DO NOT REPLACE IT.
+   * `TEdgeManager::FieldEffects` walks the fields in the ball's box and does `vector_add` for each one
+   * that answers — on top of `TTableLayer::FieldEffect`, which is gravity minus drag and nothing else.
+   * A kickout that replaced gravity would hold the ball up in mid-air on the way past.
+   *
+   * A callback rather than a list because a kickout cannot exist before the geometry it switches, and
+   * this is read once per ball per frame. The upstream consults only the fields in the ball's own grid
+   * box; asking all three and letting each one's radius check decide is the same answer.
+   */
+  readonly fieldsFor?: () => Iterable<{ fieldEffect(ball: Ball, destination: Vector2): boolean }>;
 }
 
 export function buildOriginalTable(groups: readonly Group[], o: OriginalOptions = {}): OriginalTable {
@@ -209,6 +221,25 @@ export function buildOriginalTable(groups: readonly Group[], o: OriginalOptions 
         // `TTableLayer::FieldEffect`, entire. Gravity minus drag, with the jitter on X only.
         destination.x = gravityX - (0.5 - random() + ball.direction.x) * ball.speed * drag;
         destination.y = gravityY - ball.direction.y * ball.speed * drag;
+
+        // And then every field the ball is inside, ADDED — see `fieldsFor`.
+        const fields = o.fieldsFor?.();
+        if (!fields) return;
+        // ⚠️ ZEROED BEFORE EACH ONE. A field that answers `false` does not write, and a shared vector
+        // would then be added a second time with the previous field's value still in it — two holes
+        // near each other would pull twice as hard as either. `TEdgeManager::FieldEffects` declares
+        // its vector inside the loop for the same reason.
+        //
+        // ⚠️ AND THAT MAKES THE GUARD BELOW AN EQUIVALENT MUTANT: with the vector zeroed, adding the
+        // answer of a field that declined adds nothing. It stays because it says what `false` means.
+        const pull = { x: 0, y: 0 };
+        for (const field of fields) {
+          pull.x = 0;
+          pull.y = 0;
+          if (!field.fieldEffect(ball, pull)) continue;
+          destination.x += pull.x;
+          destination.y += pull.y;
+        }
       },
     },
     spawnBall() {

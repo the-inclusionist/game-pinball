@@ -34,8 +34,8 @@ function build(tiltLocked = false) {
     throwAngleMult: 0, throwSpeedMult1: 1, throwSpeedMult2: 1,
     captureSoundId: 1, releaseSoundId: 2,
     sound: { play: (id) => played.push(id) },
-    onCapture: () => captures.push(1),
   });
+  k.control = () => captures.push(1);
   return { k, t, edges, played, captures, thrown };
 }
 

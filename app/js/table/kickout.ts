@@ -65,11 +65,20 @@ export interface KickoutOptions {
   readonly captureSoundId?: number;
   readonly releaseSoundId?: number;
   readonly sound?: SoundPlayer;
-  readonly onCapture?: () => void;
+
 }
 
 export interface Kickout {
   collision(ball: unknown, position: Vector2, direction: Vector2, distance: number, edge: unknown): void;
+  /**
+   * ⚠️ `control::handler(ControlCollision, this)` ON CAPTURE, AND THE ONLY THING THAT LETS THE BALL
+   * OUT. A kickout does not schedule its own release: it swallows the ball and waits for its control
+   * function to call `restartTimer`. Leave this unbound and the hole keeps the ball for the rest of
+   * the game — the ball does not drain, does not count as stuck, and simply stops existing.
+   *
+   * A field rather than an option, like `Gate.control` and `Kickback.control`.
+   */
+  control: (() => void) | null;
   /** Writes the field force into `destination` and reports whether it had anything to say. */
   fieldEffect(ball: KickoutBall, destination: Vector2): boolean;
   /** `TKickoutRestartTimer`: schedules the throw. A negative value means the default hold time. */
@@ -102,7 +111,8 @@ export function createKickout(o: KickoutOptions): Kickout {
     heldBall = null;
   }
 
-  return {
+  const kickout: Kickout = {
+    control: null,
     get captured() { return captured; },
 
     collision(ball, position, _direction, _distance, edge): void {
@@ -132,7 +142,7 @@ export function createKickout(o: KickoutOptions): Kickout {
       }
 
       if (o.captureSoundId !== undefined) o.sound?.play(o.captureSoundId, b);
-      o.onCapture?.();
+      kickout.control?.();
     },
 
     fieldEffect(ball, destination): boolean {
@@ -155,4 +165,6 @@ export function createKickout(o: KickoutOptions): Kickout {
       o.timer.set(delay, release);
     },
   };
+
+  return kickout;
 }

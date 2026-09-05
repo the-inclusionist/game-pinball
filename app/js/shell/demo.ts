@@ -163,14 +163,26 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
 
   /**
    * ⚠️ THE HOLES ARE INSTALLED WITH THEIR OWN MOUTH, which is much smaller than the circle the file
-   * draws — see `table/original-kickouts`. And they are BUILT after the geometry, because a kickout
-   * switches the very edges the table installs; `componentFor` is looked up at collision time for
-   * exactly that reason.
+   * draws — see `table/original-kickouts`. That much is right whoever owns the collision, so the
+   * geometry goes in either way.
+   *
+   * ⚠️ BUT THEY DO NOT OWN THEIR COLLISIONS YET, AND THE REASON IS THAT A KICKOUT DOES NOT RELEASE
+   * ITSELF. It swallows the ball and waits for its control function to call `restartTimer`; with no
+   * control bound, the hole keeps the ball for the rest of the game. The ball does not drain, does not
+   * score and does not count as lost — it stops existing, and the game goes on without it.
+   *
+   * Two of the three controls are not wired (`GravityWellKickoutControl` needs a settable active flag,
+   * `HyperspaceKickOutControl` needs the hyperspace ladder), so the holes bounce like the small circles
+   * they are until all three can let go. Half-wiring them would be worse than not wiring them: it
+   * would eat the ball.
    */
-  let kickouts: ReturnType<typeof buildOriginalKickouts> = new Map();
+  const kickouts: ReturnType<typeof buildOriginalKickouts> = new Map();
 
   const table = buildOriginalTable(groups, {
     geometryFor: kickoutGeometry(manifest),
+    // The pull goes in with the collision, for the same reason: a hole that leans the ball in and then
+    // never lets go is worse than one that does neither.
+    fieldsFor: () => kickouts.values(),
     // ⚠️ EVERY COLLISION COMPONENT THIS PORT BUILDS, not only the bumpers. A kickback that the walls
     // never receive is a saver the ball goes straight past — it would arm nothing, because nothing
     // would ever touch it.
@@ -208,9 +220,6 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
       addScore(score, row.scores[0]!);
       scored.push(row.name);
     },
-  });
-  kickouts = buildOriginalKickouts(manifest, table, {
-    table: { tiltLocked: false }, timer: components.timer,
   });
   const gates = buildOriginalGates(manifest, table);
   dispatch = createOriginalDispatch({

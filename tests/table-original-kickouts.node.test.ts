@@ -42,8 +42,13 @@ function build() {
   const table = manifest();
   if (!table) return null;
   const t = fakeTimer();
-  const geometry = buildOriginalTable(table.groups, { geometryFor: kickoutGeometry(table) });
-  const kickouts = buildOriginalKickouts(table, geometry, {
+  let kickouts = new Map<string, ReturnType<typeof buildOriginalKickouts> extends Map<string, infer V> ? V : never>();
+  const geometry = buildOriginalTable(table.groups, {
+    geometryFor: kickoutGeometry(table),
+    fieldsFor: () => kickouts.values(),
+    random: () => 0.5,
+  });
+  kickouts = buildOriginalKickouts(table, geometry, {
     table: { tiltLocked: false }, timer: t.timer,
   });
   return { table, geometry, kickouts, t };
@@ -123,5 +128,127 @@ describe('the three kickouts of the 1995 table', () => {
 
     expect(thrown).toHaveLength(1);
     expect(thrown[0], 'thrown at the boost the archive gives it').toBe(35);
+  });
+});
+
+describe('⚠️ the field ADDS to gravity rather than replacing it', () => {
+  /**
+   * A ball at REST, which makes the comparison exact in both axes: the drag term is multiplied by the
+   * ball’s speed, so at zero the random X jitter vanishes with it. Comparing two tables built with
+   * different random sources would otherwise be comparing noise.
+   */
+  const restingBall = (x: number, y: number) => ({
+    position: { x, y }, direction: { x: 0, y: 0 }, speed: 0,
+  });
+
+  test('far from every hole, the force is gravity alone', () => {
+    const b = build();
+    if (!b) return expect(existsSync(DAT)).toBe(false);
+    const bare = buildOriginalTable(b.table.groups);
+    const force = { x: 0, y: 0 };
+    const away = { x: 0, y: 0 };
+
+    b.geometry.context.fieldEffects(restingBall(0, 0) as never, force);
+    bare.context.fieldEffects(restingBall(0, 0) as never, away);
+
+    // The jitter is on X only, so Y is exactly comparable.
+    expect(force.y).toBeCloseTo(away.y);
+  });
+
+  test('⚠️ inside a hole’s field the pull is ADDED, and gravity is still there', () => {
+    // `TEdgeManager::FieldEffects` does `vector_add` for every field that answers, on top of
+    // `TTableLayer::FieldEffect`. A field that REPLACED gravity would hold the ball up in mid-air on
+    // the way past — and the hole would feel like a platform rather than a hole.
+    const b = build();
+    if (!b) return expect(existsSync(DAT)).toBe(false);
+    const group = b.table.groups[b.table.tableObjects
+      .find((object) => b.table.groups[object.group]?.name === 'a_kout2')!.group]!;
+    const drawn = floatAttribute(group, 600)!;
+    // Just off the centre, well inside the drawn radius: the field is the DRAWN circle, not the mouth.
+    const at = restingBall(drawn[1]! + drawn[3]! * 0.5, drawn[2]!);
+
+    const withField = { x: 0, y: 0 };
+    b.geometry.context.fieldEffects(at as never, withField);
+    const gravityOnly = { x: 0, y: 0 };
+    buildOriginalTable(b.table.groups).context.fieldEffects(at as never, gravityOnly);
+
+    // The pull is toward the centre, which is to the LEFT of where the ball is sitting.
+    expect(withField.x).toBeLessThan(gravityOnly.x);
+    // ⚠️ AND GRAVITY IS UNTOUCHED, which is what tells ADD from REPLACE. The ball sits level with the
+    // centre, so the pull is purely horizontal and Y must be exactly what gravity alone gives. A field
+    // that replaced gravity would answer zero here — the hole would hold the ball up in mid-air.
+    expect(withField.y).toBeCloseTo(gravityOnly.y);
+    expect(gravityOnly.y).not.toBeCloseTo(0);
+  });
+
+  test('and a hole that is already full pulls nothing', () => {
+    const b = build();
+    if (!b) return expect(existsSync(DAT)).toBe(false);
+    const group = b.table.groups[b.table.tableObjects
+      .find((object) => b.table.groups[object.group]?.name === 'a_kout2')!.group]!;
+    const drawn = floatAttribute(group, 600)!;
+    const at = restingBall(drawn[1]! + drawn[3]! * 0.5, drawn[2]!);
+    b.kickouts.get('a_kout2')!.collision(
+      { position: { x: 0, y: 0, z: 0 }, memory: { record: () => {} }, throwBall: () => {} },
+      { x: 0, y: 0 }, { x: 0, y: 1 }, 0, null,
+    );
+
+    const force = { x: 0, y: 0 };
+    b.geometry.context.fieldEffects(at as never, force);
+    const gravityOnly = { x: 0, y: 0 };
+    buildOriginalTable(b.table.groups).context.fieldEffects(at as never, gravityOnly);
+
+    expect(force.x).toBeCloseTo(gravityOnly.x);
+  });
+});
+
+describe('⚠️ a kickout with no control bound never lets the ball go', () => {
+  test('it swallows, and nothing releases it — which is why the demo holds them back', () => {
+    // A kickout does not schedule its own release: it captures and calls its control function, and
+    // THAT is what calls `restartTimer`. With no control bound the hole keeps the ball for the rest of
+    // the game — the ball does not drain, does not score and does not count as lost, it stops
+    // existing.
+    //
+    // ⚠️ AND THE DEMONSTRATION CANNOT SEE THIS. A first version of this test stepped a whole ball's
+    // life and asked whether the ball was still moving; it passed with the holes wired AND unwired,
+    // because in nine hundred frames the ball rarely finds a hole and the stuck-ball watchdog frees it
+    // when it does. The claim is about the component, so it is tested on the component.
+    const b = build();
+    if (!b) return expect(existsSync(DAT)).toBe(false);
+    const kickout = b.kickouts.get('a_kout2')!;
+    const thrown: number[] = [];
+    const ball = {
+      position: { x: 0, y: 0, z: 0 }, direction: { x: 0, y: 1 }, speed: 10,
+      collisionDisabled: false, component: null as unknown,
+      memory: { record: () => {} },
+      throwBall: (_d: unknown, _a: number, speed: number) => thrown.push(speed),
+    };
+
+    kickout.collision(ball, { x: 0, y: 0 }, { x: 0, y: 1 }, 0, null);
+    b.t.fire();
+    b.t.fire();
+
+    expect(kickout.captured, 'still holding it').toBe(true);
+    expect(thrown, 'and nothing was ever thrown').toEqual([]);
+  });
+
+  test('and with a control that schedules the release, it lets go', () => {
+    const b = build();
+    if (!b) return expect(existsSync(DAT)).toBe(false);
+    const kickout = b.kickouts.get('a_kout2')!;
+    const thrown: number[] = [];
+    const ball = {
+      position: { x: 0, y: 0, z: 0 }, direction: { x: 0, y: 1 }, speed: 10,
+      collisionDisabled: false, component: null as unknown,
+      memory: { record: () => {} },
+      throwBall: (_d: unknown, _a: number, speed: number) => thrown.push(speed),
+    };
+    kickout.control = () => kickout.restartTimer(-1);
+
+    kickout.collision(ball, { x: 0, y: 0 }, { x: 0, y: 1 }, 0, null);
+    b.t.fire();
+
+    expect(kickout.captured).toBe(false);
+    expect(thrown).toHaveLength(1);
   });
 });
