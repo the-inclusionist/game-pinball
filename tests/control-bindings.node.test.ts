@@ -2,7 +2,7 @@
 import { describe, test, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
 import {
-  REENTRY_LANES, BUMPER_LANE_BINDINGS, UNBOUND_CONTROLS, SELF_CONTAINED_CONTROLS,
+  BUMPER_LANE_BINDINGS, UNBOUND_CONTROLS, SELF_CONTAINED_CONTROLS,
 } from '../app/js/control/bindings.js';
 import { SCORE_COMPONENTS } from '../app/js/control/score-table.js';
 import { RESOURCE_KEYS } from '../app/js/i18n/keys.js';
@@ -25,7 +25,7 @@ const manifest = () => {
   return loadTable(new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength));
 };
 
-describe('the reentry lanes, transcribed', () => {
+describe.each(BUMPER_LANE_BINDINGS.map((b) => [b.control, b] as const))('%s, transcribed', (_name, BINDING) => {
   test('⚠️ every name in it is an ARCHIVE name, because that is what a collision reports', () => {
     // `control.cpp` calls them `roll3` and `attack_bump`; the file calls them `a_roll3` and
     // `attack_bumpers`. Transcribing the variable names would produce a binding that reads correctly
@@ -36,13 +36,13 @@ describe('the reentry lanes, transcribed', () => {
     const built = buildOriginalComponents(table);
     const names = new Set(table.groups.map((g) => g.name).filter(Boolean));
 
-    for (const lane of REENTRY_LANES.lanes) {
+    for (const lane of BINDING.lanes) {
       expect(names.has(lane.component), lane.component).toBe(true);
       expect(built.lights.has(lane.light), lane.light).toBe(true);
     }
-    expect(built.lightGroups.has(REENTRY_LANES.lightGroup)).toBe(true);
-    expect(built.bumperGroups.has(REENTRY_LANES.bumperGroup)).toBe(true);
-    expect(built.bumpers.has(REENTRY_LANES.guardBumper)).toBe(true);
+    expect(built.lightGroups.has(BINDING.lightGroup)).toBe(true);
+    expect(built.bumperGroups.has(BINDING.bumperGroup)).toBe(true);
+    expect(built.bumpers.has(BINDING.guardBumper)).toBe(true);
   });
 
   test('⚠️ and the light group really holds exactly the lanes’ lights', () => {
@@ -53,11 +53,11 @@ describe('the reentry lanes, transcribed', () => {
     if (!table) return expect(existsSync(DAT)).toBe(false);
 
     const built = buildOriginalComponents(table);
-    const group = built.lightGroups.get(REENTRY_LANES.lightGroup)!;
+    const group = built.lightGroups.get(BINDING.lightGroup)!;
     const members = built.membersOf(group);
 
-    expect(members).toHaveLength(REENTRY_LANES.lanes.length);
-    for (const lane of REENTRY_LANES.lanes) {
+    expect(members).toHaveLength(BINDING.lanes.length);
+    for (const lane of BINDING.lanes) {
       expect(members).toContain(built.lights.get(lane.light));
     }
   });
@@ -68,11 +68,11 @@ describe('the reentry lanes, transcribed', () => {
 
     const built = buildOriginalComponents(table);
 
-    expect(built.bumperGroups.get(REENTRY_LANES.bumperGroup)).toContain(REENTRY_LANES.guardBumper);
+    expect(built.bumperGroups.get(BINDING.bumperGroup)).toContain(BINDING.guardBumper);
   });
 
   test('its completion line is a resource the game can actually show', () => {
-    expect(RESOURCE_KEYS[REENTRY_LANES.completeTextId]).toBeTruthy();
+    expect(RESOURCE_KEYS[BINDING.completeTextId]).toBeTruthy();
   });
 });
 
@@ -95,7 +95,10 @@ describe('⚠️ and the file says how much is NOT transcribed', () => {
     expect(bound.size + UNBOUND_CONTROLS.length + SELF_CONTAINED_CONTROLS.length).toBe(all.size);
   });
 
-  test('and one chain is bound, which is where this stands today', () => {
-    expect(BUMPER_LANE_BINDINGS).toHaveLength(1);
+  test('two chains are bound, which is where this stands today', () => {
+    // ⚠️ THE COUNT IS THE POINT. Every test above runs over the whole list, so transcribing a third
+    // chain costs nothing but the transcription — and this line is what makes growing the list a thing
+    // somebody decides rather than something that drifts.
+    expect(BUMPER_LANE_BINDINGS).toHaveLength(2);
   });
 });

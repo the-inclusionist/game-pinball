@@ -72,8 +72,32 @@ export const REENTRY_LANES: BumperLaneBinding = {
   completeTextId: 'STRING106',
 };
 
-/** Every chain transcribed so far. One, and the test that counts it is how the next one gets noticed. */
-export const BUMPER_LANE_BINDINGS: readonly BumperLaneBinding[] = [REENTRY_LANES];
+/**
+ * `control::LaunchLanesRolloverControl`, the reentry lanes' twin.
+ *
+ * ⚠️ THE SAME SHAPE AND EVERY NAME DIFFERENT, which is exactly why it is written out rather than
+ * derived. Three lanes, a light group, a bumper group, a guard on one named bumper, a line of text —
+ * and not one of the six names is shared with the chain above. A rule that "the second lane set works
+ * like the first" would be true about the structure and wrong about every value in it.
+ *
+ * The third lane is the original's `else`: anything that is not roll112 or roll111, which is roll110.
+ */
+export const LAUNCH_LANES: BumperLaneBinding = {
+  control: 'LaunchLanesRolloverControl',
+  lanes: [
+    { component: 'a_roll112', light: 'lite171' },
+    { component: 'a_roll111', light: 'lite170' },
+    { component: 'a_roll110', light: 'lite169' },
+  ],
+  lightGroup: 'ramp_bmpr_inc_lights',
+  bumperGroup: 'launch_bumpers',
+  guardBumper: 'a_bump5',
+  guardBelowLevel: 3,
+  completeTextId: 'STRING107',
+};
+
+/** Every chain transcribed so far. The test that counts them is how the next one gets noticed. */
+export const BUMPER_LANE_BINDINGS: readonly BumperLaneBinding[] = [REENTRY_LANES, LAUNCH_LANES];
 
 /**
  * ⚠️ THE TWO CONTROLS THAT NEED NO BINDING AT ALL, which is not the same as being unbound.
@@ -91,7 +115,7 @@ export const SELF_CONTAINED_CONTROLS: readonly string[] = ['BumperControl', 'Reb
  * see the size of what is left without running anything.
  */
 export const UNBOUND_CONTROLS: readonly string[] = [
-  'LaunchLanesRolloverControl', 'WormHoleControl', 'BoosterTargetControl', 'MedalTargetControl',
+  'WormHoleControl', 'BoosterTargetControl', 'MedalTargetControl',
   'MultiplierTargetControl', 'FuelSpotTargetControl', 'MissionSpotTargetControl',
   'LeftHazardSpotTargetControl', 'RightHazardSpotTargetControl', 'BumperGroupControl',
   'OutLaneRolloverControl', 'ReturnLaneRolloverControl', 'FlagControl', 'FlipperRebounderControl1',

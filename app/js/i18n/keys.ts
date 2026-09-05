@@ -27,7 +27,12 @@ export const RESOURCE_KEYS: Readonly<Record<string, string>> = {
   // ⚠️ SHOWN WHEN THE REENTRY LANES COMPLETE AND THE BUMPERS GO UP A LEVEL. Missing until the binding
   // for that chain was transcribed and a test asked whether the line it names can be shown — the same
   // gap that once put `STRING151` on screen.
-  STRING106: 'pinball.event.bumpersRaised',
+  STRING106: 'pinball.event.attackBumpersRaised',
+  // ⚠️ THE LAUNCH LANES' TWIN, AND A DIFFERENT LINE ON PURPOSE. Two sets of bumpers rise from two sets
+  // of lanes, and one message for both would leave the player unable to tell which work they had just
+  // finished. The gate that walks every binding found this one missing the moment the second chain was
+  // transcribed, which is what walking them all is for.
+  STRING107: 'pinball.event.launchBumpersRaised',
   STRING208: 'pinball.mission.bumpers.run',
   STRING209: 'pinball.mission.practice.done',
   STRING231: 'pinball.mission.alienMenace2.done',
