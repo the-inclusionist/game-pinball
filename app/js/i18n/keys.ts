@@ -63,6 +63,36 @@ export const RESOURCE_KEYS: Readonly<Record<string, string>> = {
 
   /** The shared "you scored N" line, which nearly every rewarded mission names. */
   STRING179: 'pinball.award.scored',
+
+  /* ===================== THE NINE MISSIONS WITH THEIR OWN SHAPE ===================== */
+  //
+  // ⚠️ ADDED AFTER A REAL BOOT PUT `STRING151` ON THE SCREEN. The map held only the ids
+  // `MISSION_TABLE` names, and the very first thing the game says — "waiting for deployment" — belongs
+  // to a mission that is not in it. See `MISSION_TEXT_IDS` in `control/mission-table` for the table
+  // that now covers all thirty-three, and the test that walks it.
+  STRING151: 'pinball.mission.waiting.run',
+  STRING178: 'pinball.mission.select.run',
+  STRING275: 'pinball.mission.alienMenace.run',
+  STRING272: 'pinball.mission.gameOver.run',
+
+  // The two-stage missions: first stage, second stage, completion.
+  STRING218: 'pinball.mission.strayComet.run',
+  STRING219: 'pinball.mission.strayComet.stage2',
+  STRING220: 'pinball.mission.strayComet.done',
+  STRING223: 'pinball.mission.blackHole.run',
+  STRING224: 'pinball.mission.blackHole.stage2',
+  STRING225: 'pinball.mission.blackHole.done',
+  STRING276: 'pinball.mission.radiation.run',
+  STRING221: 'pinball.mission.radiation.stage2',
+  STRING222: 'pinball.mission.radiation.done',
+  STRING228: 'pinball.mission.rescue.run',
+  STRING229: 'pinball.mission.rescue.stage2',
+  STRING230: 'pinball.mission.rescue.done',
+
+  // Time warp part two, whose two halves pull in opposite directions.
+  STRING248: 'pinball.mission.timeWarp2.run',
+  STRING147: 'pinball.mission.timeWarp2.promoted',
+  STRING148: 'pinball.mission.timeWarp2.demoted',
 };
 
 /** The key a resource identifier resolves to, or the identifier itself when nothing is mapped. */

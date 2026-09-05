@@ -51,6 +51,26 @@ const pt: Record<string, string> = {
   'pinball.mission.maelstrom8.run': 'Maelstrom: o chute final.',
   'pinball.mission.maelstrom8.info': 'Hiperespaço liberado.',
 
+  'pinball.mission.waiting.run': 'Puxe o êmbolo para lançar.',
+  'pinball.mission.select.run': 'Escolha uma missão nos alvos.',
+  'pinball.mission.alienMenace.run': 'Suba o nível dos para-choques.',
+  'pinball.mission.gameOver.run': 'Fim de jogo.',
+  'pinball.mission.strayComet.run': 'Derrube os três alvos da direita.',
+  'pinball.mission.strayComet.stage2': 'Agora o ejetor da direita.',
+  'pinball.mission.strayComet.done': 'Cometa desviado.',
+  'pinball.mission.blackHole.run': 'Suba o nível do para-choque 5.',
+  'pinball.mission.blackHole.stage2': 'Agora o ejetor do fundo.',
+  'pinball.mission.blackHole.done': 'Buraco negro selado.',
+  'pinball.mission.radiation.run': 'Derrube os três alvos da esquerda.',
+  'pinball.mission.radiation.stage2': 'Agora qualquer poço.',
+  'pinball.mission.radiation.done': 'Radiação contida.',
+  'pinball.mission.rescue.run': 'Acerte os alvos da esquerda.',
+  'pinball.mission.rescue.stage2': 'Agora o ejetor: resgate!',
+  'pinball.mission.rescue.done': 'Tripulação resgatada.',
+  'pinball.mission.timeWarp2.run': 'Rampa promove, ejetor rebaixa.',
+  'pinball.mission.timeWarp2.promoted': 'Promovido a {rank}.',
+  'pinball.mission.timeWarp2.demoted': 'Rebaixado a {rank}.',
+
   'pinball.award.scored': '{points} pontos',
 
   /* ===================== HUD ===================== */

@@ -39,7 +39,10 @@ let phase: Phase = 'title';
 const shell = bootPinball({
   locale: 'pt',
   table,
-  host: { doc: document, win: window },
+  // `cvdHost` is where the engine mounts its six colour-vision filters. Omitting it is not an error —
+  // `createGame` reports it in `problems` instead of throwing — which is exactly how it went unnoticed
+  // until the game was actually booted.
+  host: { doc: document, win: window, cvdHost: document.getElementById('cvd-filters') },
   phase: () => phase,
 }, createGame);
 

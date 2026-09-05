@@ -240,3 +240,35 @@ export const MISSION_TABLE: readonly MissionRow[] = [
 
 /** The Maelstrom is eight missions chained end to end; every other chain is at most two long. */
 export const MAELSTROM_CHAIN: readonly number[] = [18, 25, 26, 27, 28, 29, 30, 31];
+
+/**
+ * The RUNNING text of every mission, including the nine that do not fit the runner.
+ *
+ * ⚠️ THIS EXISTS BECAUSE A REAL BOOT PUT `STRING151` ON THE SCREEN. `shell/boot` resolves whatever
+ * `missionTextId` the table hands it, and the i18n key map had only the ids `MISSION_TABLE` names — so
+ * the nine missions with their own shape had none, and the very first one the game shows is one of
+ * them. The unknown-key-returns-itself rule made it visible rather than blank, which is what it is
+ * for; this table is what stops it happening again, and a test walks every mission number in
+ * `MISSION_CONTROLLERS` against it.
+ *
+ * The two-stage missions name their FIRST-stage text here. The second stage's is chosen at runtime by
+ * the controller, which is the only thing that knows which stage it is in.
+ */
+export const MISSION_TEXT_IDS: Readonly<Record<number, string>> = {
+  0: 'STRING151', // waiting for deployment — the first thing the game ever says
+  1: 'STRING178', // mission selection
+  2: 'STRING208', 3: 'STRING211', 4: 'STRING213', 5: 'STRING215',
+  6: 'STRING218', // stray comet, stage one
+  7: 'STRING223', // black hole threat, stage one
+  8: 'STRING276', // space radiation, stage one
+  9: 'STRING226',
+  10: 'STRING275', // alien menace
+  11: 'STRING228', // rescue mission, stage one
+  12: 'STRING233', 13: 'STRING235', 14: 'STRING238', 15: 'STRING240',
+  16: 'STRING243', 17: 'STRING247', 18: 'STRING249',
+  20: 'STRING208', 21: 'STRING241', 22: 'STRING244', 23: 'STRING245',
+  24: 'STRING248', // time warp part two
+  25: 'STRING250', 26: 'STRING251', 27: 'STRING252', 28: 'STRING253',
+  29: 'STRING254', 30: 'STRING255', 31: 'STRING256',
+  32: 'STRING272', // game over
+};

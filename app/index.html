@@ -10,6 +10,12 @@
   <main id="game-region" tabindex="-1"></main>
   <div id="sr-status" role="status" aria-live="polite"></div>
   <div id="sr-alert" role="alert" aria-live="assertive"></div>
+  <!--
+    #cvd-filters: the engine mounts its six colour-vision filters INTO this element at runtime. It is
+    empty on purpose and it is not decorative — without it `createGame` reports "sem host de filtros"
+    and the visual menu loses half of what it offers. Found by booting, not by reading.
+  -->
+  <svg id="cvd-filters" width="0" height="0" aria-hidden="true" focusable="false"></svg>
   <script type="module" src="./js/main.ts"></script>
 </body>
 </html>

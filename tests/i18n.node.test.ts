@@ -4,7 +4,7 @@ import {
   createTranslator, allKeys, dictionaryOf, AVAILABLE_LOCALES, BASE_LOCALE,
 } from '../app/js/i18n/index.js';
 import { RESOURCE_KEYS, keyOf } from '../app/js/i18n/keys.js';
-import { MISSION_TABLE } from '../app/js/control/mission-table.js';
+import { MISSION_TABLE, MISSION_CONTROLLERS, MISSION_TEXT_IDS } from '../app/js/control/mission-table.js';
 
 /** ADR-0002 gives the mission text a 63-pixel column: about fifteen characters over four lines. */
 const COLUMN_CHARACTERS = 15 * 4;
@@ -18,6 +18,21 @@ describe('every resource identifier the mission table names has a key of ours', 
         if (!id) continue;
         expect(RESOURCE_KEYS[id], `${row.name} names ${id}`).toBeDefined();
       }
+    }
+  });
+
+  test('⚠️ EVERY mission has a running text, including the nine outside the table', () => {
+    // This test exists because a real boot put `STRING151` on the screen. The map held only the ids
+    // `MISSION_TABLE` names, and the first thing the game ever says — "waiting for deployment" —
+    // belongs to a mission that is not in it. Counting the table's own ids could never have caught
+    // that; walking the SWITCH does.
+    const pt = dictionaryOf(BASE_LOCALE);
+
+    for (const number of Object.keys(MISSION_CONTROLLERS).map(Number)) {
+      const id = MISSION_TEXT_IDS[number];
+      expect(id, `mission ${number} (${MISSION_CONTROLLERS[number]}) has no text id`).toBeDefined();
+      expect(RESOURCE_KEYS[id!], `${id} is unmapped`).toBeDefined();
+      expect(pt[keyOf(id!)], `${keyOf(id!)} is unwritten`).toBeDefined();
     }
   });
 

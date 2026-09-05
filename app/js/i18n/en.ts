@@ -46,6 +46,26 @@ const en: Record<string, string> = {
   'pinball.mission.maelstrom8.run': 'Maelstrom: the last kick.',
   'pinball.mission.maelstrom8.info': 'Hyperspace open.',
 
+  'pinball.mission.waiting.run': 'Pull the plunger to launch.',
+  'pinball.mission.select.run': 'Pick a mission on the targets.',
+  'pinball.mission.alienMenace.run': 'Raise the bumper level.',
+  'pinball.mission.gameOver.run': 'Game over.',
+  'pinball.mission.strayComet.run': 'Drop the three right targets.',
+  'pinball.mission.strayComet.stage2': 'Now the right kicker.',
+  'pinball.mission.strayComet.done': 'Comet deflected.',
+  'pinball.mission.blackHole.run': 'Raise bumper five a level.',
+  'pinball.mission.blackHole.stage2': 'Now the far kicker.',
+  'pinball.mission.blackHole.done': 'Black hole sealed.',
+  'pinball.mission.radiation.run': 'Drop the three left targets.',
+  'pinball.mission.radiation.stage2': 'Now any well.',
+  'pinball.mission.radiation.done': 'Radiation contained.',
+  'pinball.mission.rescue.run': 'Hit the left targets.',
+  'pinball.mission.rescue.stage2': 'Now the kicker: rescue!',
+  'pinball.mission.rescue.done': 'Crew rescued.',
+  'pinball.mission.timeWarp2.run': 'Ramp promotes, kicker demotes.',
+  'pinball.mission.timeWarp2.promoted': 'Promoted to {rank}.',
+  'pinball.mission.timeWarp2.demoted': 'Demoted to {rank}.',
+
   'pinball.award.scored': '{points} points',
 
   /* ===================== HUD ===================== */

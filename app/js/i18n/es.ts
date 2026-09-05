@@ -43,6 +43,26 @@ const es: Record<string, string> = {
   'pinball.mission.maelstrom8.run': 'Maelstrom: la patada final.',
   'pinball.mission.maelstrom8.info': 'Hiperespacio abierto.',
 
+  'pinball.mission.waiting.run': 'Tira del émbolo para lanzar.',
+  'pinball.mission.select.run': 'Elige misión en los blancos.',
+  'pinball.mission.alienMenace.run': 'Sube el nivel de los topes.',
+  'pinball.mission.gameOver.run': 'Fin del juego.',
+  'pinball.mission.strayComet.run': 'Tumba los tres blancos derechos.',
+  'pinball.mission.strayComet.stage2': 'Ahora el eyector derecho.',
+  'pinball.mission.strayComet.done': 'Cometa desviado.',
+  'pinball.mission.blackHole.run': 'Sube un nivel el tope cinco.',
+  'pinball.mission.blackHole.stage2': 'Ahora el eyector del fondo.',
+  'pinball.mission.blackHole.done': 'Agujero negro sellado.',
+  'pinball.mission.radiation.run': 'Tumba los tres blancos izquierdos.',
+  'pinball.mission.radiation.stage2': 'Ahora cualquier pozo.',
+  'pinball.mission.radiation.done': 'Radiación contenida.',
+  'pinball.mission.rescue.run': 'Golpea los blancos izquierdos.',
+  'pinball.mission.rescue.stage2': 'Ahora el eyector: ¡rescate!',
+  'pinball.mission.rescue.done': 'Tripulación rescatada.',
+  'pinball.mission.timeWarp2.run': 'Rampa asciende, eyector baja.',
+  'pinball.mission.timeWarp2.promoted': 'Ascendido a {rank}.',
+  'pinball.mission.timeWarp2.demoted': 'Degradado a {rank}.',
+
   'pinball.award.scored': '{points} puntos',
 
   /* ===================== HUD ===================== */
