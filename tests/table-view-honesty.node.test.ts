@@ -39,6 +39,20 @@ const SLACK = 1.5;
 
 function isSolidAt(table: AuthoredTable, px: number, py: number): boolean {
   for (const component of table.components) {
+    // ⚠️ A FLIPPER IS SOLID ALONG ITS OWN DECLARATION, NOT ACROSS ITS BOUNDS. When flippers stopped
+    // declaring `collision` and started declaring a pivot and a tip, this file went on passing — and
+    // it passed by COLLUSION: the renderer fell into "no collision, so fill the bounds" and so did the
+    // check, and the two agreed with each other about a rectangle the ball flies through. The whole
+    // point of measuring distance here is to not be the same code as the renderer, and that is worth
+    // nothing if both sides consult the same fallback.
+    if (component.kind === 'flipper' && component.flipper) {
+      const f = component.flipper;
+      if (distanceToSegment(px, py, f.pivot.x, f.pivot.y, f.tipAtRest.x, f.tipAtRest.y)
+        <= EDGE_THICKNESS / 2 + SLACK) {
+        return true;
+      }
+      continue;
+    }
     if (!component.collision?.length) {
       const b = component.bounds;
       if (px >= b.x - SLACK && px <= b.x + b.width + SLACK && py >= b.y - SLACK && py <= b.y + b.height + SLACK) {
@@ -87,6 +101,17 @@ describe('⚠️ the drawing tells the truth about what the ball can touch', () 
       expect(EDGE_THICKNESS).toBeLessThanOrEqual(table.ballRadius);
     }
     expect(EDGE_THICKNESS).toBeGreaterThanOrEqual(1);
+  });
+
+  test('⚠️ a flipper is drawn along its pivot and tip, not across its bounds', () => {
+    // The specific pixel: `low-orbit`'s left flipper has bounds (52,206)-(80,213) and runs from
+    // (52,206) to (80,213), so the bounds' OTHER corner — (52,212) — is under the rectangle and away
+    // from the flipper. It was painted while flippers carried a collision line, stopped being painted
+    // when the renderer started drawing collisions, and started again when flippers stopped declaring
+    // one. Third time it has been wrong, and the first time anything says so.
+    const fb = drawTable({ table: CATALOG.find((t) => t.name === 'low-orbit')! });
+
+    expect(fb.pixels[212 * fb.width + 53]).toBe(PLAYFIELD_COLOR);
   });
 
   test('wide-arc’s ramp corner is empty space, and is drawn as empty space', () => {

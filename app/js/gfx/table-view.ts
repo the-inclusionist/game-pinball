@@ -150,6 +150,15 @@ export function drawTable(o: TableViewOptions): Framebuffer {
     const role = targets.has(component.name) ? 'goal' : component.role;
     const color = ROLE_COLORS[role];
 
+    // ⚠️ A FLIPPER DECLARES ITS GEOMETRY SOMEWHERE ELSE, and falling through to the bounds fill for it
+    // brought back the very defect this branch was written to remove — a rectangle painted over space
+    // the ball flies through. Drawn at REST, because that is where it is until the player moves it.
+    if (component.kind === 'flipper' && component.flipper) {
+      const f = component.flipper;
+      strokeLine(fb, f.pivot.x, f.pivot.y, f.tipAtRest.x, f.tipAtRest.y, color);
+      continue;
+    }
+
     if (!component.collision?.length) {
       // Nothing solid was declared, so the bounds is the whole claim and there is nothing to overstate.
       fillRect(fb, component.bounds, color);

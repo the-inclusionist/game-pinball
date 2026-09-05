@@ -46,20 +46,32 @@ export const FOUR_FLIPPERS: AuthoredTable = {
     // The UPPER pair, guarding the upper drain. A ball lost here never reaches the lower half.
     { name: 'flipper.upper.left', kind: 'flipper', role: 'structure',
       bounds: { x: 60, y: 96, width: 24, height: 6 },
-      collision: [{ kind: 'line', from: { x: 60, y: 96 }, to: { x: 84, y: 102 } }] },
+      flipper: {
+        pivot: { x: 60, y: 96 }, tipAtRest: { x: 84, y: 102 }, sweepDegrees: -55,
+        baseRadius: 3, tipRadius: 2, extendTime: 0.08, retractTime: 0.16,
+      } },
     { name: 'flipper.upper.right', kind: 'flipper', role: 'structure',
       bounds: { x: 116, y: 96, width: 24, height: 6 },
-      collision: [{ kind: 'line', from: { x: 116, y: 102 }, to: { x: 140, y: 96 } }] },
+      flipper: {
+        pivot: { x: 140, y: 96 }, tipAtRest: { x: 116, y: 102 }, sweepDegrees: 55,
+        baseRadius: 3, tipRadius: 2, extendTime: 0.08, retractTime: 0.16,
+      } },
     { name: 'drain.upper', kind: 'drain', role: 'hazard', bounds: { x: 88, y: 104, width: 24, height: 8 },
       control: 'BallDrainControl', lamps: ['lamp.upper'] },
 
     // The LOWER pair, guarding the ordinary drain.
     { name: 'flipper.lower.left', kind: 'flipper', role: 'structure',
       bounds: { x: 56, y: 186, width: 26, height: 6 },
-      collision: [{ kind: 'line', from: { x: 56, y: 186 }, to: { x: 82, y: 192 } }] },
+      flipper: {
+        pivot: { x: 56, y: 186 }, tipAtRest: { x: 82, y: 192 }, sweepDegrees: -55,
+        baseRadius: 3, tipRadius: 2, extendTime: 0.08, retractTime: 0.16,
+      } },
     { name: 'flipper.lower.right', kind: 'flipper', role: 'structure',
       bounds: { x: 118, y: 186, width: 26, height: 6 },
-      collision: [{ kind: 'line', from: { x: 118, y: 192 }, to: { x: 144, y: 186 } }] },
+      flipper: {
+        pivot: { x: 144, y: 186 }, tipAtRest: { x: 118, y: 192 }, sweepDegrees: 55,
+        baseRadius: 3, tipRadius: 2, extendTime: 0.08, retractTime: 0.16,
+      } },
     { name: 'drain.lower', kind: 'drain', role: 'hazard', bounds: { x: 86, y: 200, width: 28, height: 8 },
       control: 'BallDrainControl', lamps: ['lamp.lower'] },
 

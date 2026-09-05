@@ -79,10 +79,16 @@ export const WIDE_ARC: AuthoredTable = {
 
     { name: 'flipper.left', kind: 'flipper', role: 'structure',
       bounds: { x: 140, y: 250, width: 28, height: 7 },
-      collision: [{ kind: 'line', from: { x: 140, y: 250 }, to: { x: 168, y: 257 } }] },
+      flipper: {
+        pivot: { x: 140, y: 250 }, tipAtRest: { x: 168, y: 257 }, sweepDegrees: -55,
+        baseRadius: 3, tipRadius: 2, extendTime: 0.08, retractTime: 0.16,
+      } },
     { name: 'flipper.right', kind: 'flipper', role: 'structure',
       bounds: { x: 192, y: 250, width: 28, height: 7 },
-      collision: [{ kind: 'line', from: { x: 192, y: 257 }, to: { x: 220, y: 250 } }] },
+      flipper: {
+        pivot: { x: 220, y: 250 }, tipAtRest: { x: 192, y: 257 }, sweepDegrees: 55,
+        baseRadius: 3, tipRadius: 2, extendTime: 0.08, retractTime: 0.16,
+      } },
 
     { name: 'drain', kind: 'drain', role: 'hazard', bounds: { x: 164, y: 270, width: 32, height: 8 },
       control: 'BallDrainControl' },

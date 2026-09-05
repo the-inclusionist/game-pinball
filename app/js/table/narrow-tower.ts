@@ -59,10 +59,16 @@ export const NARROW_TOWER: AuthoredTable = {
 
     { name: 'flipper.left', kind: 'flipper', role: 'structure',
       bounds: { x: 20, y: 390, width: 24, height: 7 },
-      collision: [{ kind: 'line', from: { x: 20, y: 390 }, to: { x: 44, y: 397 } }] },
+      flipper: {
+        pivot: { x: 20, y: 390 }, tipAtRest: { x: 44, y: 397 }, sweepDegrees: -55,
+        baseRadius: 3, tipRadius: 2, extendTime: 0.08, retractTime: 0.16,
+      } },
     { name: 'flipper.right', kind: 'flipper', role: 'structure',
       bounds: { x: 66, y: 390, width: 24, height: 7 },
-      collision: [{ kind: 'line', from: { x: 66, y: 397 }, to: { x: 90, y: 390 } }] },
+      flipper: {
+        pivot: { x: 90, y: 390 }, tipAtRest: { x: 66, y: 397 }, sweepDegrees: 55,
+        baseRadius: 3, tipRadius: 2, extendTime: 0.08, retractTime: 0.16,
+      } },
 
     { name: 'drain', kind: 'drain', role: 'hazard', bounds: { x: 46, y: 410, width: 18, height: 8 },
       control: 'BallDrainControl' },

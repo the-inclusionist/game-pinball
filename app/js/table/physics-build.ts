@@ -32,7 +32,11 @@ import {
 import { createLine, createCircle, type Component } from '../physics/edges.js';
 import { basicCollision, type CollisionResponse } from '../physics/collision.js';
 import { createBall, type Ball, type StepContext } from '../physics/step.js';
-import type { AuthoredComponent, AuthoredTable } from './authored.js';
+import {
+  createFlipper, deriveFlipper, setFlipperMotion, setControlPoints, distanceToFlipper,
+  flipperCollision, type Flipper, type FlipperGeometry,
+} from '../physics/flipper.js';
+import { extendedTipOf, type AuthoredComponent, type AuthoredTable } from './authored.js';
 
 /** How a surface answers a ball. One per kind, because a bumper is not a wall. */
 export const RESPONSES: Readonly<Record<string, CollisionResponse>> = {
@@ -49,6 +53,37 @@ export const RESPONSES: Readonly<Record<string, CollisionResponse>> = {
 export function responseFor(component: AuthoredComponent): CollisionResponse {
   return RESPONSES[component.kind] ?? RESPONSES.default!;
 }
+
+/**
+ * An authored flipper in the form `physics/flipper` wants. The only translation is the sweep: the table
+ * declares an angle, the physics wants the tip's extended POSITION, and `extendedTipOf` is the rotation
+ * between them.
+ */
+export function flipperGeometryOf(component: AuthoredComponent, ballRadius: number): FlipperGeometry {
+  const f = component.flipper!;
+  return {
+    pivot: { ...f.pivot },
+    tipAtRest: { ...f.tipAtRest },
+    tipExtended: extendedTipOf(f),
+    baseRadius: f.baseRadius,
+    tipRadius: f.tipRadius,
+    extendTime: f.extendTime,
+    retractTime: f.retractTime,
+    collisionMult: RESPONSES.flipper!.elasticity === 0 ? 1 : FLIPPER_COLLISION_MULT,
+    elasticity: RESPONSES.flipper!.elasticity,
+    smoothness: RESPONSES.flipper!.smoothness,
+    // `table->CollisionCompOffset`: the faces are pushed out by the ball's radius so the ball can be
+    // treated as a point, the same trick `offsetLine` plays for a wall.
+    collisionOffset: ballRadius,
+  };
+}
+
+/**
+ * How much the flipper's own speed is added on top of the bounce. The original reads it from the table
+ * data (attribute 803); an authored table has no such file, so it is a constant here and is declared as
+ * a constant rather than smuggled in as a magic number.
+ */
+export const FLIPPER_COLLISION_MULT = 2;
 
 export interface Hit {
   /** The component's name, which is what the control layer dispatches on. */
@@ -121,6 +156,12 @@ export const DEFAULT_GRAVITY = 120;
 export interface TablePhysics {
   readonly grid: EdgeManager;
   readonly context: StepContext;
+  /** The live flippers, in declaration order. */
+  readonly flippers: readonly Flipper[];
+  /** By name, because the control layer and the keyboard both address them that way. */
+  flipperNamed(name: string): Flipper | undefined;
+  /** Raises or drops one. The keyboard calls this and nothing else. */
+  setFlipper(name: string, extended: boolean): void;
   /** Hits since the last `takeHits`. Collected, never dispatched from inside the physics. */
   takeHits(): readonly Hit[];
   /** A ball at the plunger, ready to be launched. */
@@ -153,6 +194,7 @@ export function buildPhysics(table: AuthoredTable, o: PhysicsOptions = {}): Tabl
   const grid = createEdgeManager(0, 0, table.size.width, table.size.height);
   const gravity = o.gravity ?? DEFAULT_GRAVITY;
   let hits: Hit[] = [];
+  const nameOfFlipper = new Map<Flipper, string>();
 
   for (const component of table.components) {
     if (!component.collision?.length) continue;
@@ -183,10 +225,69 @@ export function buildPhysics(table: AuthoredTable, o: PhysicsOptions = {}): Tabl
 
   const plunger = table.components.find((c) => c.kind === 'plunger');
 
+  /**
+   * ⚠️ A FLIPPER IS IN THE GRID *AND* SWEPT, AND LEAVING OUT EITHER HALF BREAKS A DIFFERENT THING.
+   *
+   * `TFlipper`'s constructor ends with `flipperEdge->place_in_grid(&AABB)`. I read the sweep first and
+   * skipped that line, and the result was exactly what it should have been: a RESTING flipper stopped
+   * existing. `flipperSweep` returns immediately when the motion is still, so with no edge in the grid
+   * the ball fell straight through both flippers on every table, and the playability gate caught it.
+   *
+   * The two halves answer different questions. The grid answers "the ball moved into the flipper"; the
+   * sweep answers "the flipper moved into the ball". A pinball needs both, and a still flipper only
+   * ever gets asked the first.
+   *
+   * The box registered is the whole SWEPT area, not the flipper at rest — the grid is a static index
+   * and it has to hold every position the body can occupy.
+   */
+  const flippers: Flipper[] = [];
+  const flipperByName = new Map<string, Flipper>();
+  for (const component of table.components) {
+    if (component.kind !== 'flipper' || !component.flipper) continue;
+
+    const geometry = flipperGeometryOf(component, table.ballRadius);
+    const flipper = createFlipper(deriveFlipper(geometry));
+    flippers.push(flipper);
+    flipperByName.set(component.name, flipper);
+    nameOfFlipper.set(flipper, component.name);
+
+    const reach = Math.max(geometry.baseRadius, geometry.tipRadius) + table.ballRadius
+      + Math.hypot(geometry.tipAtRest.x - geometry.pivot.x, geometry.tipAtRest.y - geometry.pivot.y);
+    // Registered as a DISC about the pivot, which is a superset of the sector the flipper can occupy.
+    // A superset only costs a few extra distance queries; the alternative, registering the flipper at
+    // rest, would leave it missing from the boxes it swings into.
+    placeCircleInGrid(grid, {
+      active: true,
+      collisionGroup: 1,
+      center: { x: geometry.pivot.x, y: geometry.pivot.y },
+      radius: reach,
+      findCollisionDistance(ray) {
+        // Rebuilt here because the sweep may have turned the flipper since anything last looked at it.
+        // `ControlPointDirtyFlag` in the original.
+        setControlPoints(flipper, flipper.currentAngle);
+        return distanceToFlipper(flipper, ray).distance;
+      },
+      edgeCollision(ball) {
+        flipperCollision(flipper, ball as Ball);
+        hits.push({ name: component.name, reboundSpeed: 0 });
+      },
+    });
+  }
+
   return {
     grid,
+    flippers,
+    flipperNamed: (name) => flipperByName.get(name),
+    setFlipper(name, extended) {
+      const flipper = flipperByName.get(name);
+      if (flipper) setFlipperMotion(flipper, extended ? 'extending' : 'retracting');
+    },
     context: {
       grid,
+      flippers,
+      onFlipperHit(flipper, _ball) {
+        hits.push({ name: nameOfFlipper.get(flipper) ?? 'flipper', reboundSpeed: 0 });
+      },
       fieldEffects(_ball, destination) {
         // Down the table. `y` grows downward, so gravity is positive.
         destination.x = 0;

@@ -20,6 +20,19 @@ const piece = (over: Partial<AuthoredComponent> = {}): AuthoredComponent => {
     bounds: { x: 10, y: 10, width: 8, height: 8 },
     ...over,
   };
+  if (base.kind === 'flipper') {
+    // A flipper's geometry is its own declaration, not a collision shape. A pivot at the bounds' left
+    // edge, a tip at its right, and a sweep that LIFTS — which is the rule the validator holds.
+    if (base.flipper) return base;
+    const b = base.bounds;
+    return {
+      ...base,
+      flipper: {
+        pivot: { x: b.x, y: b.y }, tipAtRest: { x: b.x + b.width, y: b.y + b.height },
+        sweepDegrees: -55, baseRadius: 3, tipRadius: 2, extendTime: 0.08, retractTime: 0.16,
+      },
+    };
+  }
   if (!STRUCK_KINDS.includes(base.kind) || base.collision?.length) return base;
 
   const b = base.bounds;

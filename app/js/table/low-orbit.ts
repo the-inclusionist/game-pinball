@@ -105,10 +105,16 @@ export const LOW_ORBIT: AuthoredTable = {
     // middle is where a ball is SUPPOSED to be losable.
     { name: 'flipper.left', kind: 'flipper', role: WALL,
       bounds: { x: 52, y: 206, width: 28, height: 7 },
-      collision: [{ kind: 'line', from: { x: 52, y: 206 }, to: { x: 80, y: 213 } }] },
+      flipper: {
+        pivot: { x: 52, y: 206 }, tipAtRest: { x: 80, y: 213 }, sweepDegrees: -55,
+        baseRadius: 3, tipRadius: 2, extendTime: 0.08, retractTime: 0.16,
+      } },
     { name: 'flipper.right', kind: 'flipper', role: WALL,
       bounds: { x: 102, y: 206, width: 28, height: 7 },
-      collision: [{ kind: 'line', from: { x: 102, y: 213 }, to: { x: 130, y: 206 } }] },
+      flipper: {
+        pivot: { x: 130, y: 206 }, tipAtRest: { x: 102, y: 213 }, sweepDegrees: 55,
+        baseRadius: 3, tipRadius: 2, extendTime: 0.08, retractTime: 0.16,
+      } },
 
     // Each outlane is 12 wide: passable, and punishing.
     { name: 'outlane.left', kind: 'lane', role: 'hazard',

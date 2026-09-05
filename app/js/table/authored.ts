@@ -80,6 +80,35 @@ export interface AuthoredCircle {
 
 export type AuthoredShape = AuthoredLine | AuthoredCircle;
 
+/**
+ * ⚠️ A FLIPPER IS NOT A LINE, AND DECLARING IT AS ONE MAKES IT A FLIPPER-SHAPED WALL.
+ *
+ * Every flipper in the catalogue was `bounds` plus one collision line. The ball bounced off it, the
+ * picture drew it, the validator passed it, and the player could not move it — which is most of the
+ * reason a launched ball on any of the five tables did the same thing every time.
+ *
+ * The original authors a flipper as three vectors and two times: pivot, tip at rest, tip fully
+ * extended, and how long the swing takes each way. `physics/flipper.deriveFlipper` keeps exactly that
+ * form. This one takes a SWEEP IN DEGREES instead of the extended tip's coordinates, and the reason is
+ * that writing the far end of a rotation out by hand is arithmetic a person gets wrong quietly.
+ *
+ * ⚠️ AND THE SIGN OF THAT SWEEP IS NOT GUESSABLE, because y grows downward. Rather than write down a
+ * convention nobody can check, `validateTable` refuses a flipper whose sweep LOWERS its tip: a flipper
+ * swings up. A sign error otherwise passes every rule, draws correctly, collides correctly, and swings
+ * into the floor.
+ */
+export interface AuthoredFlipper {
+  readonly pivot: { readonly x: number; readonly y: number };
+  readonly tipAtRest: { readonly x: number; readonly y: number };
+  /** Signed. Whatever value lifts the tip; the validator holds that it does. */
+  readonly sweepDegrees: number;
+  readonly baseRadius: number;
+  readonly tipRadius: number;
+  /** SECONDS for the whole swing, which is the form the 1995 data uses. */
+  readonly extendTime: number;
+  readonly retractTime: number;
+}
+
 export interface AuthoredComponent {
   /** Unique. See this module's header for what a duplicate costs. */
   readonly name: string;
@@ -99,6 +128,8 @@ export interface AuthoredComponent {
   /** The name of a behaviour in the control registry. Absent means it is inert scenery. */
   readonly control?: string;
   readonly collision?: readonly AuthoredShape[];
+  /** Required on a `flipper`, meaningless on anything else. See `AuthoredFlipper`. */
+  readonly flipper?: AuthoredFlipper;
   /** Lamps this component drives. Every one must be declared by the table. */
   readonly lamps?: readonly string[];
 }
@@ -170,7 +201,17 @@ export function validateTable(table: AuthoredTable, o: ValidationOptions): strin
         problems.push(`${component.name}: names lamp "${lamp}", which the table does not have`);
       }
     }
-    if (STRUCK_KINDS.includes(component.kind) && !component.collision?.length) {
+    if (component.kind === 'flipper') {
+      // A flipper's geometry lives in its own declaration, not in `collision`, so the rule below would
+      // ask it for the wrong thing.
+      if (!component.flipper) {
+        problems.push(`${component.name}: a flipper must declare a pivot, a tip and a sweep —`
+          + ' without them it is a flipper-shaped wall the player cannot move');
+      } else if (!liftsItsTip(component.flipper)) {
+        problems.push(`${component.name}: its sweep LOWERS the tip, so the flipper swings into the`
+          + ' floor. y grows downward and the sign of the sweep is not guessable; this is that check');
+      }
+    } else if (STRUCK_KINDS.includes(component.kind) && !component.collision?.length) {
       problems.push(`${component.name}: a ${component.kind} is something the ball STRIKES, and this one`
         + ' declares no collision, so it can never be hit and its score can never fire');
     }
@@ -220,6 +261,20 @@ function shapeInside(shape: AuthoredShape, table: AuthoredTable): boolean {
  * Which way a line's collidable side faces. `(dy, -dx)`, normalized — the same maths `lineInit` does,
  * exposed so a table can be checked rather than read.
  */
+/** Where the tip ends up, by rotating it about the pivot. The one place the sweep becomes a position. */
+export function extendedTipOf(f: AuthoredFlipper): { x: number; y: number } {
+  const angle = (f.sweepDegrees * Math.PI) / 180;
+  const sin = Math.sin(angle), cos = Math.cos(angle);
+  const dx = f.tipAtRest.x - f.pivot.x;
+  const dy = f.tipAtRest.y - f.pivot.y;
+  return { x: f.pivot.x + dx * cos - dy * sin, y: f.pivot.y + dx * sin + dy * cos };
+}
+
+/** A flipper swings UP. See `AuthoredFlipper` for why this is checked rather than documented. */
+function liftsItsTip(f: AuthoredFlipper): boolean {
+  return extendedTipOf(f).y < f.tipAtRest.y;
+}
+
 export function normalOf(line: AuthoredLine): { x: number; y: number } {
   const dx = line.to.x - line.from.x;
   const dy = line.to.y - line.from.y;
