@@ -23,8 +23,13 @@ import { createRolloverWatch } from '../app/js/table/rollovers.js';
  * asks the question a player would.
  */
 
-/** Launches up the lane and steps until the ball is lost or the budget runs out. */
-function launchAndWatch(table: AuthoredTable, frames = 4000) {
+/**
+ * Launches up the lane and steps until the ball is lost or the budget runs out.
+ *
+ * `flapEvery` presses BOTH flippers every n frames and releases them halfway through, which is what a
+ * player does who cannot see the ball. Null is a launch nobody touches.
+ */
+function launchAndWatch(table: AuthoredTable, frames = 4000, flapEvery: number | null = null) {
   const physics = buildPhysics(table);
   // ⚠️ CROSSINGS COUNT TOO. Half of what an authored table offers is regions the ball rolls OVER, and a
   // gate that watched only collisions would call a table a corridor while the ball crossed three lanes.
@@ -37,16 +42,24 @@ function launchAndWatch(table: AuthoredTable, frames = 4000) {
   const touched: string[] = [];
   let drained: string | null = null;
   let furthestFromLane = 0;
+  let frameCount = 0;
 
   for (let i = 0; i < frames && !drained; i++) {
+    if (flapEvery !== null) {
+      if (i % flapEvery === 0) { physics.setFlippers('left', true); physics.setFlippers('right', true); }
+      if (i % flapEvery === Math.floor(flapEvery / 2)) {
+        physics.setFlippers('left', false); physics.setFlippers('right', false);
+      }
+    }
     advanceFrame([ball], physics.context, FRAME_SECONDS);
     for (const hit of physics.takeHits()) touched.push(hit.name);
     for (const name of rollovers.poll(ball)) touched.push(name);
     furthestFromLane = Math.max(furthestFromLane, Math.abs(ball.position.x - from.x));
     drained = drainedBy(table, ball);
+    frameCount = i + 1;
   }
 
-  return { touched, drained, furthestFromLane, ball };
+  return { touched, drained, furthestFromLane, ball, frames: frameCount };
 }
 
 const PLAYABLE = CATALOG.filter((t) => t !== BARE_MINIMUM);
@@ -94,6 +107,34 @@ describe('a launched ball reaches the play', () => {
 
       expect(drained).not.toBeNull();
       expect(drained).not.toBe('outside');
+    },
+  );
+});
+
+describe('⚠️ and the PLAYER can change what happens, which is the difference from a demonstration', () => {
+  test.each(PLAYABLE.map((t) => [t.name, t] as const))(
+    '%s: flapping the flippers changes the ball’s life',
+    (_name, table) => {
+      // ⚠️ MEASURED BEFORE IT WAS WRITTEN, AND FOUR OF THE FIVE TABLES FAILED IT SILENTLY. A run with
+      // the flippers held down and a run flapping them every 24 frames came out IDENTICAL — same frame
+      // count, same score, same drain — on `low-orbit`, `wide-arc` and `four-flippers`. The ball goes
+      // from the lane to the drain without ever passing a paddle, so the player is a spectator.
+      //
+      // None of the three gates above could see it. They ask whether the ball leaves the lane, whether
+      // it touches something worth points, and whether it is lost properly — all true of a table you
+      // cannot play. This one asks the only question that separates a game from a demonstration.
+      //
+      // The comparison is the whole LIFE rather than the score alone: a flipper that changes the ball's
+      // path without changing what it hits has still done something, and calling that a failure would
+      // push the tables towards scoring by luck.
+      const quiet = launchAndWatch(table);
+      const played = launchAndWatch(table, 4000, 24);
+
+      const different = played.frames !== quiet.frames
+        || played.drained !== quiet.drained
+        || played.touched.join() !== quiet.touched.join();
+
+      expect(different).toBe(true);
     },
   );
 });

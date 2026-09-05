@@ -77,6 +77,18 @@ export const WIDE_ARC: AuthoredTable = {
       scores: [10000], control: 'RampControl',
       collision: [{ kind: 'line', from: { x: 250, y: 170 }, to: { x: 330, y: 90 } }] },
 
+    // ⚠️ THE FUNNEL, WITHOUT WHICH A 360-WIDE TABLE HAS EIGHTY PIXELS OF PADDLE AND NO WAY TO REACH THEM.
+    // Measured: the ball crossed the flipper line at x = 57, eighty-three pixels left of the left
+    // pivot, and a run flapping the flippers came out identical to a run touching nothing.
+    //
+    // Forty-five degrees and no shallower, which is a rule this table taught: its own ramp was a
+    // seven-degree shelf and the ball went to SLEEP on it. A guide is a surface a ball slides down, and
+    // the angle is what decides whether it slides or settles.
+    { name: 'guide.left', kind: 'wall', role: 'structure', bounds: { x: 4, y: 116, width: 136, height: 134 },
+      collision: [{ kind: 'line', from: { x: 4, y: 116 }, to: { x: 140, y: 250 } }] },
+    { name: 'guide.right', kind: 'wall', role: 'structure', bounds: { x: 220, y: 116, width: 136, height: 134 },
+      collision: [{ kind: 'line', from: { x: 220, y: 250 }, to: { x: 356, y: 116 } }] },
+
     { name: 'flipper.left', kind: 'flipper', role: 'structure',
       bounds: { x: 140, y: 250, width: 28, height: 7 },
       flipper: {

@@ -62,6 +62,13 @@ export const FOUR_FLIPPERS: AuthoredTable = {
     { name: 'drain.upper', kind: 'drain', role: 'hazard', bounds: { x: 88, y: 104, width: 24, height: 8 },
       control: 'DrainControl' },
 
+    // ⚠️ THE FUNNEL for the lower pair. Same finding as every other table: without it the flippers float
+    // in open space and flapping them changes nothing at all.
+    { name: 'guide.left', kind: 'wall', role: 'structure', bounds: { x: 4, y: 134, width: 52, height: 52 },
+      collision: [{ kind: 'line', from: { x: 4, y: 134 }, to: { x: 56, y: 186 } }] },
+    { name: 'guide.right', kind: 'wall', role: 'structure', bounds: { x: 144, y: 134, width: 52, height: 52 },
+      collision: [{ kind: 'line', from: { x: 144, y: 186 }, to: { x: 196, y: 134 } }] },
+
     // The LOWER pair, guarding the ordinary drain.
     { name: 'flipper.lower.left', kind: 'flipper', role: 'structure',
       bounds: { x: 56, y: 186, width: 26, height: 6 },

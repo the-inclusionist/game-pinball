@@ -117,6 +117,25 @@ export const LOW_ORBIT: AuthoredTable = {
       } },
 
     // Each outlane is 12 wide: passable, and punishing.
+    /* ===================== THE FUNNEL ===================== */
+    //
+    // ⚠️ WITHOUT THESE THE FLIPPERS FLOAT IN OPEN SPACE, AND THE PLAYER IS A SPECTATOR.
+    //
+    // Measured: the ball crossed the flipper line at x = 5.7, ninety pixels left of the left flipper's
+    // pivot, bounced off the wall and slid UNDER both paddles into the drain. A run flapping the
+    // flippers and a run touching nothing came out identical — same frames, same score, same drain.
+    //
+    // Every pinball has this and I had left it out: the lower third is a funnel, two guides angling in
+    // from the side walls to the flipper pivots, narrowing the ball's path until the only way past is
+    // over a paddle. The OUTLANE is what sits outside a guide, reached through the gap at its top —
+    // which is what makes losing the ball there a piece of bad luck rather than the default route.
+    //
+    // Windings: each faces the play. Left runs down-right, right runs up-right. See `normalOf`.
+    { name: 'guide.left', kind: 'wall', role: WALL, bounds: { x: 14, y: 168, width: 38, height: 38 },
+      collision: [{ kind: 'line', from: { x: 14, y: 168 }, to: { x: 52, y: 206 } }] },
+    { name: 'guide.right', kind: 'wall', role: WALL, bounds: { x: 130, y: 168, width: 38, height: 38 },
+      collision: [{ kind: 'line', from: { x: 130, y: 206 }, to: { x: 168, y: 168 } }] },
+
     { name: 'outlane.left', kind: 'lane', role: 'hazard',
       bounds: { x: 20, y: 196, width: 12, height: 30 }, scores: [2000], control: 'LaneControl', lamps: ['lamp.outlaneLeft'] },
     { name: 'outlane.right', kind: 'lane', role: 'hazard',
