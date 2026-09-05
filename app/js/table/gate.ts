@@ -27,8 +27,21 @@ export interface GateOptions {
   readonly setSprite?: (index: number) => void;
 }
 
+/** The three messages a gate answers, by the original's own names. */
+export type GateMessage = 'TGateDisable' | 'TGateEnable' | 'Reset';
+
 export interface Gate {
   readonly open: boolean;
+  /**
+   * ⚠️ `TGate::Message` ENDS WITH `control::handler(code, this)`, FOR EVERY MESSAGE. The gate's own
+   * control function is how the table learns the chute is open — `LeftKickerGateControl` lights the
+   * two lamps that are the only place a player is told an outlane is currently survivable.
+   *
+   * A field rather than an option because a gate is built from the table's geometry and its control
+   * is bound later, by the dispatcher. `ControlledComponent.control` is the same shape for the same
+   * reason.
+   */
+  control: ((code: GateMessage) => void) | null;
   /** Opens the gate: the edges stop being tested. */
   openGate(): void;
   /** Shuts the gate: the edges collide again. */
@@ -46,12 +59,14 @@ export function createGate(o: GateOptions): Gate {
 
   const gate: Gate = {
     get open() { return open; },
+    control: null,
 
     openGate(): void {
       open = true;
       setActive(false);
       o.setSprite?.(-1);
       playSoundId(o.sound, o.openSoundId, gate);
+      gate.control?.('TGateDisable');
     },
 
     shutGate(): void {
@@ -59,6 +74,7 @@ export function createGate(o: GateOptions): Gate {
       setActive(true);
       o.setSprite?.(0);
       playSoundId(o.sound, o.shutSoundId, gate);
+      gate.control?.('TGateEnable');
     },
 
     reset(): void {
@@ -67,6 +83,9 @@ export function createGate(o: GateOptions): Gate {
       open = false;
       setActive(true);
       o.setSprite?.(0);
+      // Reset reaches the control too, silently. The original folds Reset and Enable into one branch
+      // and calls the handler for both; only the sound is conditional.
+      gate.control?.('Reset');
     },
   };
 

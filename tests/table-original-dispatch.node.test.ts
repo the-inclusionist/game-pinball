@@ -7,7 +7,7 @@ import { buildOriginalTable } from '../app/js/table/original.js';
 import { buildOriginalGates } from '../app/js/table/original-gates.js';
 import {
   REENTRY_LANES, LAMP_BINDINGS, FUEL_ROLLOVERS, OUT_LANES, BONUS_LANE, SPOT_TARGET_SETS,
-  MEDAL_BANK, MULTIPLIER_BANK, BOOSTER_BANK, TABLE_ACTIONS,
+  MEDAL_BANK, MULTIPLIER_BANK, BOOSTER_BANK, TABLE_ACTIONS, GATE_LAMPS,
 } from '../app/js/control/bindings.js';
 import { createScoreState } from '../app/js/control/score.js';
 import { SCORE_COMPONENTS } from '../app/js/control/score-table.js';
@@ -54,7 +54,7 @@ function wired(o: { gates?: boolean } = {}) {
     components, context, ...(gates ? { gates } : {}),
     textFor: (id, params) => (params ? `text:${id}:${JSON.stringify(params)}` : `text:${id}`),
   });
-  return { components, score, shown, sounds, dispatch, context, geometry };
+  return { components, score, shown, sounds, dispatch, context, geometry, gates };
 }
 
 describe('a lane crossing reaches the 1995 control function', () => {
@@ -648,5 +648,63 @@ describe('⚠️ the bumpers and rebounders, which score from their OWN table', 
 
     w.dispatch.hit('v_rebo2');
     expect(w.components.lights.get('lite85')!.lit).toBe(true);
+  });
+});
+
+describe('⚠️ the gate lamps, which no collision reaches', () => {
+  const left = GATE_LAMPS.find((binding) => binding.gate === 'v_gate1')!;
+
+  test('completing the hazard set opens the chute AND lights its lamps', () => {
+    // The reward is a wall that stops being one, and these two lamps are the only place the player is
+    // told. Without them the chute opens and it looks exactly like the shot missing.
+    const w = wired({ gates: true });
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    const set = SPOT_TARGET_SETS.find((s2) => s2.control === 'LeftHazardSpotTargetControl')!;
+
+    for (const target of set.targets) w.dispatch.hit(target);
+
+    // ⚠️ NAMED LITERALLY, not read through the binding. Reading `left.lamps` for both the action and
+    // the assertion is a test that follows the binding wherever it points: a mutation aiming the left
+    // gate at the right chute's lamps passed, because both sides moved together. Twice before in this
+    // file, in the medal group and in the hazard gates.
+    expect(w.components.lights.get('lite30')!.lit).toBe(true);
+    expect(w.components.lights.get('lite196')!.lit).toBe(true);
+    // And the RIGHT chute is untouched: its gate did not open.
+    expect(w.components.lights.get('lite29')!.lit).toBe(false);
+    expect(w.components.lights.get('lite195')!.lit).toBe(false);
+  });
+
+  test('⚠️ and five seconds later ONE of them is still lit', () => {
+    // `lite30` flashes and stays LIT — the standing announcement that the outlane is survivable.
+    // `lite196` flashes and returns to dark. Both staying lit would leave a lamp that never goes out,
+    // and a lamp that never goes out stops meaning anything.
+    const w = wired({ gates: true });
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    const set = SPOT_TARGET_SETS.find((s2) => s2.control === 'LeftHazardSpotTargetControl')!;
+    for (const target of set.targets) w.dispatch.hit(target);
+
+    w.components.advance(6);
+
+    expect(w.components.lights.get(left.lamps[0]!)!.lit, left.lamps[0]).toBe(true);
+    expect(w.components.lights.get(left.lamps[1]!)!.lit, left.lamps[1]).toBe(false);
+  });
+
+  test('and shutting the gate darkens both', () => {
+    const w = wired({ gates: true });
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    const set = SPOT_TARGET_SETS.find((s2) => s2.control === 'LeftHazardSpotTargetControl')!;
+    for (const target of set.targets) w.dispatch.hit(target);
+
+    // `LeftKickerControl` does this on its timer; nothing wires that yet, so the gate is shut here.
+    w.gates!.get('v_gate1')!.shutGate();
+
+    for (const name of left.lamps) expect(w.components.lights.get(name)!.lit, name).toBe(false);
+  });
+
+  test('⚠️ and none of this is in `wired`, because no collision reaches it', () => {
+    const w = wired({ gates: true });
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+
+    expect(w.dispatch.wired.has('v_gate1')).toBe(false);
   });
 });

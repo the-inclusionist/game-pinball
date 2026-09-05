@@ -288,19 +288,45 @@ describe('kickers — the whole control is putting the gate back', () => {
 });
 
 describe('gate lamps — the only place an open outlane is announced', () => {
-  test('opening lights the lamps and shutting darkens them', () => {
+  const fakeLamp = (calls: string[], tag: string) => ({
+    flasherStartTimedThenStayOn: (s: number) => calls.push(`${tag}:stayOn:${s}`),
+    flasherStartTimed: (s: number) => calls.push(`${tag}:timed:${s}`),
+    turnOff: () => calls.push(`${tag}:off`),
+    resetTimed: () => calls.push(`${tag}:reset`),
+  });
+
+  test('opening lights the lamp and shutting darkens it', () => {
     const calls: string[] = [];
-    const lamp = {
-      flasherStartTimedThenStayOn: (s: number) => calls.push(`stayOn:${s}`),
-      flasherStartTimed: (s: number) => calls.push(`timed:${s}`),
-      turnOff: () => calls.push('off'),
-      resetTimed: () => calls.push('reset'),
-    };
-    const setLights = makeGateLightControl({ lamps: [lamp] });
+    const setLights = makeGateLightControl({ lamps: [fakeLamp(calls, 'a')] });
 
     setLights(true);
     setLights(false);
 
-    expect(calls).toEqual(['stayOn:5', 'off', 'reset']);
+    expect(calls).toEqual(['a:stayOn:5', 'a:off', 'a:reset']);
+  });
+
+  test('⚠️ the SECOND lamp flashes and goes out; only the first one stays lit', () => {
+    // `lite30->TLightFlasherStartTimedThenStayOn(5)` and `lite196->TLightFlasherStartTimed(5)`. The
+    // first settles LIT — it is the standing announcement that the outlane is survivable — and the
+    // second settles back to whatever it was, which is dark. Giving both the staying form leaves the
+    // second lit for the rest of the ball, and a lamp that never goes out stops meaning anything.
+    //
+    // ⚠️ THE TEST ABOVE COULD NOT SEE THIS: it passes ONE lamp, and with one lamp the two forms are
+    // indistinguishable. The pair is the whole rule.
+    const calls: string[] = [];
+    const setLights = makeGateLightControl({ lamps: [fakeLamp(calls, 'a'), fakeLamp(calls, 'b')] });
+
+    setLights(true);
+
+    expect(calls).toEqual(['a:stayOn:5', 'b:timed:5']);
+  });
+
+  test('and shutting darkens BOTH, with no flash', () => {
+    const calls: string[] = [];
+    const setLights = makeGateLightControl({ lamps: [fakeLamp(calls, 'a'), fakeLamp(calls, 'b')] });
+
+    setLights(false);
+
+    expect(calls).toEqual(['a:off', 'a:reset', 'b:off', 'b:reset']);
   });
 });

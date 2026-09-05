@@ -200,16 +200,28 @@ export interface GateLightOptions {
 /**
  * `LeftKickerGateControl`. The gate's own lamps: lit while it stands open, dark when it shuts. It is
  * the only place the player is told an outlane is currently survivable.
+ *
+ * ⚠️ THE TWO LAMPS SETTLE DIFFERENTLY, AND THAT IS THE RULE. `lite30` gets
+ * `TLightFlasherStartTimedThenStayOn` and `lite196` gets `TLightFlasherStartTimed`: the first flashes
+ * for five seconds and stays LIT, the second flashes for five seconds and returns to what it was,
+ * which is dark. The first is the standing announcement that the outlane is survivable; the second is
+ * the attention-getter that fetches the player's eye and then stops.
+ *
+ * Giving both the staying form leaves the second lit for the rest of the ball, and a lamp that never
+ * goes out stops meaning anything. It is also invisible to any test that passes a single lamp, which
+ * is how it survived: with one lamp the two forms cannot be told apart.
  */
 export function makeGateLightControl(o: GateLightOptions): (opened: boolean) => void {
   return (opened: boolean) => {
-    for (const lamp of o.lamps) {
-      if (opened) {
-        lamp.flasherStartTimedThenStayOn(5);
-      } else {
+    o.lamps.forEach((lamp, index) => {
+      if (!opened) {
         lamp.turnOff();
         lamp.resetTimed();
+      } else if (index === 0) {
+        lamp.flasherStartTimedThenStayOn(5);
+      } else {
+        lamp.flasherStartTimed(5);
       }
-    }
+    });
   };
 }

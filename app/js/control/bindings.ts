@@ -434,6 +434,31 @@ export const BOOSTER_BANK: BoosterBankBinding = {
 };
 
 /**
+ * `LeftKickerGateControl` and `RightKickerGateControl`: the lamps a gate lights when it opens.
+ *
+ * ⚠️ THESE ANSWER A GATE MESSAGE, NOT A COLLISION. `TGate::Message` ends with
+ * `control::handler(code, this)`, so the gate itself tells its control function every time it opens or
+ * shuts — which is how the two lamps come on. Nothing the ball touches runs these.
+ *
+ * ⚠️ AND THEY ARE THE SAME LAMPS THE OUT LANES FLASH. `lite30 + lite196` belong to the left chute:
+ * the gate opening lights them, and a ball going out of that lane flashes them again. One pair, two
+ * controls, and the pair's ORDER matters in both — the first lamp is the one that stays lit and the
+ * one whose lit state arms the out lane.
+ */
+export interface GateLampBinding {
+  readonly control: string;
+  /** The gate, by the archive's name. */
+  readonly gate: string;
+  /** The first stays lit while the gate is open; the rest flash and go out. */
+  readonly lamps: readonly string[];
+}
+
+export const GATE_LAMPS: readonly GateLampBinding[] = [
+  { control: 'LeftKickerGateControl', gate: 'v_gate1', lamps: ['lite30', 'lite196'] },
+  { control: 'RightKickerGateControl', gate: 'v_gate2', lamps: ['lite29', 'lite195'] },
+];
+
+/**
  * `FlipperRebounderControl1` and `2`: a rebounder that blinks a lamp.
  *
  * ⚠️ THE BLINK IS THE ONLY REASON THESE ARE NOT `RebounderControl`. A tenth of a second on `lite84` or

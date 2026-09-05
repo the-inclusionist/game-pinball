@@ -34,12 +34,14 @@ import {
   makeFuelRolloverControl, makeOutLaneControl, makeBonusLaneControl,
   type LaneGroup, type LaneLight,
 } from '../control/lanes.js';
-import { makeSpotTargetControl, makeMultiplierBankControl, type FieldComponent } from '../control/controls.js';
+import {
+  makeSpotTargetControl, makeMultiplierBankControl, makeGateLightControl, type FieldComponent,
+} from '../control/controls.js';
 import { makeMedalTargetControl, makeBoosterTargetControl, type AwardChainStep } from '../control/banks.js';
 import {
   BUMPER_LANE_BINDINGS, LAMP_BINDINGS, RETURN_LANES, FUEL_ROLLOVERS, FUEL_BARGRAPH,
   FUEL_REFUEL_TEXT_ID, OUT_LANES, BONUS_LANE, SPOT_TARGET_SETS, MEDAL_BANK, MULTIPLIER_BANK,
-  BOOSTER_BANK, TABLE_ACTIONS, FLIPPER_REBOUNDERS, type BumperLaneBinding,
+  BOOSTER_BANK, TABLE_ACTIONS, FLIPPER_REBOUNDERS, GATE_LAMPS, type BumperLaneBinding,
 } from '../control/bindings.js';
 import { addExtraBall, createTableActions } from '../control/table-actions.js';
 import {
@@ -491,6 +493,27 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
     });
     controls.set(binding.component,
       (component) => control('ControlCollision', component, o.context));
+  }
+
+  // ⚠️ THE GATE LAMPS, WHICH NO COLLISION REACHES. `TGate::Message` ends with `control::handler(code,
+  // this)`, so the gate tells its own control function every time it opens or shuts — and that is the
+  // only way the two lamps ever come on. They are not in `wired`, because `wired` is what a COLLISION
+  // can reach and nothing about these is a collision.
+  //
+  // Without this the hazard spot sets open a chute and the player is told nothing: the reward happens
+  // and looks exactly like the shot missing.
+  for (const binding of GATE_LAMPS) {
+    const gate = o.gates?.get(binding.gate);
+    const lamps = binding.lamps
+      .map((name) => o.components.lights.get(name))
+      .filter((light): light is NonNullable<typeof light> => Boolean(light));
+    if (!gate || lamps.length !== binding.lamps.length) continue;
+
+    const setLights = makeGateLightControl({ lamps });
+    gate.control = (code) => {
+      if (code === 'TGateDisable') setLights(true);
+      else if (code === 'TGateEnable') setLights(false);
+    };
   }
 
   return {
