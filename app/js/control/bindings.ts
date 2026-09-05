@@ -327,6 +327,43 @@ export const SPOT_TARGET_SETS: readonly SpotTargetBinding[] = [
 ];
 
 /**
+ * The POPUP TARGET BANKS: three targets that must all be struck before anything is paid.
+ *
+ * ⚠️ THE MEMORY IS IN THE TARGETS, NOT IN THE LAMPS — the opposite of the spot sets. Each target's
+ * `MessageField` records that it was struck this round, the bank completes when the three sum to
+ * three, and completing clears all three and sends them back up. So the same target twice is worth
+ * one hit, and the lamps are the RECORD of how many rounds have been won rather than of this round.
+ *
+ * ⚠️ AND THE ARCHIVE SPELLS IT `bumper_target_lights` WHILE THE CODE CALLS IT `bumber_`. The variable
+ * is misspelled upstream and the file is not; binding by the variable's spelling finds nothing, which
+ * is the same shape of failure as every other name in this table.
+ */
+export interface TargetBankBinding {
+  readonly control: string;
+  /** The three targets, in the order the original sums them. */
+  readonly targets: readonly string[];
+  /** The lamps that count COMPLETIONS. One more is lit each time the bank is filled. */
+  readonly lightGroup: string;
+  /** One line per rung; the last is reused for every rung past it. */
+  readonly textIds: readonly string[];
+}
+
+export const MEDAL_BANK: TargetBankBinding = {
+  control: 'MedalTargetControl',
+  targets: ['a_targ4', 'a_targ5', 'a_targ6'],
+  lightGroup: 'bumper_target_lights',
+  textIds: ['STRING154', 'STRING155', 'STRING156'],
+};
+
+export const MULTIPLIER_BANK: TargetBankBinding = {
+  control: 'MultiplierTargetControl',
+  targets: ['a_targ7', 'a_targ8', 'a_targ9'],
+  lightGroup: 'top_target_lights',
+  // ⚠️ 2, 3, 5, 10 — `SCORE_MULTIPLIERS` is `[1, 2, 3, 5, 10]` and the lit count indexes it.
+  textIds: ['STRING157', 'STRING158', 'STRING159', 'STRING160'],
+};
+
+/**
  * ⚠️ A CONTROL WHOSE WHOLE BINDING IS A LIST OF LAMPS, IN ORDER.
  *
  * Some control functions reach for nothing but lights, and their factories take exactly that. Those

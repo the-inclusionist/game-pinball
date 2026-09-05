@@ -34,10 +34,12 @@ import {
   makeFuelRolloverControl, makeOutLaneControl, makeBonusLaneControl,
   type LaneGroup, type LaneLight,
 } from '../control/lanes.js';
-import { makeSpotTargetControl } from '../control/controls.js';
+import { makeSpotTargetControl, makeMultiplierBankControl, type FieldComponent } from '../control/controls.js';
+import { makeMedalTargetControl } from '../control/banks.js';
 import {
   BUMPER_LANE_BINDINGS, LAMP_BINDINGS, RETURN_LANES, FUEL_ROLLOVERS, FUEL_BARGRAPH,
-  FUEL_REFUEL_TEXT_ID, OUT_LANES, BONUS_LANE, SPOT_TARGET_SETS, type BumperLaneBinding,
+  FUEL_REFUEL_TEXT_ID, OUT_LANES, BONUS_LANE, SPOT_TARGET_SETS, MEDAL_BANK, MULTIPLIER_BANK,
+  type BumperLaneBinding, type TargetBankBinding,
 } from '../control/bindings.js';
 import { addExtraBall } from '../control/table-actions.js';
 import { handler, type ControlContext, type ControlledComponent } from '../control/dispatch.js';
@@ -322,6 +324,56 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
     for (const target of targets) {
       byName.set(target.name, target);
       controls.set(target.name, (component) => control('ControlCollision', component, o.context));
+    }
+  }
+
+  // ⚠️ THE TWO POPUP BANKS. Their memory lives in the TARGETS' message fields, so the objects handed
+  // to the factory are the ones that have to be registered — a second set would give every hit a fresh
+  // zero and the bank would never reach three.
+  //
+  // ⚠️ AND `popUp` DOES NOTHING HERE, WHICH IS HONEST RATHER THAN MISSING. `TPopupTargetEnable` sends a
+  // struck target physically back up, and this build constructs no `TPopupTarget`: the archive's
+  // targets are static geometry that never dropped in the first place. The SCORING rule is unaffected,
+  // because it is the message field and not the geometry that stops a struck target paying twice —
+  // what is missing is the target sinking out of the ball's way, which is animation and collision.
+  const bankOf = (binding: TargetBankBinding): FieldComponent[] => binding.targets.map((name) => {
+    const row = scoreRows.get(name);
+    return { name, scores: row?.scores ?? [], control: null, messageField: 0 };
+  });
+
+  {
+    const group = o.components.lightGroups.get(MULTIPLIER_BANK.lightGroup);
+    if (group) {
+      const bank = bankOf(MULTIPLIER_BANK);
+      const control = makeMultiplierBankControl({
+        bank,
+        lightGroup: group,
+        popUp: () => {},
+        multiplierTexts: MULTIPLIER_BANK.textIds.map((id) => o.textFor(id)),
+      });
+      for (const target of bank) {
+        byName.set(target.name, target);
+        controls.set(target.name, (component) => control('ControlCollision', component, o.context));
+      }
+    }
+  }
+
+  {
+    const group = o.components.lightGroups.get(MEDAL_BANK.lightGroup);
+    if (group) {
+      const bank = bankOf(MEDAL_BANK);
+      const extraBallText = o.textFor(OUT_LANES.extraBallTextId);
+      const control = makeMedalTargetControl({
+        bank,
+        group: { get onCount() { return group.onCount; }, lightOneMore: () => { group.turnOnNext(); } },
+        addExtraBall: (seconds) => addExtraBall(o.context, extraBallText, seconds),
+        popUp: () => {},
+        texts: MEDAL_BANK.textIds.map((id) => o.textFor(id)),
+      });
+      for (const target of bank) {
+        byName.set(target.name, target);
+        controls.set(target.name, (component) => control('ControlCollision', component, o.context));
+      }
     }
   }
 

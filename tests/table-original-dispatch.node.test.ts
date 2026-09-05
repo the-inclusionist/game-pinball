@@ -5,6 +5,7 @@ import { createOriginalDispatch } from '../app/js/table/original-dispatch.js';
 import { buildOriginalComponents } from '../app/js/table/original-components.js';
 import {
   REENTRY_LANES, LAMP_BINDINGS, FUEL_ROLLOVERS, OUT_LANES, BONUS_LANE, SPOT_TARGET_SETS,
+  MEDAL_BANK, MULTIPLIER_BANK,
 } from '../app/js/control/bindings.js';
 import { createScoreState } from '../app/js/control/score.js';
 import { loadTable } from '../app/js/dat/loader.js';
@@ -55,7 +56,7 @@ describe('a lane crossing reaches the 1995 control function', () => {
     const w = wired();
     if (!w) return expect(existsSync(DAT)).toBe(false);
 
-    expect(w.dispatch.wired.size).toBe(21);
+    expect(w.dispatch.wired.size).toBe(27);
     expect(w.dispatch.wired.has('a_roll3')).toBe(true);
     expect(w.dispatch.wired.has('a_roll9')).toBe(true);
     expect(w.dispatch.wired.has('a_bump1')).toBe(false);
@@ -402,5 +403,62 @@ describe('⚠️ the spot targets: three lamps, and the set is what pays', () =>
         expect(w.dispatch.wired.has(target), `${set.control}/${target}`).toBe(runs);
       }
     }
+  });
+});
+
+describe('⚠️ the two popup banks, where the memory is in the TARGETS', () => {
+  test('the multiplier bank raises the multiplier only when all three are struck', () => {
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+
+    w.dispatch.hit(MULTIPLIER_BANK.targets[0]!);
+    w.dispatch.hit(MULTIPLIER_BANK.targets[1]!);
+    expect(w.score.scoreMultiplier, 'two of three is not a bank').toBe(0);
+
+    w.dispatch.hit(MULTIPLIER_BANK.targets[2]!);
+
+    expect(w.score.scoreMultiplier).toBe(1);
+    expect(w.shown).toContain('text:STRING157');
+  });
+
+  test('⚠️ and the SAME target three times is worth one hit, not a bank', () => {
+    // The bank sums the targets' own message fields, so a target already struck this round is not
+    // struck again. Counting hits instead would let one target pay for all three.
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+
+    w.dispatch.hit(MULTIPLIER_BANK.targets[0]!);
+    w.dispatch.hit(MULTIPLIER_BANK.targets[0]!);
+    w.dispatch.hit(MULTIPLIER_BANK.targets[0]!);
+
+    expect(w.score.scoreMultiplier).toBe(0);
+  });
+
+  test('the medal bank lights one medal per round and says which', () => {
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    const medals = w.components.lightGroups.get(MEDAL_BANK.lightGroup)!;
+
+    for (const target of MEDAL_BANK.targets) w.dispatch.hit(target);
+
+    expect(medals.onCount).toBe(1);
+    expect(w.shown).toContain('text:STRING154');
+    // ⚠️ AND NOT THE OTHER BANK'S LAMPS. Reading the group through the binding means the test follows
+    // the binding wherever it points — a mutation aiming the medals at `top_target_lights` passed
+    // until this line, because both sides of the assertion moved together.
+    expect(w.components.lightGroups.get('top_target_lights')!.onCount).toBe(0);
+    expect(w.components.lightGroups.get('bumper_target_lights')!.onCount).toBe(1);
+  });
+
+  test('⚠️ and the THIRD medal is an extra ball rather than a score', () => {
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+
+    for (let round = 0; round < 3; round++) {
+      for (const target of MEDAL_BANK.targets) w.dispatch.hit(target);
+    }
+
+    expect(w.context.table.extraBalls).toBe(1);
+    expect(w.shown).toContain('text:STRING156');
   });
 });

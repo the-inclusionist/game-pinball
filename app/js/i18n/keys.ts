@@ -40,6 +40,17 @@ export const RESOURCE_KEYS: Readonly<Record<string, string>> = {
   STRING110: 'pinball.event.extraBall',
   // The bonus lane's payout, which carries the amount. The original formats an int into it.
   STRING104: 'pinball.award.bonusCollected',
+  // The medal bank's three rungs. The third is an extra ball rather than a score.
+  STRING154: 'pinball.award.medal1',
+  STRING155: 'pinball.award.medal2',
+  STRING156: 'pinball.award.medal3',
+  // ⚠️ THE MULTIPLIER'S FOUR RUNGS ARE 2, 3, 5 AND 10, not 2, 3, 4, 5. `SCORE_MULTIPLIERS` is
+  // `[1, 2, 3, 5, 10]` and the lamp count indexes it, so the third completion is worth FIVE times and
+  // naming these `multiplier4` would put a number on screen the table never pays.
+  STRING157: 'pinball.award.multiplier2',
+  STRING158: 'pinball.award.multiplier3',
+  STRING159: 'pinball.award.multiplier5',
+  STRING160: 'pinball.award.multiplier10',
   STRING208: 'pinball.mission.bumpers.run',
   STRING209: 'pinball.mission.practice.done',
   STRING231: 'pinball.mission.alienMenace2.done',
