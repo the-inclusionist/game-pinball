@@ -52,13 +52,17 @@ import {
   BUMPER_LANE_BINDINGS, LAMP_BINDINGS, RETURN_LANES, FUEL_ROLLOVERS, FUEL_BARGRAPH,
   FUEL_REFUEL_TEXT_ID, OUT_LANES, BONUS_LANE, SPOT_TARGET_SETS, MEDAL_BANK, MULTIPLIER_BANK,
   BOOSTER_BANK, TABLE_ACTIONS, FLIPPER_REBOUNDERS, GATE_LAMPS, KICKERS, SKILL_SHOT,
-  LAUNCH_RAMP, FLAGS, KICKOUTS, DRAIN, PER_BALL_RESET, type BumperLaneBinding,
+  LAUNCH_RAMP, FLAGS, KICKOUTS, DRAIN, PER_BALL_RESET, MISSIONS, type BumperLaneBinding,
 } from '../control/bindings.js';
 import { addExtraBall, createTableActions } from '../control/table-actions.js';
 import {
   makeFlagControl, makeBlackHoleKickoutControl, makeGravityWellKickoutControl,
 } from '../control/wormhole.js';
 import { drainBall, type DrainTable } from '../control/drain.js';
+import {
+  createMissionMachine, makeWaitingDeploymentController, type MissionMachine,
+  type MissionContext,
+} from '../control/mission.js';
 import { NEW_BALL_REFLEX_SCORE } from '../control/feed.js';
 import {
   handler, bumperControl, rebounderControl, makeFlipperRebounderControl,
@@ -110,6 +114,13 @@ export interface OriginalDispatchOptions {
 export const GRAVITY_WELL_HOLD_SECONDS = 0.3;
 
 export interface OriginalDispatch {
+  /**
+   * ⚠️ THE MISSION MACHINE, WHICH IS WHAT `ControlContext.missionControl` HAS TO REACH. `handler` runs
+   * the component's control and THEN the mission machine, on every event — so a caller that builds
+   * this dispatcher has to route its context's `missionControl` back here, or every mission message
+   * lands in an empty function.
+   */
+  readonly missions: MissionMachine;
   /** A collision on the component with this archive name. Silent for anything not wired. */
   hit(groupName: string): void;
   /** Which archive names this dispatcher will actually act on. */
@@ -201,6 +212,38 @@ function bumperAdapter(
 }
 
 export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDispatch {
+  /**
+   * ⚠️ THE DISPATCHER OWNS `missionControl`, AND THE CALLER MUST NOT. `handler` runs a component's
+   * control and then the mission machine, on every event — and the machine lives in here. A caller
+   * that had to route its own context back into this object would be wiring a loop it cannot see, and
+   * a caller that forgot would get a table with no state at all beyond its lamps, silently.
+   *
+   * The machine does not exist yet at this point, so the reference is filled in at the end. Nothing
+   * can dispatch before then: the first message comes from a collision.
+   */
+  let missions: MissionMachine | null = null;
+  const missionTextBox: ControlledComponent = { name: MISSIONS.textBox, scores: [], control: null };
+  const ctx: ControlContext = {
+    ...o.context,
+    missionControl: (code, caller) => missionCtx && missions?.dispatch(code, caller, missionCtx),
+  };
+
+  /**
+   * The machine's context: the control one plus the four things only a mission uses. Built once, and
+   * handed to every dispatch INCLUDING the re-entrant ones — a controller that transitions announces
+   * itself through this, and a fresh object each time would be a different `missionTextBox` and the
+   * rewrite that turns its timeout into `ControlMissionStarted` would stop matching.
+   */
+  const missionCtx: MissionContext = {
+    ...ctx,
+    missionLamp: o.components.lights.get(MISSIONS.lamp) ?? { messageField: 0 },
+    dispatch: (code, caller) => missions?.dispatch(code, caller, missionCtx),
+    missionTextBox,
+    // The mission line is its own block of the screen — see ADR-0002.
+    showMissionText: (text, seconds) => ctx.showMission(text, seconds),
+    clearMissionText: () => ctx.showMission('', 0),
+  };
+
   const byName = new Map<string, ControlledComponent>();
   const controls = new Map<string, (component: ControlledComponent) => void>();
   const scoreRows = new Map(SCORE_COMPONENTS.map((row) => [row.tag, row]));
@@ -223,7 +266,7 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
       },
     });
     restart = (seconds) => o.components.restartGroupTimer(
-      name, seconds, () => control('ControlNotifyTimerExpired', caller, o.context),
+      name, seconds, () => control('ControlNotifyTimerExpired', caller, ctx),
     );
     restartGroupNotify.set(name, restart);
   }
@@ -258,7 +301,7 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
         scores: row?.scores ?? [],
         control: null,
       });
-      controls.set(lane.component, (component) => control('ControlCollision', component, o.context));
+      controls.set(lane.component, (component) => control('ControlCollision', component, ctx));
     }
   }
 
@@ -288,7 +331,7 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
       scores: row?.scores ?? [],
       control: null,
     });
-    controls.set(binding.component, (component) => control('ControlCollision', component, o.context));
+    controls.set(binding.component, (component) => control('ControlCollision', component, ctx));
   }
 
   // ⚠️ THE RETURN LANES, WHICH COLLECT WHAT THE SPACE WARP LIT. `makeReturnLaneControl` matches the
@@ -315,7 +358,7 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
       });
       for (const lane of lanes) {
         byName.set(lane.component.name, lane.component);
-        controls.set(lane.component.name, (component) => control('ControlCollision', component, o.context));
+        controls.set(lane.component.name, (component) => control('ControlCollision', component, ctx));
       }
     }
   }
@@ -341,7 +384,7 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
         });
         const row = scoreRows.get(lane.component);
         byName.set(lane.component, { name: lane.component, scores: row?.scores ?? [], control: null });
-        controls.set(lane.component, (component) => control('ControlCollision', component, o.context));
+        controls.set(lane.component, (component) => control('ControlCollision', component, ctx));
       }
     }
   }
@@ -370,7 +413,7 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
       const extraBallText = o.textFor(OUT_LANES.extraBallTextId);
       const control = makeOutLaneControl({
         extraBallLamps: extraBallLamps as unknown as LaneLight[],
-        addExtraBall: (seconds) => addExtraBall(o.context, extraBallText, seconds),
+        addExtraBall: (seconds) => addExtraBall(ctx, extraBallText, seconds),
         warpLampsFor: (caller) => warpOf.get(caller.name),
         missSound: OUT_LANES.missSound,
       });
@@ -378,7 +421,7 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
       for (const name of OUT_LANES.components) {
         const row = scoreRows.get(name);
         byName.set(name, { name, scores: row?.scores ?? [], control: null });
-        controls.set(name, (component) => control('ControlCollision', component, o.context));
+        controls.set(name, (component) => control('ControlCollision', component, ctx));
       }
     }
   }
@@ -404,7 +447,7 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
         name: BONUS_LANE.component, scores: row?.scores ?? [], control: null,
       });
       controls.set(BONUS_LANE.component,
-        (component) => control('ControlCollision', component, o.context));
+        (component) => control('ControlCollision', component, ctx));
     }
   }
 
@@ -449,7 +492,7 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
 
     for (const target of targets) {
       byName.set(target.name, target);
-      controls.set(target.name, (component) => control('ControlCollision', component, o.context));
+      controls.set(target.name, (component) => control('ControlCollision', component, ctx));
     }
   }
 
@@ -499,7 +542,7 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
 
     for (const target of targets) {
       byName.set(target.name, target);
-      controls.set(target.name, (component) => control('ControlCollision', component, o.context));
+      controls.set(target.name, (component) => control('ControlCollision', component, ctx));
     }
   }
 
@@ -521,9 +564,9 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
       ? makeMultiplierLightGroupControl({ group, enableText: text })
       : makeDecayingLightGroupControl({ group, period: DECAY_PERIODS.medal });
     restart = (seconds) => o.components.restartGroupTimer(
-      name, seconds, () => control('ControlNotifyTimerExpired', caller, o.context),
+      name, seconds, () => control('ControlNotifyTimerExpired', caller, ctx),
     );
-    return (code) => control(code, caller, o.context);
+    return (code) => control(code, caller, ctx);
   };
 
   const medalGroup = groupControlFor(MEDAL_BANK.lightGroup);
@@ -562,7 +605,7 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
       });
       for (const target of bank) {
         byName.set(target.name, target);
-        controls.set(target.name, (component) => control('ControlCollision', component, o.context));
+        controls.set(target.name, (component) => control('ControlCollision', component, ctx));
       }
     }
   }
@@ -578,13 +621,13 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
           get onCount() { return group.onCount; },
           lightOneMore: () => { medalGroup?.('TLightGroupResetAndTurnOn'); },
         },
-        addExtraBall: (seconds) => addExtraBall(o.context, extraBallText, seconds),
+        addExtraBall: (seconds) => addExtraBall(ctx, extraBallText, seconds),
         popUp: () => {},
         texts: MEDAL_BANK.textIds.map((id) => o.textFor(id)),
       });
       for (const target of bank) {
         byName.set(target.name, target);
-        controls.set(target.name, (component) => control('ControlCollision', component, o.context));
+        controls.set(target.name, (component) => control('ControlCollision', component, ctx));
       }
     }
   }
@@ -595,7 +638,7 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
   // multiball and replay belong to the missions, which this build does not run.
   {
     const actions = createTableActions({
-      ctx: o.context,
+      ctx: ctx,
       text: {
         extraBall: o.textFor(TABLE_ACTIONS.textIds.extraBall),
         bonusHeld: o.textFor(TABLE_ACTIONS.textIds.bonusHeld),
@@ -638,7 +681,7 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
       });
       for (const target of bank) {
         byName.set(target.name, target);
-        controls.set(target.name, (component) => control('ControlCollision', component, o.context));
+        controls.set(target.name, (component) => control('ControlCollision', component, ctx));
       }
     }
   }
@@ -662,10 +705,10 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
       const bumper = o.components.bumpers.get(row.tag);
       if (!bumper) continue;
       byName.set(row.tag, { name: row.tag, scores: row.scores, control: null, self: bumper });
-      controls.set(row.tag, (component) => bumperControl('ControlCollision', component, o.context));
+      controls.set(row.tag, (component) => bumperControl('ControlCollision', component, ctx));
     } else if (row.controlName === 'RebounderControl') {
       byName.set(row.tag, { name: row.tag, scores: row.scores, control: null });
-      controls.set(row.tag, (component) => rebounderControl('ControlCollision', component, o.context));
+      controls.set(row.tag, (component) => rebounderControl('ControlCollision', component, ctx));
     }
   }
 
@@ -677,7 +720,7 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
       name: binding.component, scores: row?.scores ?? [], control: null,
     });
     controls.set(binding.component,
-      (component) => control('ControlCollision', component, o.context));
+      (component) => control('ControlCollision', component, ctx));
   }
 
   // ⚠️ THE GATE LAMPS, WHICH NO COLLISION REACHES. `TGate::Message` ends with `control::handler(code,
@@ -712,7 +755,7 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
 
     const control = makeKickerControl({ gate, isEasyMode: o.isEasyMode ?? (() => false) });
     const caller: ControlledComponent = { name: binding.component, scores: [], control: null };
-    kickback.control = () => control('ControlTimerExpired', caller, o.context);
+    kickback.control = () => control('ControlTimerExpired', caller, ctx);
   }
 
   // ⚠️ THE SKILL SHOT, WHOSE PAYOUT FALLS AFTER THE THIRD LAMP. One entry, five tripwires and two
@@ -729,7 +772,7 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
     const register = (name: string, control: ReturnType<typeof makeSkillShotGateControl>): void => {
       const row = scoreRows.get(name);
       byName.set(name, { name, scores: row?.scores ?? [], control: null });
-      controls.set(name, (component) => control('ControlCollision', component, o.context));
+      controls.set(name, (component) => control('ControlCollision', component, ctx));
     };
 
     if (group && firstLamp && shootAgainLamp && tank
@@ -788,7 +831,7 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
     const control = binding.accumulator
       ? makeAccumulatorLampControl({ flag: binding.accumulator })
       : makeShootAgainLightControl({ lamp });
-    lamp.control = () => control('ControlTimerExpired', caller, o.context);
+    lamp.control = () => control('ControlTimerExpired', caller, ctx);
   }
 
   // ⚠️ THE RAMP, WHOSE ORDINARY SCORE LIVES IN THE `else`. Any of the three lamps lit REPLACES the
@@ -817,7 +860,7 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
         name: LAUNCH_RAMP.component, scores: row?.scores ?? [], control: null,
       });
       controls.set(LAUNCH_RAMP.component,
-        (component) => control('ControlCollision', component, o.context));
+        (component) => control('ControlCollision', component, ctx));
     }
   }
 
@@ -837,7 +880,7 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
       for (const name of FLAGS.components) {
         const row = scoreRows.get(name);
         byName.set(name, { name, scores: row?.scores ?? [], control: null });
-        controls.set(name, (component) => control('ControlCollision', component, o.context));
+        controls.set(name, (component) => control('ControlCollision', component, ctx));
       }
     }
   }
@@ -879,7 +922,7 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
       });
     }
 
-    kickout.control = () => control('ControlCollision', caller, o.context);
+    kickout.control = () => control('ControlCollision', caller, ctx);
   }
 
   // ⚠️ THE DRAIN, WHICH IS THE ONLY COMPONENT THAT CAN END A GAME. Four questions in order — is the
@@ -948,7 +991,7 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
       controls.set(DRAIN.component, () => {
         const result = drainBall({
           table: drainState.table,
-          score: o.context.score,
+          score: ctx.score,
           shootAgainLamp, spareLamp, bonusHoldLamp, missionLamp,
           perBallLamps,
           perBallComponents,
@@ -956,9 +999,9 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
           // told — kept because they are what the original writes into `lite198`.
           missionOnGameOver: 32,
           missionOnNextBall: 0,
-          showInfo: (text, seconds) => o.context.showInfo(text, seconds),
-          playSound: (name) => o.context.playSound(name),
-          playMusic: (track) => o.context.playMusic(track),
+          showInfo: (text, seconds) => ctx.showInfo(text, seconds),
+          playSound: (name) => ctx.playSound(name),
+          playMusic: (track) => ctx.playMusic(track),
           bonusText: (points) => o.textFor(DRAIN.bonusTextId, { points }),
           heldShootAgainText: o.textFor(DRAIN.heldTextId),
           spareSpentText: o.textFor(DRAIN.spareSpentTextId),
@@ -975,7 +1018,30 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
     }
   }
 
+  // ⚠️ MISSION ZERO IS A STATE, NOT A MISSION. The table sits in "awaiting deployment" until the ball
+  // crosses one of the two deployment chutes — the same two one-ways the skill shot uses for its
+  // payout and its loss, which is why they are looked up rather than bound again.
+  //
+  // ⚠️ AND THE TEXT BOX IS A COMPONENT. A mission begins when its announcement has finished being
+  // read, so the box's own timeout is what sends `ControlMissionStarted`. Nothing times it in this
+  // build, which is exactly why it is a component and not a string: the day something does, the
+  // machine already knows what to do with it.
+  const missionLamp = o.components.lights.get(MISSIONS.lamp);
+  missions = createMissionMachine({
+    missionLamp: missionLamp ?? { messageField: 0 },
+    missionTextBox,
+    controllers: {
+      0: makeWaitingDeploymentController({
+        deploymentGates: MISSIONS.deploymentGates
+          .map((name) => byName.get(name))
+          .filter((component): component is ControlledComponent => Boolean(component)),
+        awaitingText: o.textFor(MISSIONS.awaitingTextId),
+      }),
+    },
+  });
+
   return {
+    missions,
     wired: new Set(byName.keys()),
     hit(groupName) {
       const component = byName.get(groupName);
@@ -984,7 +1050,7 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
       // `handler` runs the control and then the mission machine, in that order, always. The mission
       // machine is the context's, and for this build it does nothing.
       component.control = (_code, caller) => control(caller);
-      handler('ControlCollision', component, o.context);
+      handler('ControlCollision', component, ctx);
     },
   };
 }

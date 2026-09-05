@@ -91,6 +91,10 @@ export interface Demo {
    * had a ball that reached the bottom of the table and stayed there.
    */
   readonly ballsLeft: number;
+  /** What the mission machine last said. Empty until something puts a line up. */
+  readonly missionText: string;
+  /** Which mission is running, by the lamp. Zero is "awaiting deployment". */
+  readonly mission: number;
   /** True once the last ball of the last player is gone. */
   readonly gameOver: boolean;
   /**
@@ -159,6 +163,8 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
   const score = createScoreState();
   /** The line a completed chain last showed. The demo has no HUD hint of its own yet. */
   let info = '';
+  /** The mission line, which is a different block of the screen from the info one. */
+  let mission = '';
   const paidFlat: string[] = [];
 
   /**
@@ -199,9 +205,18 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
     light: (name) => components.lights.get(name),
     group: () => undefined,
     showInfo: (text) => { info = text; },
-    showMission: (text) => { info = text; },
+    // ⚠️ THE MISSION LINE IS ITS OWN BLOCK, not the info one. They were the same variable, so a
+    // mission announcement and a lane's completion line overwrote each other.
+    showMission: (text) => { mission = text; },
     playSound: (name) => o.onSound?.(name),
     playMusic: () => {},
+    /**
+     * ⚠️ THE DISPATCHER OWNS THIS AND REPLACES IT. `handler` runs a component's control and then the
+     * mission machine on every event, and the machine lives inside `createOriginalDispatch` — so it
+     * wraps this context with its own `missionControl` and the version here is never called. Left as
+     * a no-op rather than removed, because `ControlContext` requires it and a caller reading this file
+     * should see where the answer actually comes from.
+     */
     missionControl: () => {},
   };
   /**
@@ -398,6 +413,8 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
     },
 
     get ballsLeft() { return drainTable.ballCount; },
+    get missionText() { return mission; },
+    get mission() { return dispatch?.missions.current ?? 0; },
     get gameOver() { return gameOver; },
     setFlippers: (side, extended) => table.setFlippers(side, extended),
     plunge: (pressed) => {

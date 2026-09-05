@@ -440,6 +440,25 @@ export const BOOSTER_BANK: BoosterBankBinding = {
 };
 
 /**
+ * The mission machine's own components.
+ *
+ * ⚠️ A MISSION BEGINS WHEN ITS ANNOUNCEMENT HAS FINISHED BEING READ, not when it is chosen. The text
+ * box's own timeout is what sends `ControlMissionStarted`, which is why `mission_text_box` is a
+ * component here rather than a place to put a string.
+ *
+ * ⚠️ AND MISSION ZERO IS A STATE, NOT A MISSION. The table sits in "awaiting deployment" until the
+ * ball crosses one of the two deployment chutes; those are the same two one-ways the skill shot uses
+ * for its payout and its loss, which is why they are named here by the archive's names rather than
+ * bound a second time.
+ */
+export const MISSIONS = {
+  lamp: 'lite198',
+  textBox: 'mission_text_box',
+  deploymentGates: ['s_onewy4', 's_onewy10'],
+  awaitingTextId: 'STRING151',
+} as const;
+
+/**
  * WHAT THE END OF A BALL SWITCHES OFF, transcribed from `BallDrainControl`'s own forty lines.
  *
  * ⚠️ WHAT IS MISSING FROM THIS LIST IS WHAT SURVIVES THE BALL. `lite58` is not here, because holding

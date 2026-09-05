@@ -1414,3 +1414,58 @@ describe('⚠️ the end of a ball, which is the only thing that can end a game'
     }
   });
 });
+
+describe('⚠️ the mission machine, and the state the table sits in before a ball is in play', () => {
+  /** The context the machine needs, which is the control one plus four things only it uses. */
+  const missionContext = (w: NonNullable<ReturnType<typeof wired>>, said: string[]) => ({
+    ...w.context,
+    missionLamp: w.components.lights.get('lite198')!,
+    dispatch: (code: string, caller: unknown) =>
+      w.dispatch.missions.dispatch(code as never, caller as never, missionContext(w, said) as never),
+    missionTextBox: { name: 'mission_text_box', scores: [], control: null },
+    showMissionText: (text: string) => said.push(text),
+    clearMissionText: () => said.push(''),
+  });
+
+  test('the table starts in mission ZERO, which is a state and not a mission', () => {
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+
+    expect(w.dispatch.missions.current).toBe(0);
+    expect(w.dispatch.missions.currentName).toBe('WaitingDeployment');
+  });
+
+  test('and it says so, until something changes it', () => {
+    // -1 seconds is the original's "leave it up". The table announces itself and waits.
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    const said: string[] = [];
+
+    w.dispatch.missions.dispatch('ControlMissionStarted', null, missionContext(w, said) as never);
+
+    expect(said).toEqual(['text:STRING151']);
+  });
+
+  test('⚠️ and crossing a DEPLOYMENT CHUTE moves it on, which nothing else does', () => {
+    // The two one-ways at the chute are the same components the skill shot uses for its payout and
+    // its loss. Crossing either writes the lamp and re-enters — and the re-entrant call lands on the
+    // NEXT mission, not on this one, because the lamp is read every time.
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    const chute = w.dispatch.wired.has('s_onewy4');
+    expect(chute, 'the chute is a wired component').toBe(true);
+
+    w.dispatch.hit('s_onewy4');
+
+    expect(w.dispatch.missions.current, 'on to mission select').toBe(1);
+  });
+
+  test('and a bumper does not', () => {
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+
+    w.dispatch.hit('a_bump1');
+
+    expect(w.dispatch.missions.current).toBe(0);
+  });
+});
