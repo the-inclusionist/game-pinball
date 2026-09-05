@@ -65,6 +65,9 @@ let state: TableState = {
  * the game was broken, which is the worst arrangement of the two.
  */
 function launch(): void {
+  // ⚠️ A FINISHED GAME DOES NOT GET ANOTHER BALL. Without this the plunger key restarts play from a
+  // game-over screen, and the count stays at zero while the ball goes round again.
+  if (live.flags.ballCount === 0) return;
   ball.active = true;
   ball.direction = { x: 0, y: -1 };
   ball.speed = launchSpeedFor(authored);
@@ -187,10 +190,17 @@ function step(frames: number): void {
     if (drained) {
       hits.push(`drained:${drained}`);
       ballsLost++;
+
+      // ⚠️ LOSING A BALL COSTS A BALL, which it did not until now: the count sat at three in the corner
+      // of the screen for every commit since the HUD reached it, and the player could not lose.
+      const { gameOver } = live.endBall();
+      hint = shell.t(gameOver ? 'pinball.hud.gameOver' : 'pinball.hud.waiting');
+
       const fresh = physics.spawnBall();
       ball.position = fresh.position;
       ball.direction = { x: 0, y: -1 };
       ball.speed = 0;
+      // The ball is only put back if there is one to put back. `launch` refuses on a finished game.
       phase = 'title';
     }
 
@@ -261,6 +271,7 @@ Object.assign(window as unknown as Record<string, unknown>, {
     get score() { return live.score.curScore; },
     get lamps() { return live.litLamps(); },
     get hint() { return hint; },
+    get balls() { return live.flags.ballCount; },
     launch,
     /** Steps the game by hand, for a check that cannot rely on the browser compositing. */
     step,

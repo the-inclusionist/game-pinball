@@ -103,3 +103,73 @@ describe('every table in the catalogue can be wired', () => {
     }
   });
 });
+
+/**
+ * ⚠️ THE HUD SAID "Bolas: 3" FOR EVER, AND LOSING A BALL COST NOTHING.
+ *
+ * The count was a constant in a flags object nobody wrote to. A ball drained, the game respawned it, and
+ * the player could not lose. Seventh time in this port that something declared turned out to be inert —
+ * this one visible in the corner of the screen the whole time.
+ *
+ * ⚠️ AND `control/drain` IS NOT THE ANSWER HERE. Its four-question cascade is transcribed and correct,
+ * and it wants `lite200`, `lite199`, `lite58` and `lite198`, a mission lamp with a message field, a list
+ * of per-ball lamps and a list of per-ball components. Those are the 1995 TABLE's, exactly like the
+ * control names were, and an authored table has no way to declare them. So the authored ball cycle is
+ * the part an authored table can actually mean: count the balls, end the game, and say so.
+ */
+describe('losing a ball costs a ball', () => {
+  test('draining takes one', () => {
+    const live = controls();
+    const before = live.flags.ballCount;
+
+    live.endBall();
+
+    expect(live.flags.ballCount).toBe(before - 1);
+  });
+
+  test('the last one ends the game', () => {
+    const live = controls();
+
+    let result = live.endBall();
+    while (!result.gameOver) result = live.endBall();
+
+    expect(live.flags.ballCount).toBe(0);
+  });
+
+  test('and the count never goes below zero, however many times it is called', () => {
+    // The game loop calls this from a POSITION test, and a ball that lands in a drain and is not moved
+    // would be reported again on the next frame. Clamping here is cheaper than being sure elsewhere.
+    const live = controls();
+
+    for (let i = 0; i < 20; i++) live.endBall();
+
+    expect(live.flags.ballCount).toBe(0);
+  });
+
+  test('⚠️ the score survives the ball, because it belongs to the player', () => {
+    const live = controls();
+    live.hit('bumper1');
+    const earned = live.score.curScore;
+
+    live.endBall();
+
+    expect(live.score.curScore).toBe(earned);
+  });
+
+  test('⚠️ but the lamps and the targets do NOT', () => {
+    // A target that kept its level would open the next ball at its top score, and a lamp lit by the
+    // last ball would say the next one had already done the work. In the 1995 table which lamps
+    // survive is a hand-written list and the OMISSIONS are the design; an authored table has no such
+    // list, so the rule is "everything", declared rather than half-copied.
+    const live = controls();
+    live.hit('target1');
+    live.hit('target1');
+    const secondHit = live.score.curScore;
+
+    live.endBall();
+    live.hit('target1');
+
+    expect(live.litLamps()).toHaveLength(1);
+    expect(live.score.curScore - secondHit).toBe(LOW_ORBIT.components.find((c) => c.name === 'target1')!.scores![0]);
+  });
+});

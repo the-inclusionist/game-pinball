@@ -57,11 +57,27 @@ export interface LiveControls {
   advance(seconds: number): void;
   /** The lit lamps, which is what a HUD or a test asks for. */
   litLamps(): string[];
+  /**
+   * ⚠️ THE BALL IS LOST. Takes one off the count, clears what belongs to the ball, and says whether
+   * that was the last one.
+   *
+   * `control/drain`'s four-question cascade is NOT used here and that is not an oversight: it is
+   * transcribed, correct, and written for the 1995 table — it wants `lite200`, `lite199`, `lite58` and
+   * `lite198`, a mission lamp with a message field, and hand-written lists of per-ball lamps and
+   * components. An authored table cannot declare any of that, exactly as it could not declare the
+   * arguments to the 1995 control functions.
+   */
+  endBall(): { readonly gameOver: boolean; readonly ballsLeft: number };
 }
+
+/** How many balls a game is. The 1995 table reads it from its own data; an authored table says so here. */
+export const BALLS_PER_GAME = 3;
 
 export function createLiveControls(table: AuthoredTable, o: LiveControlsOptions = {}): LiveControls {
   const score = createScoreState();
-  const flags: TableFlags = { extraBalls: 0, multiballCount: 1, ballCount: 3, tiltLocked: false };
+  const flags: TableFlags = {
+    extraBalls: 0, multiballCount: 1, ballCount: BALLS_PER_GAME, tiltLocked: false,
+  };
 
   // A timer service of our own rather than the game's: lamps are the only thing here that keeps time,
   // and `advance` below is the one place it moves.
@@ -127,5 +143,23 @@ export function createLiveControls(table: AuthoredTable, o: LiveControlsOptions 
       }
     },
     litLamps: () => [...lamps].filter(([, light]) => light.on).map(([name]) => name),
+    endBall() {
+      // Clamped: the game loop calls this from a POSITION test, and a ball sitting in a drain would be
+      // reported again on the next frame. Cheaper to hold the floor here than to be sure elsewhere.
+      flags.ballCount = Math.max(0, flags.ballCount - 1);
+
+      // ⚠️ THE SCORE SURVIVES AND THE REST DOES NOT. The score is the player's; a lamp lit by the last
+      // ball would tell the next one that work was already done, and a target that kept its level would
+      // open at its top price. In the 1995 table which lamps survive is a hand-written list and the
+      // OMISSIONS are the design — an authored table has no such list, so the rule is everything, said
+      // outright rather than half-copied.
+      for (const light of lamps.values()) { light.resetTimed(); light.reset(); }
+      for (const component of components.values()) {
+        const self = component.self as { level?: number } | undefined;
+        if (self && typeof self.level === 'number') self.level = 0;
+      }
+
+      return { gameOver: flags.ballCount === 0, ballsLeft: flags.ballCount };
+    },
   };
 }
