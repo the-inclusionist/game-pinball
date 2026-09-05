@@ -34,6 +34,47 @@ Two further debts are not licences but are debts anyway, and are recorded in the
 `.dat dump.txt`, used as an **external oracle** for the archive parser, and the alula web port, used as
 a live visual reference in the browser pane.
 
+### 2.1 · What the upstream MIT licence does NOT cover, which matters
+
+The MIT notice on `k4zmu2a/SpaceCadetPinball` is that author's grant of **their own** rights over the
+decompiled source they wrote. It says nothing about the rights in the 1995 game those sources describe,
+and it cannot: nobody can license out what they do not hold.
+
+The rights in the original are not Microsoft's either, and were never wholly theirs. *Full Tilt! Pinball*
+was written by **Cinematronics** and published by **Maxis** in 1995; Microsoft licensed **one table** of
+the three for Plus! and for Windows. Cinematronics became Maxis South in 1996 and both were absorbed by
+**Electronic Arts** in 1997. So the copyright in the game sits with EA, while Microsoft holds a licence
+that — by Microsoft's own repeated account of why the game was never re-released — covered bundling it
+inside Windows and Plus! and their successors, and nothing else. Not a standalone release, and not the
+source.
+
+⚠️ **So no permission to decompile was ever given, by anybody, and Microsoft is not in a position to
+give one.** The upstream README claims none: it names the binaries it was reverse-engineered from
+(`pinball.exe` from Windows XP, `CADET.EXE` from *Full Tilt!*) and states that the game resources are
+not included.
+
+That the decompilation and its dozens of ports have run for years without a takedown is **not evidence
+of permission**. It is what an orphaned right looks like: the party with the copyright has no product
+to protect, the party with the brand has a dead licence, and nobody has a commercial reason to spend
+money on enforcement. That can change on any day and would not need a reason.
+
+Some jurisdictions do allow decompilation narrowly — EU Software Directive 2009/24/EC article 6 and the
+US DMCA §1201(f), both for **interoperability**, and the *Sega v. Accolade* line of cases for the
+intermediate copying that reverse engineering requires. None of them is a general permission to
+reproduce a work, and a direct decompilation-and-port is a much weaker position than a clean-room
+reimplementation would have been.
+
+**What this project actually relies on**, stated plainly rather than assumed:
+
+1. It ships **no asset of the original, ever** — §3 below, enforced by a test over `dist`.
+2. It is **non-commercial**, and part of an accessibility engine.
+3. The 1995 table is **scaffolding for validation**, not the destination: phase 8 replaces the geometry
+   and the art with authored work, after which what remains of the original is the algorithms alone.
+
+None of that is a legal opinion, and none of it is advice — this file is written by the people doing
+the work, not by a lawyer. It is here so that whoever inherits the repository inherits the risk
+knowingly rather than by surprise.
+
 ## 3 · Microsoft's data is never versioned. This is the hard rule of the repository
 
 `PINBALL.DAT`, the ~60 WAV files and the 2 MIDI files are Microsoft's, and no licence permits us to
