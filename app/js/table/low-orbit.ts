@@ -98,7 +98,7 @@ export const LOW_ORBIT: AuthoredTable = {
     /* ===================== THE PLUNGER LANE ===================== */
     { name: 'plunger', kind: 'plunger', role: WALL, bounds: { x: 167, y: 200, width: 10, height: 32 } },
     { name: 'lane.launch', kind: 'lane', role: 'free', bounds: { x: 167, y: 40, width: 10, height: 158 },
-      scores: [500], lamps: ['lamp.ramp'] },
+      scores: [500], control: 'LaneControl', lamps: ['lamp.ramp'] },
 
     /* ===================== THE BOTTOM: FLIPPERS, OUTLANES, DRAIN ===================== */
     // The gap between the flipper tips is 22 pixels — comfortably more than the ball, because the
@@ -118,9 +118,9 @@ export const LOW_ORBIT: AuthoredTable = {
 
     // Each outlane is 12 wide: passable, and punishing.
     { name: 'outlane.left', kind: 'lane', role: 'hazard',
-      bounds: { x: 20, y: 196, width: 12, height: 30 }, scores: [2000], lamps: ['lamp.outlaneLeft'] },
+      bounds: { x: 20, y: 196, width: 12, height: 30 }, scores: [2000], control: 'LaneControl', lamps: ['lamp.outlaneLeft'] },
     { name: 'outlane.right', kind: 'lane', role: 'hazard',
-      bounds: { x: 150, y: 196, width: 12, height: 30 }, scores: [2000], lamps: ['lamp.outlaneRight'] },
+      bounds: { x: 150, y: 196, width: 12, height: 30 }, scores: [2000], control: 'LaneControl', lamps: ['lamp.outlaneRight'] },
 
     { name: 'drain', kind: 'drain', role: 'hazard', bounds: { x: 76, y: 226, width: 30, height: 8 },
       control: 'DrainControl' },

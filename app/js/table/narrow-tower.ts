@@ -40,11 +40,11 @@ export const NARROW_TOWER: AuthoredTable = {
 
     // Three landings up the tower. A ball that reaches the top has crossed the whole camera range.
     { name: 'landing1', kind: 'lane', role: 'free', bounds: { x: 20, y: 300, width: 30, height: 12 },
-      scores: [1000], lamps: ['lamp.climb1'] },
+      scores: [1000], control: 'LaneControl', lamps: ['lamp.climb1'] },
     { name: 'landing2', kind: 'lane', role: 'free', bounds: { x: 60, y: 200, width: 30, height: 12 },
-      scores: [2000], lamps: ['lamp.climb2'] },
+      scores: [2000], control: 'LaneControl', lamps: ['lamp.climb2'] },
     { name: 'landing3', kind: 'lane', role: 'free', bounds: { x: 20, y: 100, width: 30, height: 12 },
-      scores: [4000], lamps: ['lamp.climb3'] },
+      scores: [4000], control: 'LaneControl', lamps: ['lamp.climb3'] },
 
     // Struck from BELOW by a ball that has climbed the whole tower, so the face is the bottom edge,
     // written right to left to put the solid side downward. It had none, which is why a five-thousand

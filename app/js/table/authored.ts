@@ -197,6 +197,14 @@ export function validateTable(table: AuthoredTable, o: ValidationOptions): strin
     if (!inside(component.bounds, table)) {
       problems.push(`${component.name}: outside the table, so it can never be hit`);
     }
+    // ⚠️ A SCORE TABLE WITH NO CONTROL IS MONEY NOBODY CAN HAND OVER. `scores` is read by `getScoring`
+    // and `getScoring` is only ever reached through a control function, so a component that declares
+    // one and no control is worth nothing however many points it names. Six were: three lanes on
+    // `low-orbit` and three landings on `narrow-tower`, all painted, all lamped, all free.
+    if (component.scores?.length && !component.control) {
+      problems.push(`${component.name}: declares a score and no control, so nothing can ever pay it`);
+    }
+
     // ⚠️ A CONTROL NAME THE REGISTRY DOES NOT KNOW IS REFUSED, rather than accepted and ignored. Six of
     // the eight names the catalogue used were 1995 controls that need 1995 structures an authored table
     // cannot declare, and one existed nowhere at all. All eight validated, drew, and did nothing.

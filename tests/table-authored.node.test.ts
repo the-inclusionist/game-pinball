@@ -272,3 +272,37 @@ describe('⚠️ a thing the ball must STRIKE has to be there to be struck', () 
     }
   });
 });
+
+describe('⚠️ a score nothing can pay is not a score', () => {
+  test('a component with a score table and no control is reported', () => {
+    // Found by watching the ball cross `narrow-tower`'s landing1 twice, in the real game, with the
+    // rollover watch working perfectly and the score staying at zero. `scores` exists to be read by
+    // `getScoring`, and `getScoring` is only ever reached through a control function — so a component
+    // that declares one and no control has declared money nobody can hand over.
+    //
+    // Six components across the catalogue were in that state: three lanes on `low-orbit`, three
+    // landings on `narrow-tower`. All six were painted, lamped, and worth nothing.
+    const table = {
+      ...LOW_ORBIT,
+      components: LOW_ORBIT.components.map((c) =>
+        c.name === 'bumper1' ? { ...c, control: undefined } : c),
+    };
+
+    const problems = validateTable(table, { viewHeight: 180 });
+
+    expect(problems.some((p) => p.includes('bumper1') && p.includes('score'))).toBe(true);
+  });
+
+  test('but a component with no score and no control is fine, because it is scenery', () => {
+    // A wall. Most of a table is scenery and the rule must not ask it to earn its keep.
+    const table = {
+      ...LOW_ORBIT,
+      components: LOW_ORBIT.components.map((c) =>
+        c.name === 'bumper1' ? { ...c, control: undefined, scores: undefined } : c),
+    };
+
+    const problems = validateTable(table, { viewHeight: 180 });
+
+    expect(problems.filter((p) => p.includes('bumper1'))).toEqual([]);
+  });
+});

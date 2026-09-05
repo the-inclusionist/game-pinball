@@ -23,6 +23,7 @@ import { buildPhysics, drainedBy, launchSpeedFor, FRAME_SECONDS } from './table/
 import { advanceFrame } from './physics/step.js';
 import { bindPinballControls } from './shell/controls.js';
 import { createLiveControls } from './table/live-controls.js';
+import { createRolloverWatch } from './table/rollovers.js';
 import { mountHud } from './shell/hud-dom.js';
 
 // `?table=wide-arc` opens another one of the five. There is no menu yet, and a query parameter is
@@ -130,6 +131,13 @@ const live = createLiveControls(authored, {
   showMission: (text) => { hint = text; },
 });
 let hint = '';
+
+/**
+ * ⚠️ THE COMPONENTS THE BALL CROSSES RATHER THAN STRIKES. The physics only reports EDGES, so seven
+ * components across the catalogue — lanes, wells, a kicker, three landings — were painted, scored and
+ * lamped and said nothing when the ball went through them. See `table/rollovers`.
+ */
+const rollovers = createRolloverWatch(authored);
 let frameCount = 0;
 let ballsLost = 0;
 let lastFrames = 0;
@@ -161,6 +169,13 @@ function step(frames: number): void {
     for (const hit of physics.takeHits()) {
       hits.push(hit.name);
       live.hit(hit.name);
+    }
+    // Crossings are polled rather than reported, because nothing collides to report them.
+    if (phase === 'playing') {
+      for (const name of rollovers.poll(ball)) {
+        hits.push(name);
+        live.hit(name);
+      }
     }
     live.advance(frames * FRAME_SECONDS);
   }
