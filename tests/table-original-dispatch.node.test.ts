@@ -9,9 +9,10 @@ import { buildOriginalKickouts, kickoutGeometry } from '../app/js/table/original
 import {
   REENTRY_LANES, LAMP_BINDINGS, FUEL_ROLLOVERS, OUT_LANES, BONUS_LANE, SPOT_TARGET_SETS,
   MEDAL_BANK, MULTIPLIER_BANK, BOOSTER_BANK, TABLE_ACTIONS, GATE_LAMPS, KICKERS, SKILL_SHOT,
-  LAUNCH_RAMP, FLAGS,
+  LAUNCH_RAMP, FLAGS, DRAIN, PER_BALL_RESET,
 } from '../app/js/control/bindings.js';
 import { createScoreState } from '../app/js/control/score.js';
+import { BASE_BONUS } from '../app/js/control/drain.js';
 import { SCORE_COMPONENTS } from '../app/js/control/score-table.js';
 import { loadTable } from '../app/js/dat/loader.js';
 import type { ControlContext } from '../app/js/control/dispatch.js';
@@ -31,7 +32,12 @@ const manifest = () => {
   return loadTable(new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength));
 };
 
-function wired(o: { gates?: boolean; easy?: boolean } = {}) {
+function wired(o: { gates?: boolean; easy?: boolean; drain?: boolean } = {}) {
+  const drainTable = {
+    tiltLocked: false, multiballCount: 0, extraBalls: 0, ballCount: 3,
+    currentPlayer: 0, playerCount: 1, unlimitedBalls: false,
+  };
+  const outcomes: string[] = [];
   const table = manifest();
   if (!table) return null;
   const components = buildOriginalComponents(table);
@@ -58,9 +64,16 @@ function wired(o: { gates?: boolean; easy?: boolean } = {}) {
   const dispatch = createOriginalDispatch({
     components, context, ...(gates ? { gates } : {}), ...(kickouts ? { kickouts } : {}),
     ...(o.easy ? { isEasyMode: () => true } : {}),
+    ...(o.drain ? { drain: {
+      table: drainTable,
+      onOutcome: (outcome: string, over: boolean) => outcomes.push(over ? `${outcome}:over` : outcome),
+    } } : {}),
     textFor: (id, params) => (params ? `text:${id}:${JSON.stringify(params)}` : `text:${id}`),
   });
-  return { components, score, shown, sounds, dispatch, context, geometry, gates, kickouts };
+  return {
+    components, score, shown, sounds, dispatch, context, geometry, gates, kickouts,
+    drainTable, outcomes,
+  };
 }
 
 describe('a lane crossing reaches the 1995 control function', () => {
@@ -1282,5 +1295,122 @@ describe('⚠️ the holes that can let go, and the one that cannot', () => {
 
     expect(w.kickouts!.get('a_kout2')!.control).toBe(null);
     expect(w.kickouts!.get('a_kout3')!.control).not.toBe(null);
+  });
+});
+
+describe('⚠️ the end of a ball, which is the only thing that can end a game', () => {
+  test('a ball reaching the drain is LOST, and the count falls', () => {
+    const w = wired({ drain: true });
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+
+    w.dispatch.hit(DRAIN.component);
+
+    expect(w.drainTable.ballCount).toBe(2);
+    expect(w.outcomes).toEqual(['ballLost']);
+  });
+
+  test('⚠️ but a shoot-again the player is HOLDING gives it back for nothing', () => {
+    // The first of the drain's four questions. `lite200` lit means the ball comes back and the count
+    // does not move — and the lamp stays lit, because it is relit as it is spent.
+    const w = wired({ drain: true });
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    w.components.lights.get(DRAIN.shootAgainLamp)!.turnOn();
+
+    w.dispatch.hit(DRAIN.component);
+
+    expect(w.drainTable.ballCount, 'nothing was spent').toBe(3);
+    expect(w.outcomes).toEqual(['shootAgain']);
+  });
+
+  test('⚠️ the reset list sweeps what it names and leaves the rest', () => {
+    // ⚠️ NOT THE SPARE, and not because it survives: a lit spare is spent by the cascade's SECOND
+    // question and the ball is never lost, so the reset list never runs at all. The first version of
+    // this test lit it and then asserted about a sweep that had not happened.
+    const w = wired({ drain: true });
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    w.components.lights.get('lite16')!.turnOn();
+
+    w.dispatch.hit(DRAIN.component);
+
+    expect(w.outcomes).toEqual(['ballLost']);
+    expect(w.components.lights.get('lite16')!.lit, 'swept').toBe(false);
+  });
+
+  test('⚠️ and BONUS HOLD spends its lamp to save the accumulator, not the other way round', () => {
+    // `lite58` is not in the reset list, and that is not what saves it — the cascade's tail turns it
+    // OFF and keeps `bonusScore` instead. What the lamp buys is the number, and it buys it once.
+    const w = wired({ drain: true });
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    w.components.lights.get(DRAIN.bonusHoldLamp)!.turnOn();
+    w.score.bonusScore = 175000;
+
+    w.dispatch.hit(DRAIN.component);
+
+    expect(w.components.lights.get(DRAIN.bonusHoldLamp)!.lit, 'the lamp is spent').toBe(false);
+    expect(w.score.bonusScore, 'and the accumulator is kept').toBe(175000);
+  });
+
+  test('and without it the accumulator goes back to the base', () => {
+    const w = wired({ drain: true });
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    w.score.bonusScore = 175000;
+
+    w.dispatch.hit(DRAIN.component);
+
+    expect(w.score.bonusScore).toBe(BASE_BONUS);
+  });
+
+  test('⚠️ and the fuel tank is emptied, which the light-group loop cannot reach', () => {
+    // `fuel_bargraph` is in the reset list but it is not a light group, so the loop over groups finds
+    // nothing for it. The original sends it both messages; here that is a negative split index.
+    const w = wired({ drain: true });
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    const tank = w.components.bargraphs.get('fuel_bargraph')!;
+    tank.toggleSplitIndex(11);
+
+    w.dispatch.hit(DRAIN.component);
+
+    expect(tank.onCount).toBe(0);
+  });
+
+  test('the last ball of the last player ends the game', () => {
+    const w = wired({ drain: true });
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    w.drainTable.ballCount = 1;
+
+    w.dispatch.hit(DRAIN.component);
+
+    expect(w.outcomes).toEqual(['ballLost:over']);
+  });
+
+  test('and the drain is DECLINED when no ball count is given', () => {
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+
+    expect(w.dispatch.wired.has(DRAIN.component)).toBe(false);
+  });
+
+  test('⚠️ the reset list is the archive’s own names, all of them present', () => {
+    // Forty lines of `BallDrainControl` transcribed. A name that does not exist in the file would
+    // reset nothing and say nothing — which is how a reset list rots.
+    const w = wired({ gates: true, drain: true });
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+
+    for (const name of PER_BALL_RESET.lamps) {
+      expect(w.components.lights.get(name), name).toBeDefined();
+    }
+    for (const name of PER_BALL_RESET.groups) {
+      const known = w.components.lightGroups.has(name) || w.components.bargraphs.has(name);
+      expect(known, name).toBe(true);
+    }
+    for (const name of PER_BALL_RESET.animationsStopped) {
+      expect(w.components.lightGroups.has(name), name).toBe(true);
+    }
+    for (const name of PER_BALL_RESET.bumperGroups) {
+      expect(w.components.bumperGroups.has(name), name).toBe(true);
+    }
+    for (const name of PER_BALL_RESET.gates) {
+      expect(w.gates!.has(name), name).toBe(true);
+    }
   });
 });

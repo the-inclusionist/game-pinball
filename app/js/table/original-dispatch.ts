@@ -52,12 +52,13 @@ import {
   BUMPER_LANE_BINDINGS, LAMP_BINDINGS, RETURN_LANES, FUEL_ROLLOVERS, FUEL_BARGRAPH,
   FUEL_REFUEL_TEXT_ID, OUT_LANES, BONUS_LANE, SPOT_TARGET_SETS, MEDAL_BANK, MULTIPLIER_BANK,
   BOOSTER_BANK, TABLE_ACTIONS, FLIPPER_REBOUNDERS, GATE_LAMPS, KICKERS, SKILL_SHOT,
-  LAUNCH_RAMP, FLAGS, KICKOUTS, type BumperLaneBinding,
+  LAUNCH_RAMP, FLAGS, KICKOUTS, DRAIN, PER_BALL_RESET, type BumperLaneBinding,
 } from '../control/bindings.js';
 import { addExtraBall, createTableActions } from '../control/table-actions.js';
 import {
   makeFlagControl, makeBlackHoleKickoutControl, makeGravityWellKickoutControl,
 } from '../control/wormhole.js';
+import { drainBall, type DrainTable } from '../control/drain.js';
 import { NEW_BALL_REFLEX_SCORE } from '../control/feed.js';
 import {
   handler, bumperControl, rebounderControl, makeFlipperRebounderControl,
@@ -70,6 +71,17 @@ import type { Kickout } from './kickout.js';
 
 export interface OriginalDispatchOptions {
   readonly components: OriginalComponents;
+  /**
+   * ⚠️ THE END OF A BALL, WHICH IS THE ONLY THING THAT CAN END A GAME. Absent leaves the drain paying
+   * its flat score and nothing else — a ball that reaches the bottom and simply stays there.
+   */
+  readonly drain?: {
+    /** Players, balls and the cheat. `ControlContext.table` carries only what a control needs. */
+    readonly table: DrainTable;
+    /** What the demonstration does with the outcome: feed another ball, or stop. */
+    readonly onOutcome: (outcome: 'returned' | 'shootAgain' | 'spareSpent' | 'multiballContinues'
+      | 'ballLost', gameOver: boolean) => void;
+  };
   /**
    * ⚠️ THE HOLES, WHICH DO NOT RELEASE THEMSELVES. A kickout captures the ball and waits for its
    * control to call `restartTimer`; a hole whose control is not bound here keeps the ball for the rest
@@ -868,6 +880,99 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
     }
 
     kickout.control = () => control('ControlCollision', caller, o.context);
+  }
+
+  // ⚠️ THE DRAIN, WHICH IS THE ONLY COMPONENT THAT CAN END A GAME. Four questions in order — is the
+  // player holding a shoot again, is there a spare to spend, are other balls still out there, and only
+  // then is the ball gone — and the reset list is applied at the end of the fourth.
+  //
+  // ⚠️ WHAT THE RESET LIST LEAVES ALONE IS THE POINT OF IT. `lite58`, `lite199` and `lite200` are not
+  // in it, so bonus hold, a spare and a held shoot-again all outlive the ball. See `PER_BALL_RESET`.
+  if (o.drain) {
+    const lampNamed = (name: string) => o.components.lights.get(name);
+    const shootAgainLamp = lampNamed(DRAIN.shootAgainLamp);
+    const spareLamp = lampNamed(DRAIN.spareLamp);
+    const bonusHoldLamp = lampNamed(DRAIN.bonusHoldLamp);
+    const missionLamp = lampNamed(DRAIN.missionLamp);
+
+    if (shootAgainLamp && spareLamp && bonusHoldLamp && missionLamp) {
+      const drainState = o.drain;
+      // Every lamp the list names, plus every member of every group it names — `TLightResetAndTurnOff`
+      // on a group is forwarded to its members, one at a time.
+      const perBallLamps = [
+        ...PER_BALL_RESET.lamps
+          .map(lampNamed)
+          .filter((lamp): lamp is NonNullable<typeof lamp> => Boolean(lamp)),
+        ...PER_BALL_RESET.groups.flatMap((name) => {
+          const group = o.components.lightGroups.get(name);
+          return group ? o.components.membersOf(group) : [];
+        }),
+      ];
+
+      const perBallComponents: { reset(): void }[] = [
+        // ⚠️ THE TANK IS NOT A LIGHT GROUP, so the loop above cannot reach its lamps. The original
+        // sends it BOTH messages — every lamp off, then `Reset` — and a negative split index is how
+        // `TLightBargraph` empties itself: it turns every member off and puts the level back to zero.
+        ...PER_BALL_RESET.groups
+          .map((name) => o.components.bargraphs.get(name))
+          .filter((tank): tank is NonNullable<typeof tank> => Boolean(tank))
+          .map((tank) => ({ reset: () => { tank.toggleSplitIndex(-1); tank.reset(); } })),
+        // ⚠️ THE ANIMATION ONLY. `outer_circle` and `middle_circle` are the two groups whose LAMPS
+        // survive a ball — the rank a player has reached is not undone by losing one.
+        ...PER_BALL_RESET.animationsStopped
+          .map((name) => o.components.lightGroups.get(name))
+          .filter((group): group is NonNullable<typeof group> => Boolean(group))
+          .map((group) => ({ reset: () => group.resetGroup() })),
+        ...PER_BALL_RESET.messageFieldsCleared
+          .map(lampNamed)
+          .filter((lamp): lamp is NonNullable<typeof lamp> => Boolean(lamp))
+          .map((lamp) => ({ reset: () => { lamp.messageField = 0; } })),
+        ...PER_BALL_RESET.bumperGroups.map((name) => ({
+          reset: () => {
+            for (const member of o.components.bumperGroups.get(name) ?? []) {
+              o.components.bumpers.get(member)?.reset();
+            }
+          },
+        })),
+        ...PER_BALL_RESET.gates
+          .map((name) => o.gates?.get(name))
+          .filter((gate): gate is NonNullable<typeof gate> => Boolean(gate))
+          .map((gate) => ({ reset: () => gate.reset() })),
+      ];
+
+      const caller: ControlledComponent = {
+        name: DRAIN.component, scores: scoreRows.get(DRAIN.component)?.scores ?? [], control: null,
+      };
+
+      byName.set(DRAIN.component, caller);
+      controls.set(DRAIN.component, () => {
+        const result = drainBall({
+          table: drainState.table,
+          score: o.context.score,
+          shootAgainLamp, spareLamp, bonusHoldLamp, missionLamp,
+          perBallLamps,
+          perBallComponents,
+          // The mission machine is not run here, so the two mission numbers are the ones it would be
+          // told — kept because they are what the original writes into `lite198`.
+          missionOnGameOver: 32,
+          missionOnNextBall: 0,
+          showInfo: (text, seconds) => o.context.showInfo(text, seconds),
+          playSound: (name) => o.context.playSound(name),
+          playMusic: (track) => o.context.playMusic(track),
+          bonusText: (points) => o.textFor(DRAIN.bonusTextId, { points }),
+          heldShootAgainText: o.textFor(DRAIN.heldTextId),
+          spareSpentText: o.textFor(DRAIN.spareSpentTextId),
+          extraBallText: (player) => o.textFor(
+            DRAIN.extraBallTextIds[Math.min(player, DRAIN.extraBallTextIds.length - 1)]!,
+          ),
+          returnBall: () => drainState.onOutcome('returned', false),
+          switchToNextPlayer: () => {},
+          dispatchMissionComplete: () => {},
+          clearTiltLock: () => { drainState.table.tiltLocked = false; },
+        });
+        drainState.onOutcome(result.outcome, result.gameOver);
+      });
+    }
   }
 
   return {

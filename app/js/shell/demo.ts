@@ -53,6 +53,8 @@ export const MUSIC_LOOKAHEAD = 4;
 
 /** The ball, which the archive draws as a sprite this build does not composite. */
 export const DEMO_BALL_COLOR = pack(240, 240, 250, 255);
+/** Three, as the original starts a game with. The drain counts them down. */
+export const DEMO_BALLS = 3;
 
 export interface Demo {
   readonly playfield: Framebuffer;
@@ -82,6 +84,13 @@ export interface Demo {
   readonly paidFlat: readonly string[];
   /** The last line a completed chain showed. */
   readonly info: string;
+  /**
+   * ⚠️ HOW MANY BALLS ARE LEFT, WHICH ONLY MEANS ANYTHING NOW THAT ONE CAN BE LOST. The demonstration
+   * had a ball that reached the bottom of the table and stayed there.
+   */
+  readonly ballsLeft: number;
+  /** True once the last ball of the last player is gone. */
+  readonly gameOver: boolean;
   /**
    * ⚠️ THE MUSIC, WHICH THE PLAYER ALSO BRINGS. `PINBALL.MID` is Microsoft's like everything else in
    * the original, so the demonstration asks for it and never fetches it. Null until it is given one,
@@ -156,6 +165,19 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
    */
   const scoringByTag = new Map(SCORE_COMPONENTS.map((row) => [row.tag, row]));
 
+  /** One player, three balls, and the cheat off. What the drain needs and the context does not carry. */
+  const drainTable = {
+    tiltLocked: false, multiballCount: 0, extraBalls: 0, ballCount: DEMO_BALLS,
+    currentPlayer: 0, playerCount: 1, unlimitedBalls: false,
+  };
+  let gameOver = false;
+  /**
+   * ⚠️ A NEW BALL GOES BACK ON THE PLUNGER AND CLEARS NOTHING ELSE. `drop()` is the player asking for a
+   * fresh start and forgets what the last ball touched; a ball LOST is the game continuing, and the
+   * lists it leaves behind are the record of it.
+   */
+  const feedBall = (): void => { ball = table.spawnBall(); };
+
   /**
    * ⚠️ THE REAL CONTROL FUNCTIONS FOR THE SEVEN THAT ARE WIRED, AND THE FLAT PAYMENT FOR THE REST.
    *
@@ -165,7 +187,10 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
    */
   const context: ControlContext = {
     score,
-    table: { extraBalls: 0, multiballCount: 1, ballCount: 1, tiltLocked: false },
+    // ⚠️ `multiballCount` IS ZERO, NOT ONE. The drain's third question is "are other balls still out
+    // there", and a count of one means yes — the ball would never be lost. One ball in play is a
+    // multiball count of zero in the original's arithmetic.
+    table: drainTable,
     light: (name) => components.lights.get(name),
     group: () => undefined,
     showInfo: (text) => { info = text; },
@@ -264,6 +289,15 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
 
   dispatch = createOriginalDispatch({
     components, context, gates, kickouts,
+    drain: {
+      table: drainTable,
+      onOutcome: (outcome, over) => {
+        if (over) { gameOver = true; return; }
+        // Every other outcome puts a ball back on the plunger. `multiballContinues` cannot happen
+        // here, because this demonstration only ever has one ball in play.
+        if (outcome !== 'multiballContinues') feedBall();
+      },
+    },
     textFor: (id, params) => o.textFor?.(id, params) ?? id,
   });
 
@@ -336,6 +370,8 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
       return frame;
     },
 
+    get ballsLeft() { return drainTable.ballCount; },
+    get gameOver() { return gameOver; },
     setFlippers: (side, extended) => table.setFlippers(side, extended),
     plunge: (pressed) => {
       if (pressed) table.plunger?.press();

@@ -448,6 +448,13 @@ export const BOOSTER_BANK: BoosterBankBinding = {
  * the ball it was won on. A list that swept everything would take those three away and nothing would
  * look broken — the player would simply stop being paid for work they had done.
  *
+ * ⚠️ TWO OF THE OMISSIONS CANNOT BE OBSERVED IN THIS BUILD, AND ARE KEPT ANYWAY. Adding `lite199` to
+ * the swept lamps changes nothing, because a LIT spare is spent by the cascade's second question and
+ * the ball is never lost — so the reset list only ever runs with the spare dark. Emptying
+ * `animationsStopped` changes nothing either, because nothing here starts an animation on the rank
+ * circles. Both mutations survive; both become real the moment the missions run, and the list is the
+ * original's rather than the one this build could tell apart.
+ *
  * ⚠️ AND THE GROUPS ARE SENT THE SAME MESSAGE AS THE LAMPS. `TLightResetAndTurnOff` on a group is not
  * a group operation: the default branch forwards it to every member, last to first. `outer_circle` and
  * `middle_circle` get `TLightGroupReset` instead, which stops an animation and leaves the lamps alone —
@@ -479,6 +486,10 @@ export const PER_BALL_RESET: PerBallResetBinding = {
     'bsink_arrow_lights', 'l_trek_lights', 'r_trek_lights', 'bumper_target_lights', 'top_target_lights',
     'top_circle_tgt_lights', 'ramp_tgt_lights', 'lchute_tgt_lights', 'bpr_solotgt_lights',
     'skill_shot_lights',
+    // ⚠️ THE TANK IS IN THIS LIST AND IS NOT A LIGHT GROUP. `TLightBargraph` gets the lamps' message
+    // AND a `Reset`, and a caller that only looked in `lightGroups` would find nothing for it and
+    // leave a full tank across every ball — which was true here until a test asked.
+    'fuel_bargraph',
   ],
   animationsStopped: ['outer_circle', 'middle_circle'],
   messageFieldsCleared: ['lite4', 'lite101', 'lite102', 'lite103'],
@@ -497,9 +508,14 @@ export const DRAIN = {
   spareLamp: 'lite199',
   bonusHoldLamp: 'lite58',
   missionLamp: 'lite198',
-  /** The bonus paid out on the way down, and the line that says a ball is being given back. */
-  bonusTextId: 'STRING167',
-  shootAgainTextId: 'STRING168',
+  /** The bonus, paid once and unmultiplied, on the way down. */
+  bonusTextId: 'STRING195',
+  /** Already holding one. Stays on screen until something replaces it. */
+  heldTextId: 'STRING197',
+  /** A spare spent into one. Two seconds, because it is news rather than a state. */
+  spareSpentTextId: 'STRING196',
+  /** ⚠️ ONE PER PLAYER, and the only one of the three that names anybody. */
+  extraBallTextIds: ['STRING198', 'STRING199', 'STRING200', 'STRING201'],
 } as const;
 
 /**

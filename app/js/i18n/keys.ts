@@ -48,6 +48,19 @@ export const RESOURCE_KEYS: Readonly<Record<string, string>> = {
   // The reflex shot, which is the ONLY one of the ramp's four payouts worth any points.
   /* The two holes that pay. The gravity well's other two lines belong to the arming, which no
      message in this build sends. */
+  /* ===================== THE END OF A BALL ===================== */
+  //
+  // ⚠️ THREE DIFFERENT LINES FOR WHAT LOOKS LIKE ONE EVENT. `STRING197` is shown when the player was
+  // already holding a shoot again and stays on screen; `STRING196` when a spare is spent into one, for
+  // two seconds; and one of `STRING198`..`STRING201`, by player, when an extra ball is cashed. Only the
+  // last names a player.
+  STRING195: 'pinball.ball.bonus',
+  STRING196: 'pinball.ball.spareSpent',
+  STRING197: 'pinball.ball.held',
+  STRING198: 'pinball.ball.extraBall1',
+  STRING199: 'pinball.ball.extraBall2',
+  STRING200: 'pinball.ball.extraBall3',
+  STRING201: 'pinball.ball.extraBall4',
   STRING181: 'pinball.award.blackHole',
   STRING182: 'pinball.award.gravityWell',
   STRING183: 'pinball.award.gravityWellArmed',

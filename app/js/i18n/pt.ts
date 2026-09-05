@@ -71,6 +71,13 @@ const pt: Record<string, string> = {
   'pinball.mission.timeWarp2.promoted': 'Promovido a {rank}.',
   'pinball.mission.timeWarp2.demoted': 'Rebaixado a {rank}.',
 
+  'pinball.ball.bonus': 'Bónus: {points}',
+  'pinball.ball.extraBall1': 'Jogador 1, joga outra vez.',
+  'pinball.ball.extraBall2': 'Jogador 2, joga outra vez.',
+  'pinball.ball.extraBall3': 'Jogador 3, joga outra vez.',
+  'pinball.ball.extraBall4': 'Jogador 4, joga outra vez.',
+  'pinball.ball.held': 'Joga outra vez.',
+  'pinball.ball.spareSpent': 'Sobresselente gasto: joga outra vez.',
   'pinball.award.blackHole': 'Buraco negro: {points}',
   'pinball.award.gravityWell': 'Poço gravítico: {points}',
   'pinball.award.gravityWellArmed': 'Poço gravítico armado: {points}',
