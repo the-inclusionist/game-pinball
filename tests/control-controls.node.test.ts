@@ -92,6 +92,33 @@ describe('target bank — completion is the members’ fields summing', () => {
   });
 });
 
+describe('⚠️ and WHEN the completing score is paid is a rule, not a style', () => {
+  test('the hit that raises the multiplier is paid at the OLD one', () => {
+    // `MultiplierTargetControl` calls `AddScore(get_scoring(1))` FIRST and raises the multiplier
+    // after; `BoosterTargetControl` pays last, after its awards. One line's difference, and since
+    // `addScore` multiplies by the current multiplier, paying the completing hit afterwards settles it
+    // at the new one — the hit that doubles the table pays double for itself, for ever, and the score
+    // is merely generous rather than visibly wrong.
+    const bank = [target('target9', [500, 1500]), target('target8', [500, 1500]),
+      target('target7', [500, 1500])];
+    let lit = 0;
+    const lightGroup = {
+      turnOnNext: () => { lit++; return true; },
+      get onCount() { return lit; },
+    };
+    const control = makeMultiplierBankControl({
+      bank, lightGroup, popUp: () => {}, multiplierTexts: ['DOUBLE'],
+    });
+    const { ctx } = context();
+
+    bank.forEach((t) => control('ControlCollision', t, ctx));
+
+    // Two partial hits at multiplier index 0, then the completing 1500 — also at index 0.
+    expect(ctx.score.scoreMultiplier).toBe(1);
+    expect(ctx.score.curScore).toBe(500 + 500 + 1500);
+  });
+});
+
 describe('multiplier bank — the number of lit lamps IS the multiplier', () => {
   function build(lampCount = 4) {
     const bank = [target('target9', [500, 1500]), target('target8', [500, 1500]), target('target7', [500, 1500])];

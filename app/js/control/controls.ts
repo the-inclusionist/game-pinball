@@ -44,6 +44,14 @@ export interface TargetBankOptions {
   readonly completeIndex?: number;
   /** Sends a target back up. `TPopupTargetEnable` in the original. */
   readonly popUp: (target: FieldComponent) => void;
+  /**
+   * ⚠️ WHERE THE COMPLETING SCORE IS PAID, WHICH IS A RULE AND NOT A STYLE. `BoosterTargetControl`
+   * pays LAST, after its awards and the pop-ups. `MultiplierTargetControl` pays FIRST, before it
+   * raises the multiplier — and `addScore` multiplies by the CURRENT multiplier, so paying afterwards
+   * settles the completing hit at the new one. The hit that doubles the table would pay double for
+   * itself, every time, and the score would read as generous rather than as wrong.
+   */
+  readonly payCompleteFirst?: boolean;
 }
 
 export function makeTargetBankControl(o: TargetBankOptions): ControlFunc {
@@ -64,6 +72,9 @@ export function makeTargetBankControl(o: TargetBankOptions): ControlFunc {
       return;
     }
 
+    // See `payCompleteFirst`: the multiplier bank pays before it changes the multiplier.
+    if (o.payCompleteFirst) addScore(ctx.score, getScoring(caller, complete));
+
     o.onComplete(ctx);
 
     // Clear the round and put every target back up. The bank raises them, not themselves.
@@ -72,7 +83,7 @@ export function makeTargetBankControl(o: TargetBankOptions): ControlFunc {
       o.popUp(t);
     }
 
-    addScore(ctx.score, getScoring(caller, complete));
+    if (!o.payCompleteFirst) addScore(ctx.score, getScoring(caller, complete));
   };
 }
 
@@ -93,6 +104,8 @@ export interface MultiplierBankOptions extends Omit<TargetBankOptions, 'onComple
 export function makeMultiplierBankControl(o: MultiplierBankOptions): ControlFunc {
   return makeTargetBankControl({
     ...o,
+    // The original's `AddScore` is the first line of the completing branch. See `payCompleteFirst`.
+    payCompleteFirst: true,
     onComplete: (ctx) => {
       o.lightGroup.turnOnNext();
       const lit = o.lightGroup.onCount;

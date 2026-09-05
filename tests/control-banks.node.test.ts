@@ -69,6 +69,31 @@ describe('the booster bank walks an award CHAIN, one rung per completion', () =>
   const complete = (b: ReturnType<typeof build>) =>
     b.bank.forEach((t) => b.control('ControlCollision', t, b.ctx));
 
+  test('⚠️ and it pays the completing hit LAST, after the award it just granted', () => {
+    // The mirror of the multiplier bank, which pays FIRST — and the difference is observable because
+    // an award can arm the bonus accumulator. `table_set_bonus` sets `bonusScoreFlag`, and every score
+    // added afterwards is banked into the bonus as well. The original's `AddScore` is the last line of
+    // the branch, so the completing twenty thousand IS banked; paying it first would leave the bonus
+    // short by exactly that, every time the bank completes. The two partial hits are not banked,
+    // because the flag was not armed when they were paid.
+    // Its own chain, because the award under test is the one that ARMS the accumulator.
+    const { ctx } = context();
+    const lamps = [0, 1, 2, 3].map((i) => fakeLight(i < 2)); // flag lights and jackpot already granted
+    const chain: AwardChainStep[] = lamps.map((lamp, i) => ({
+      lamp,
+      grant: () => { lamp.turnOn(); if (i === 2) ctx.score.bonusScoreFlag = true; },
+      sound: 'sound' + i,
+    }));
+    const bank = [target('target1'), target('target2'), target('target3')];
+    const control = makeBoosterTargetControl({
+      bank, chain, popUp: () => {}, missionLamp: { messageField: 0 },
+    });
+
+    bank.forEach((t) => control('ControlCollision', t, ctx));
+
+    expect(ctx.score.bonusScore).toBe(20000);
+  });
+
   test('an incomplete bank only pays partial credit', () => {
     const b = build();
 
