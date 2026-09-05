@@ -27,9 +27,19 @@ export const FOUR_FLIPPERS: AuthoredTable = {
   lamps: ['lamp.upper', 'lamp.lower', 'lamp.left', 'lamp.right'],
 
   components: [
-    { name: 'wall.left', kind: 'wall', role: 'structure', bounds: { x: 0, y: 0, width: 4, height: 210 } },
-    { name: 'wall.right', kind: 'wall', role: 'structure', bounds: { x: 196, y: 0, width: 4, height: 210 } },
-    { name: 'wall.top', kind: 'wall', role: 'structure', bounds: { x: 0, y: 0, width: 200, height: 4 } },
+    // Bounds without collision are a colour, not a wall — the ball left sideways until these were
+    // given edges. The same omission was in `wide-arc`, and one launched ball found both.
+    { name: 'wall.left', kind: 'wall', role: 'structure', bounds: { x: 0, y: 0, width: 4, height: 210 },
+      collision: [{ kind: 'line', from: { x: 4, y: 0 }, to: { x: 4, y: 210 } }] },
+    { name: 'wall.right', kind: 'wall', role: 'structure', bounds: { x: 196, y: 0, width: 4, height: 210 },
+      collision: [{ kind: 'line', from: { x: 196, y: 210 }, to: { x: 196, y: 0 } }] },
+    { name: 'wall.top', kind: 'wall', role: 'structure', bounds: { x: 0, y: 0, width: 200, height: 4 },
+      collision: [{ kind: 'line', from: { x: 200, y: 4 }, to: { x: 0, y: 4 } }] },
+
+    // The return bend. See `low-orbit` for why a plunger lane needs one.
+    { name: 'wall.laneReturn', kind: 'wall', role: 'structure',
+      bounds: { x: 162, y: 6, width: 36, height: 22 },
+      collision: [{ kind: 'line', from: { x: 196, y: 27 }, to: { x: 162, y: 9 } }] },
 
     { name: 'plunger', kind: 'plunger', role: 'structure', bounds: { x: 184, y: 176, width: 10, height: 30 } },
 

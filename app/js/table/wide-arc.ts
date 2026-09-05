@@ -28,8 +28,17 @@ export const WIDE_ARC: AuthoredTable = {
   components: [
     { name: 'wall.top', kind: 'wall', role: 'structure', bounds: { x: 0, y: 0, width: 360, height: 4 },
       collision: [{ kind: 'line', from: { x: 360, y: 4 }, to: { x: 0, y: 4 } }] },
-    { name: 'wall.left', kind: 'wall', role: 'structure', bounds: { x: 0, y: 0, width: 4, height: 280 } },
-    { name: 'wall.right', kind: 'wall', role: 'structure', bounds: { x: 356, y: 0, width: 4, height: 280 } },
+    // ⚠️ THESE HAD NO COLLISION AT ALL. They were bounds and a colour: the ball left the table
+    // sideways and `drainedBy` reported `outside`. A wall that is only drawn is not a wall.
+    { name: 'wall.left', kind: 'wall', role: 'structure', bounds: { x: 0, y: 0, width: 4, height: 280 },
+      collision: [{ kind: 'line', from: { x: 4, y: 0 }, to: { x: 4, y: 280 } }] },
+    { name: 'wall.right', kind: 'wall', role: 'structure', bounds: { x: 356, y: 0, width: 4, height: 280 },
+      collision: [{ kind: 'line', from: { x: 356, y: 280 }, to: { x: 356, y: 0 } }] },
+
+    // The return bend. See `low-orbit` for why a plunger lane needs one.
+    { name: 'wall.laneReturn', kind: 'wall', role: 'structure',
+      bounds: { x: 316, y: 4, width: 42, height: 22 },
+      collision: [{ kind: 'line', from: { x: 356, y: 25 }, to: { x: 316, y: 7 } }] },
 
     { name: 'plunger', kind: 'plunger', role: 'structure', bounds: { x: 344, y: 244, width: 10, height: 32 } },
 
@@ -48,9 +57,25 @@ export const WIDE_ARC: AuthoredTable = {
       control: 'BumperControl', lamps: ['lamp.arc'],
       collision: [{ kind: 'circle', at: { x: 177, y: 49 }, radius: 9 }] },
 
-    { name: 'ramp.long', kind: 'ramp', role: 'goal', bounds: { x: 60, y: 120, width: 240, height: 30 },
+    // ⚠️ IT USED TO BE A 280-PIXEL SHELF AT SEVEN DEGREES, AND THE BALL WENT TO SLEEP ON IT.
+    // Two runs found two different faults in the same component. The first: it stopped at x = 300, the
+    // ball came down the right-hand side past its end, and met nothing at all the whole way to the
+    // bottom. Extending it to x = 340 fixed that and created the second, which is worse and much
+    // quieter — a line that shallow does not deflect a ball, it CATCHES one. The probe shows the ball
+    // arriving with speed 112, losing it to four bounces, and then creeping down the slope at a steady
+    // 2.5: x = 208 after 400 frames, x = 168 after 4000, still going. It would have reached the low end
+    // in about fifteen thousand frames, four minutes of sitting and watching.
+    //
+    // `physics/stuck` cannot help, and is right not to: 2.5 is well above its 0.8 threshold, so the ball
+    // IS moving and the detector says so. The fault is not in the physics and not in the detector. A
+    // long, nearly flat, one-sided line in the middle of a playfield is a bed.
+    //
+    // So the ramp is now a CHUTE: 45 degrees, 80 pixels, on the right where the bend delivers the ball.
+    // At that angle gravity's pull along the surface is as large as the pull into it, and a ball cannot
+    // settle — it is thrown back across the table towards the far bumper, which is what a ramp is for.
+    { name: 'ramp.long', kind: 'ramp', role: 'goal', bounds: { x: 248, y: 88, width: 84, height: 84 },
       scores: [10000], control: 'LaunchRampControl',
-      collision: [{ kind: 'line', from: { x: 60, y: 150 }, to: { x: 300, y: 120 } }] },
+      collision: [{ kind: 'line', from: { x: 250, y: 170 }, to: { x: 330, y: 90 } }] },
 
     { name: 'flipper.left', kind: 'flipper', role: 'structure',
       bounds: { x: 140, y: 250, width: 28, height: 7 },

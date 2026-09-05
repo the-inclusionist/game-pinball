@@ -28,7 +28,13 @@ export const NARROW_TOWER: AuthoredTable = {
       collision: [{ kind: 'line', from: { x: 4, y: 0 }, to: { x: 4, y: 420 } }] },
     { name: 'wall.right', kind: 'wall', role: 'structure', bounds: { x: 116, y: 0, width: 4, height: 420 },
       collision: [{ kind: 'line', from: { x: 116, y: 420 }, to: { x: 116, y: 0 } }] },
-    { name: 'wall.top', kind: 'wall', role: 'structure', bounds: { x: 0, y: 0, width: 120, height: 4 } },
+    { name: 'wall.top', kind: 'wall', role: 'structure', bounds: { x: 0, y: 0, width: 120, height: 4 },
+      collision: [{ kind: 'line', from: { x: 120, y: 4 }, to: { x: 0, y: 4 } }] },
+
+    // The return bend. See `low-orbit` for why a plunger lane needs one.
+    { name: 'wall.laneReturn', kind: 'wall', role: 'structure',
+      bounds: { x: 82, y: 6, width: 34, height: 22 },
+      collision: [{ kind: 'line', from: { x: 116, y: 27 }, to: { x: 82, y: 9 } }] },
 
     { name: 'plunger', kind: 'plunger', role: 'structure', bounds: { x: 104, y: 384, width: 10, height: 32 } },
 

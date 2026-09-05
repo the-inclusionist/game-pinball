@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, test, expect } from 'vitest';
-import { buildPhysics, responseFor, RESPONSES, FRAME_SECONDS, drainedBy } from '../app/js/table/physics-build.js';
+import {
+  buildPhysics, responseFor, RESPONSES, FRAME_SECONDS, drainedBy, launchSpeedFor, DEFAULT_GRAVITY,
+} from '../app/js/table/physics-build.js';
 import { advanceFrame } from '../app/js/physics/step.js';
 import { CATALOG, LOW_ORBIT } from '../app/js/table/catalog.js';
 import type { AuthoredTable } from '../app/js/table/authored.js';
@@ -219,10 +221,17 @@ describe('⚠️ the drain is the one component that works by NOT being hit', ()
     // The first run of the wired game did exactly this: launched, bounced off the ceiling, came back
     // down and kept going to y = 4408 on a table 235 tall, at the speed cap, forever. The physics was
     // right; there was no rule saying where a table ends.
-    expect(drainedBy(LOW_ORBIT, { position: { x: 90, y: 4408 } })).toBe('outside');
+    expect(drainedBy(LOW_ORBIT, { position: { x: 90, y: 4408 } })).toBe('below');
   });
 
-  test('and so is a ball past any other edge', () => {
+  test('⚠️ and BELOW is not the same answer as past any other edge', () => {
+    // These two used to be one answer, and merging them hid a real distinction. Below the flippers is
+    // how a pinball is lost — the bottom of the table IS the drain, and the drain component only says
+    // where the middle of it is. Out of a SIDE is a hole in the geometry: a wall that was drawn and
+    // never given a collision. Running the five tables is what forced the split, because two of them
+    // lost the ball a few pixels beside a drain that was too narrow to catch it, and reporting that
+    // the same way as a ball escaping through a wall would have made a design question look like a
+    // broken table.
     expect(drainedBy(LOW_ORBIT, { position: { x: -5, y: 100 } })).toBe('outside');
     expect(drainedBy(LOW_ORBIT, { position: { x: 500, y: 100 } })).toBe('outside');
     expect(drainedBy(LOW_ORBIT, { position: { x: 90, y: -5 } })).toBe('outside');
@@ -250,5 +259,57 @@ describe('⚠️ the drain is the one component that works by NOT being hit', ()
     }
 
     expect(drained).not.toBeNull();
+  });
+});
+
+describe('⚠️ the plunger is sized to the table, and that is arithmetic rather than taste', () => {
+  /**
+   * The apex a ball actually reaches, integrated the way the game integrates it, with no geometry at
+   * all. Deliberately NOT `v² / 2g`: restating the formula the code uses would prove only that I can
+   * copy it. This runs the same stepper the game runs and reads off how high the ball got.
+   */
+  function apexOf(speed: number, gravity = DEFAULT_GRAVITY): number {
+    const empty: AuthoredTable = {
+      name: 'void', size: { width: 1000, height: 100000 }, ballRadius: 3, lamps: [],
+      components: [
+        { name: 'plunger', kind: 'plunger', role: 'structure', bounds: { x: 500, y: 99000, width: 10, height: 30 } },
+        { name: 'flipper', kind: 'flipper', role: 'structure', bounds: { x: 100, y: 99000, width: 20, height: 6 } },
+        { name: 'drain', kind: 'drain', role: 'hazard', bounds: { x: 200, y: 99500, width: 20, height: 8 } },
+      ],
+    };
+    const physics = buildPhysics(empty, { gravity });
+    const ball = physics.spawnBall();
+    ball.direction = { x: 0, y: -1 };
+    ball.speed = speed;
+
+    const start = ball.position.y;
+    let highest = 0;
+    for (let i = 0; i < 2000; i++) {
+      advanceFrame([ball], physics.context, FRAME_SECONDS);
+      highest = Math.max(highest, start - ball.position.y);
+    }
+    return highest;
+  }
+
+  test.each(CATALOG.map((t) => [t.name, t] as const))(
+    '%s: a full plunger clears the whole table, with room to spare',
+    (_name, table) => {
+      // A FIXED launch speed worked on `low-orbit` and failed on `narrow-tower`, and the reason is not
+      // tuning: 260 against gravity 120 rises 282 pixels, which clears low-orbit's 235 and falls 75
+      // short of narrow-tower's 420. The ball never reached the return bend and came straight back
+      // down the lane it left. A table twice as tall needs a plunger √2 times stronger.
+      //
+      // "With room to spare" is the part a bare `v² / 2g` would not give: the bend sits a little below
+      // the ceiling, so merely REACHING the top is not the same as arriving there with enough speed to
+      // be sent sideways.
+      expect(apexOf(launchSpeedFor(table))).toBeGreaterThan(table.size.height);
+    },
+  );
+
+  test('and a taller table gets a stronger plunger, not the same one', () => {
+    const short = { ...LOW_ORBIT, size: { width: 100, height: 100 } };
+    const tall = { ...LOW_ORBIT, size: { width: 100, height: 400 } };
+
+    expect(launchSpeedFor(tall)).toBeGreaterThan(launchSpeedFor(short));
   });
 });

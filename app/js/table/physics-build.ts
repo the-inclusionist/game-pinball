@@ -68,12 +68,22 @@ export interface Hit {
  * going to y = 4408 on a table 235 tall, at the speed cap, forever. Nothing was wrong with the
  * physics. There was no rule saying where a table ENDS.
  *
- * So this is a position test rather than a collision, and it also catches a ball that has left the
- * table entirely — past any edge, not only the bottom. A ball outside the table is lost whether or not
- * it found a drain on the way out, and treating that as anything else means a ball that is gone but
- * still being simulated.
+ * So this is a position test rather than a collision. And it distinguishes TWO ways of leaving, which
+ * a first version did not:
+ *
+ *   · BELOW the table is a legitimate way to lose. In a pinball anything that gets past the flippers
+ *     is gone whether or not it passed through the drain's own rectangle — the bottom of the table IS
+ *     the drain, and a narrow drain component only says where the middle of it is.
+ *   · Past a SIDE or the top is a hole in the geometry. A table the ball can leave sideways is
+ *     unfinished, and calling that a drain would hide it.
+ *
+ * Running the five tables is what forced the split: `wide-arc` and `narrow-tower` both lost their ball
+ * a few pixels to one side of a drain that was too narrow to catch it, and reporting that the same way
+ * as a ball escaping through a wall would have made a design question look like a broken table.
  */
-export function drainedBy(table: AuthoredTable, ball: { position: { x: number; y: number } }): string | null {
+export type DrainKind = string | 'below' | 'outside';
+
+export function drainedBy(table: AuthoredTable, ball: { position: { x: number; y: number } }): DrainKind | null {
   const { x, y } = ball.position;
 
   for (const component of table.components) {
@@ -82,10 +92,31 @@ export function drainedBy(table: AuthoredTable, ball: { position: { x: number; y
     if (x >= b.x && x <= b.x + b.width && y >= b.y && y <= b.y + b.height) return component.name;
   }
 
-  // Gone past an edge. Not a drain by name, but just as lost.
-  if (y > table.size.height || y < 0 || x < 0 || x > table.size.width) return 'outside';
+  // Past the flippers: lost, and legitimately so.
+  if (y > table.size.height) return 'below';
+  // Out of any other side: the table has a hole in it.
+  if (y < 0 || x < 0 || x > table.size.width) return 'outside';
   return null;
 }
+
+/**
+ * ⚠️ HOW HARD THE PLUNGER HAS TO PUSH, WHICH IS NOT A CONSTANT.
+ *
+ * A fixed launch speed worked on `low-orbit` and failed on `narrow-tower`, and the reason is
+ * arithmetic rather than tuning: a ball launched at speed v against gravity g rises `v² / 2g`. At 260
+ * against 120 that is 282 pixels, which clears low-orbit's 235-tall lane and falls 75 pixels short of
+ * narrow-tower's 420 — so the ball never reached the return bend and came straight back down.
+ *
+ * The plunger is therefore sized to the TABLE, with a margin so a full launch clearly clears the bend
+ * rather than just reaching it. A table twice as tall needs a plunger √2 times stronger, and nothing
+ * about that is a matter of taste.
+ */
+export function launchSpeedFor(table: AuthoredTable, o: PhysicsOptions = {}): number {
+  const gravity = o.gravity ?? DEFAULT_GRAVITY;
+  return Math.sqrt(2 * gravity * table.size.height) * 1.15;
+}
+
+export const DEFAULT_GRAVITY = 120;
 
 export interface TablePhysics {
   readonly grid: EdgeManager;
@@ -120,7 +151,7 @@ export interface PhysicsOptions {
 
 export function buildPhysics(table: AuthoredTable, o: PhysicsOptions = {}): TablePhysics {
   const grid = createEdgeManager(0, 0, table.size.width, table.size.height);
-  const gravity = o.gravity ?? 120;
+  const gravity = o.gravity ?? DEFAULT_GRAVITY;
   let hits: Hit[] = [];
 
   for (const component of table.components) {
