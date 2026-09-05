@@ -42,6 +42,7 @@ export type MessageCode =
   | 'PlungerFeedBall'
   | 'PlungerStartFeedTimer'
   | 'TBlockerEnable'
+  | 'ControlSpinnerLoopReset'
   | 'Reset'
   | 'SetTiltLock'
   | 'GameOver'
