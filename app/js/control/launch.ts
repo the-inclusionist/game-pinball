@@ -36,7 +36,7 @@
 
 import { getScoring, type ControlFunc } from './dispatch.js';
 import { addScore, specialAddScore } from './score.js';
-import type { LaneGroup, LaneLight } from './lanes.js';
+import type { Bargraph, LaneLight } from './lanes.js';
 
 /** A light group as the launch drives it. `skill_shot_lights`, `l_trek_lights`, `r_trek_lights`. */
 export interface SkillShotGroup {
@@ -57,7 +57,8 @@ export interface SkillShotEntryOptions {
   readonly group: SkillShotGroup;
   /** `lite54` and `lite25`, flashed to advertise that the run has restarted. */
   readonly flashLamps: readonly LaneLight[];
-  readonly bargraph: LaneGroup;
+  /** The fuel tank. Only `toggleSplitIndex` is reached — see `control/lanes`'s `Bargraph`. */
+  readonly bargraph: Bargraph;
   readonly topSplitIndex: number;
   readonly sound: string;
 }

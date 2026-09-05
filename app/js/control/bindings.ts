@@ -434,6 +434,76 @@ export const BOOSTER_BANK: BoosterBankBinding = {
 };
 
 /**
+ * THE SKILL SHOT: one entry, five gates, and two ways out.
+ *
+ * ⚠️ IT PAYS MOST FOR THE THIRD LAMP, NOT THE SIXTH. `s_onewy4` carries
+ * `15000 30000 75000 30000 15000 7500`, indexed by the lit count minus one — so running the whole set
+ * is worth a TENTH of stopping at three. Reading that array as "more is better" and paying the last
+ * entry would invert the only decision the mechanic asks the player to make.
+ *
+ * ⚠️ AND `lite67` IS WHAT "THE RUN IS OPEN" MEANS. All five later gates test it and do nothing without
+ * it; the entry both restarts the run and, unconditionally, gives a five-second ball save. Those two
+ * jobs share a gate and are otherwise unrelated.
+ */
+export interface SkillShotBinding {
+  /** `s_onewy1`: restarts the run, and always arms the ball save. */
+  readonly entry: {
+    readonly control: string;
+    readonly component: string;
+    /** `lite200`, lit for five seconds whatever else happens. */
+    readonly shootAgainLamp: string;
+    /** `lite67`. Its being lit is the whole condition. */
+    readonly firstLamp: string;
+    /** `lite54` and `lite25`, flashed to advertise that the run has restarted. */
+    readonly flashLamps: readonly string[];
+    readonly topSplitIndex: number;
+  };
+  /** The five tripwires, each with the one lamp it lights. */
+  readonly gates: readonly { readonly control: string; readonly component: string; readonly lamp: string }[];
+  readonly lightGroup: string;
+  /** `s_onewy4`: the payout, indexed by how many lamps are lit. */
+  readonly collect: {
+    readonly control: string;
+    readonly component: string;
+    /** `lite56`. Lit, it protects the trek lights from being cleared. */
+    readonly trekGuardLamp: string;
+    readonly trekGroups: readonly string[];
+    readonly textId: string;
+  };
+  /** `s_onewy10`: the other exit, which throws the run away and pays nothing. */
+  readonly lost: { readonly control: string; readonly component: string };
+  readonly sound: string;
+}
+
+export const SKILL_SHOT: SkillShotBinding = {
+  entry: {
+    control: 'SkillShotGate1Control',
+    component: 's_onewy1',
+    shootAgainLamp: 'lite200',
+    firstLamp: 'lite67',
+    flashLamps: ['lite54', 'lite25'],
+    topSplitIndex: 11,
+  },
+  gates: [
+    { control: 'SkillShotGate2Control', component: 's_trip1', lamp: 'lite68' },
+    { control: 'SkillShotGate3Control', component: 's_trip2', lamp: 'lite69' },
+    { control: 'SkillShotGate4Control', component: 's_trip3', lamp: 'lite131' },
+    { control: 'SkillShotGate5Control', component: 's_trip4', lamp: 'lite132' },
+    { control: 'SkillShotGate6Control', component: 's_trip5', lamp: 'lite133' },
+  ],
+  lightGroup: 'skill_shot_lights',
+  collect: {
+    control: 'DeploymentChuteToEscapeChuteOneWayControl',
+    component: 's_onewy4',
+    trekGuardLamp: 'lite56',
+    trekGroups: ['l_trek_lights', 'r_trek_lights'],
+    textId: 'STRING122',
+  },
+  lost: { control: 'DeploymentChuteToTableOneWayControl', component: 's_onewy10' },
+  sound: 'chain',
+};
+
+/**
  * `LeftKickerControl` and `RightKickerControl`: what SHUTS the chute again.
  *
  * ⚠️ THE KICKBACK IS THE CLOCK. Neither control answers a collision — they answer the kickback's own

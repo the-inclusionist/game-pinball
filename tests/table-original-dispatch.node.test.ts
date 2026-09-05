@@ -7,7 +7,7 @@ import { buildOriginalTable } from '../app/js/table/original.js';
 import { buildOriginalGates } from '../app/js/table/original-gates.js';
 import {
   REENTRY_LANES, LAMP_BINDINGS, FUEL_ROLLOVERS, OUT_LANES, BONUS_LANE, SPOT_TARGET_SETS,
-  MEDAL_BANK, MULTIPLIER_BANK, BOOSTER_BANK, TABLE_ACTIONS, GATE_LAMPS, KICKERS,
+  MEDAL_BANK, MULTIPLIER_BANK, BOOSTER_BANK, TABLE_ACTIONS, GATE_LAMPS, KICKERS, SKILL_SHOT,
 } from '../app/js/control/bindings.js';
 import { createScoreState } from '../app/js/control/score.js';
 import { SCORE_COMPONENTS } from '../app/js/control/score-table.js';
@@ -63,7 +63,7 @@ describe('a lane crossing reaches the 1995 control function', () => {
     const w = wired();
     if (!w) return expect(existsSync(DAT)).toBe(false);
 
-    expect(w.dispatch.wired.size).toBe(41);
+    expect(w.dispatch.wired.size).toBe(49);
     expect(w.dispatch.wired.has('a_roll3')).toBe(true);
     expect(w.dispatch.wired.has('a_roll9')).toBe(true);
     // ⚠️ `a_bump1` USED TO BE THE EXAMPLE HERE, and it is wired now. The mission spot set is the
@@ -763,5 +763,100 @@ describe('⚠️ the kickback shuts the chute again, which is the other half of 
     w.components.advance(0.2);
 
     expect(w.gates!.get('v_gate1')!.open).toBe(true);
+  });
+});
+
+describe('⚠️ the skill shot, which pays most for the THIRD lamp', () => {
+  const arm = (w: NonNullable<ReturnType<typeof wired>>) => {
+    w.components.lights.get(SKILL_SHOT.entry.firstLamp)!.turnOn();
+  };
+
+  test('all eight components run: one entry, five gates and two ways out', () => {
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+
+    expect(w.dispatch.wired.has(SKILL_SHOT.entry.component)).toBe(true);
+    for (const gate of SKILL_SHOT.gates) expect(w.dispatch.wired.has(gate.component), gate.component).toBe(true);
+    expect(w.dispatch.wired.has(SKILL_SHOT.collect.component)).toBe(true);
+    expect(w.dispatch.wired.has(SKILL_SHOT.lost.component)).toBe(true);
+  });
+
+  test('⚠️ the entry ALWAYS arms the ball save, even with the run shut', () => {
+    // Two unrelated things at one gate: a five-second save that happens whatever, and — only if the
+    // run was already open — starting it over. Folding the save into the condition would take away a
+    // reprieve the player gets every single time down that chute.
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+
+    w.dispatch.hit(SKILL_SHOT.entry.component);
+
+    expect(w.components.lights.get('lite200')!.lit).toBe(true);
+    expect(w.components.lights.get('lite68')!.lit, 'and nothing else happened').toBe(false);
+  });
+
+  test('with the run open, the entry restarts it and fills the tank', () => {
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    const tank = w.components.bargraphs.get('fuel_bargraph')!;
+    arm(w);
+    w.components.lights.get('lite68')!.turnOn();
+
+    w.dispatch.hit(SKILL_SHOT.entry.component);
+
+    expect(w.components.lights.get('lite67')!.lit, 'back to exactly one lamp').toBe(true);
+    expect(w.components.lights.get('lite68')!.lit).toBe(false);
+    expect(tank.onCount).toBe(11);
+  });
+
+  test('⚠️ the five later gates do NOTHING with the run shut', () => {
+    // `lite67` is what "the run is open" means, and every one of them tests it. Without that a ball
+    // wandering over a tripwire would light the set for free.
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+
+    for (const gate of SKILL_SHOT.gates) w.dispatch.hit(gate.component);
+
+    expect(w.components.lightGroups.get('skill_shot_lights')!.onCount).toBe(0);
+  });
+
+  test('⚠️ and the payout PEAKS at three lamps, then falls', () => {
+    // `s_onewy4` carries `15000 30000 75000 30000 15000 7500` indexed by the lit count minus one.
+    // Running the whole set is worth a tenth of stopping at three, which inverts the only decision the
+    // mechanic asks for — and reading the array as "more is better" would never look wrong.
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    arm(w);
+    w.dispatch.hit(SKILL_SHOT.gates[0]!.component);
+    w.dispatch.hit(SKILL_SHOT.gates[1]!.component);
+    expect(w.components.lightGroups.get('skill_shot_lights')!.onCount).toBe(3);
+
+    w.dispatch.hit(SKILL_SHOT.collect.component);
+
+    expect(w.score.curScore).toBe(75000);
+    expect(w.shown.some((line) => line.startsWith('text:STRING122'))).toBe(true);
+  });
+
+  test('and the whole set is worth a tenth of that', () => {
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    arm(w);
+    for (const gate of SKILL_SHOT.gates) w.dispatch.hit(gate.component);
+    expect(w.components.lightGroups.get('skill_shot_lights')!.onCount).toBe(6);
+
+    w.dispatch.hit(SKILL_SHOT.collect.component);
+
+    expect(w.score.curScore).toBe(7500);
+  });
+
+  test('⚠️ the OTHER exit throws the run away and pays nothing', () => {
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    arm(w);
+    w.dispatch.hit(SKILL_SHOT.gates[0]!.component);
+
+    w.dispatch.hit(SKILL_SHOT.lost.component);
+
+    expect(w.components.lightGroups.get('skill_shot_lights')!.onCount).toBe(0);
+    expect(w.score.curScore).toBe(0);
   });
 });

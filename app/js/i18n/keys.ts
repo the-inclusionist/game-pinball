@@ -41,6 +41,11 @@ export const RESOURCE_KEYS: Readonly<Record<string, string>> = {
   // The bonus lane's payout, which carries the amount. The original formats an int into it.
   STRING104: 'pinball.award.bonusCollected',
   // The medal bank's three rungs. The third is an extra ball rather than a score.
+  // ⚠️ THE SKILL SHOT PAYS MOST FOR THE THIRD LAMP, NOT THE SIXTH. `s_onewy4` carries
+  // `15000 30000 75000 30000 15000 7500` indexed by the lit count minus one, so running the whole set
+  // is worth a TENTH of stopping at three. The line names the amount, which is the only way a player
+  // finds that out.
+  STRING122: 'pinball.award.skillShot',
   STRING154: 'pinball.award.medal1',
   STRING155: 'pinball.award.medal2',
   STRING156: 'pinball.award.medal3',

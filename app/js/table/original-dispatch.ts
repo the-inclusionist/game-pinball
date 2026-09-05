@@ -40,9 +40,14 @@ import {
 } from '../control/controls.js';
 import { makeMedalTargetControl, makeBoosterTargetControl, type AwardChainStep } from '../control/banks.js';
 import {
+  makeSkillShotEntryControl, makeSkillShotGateControl, makeSkillShotCollectControl,
+  makeSkillShotLostControl, type SkillShotGroup,
+} from '../control/launch.js';
+import {
   BUMPER_LANE_BINDINGS, LAMP_BINDINGS, RETURN_LANES, FUEL_ROLLOVERS, FUEL_BARGRAPH,
   FUEL_REFUEL_TEXT_ID, OUT_LANES, BONUS_LANE, SPOT_TARGET_SETS, MEDAL_BANK, MULTIPLIER_BANK,
-  BOOSTER_BANK, TABLE_ACTIONS, FLIPPER_REBOUNDERS, GATE_LAMPS, KICKERS, type BumperLaneBinding,
+  BOOSTER_BANK, TABLE_ACTIONS, FLIPPER_REBOUNDERS, GATE_LAMPS, KICKERS, SKILL_SHOT,
+  type BumperLaneBinding,
 } from '../control/bindings.js';
 import { addExtraBall, createTableActions } from '../control/table-actions.js';
 import {
@@ -78,6 +83,29 @@ export interface OriginalDispatch {
   hit(groupName: string): void;
   /** Which archive names this dispatcher will actually act on. */
   readonly wired: ReadonlySet<string>;
+}
+
+/**
+ * `TLightResetAndTurnOff` sent to a GROUP, which the original's default branch forwards to every
+ * member, last to first. `LightGroup` has no such method because it is not a group operation at all —
+ * it is one message reaching each lamp.
+ */
+function skillShotAdapter(components: OriginalComponents, name: string): SkillShotGroup | null {
+  const group = components.lightGroups.get(name);
+  if (!group) return null;
+  const members = components.membersOf(group);
+
+  return {
+    get onCount() { return group.onCount; },
+    resetGroup: () => group.resetGroup(),
+    resetAndTurnOff: () => {
+      for (let i = members.length - 1; i >= 0; i--) {
+        members[i]!.resetTimed();
+        members[i]!.turnOff();
+      }
+    },
+    flashWhenOn: (seconds) => group.flashWhenOn(seconds),
+  };
 }
 
 /** Every member of a light group turned off, which is what a group-wide `TLightTurnOff` means. */
@@ -531,6 +559,64 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
     const control = makeKickerControl({ gate, isEasyMode: o.isEasyMode ?? (() => false) });
     const caller: ControlledComponent = { name: binding.component, scores: [], control: null };
     kickback.control = () => control('ControlTimerExpired', caller, o.context);
+  }
+
+  // ⚠️ THE SKILL SHOT, WHOSE PAYOUT FALLS AFTER THE THIRD LAMP. One entry, five tripwires and two
+  // ways out; `lite67` being lit is what "the run is open" means, and every later gate tests it.
+  {
+    const group = skillShotAdapter(o.components, SKILL_SHOT.lightGroup);
+    const firstLamp = o.components.lights.get(SKILL_SHOT.entry.firstLamp);
+    const shootAgainLamp = o.components.lights.get(SKILL_SHOT.entry.shootAgainLamp);
+    const tank = o.components.bargraphs.get(FUEL_BARGRAPH);
+    const flashLamps = SKILL_SHOT.entry.flashLamps
+      .map((name) => o.components.lights.get(name))
+      .filter((light): light is NonNullable<typeof light> => Boolean(light));
+
+    const register = (name: string, control: ReturnType<typeof makeSkillShotGateControl>): void => {
+      const row = scoreRows.get(name);
+      byName.set(name, { name, scores: row?.scores ?? [], control: null });
+      controls.set(name, (component) => control('ControlCollision', component, o.context));
+    };
+
+    if (group && firstLamp && shootAgainLamp && tank
+      && flashLamps.length === SKILL_SHOT.entry.flashLamps.length) {
+      register(SKILL_SHOT.entry.component, makeSkillShotEntryControl({
+        shootAgainLamp: shootAgainLamp as unknown as LaneLight,
+        firstLamp: firstLamp as unknown as LaneLight,
+        group,
+        flashLamps: flashLamps as unknown as LaneLight[],
+        bargraph: tank,
+        topSplitIndex: SKILL_SHOT.entry.topSplitIndex,
+        sound: SKILL_SHOT.sound,
+      }));
+
+      for (const gate of SKILL_SHOT.gates) {
+        const lamp = o.components.lights.get(gate.lamp);
+        if (!lamp) continue;
+        register(gate.component, makeSkillShotGateControl({
+          armLamp: firstLamp as unknown as LaneLight,
+          lamp: lamp as unknown as LaneLight,
+          sound: SKILL_SHOT.sound,
+        }));
+      }
+
+      const trekGuardLamp = o.components.lights.get(SKILL_SHOT.collect.trekGuardLamp);
+      const trekGroups = SKILL_SHOT.collect.trekGroups
+        .map((name) => skillShotAdapter(o.components, name))
+        .filter((adapter): adapter is SkillShotGroup => adapter !== null);
+
+      if (trekGuardLamp && trekGroups.length === SKILL_SHOT.collect.trekGroups.length) {
+        register(SKILL_SHOT.collect.component, makeSkillShotCollectControl({
+          group,
+          trekGuardLamp: trekGuardLamp as unknown as LaneLight,
+          trekGroups,
+          sound: SKILL_SHOT.sound,
+          scoreText: (points) => o.textFor(SKILL_SHOT.collect.textId, { points }),
+        }));
+      }
+
+      register(SKILL_SHOT.lost.component, makeSkillShotLostControl({ group }));
+    }
   }
 
   return {
