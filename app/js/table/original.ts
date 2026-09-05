@@ -26,6 +26,12 @@ import {
   createEdgeManager, placeLineInGrid, placeCircleInGrid, type EdgeManager, type Edge,
 } from '../physics/grid.js';
 import { installWall } from '../physics/wall.js';
+import {
+  createFlipper, deriveFlipper, setFlipperMotion, setControlPoints, distanceToFlipper,
+  flipperCollision, type Flipper,
+} from '../physics/flipper.js';
+import { readFlipperGeometry } from './original-flippers.js';
+import { readVisual } from '../dat/visual.js';
 import { basicCollision } from '../physics/collision.js';
 import { createBall, type Ball, type StepContext } from '../physics/step.js';
 import type { Vector2 } from '../maths/maths.js';
@@ -71,6 +77,14 @@ export interface OriginalTable {
    * would toggle nothing.
    */
   edgesOf(groupName: string): readonly Edge[];
+  /**
+   * ⚠️ THE FLIPPERS, WHICH ARE IN THE GRID AND SWEPT. The grid answers "the ball moved into the
+   * flipper"; the sweep answers "the flipper moved into the ball". A pinball needs both, and a still
+   * flipper only ever gets asked the first — which is why they are on the context as well.
+   */
+  readonly flippers: readonly Flipper[];
+  /** Both flippers of one side, by the archive's object type rather than by the sign of x. */
+  setFlippers(side: 'left' | 'right', extended: boolean): void;
   spawnBall(): Ball;
 }
 
@@ -133,6 +147,14 @@ export interface OriginalOptions {
    * box; asking all three and letting each one's radius check decide is the same answer.
    */
   readonly fieldsFor?: () => Iterable<{ fieldEffect(ball: Ball, destination: Vector2): boolean }>;
+  /**
+   * Which side each flipper group is. Absent means the table is built WITHOUT flippers, which is what
+   * every test that only cares about walls wants — see `table/original-flippers` for why the side
+   * cannot be guessed from the geometry.
+   */
+  readonly flipperSideFor?: (groupName: string) => 'left' | 'right' | undefined;
+  /** Reported when a sweeping flipper strikes the ball, like any other hit. */
+  readonly onFlipperHit?: (groupName: string) => void;
 }
 
 export function buildOriginalTable(groups: readonly Group[], o: OriginalOptions = {}): OriginalTable {
@@ -208,15 +230,66 @@ export function buildOriginalTable(groups: readonly Group[], o: OriginalOptions 
     wallGroups.push(name);
   }
 
+  // ⚠️ A SECOND PASS, BECAUSE A FLIPPER HAS NO WALL RECORD. Its shape is three points and two times —
+  // records 800 to 805 — and the loop above only looks at groups carrying record 600. A flipper built
+  // in that loop would be a flipper that never existed.
+  const flippers: Flipper[] = [];
+  const flipperSide = new Map<Flipper, 'left' | 'right'>();
+  const flipperName = new Map<Flipper, string>();
+
+  for (const group of groups) {
+    const name = group.name;
+    const side = name ? o.flipperSideFor?.(name) : undefined;
+    if (!name || !side) continue;
+
+    const visual = readVisual(groups, groups.indexOf(group));
+    const geometry = readFlipperGeometry(group, visual, ballRadius);
+    if (!geometry) continue;
+
+    const flipper = createFlipper(deriveFlipper(geometry));
+    flippers.push(flipper);
+    flipperSide.set(flipper, side);
+    flipperName.set(flipper, name);
+
+    // Registered as a DISC about the pivot, which is a superset of the sector the flipper can occupy.
+    // Registering it at rest would leave it missing from the boxes it swings into.
+    const reach = Math.max(geometry.baseRadius, geometry.tipRadius) + ballRadius
+      + Math.hypot(geometry.tipAtRest.x - geometry.pivot.x, geometry.tipAtRest.y - geometry.pivot.y);
+    placeCircleInGrid(grid, {
+      active: true,
+      collisionGroup: 1,
+      center: { x: geometry.pivot.x, y: geometry.pivot.y },
+      radius: reach,
+      findCollisionDistance(ray) {
+        // Rebuilt here because the sweep may have turned the flipper since anything last looked at it.
+        setControlPoints(flipper, flipper.currentAngle);
+        return distanceToFlipper(flipper, ray).distance;
+      },
+      edgeCollision(ball) {
+        flipperCollision(flipper, ball as Ball);
+        o.onHit?.({ group: name, reboundSpeed: 0 });
+      },
+    });
+  }
+
   return {
     grid,
     bounds,
+    flippers,
+    setFlippers(side, extended) {
+      for (const flipper of flippers) {
+        if (flipperSide.get(flipper) !== side) continue;
+        setFlipperMotion(flipper, extended ? 'extending' : 'retracting');
+      }
+    },
     ballRadius,
     wallCount,
     wallGroups,
     edgesOf: (groupName) => edgesByGroup.get(groupName) ?? [],
     context: {
       grid,
+      flippers,
+      onFlipperHit: (flipper) => o.onFlipperHit?.(flipperName.get(flipper) ?? 'flipper'),
       fieldEffects(ball, destination) {
         // `TTableLayer::FieldEffect`, entire. Gravity minus drag, with the jitter on X only.
         destination.x = gravityX - (0.5 - random() + ball.direction.x) * ball.speed * drag;

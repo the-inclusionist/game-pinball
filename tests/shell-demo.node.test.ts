@@ -259,3 +259,33 @@ describe('⚠️ and a hole that cannot let go is never given the ball', () => {
     expect(source).toMatch(/kickouts\.get\(name\)\?\.control \? kickouts\.get\(name\) : undefined/);
   });
 });
+
+describe('⚠️ and the player can work the 1995 flippers', () => {
+  test('the demonstration builds both, and one side moves on its own', () => {
+    const bytes = archive();
+    if (!bytes) return expect(existsSync(DAT)).toBe(false);
+
+    const demo = createDemo(bytes);
+    demo.setFlippers('left', true);
+    demo.step(1);
+
+    const moving = demo.table.flippers.filter((flipper) => flipper.motion !== 'still');
+    expect(demo.table.flippers).toHaveLength(2);
+    expect(moving, 'the other side is untouched').toHaveLength(1);
+  });
+
+  test('⚠️ and a flipper SWINGS, which is the half the grid cannot answer', () => {
+    // The grid answers "the ball moved into the flipper"; the sweep answers "the flipper moved into
+    // the ball". A flipper missing from the context passes straight through a resting ball — the one
+    // thing a player does, doing nothing.
+    const bytes = archive();
+    if (!bytes) return expect(existsSync(DAT)).toBe(false);
+
+    const demo = createDemo(bytes);
+    const before = demo.table.flippers[0]!.currentAngle;
+    demo.setFlippers('left', true);
+    demo.step(3);
+
+    expect(demo.table.flippers[0]!.currentAngle).not.toBeCloseTo(before);
+  });
+});

@@ -416,7 +416,13 @@ requestAnimationFrame(frame);
  */
 const unbindControls = bindPinballControls({
   region,
-  setFlipper: (side, extended) => physics.setFlippers(side, extended),
+  // ⚠️ THE DEMONSTRATION HAS ITS OWN FLIPPERS, and one key binding serves both tables. Routing to the
+  // authored physics while the 1995 table is on screen leaves the player pressing a key that moves
+  // something they cannot see.
+  setFlipper: (side, extended) => {
+    if (demo) demo.setFlippers(side, extended);
+    else physics.setFlippers(side, extended);
+  },
   launch: () => { if (!ball.active) launch(); },
   toggleBlindMode: () => {
     blind = !blind;

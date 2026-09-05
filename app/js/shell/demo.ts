@@ -26,6 +26,7 @@ import { buildOriginalComponents, type OriginalComponents } from '../table/origi
 import { createOriginalDispatch, type OriginalDispatch } from '../table/original-dispatch.js';
 import { buildOriginalGates } from '../table/original-gates.js';
 import { buildOriginalKickouts, kickoutGeometry } from '../table/original-kickouts.js';
+import { flipperSides } from '../table/original-flippers.js';
 import type { ControlContext } from '../control/dispatch.js';
 import { loadTable } from '../dat/loader.js';
 import { readMidiFile } from '../audio/midi.js';
@@ -90,6 +91,11 @@ export interface Demo {
   loadMusic(bytes: ArrayBuffer): boolean;
   /** What the ball has scored on, by the control layer's name for it. */
   readonly scored: string[];
+  /**
+   * ⚠️ THE ONLY THING THE PLAYER CONTROLS ON THE 1995 TABLE. Both flippers of one side, by the
+   * archive's object type rather than by the sign of x — see `table/original-flippers`.
+   */
+  setFlippers(side: 'left' | 'right', extended: boolean): void;
   drop(): void;
 }
 
@@ -119,6 +125,7 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
    * zero because nothing could raise it.
    */
   const manifest = loadTable(bytes);
+  const sides = flipperSides(manifest);
   const components = buildOriginalComponents(manifest);
   const touched: string[] = [];
   const scored: string[] = [];
@@ -177,6 +184,15 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
 
   const table = buildOriginalTable(groups, {
     geometryFor: kickoutGeometry(manifest),
+    // ⚠️ WITHOUT THIS THERE ARE NO FLIPPERS AT ALL. A flipper has no wall record; its shape is three
+    // points and two times, and the table builds one only for a group it is told the side of.
+    flipperSideFor: (name) => sides.get(name),
+    onFlipperHit: (name) => {
+      touched.push(name);
+      const kind = kindOf(name);
+      const voice = kind ? soundForKind(kind) : undefined;
+      if (voice) o.onSound?.(voice);
+    },
     // The pull goes in with the collision, for the same reason: a hole that leans the ball in and then
     // never lets go is worse than one that does neither.
     fieldsFor: () => kickouts.values(),
@@ -298,6 +314,7 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
       return frame;
     },
 
+    setFlippers: (side, extended) => table.setFlippers(side, extended),
     drop(): void {
       ball = table.spawnBall();
       touched.length = 0;
