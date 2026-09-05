@@ -25,7 +25,7 @@ export default defineConfig({
         test: {
           name: 'node',
           environment: 'node',
-          include: [join(RAIZ, 'tests/**/*.node.test.ts')],
+          include: ['../tests/**/*.node.test.ts'], // relativo a `root` (app/): o glob do tinyglobby quer barra normal, e join() devolve barra invertida no Windows
         },
       },
     ],
