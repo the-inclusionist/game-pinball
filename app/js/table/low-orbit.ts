@@ -81,6 +81,20 @@ export const LOW_ORBIT: AuthoredTable = {
       bounds: { x: 162, y: 34, width: 4, height: 201 },
       collision: [{ kind: 'line', from: { x: 162, y: 235 }, to: { x: 162, y: 34 } }] },
 
+    // ⚠️ THE RETURN BEND, and the whole reason the table plays at all.
+    //
+    // Without it a launched ball goes straight up the lane, off the ceiling and straight back down the
+    // same lane: three balls out of three drained without ever entering the play. A plunger lane has
+    // to END IN A CURVE that turns the ball left across the top of the table, and this is the
+    // cheapest thing that is one — a single slope, steep enough to redirect and shallow enough not to
+    // stop the ball dead.
+    //
+    // It is wound right-to-left-and-up so its normal points DOWN into the lane, which is the side the
+    // rising ball arrives from.
+    { name: 'wall.laneReturn', kind: 'wall', role: WALL,
+      bounds: { x: 148, y: 4, width: 32, height: 18 },
+      collision: [{ kind: 'line', from: { x: 179, y: 21 }, to: { x: 148, y: 6 } }] },
+
     /* ===================== THE PLUNGER LANE ===================== */
     { name: 'plunger', kind: 'plunger', role: WALL, bounds: { x: 167, y: 200, width: 10, height: 32 } },
     { name: 'lane.launch', kind: 'lane', role: 'free', bounds: { x: 167, y: 40, width: 10, height: 158 },
