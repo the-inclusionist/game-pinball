@@ -20,6 +20,24 @@
 //
 // `hazard` is the only warm colour on the table, and it is used for nothing else.
 //
+// ========================= A COMPONENT IS DRAWN AS WHAT IT COLLIDES WITH =========================
+// This module used to fill every component's `bounds`, and for a wall that is nearly true: the
+// collision line runs along the edge of a four-pixel rectangle, so a player aiming at the rectangle is
+// wrong by at most four pixels.
+//
+// A DIAGONAL breaks it outright. `wide-arc`'s ramp is a line from (250, 170) to (330, 90) inside bounds
+// of 84x84, and the drawing filled a solid yellow square whose far corner is eighty pixels from
+// anything the ball can touch. Booting the built page showed it: a block the ball flies through. No
+// art style makes a picture that lies about the geometry fair to play, so this is not a style question
+// and was not left for one.
+//
+// So: a component that declares `collision` is drawn as that collision — circles filled, lines stroked
+// at `EDGE_THICKNESS`. A component that declares none is drawn as its bounds, because for a drain, a
+// lane or a plunger the bounds is not an approximation of something else, it IS the thing.
+//
+// The stroke is thinner than the old rectangles and that is the honest width: the ball bounces on the
+// line, not on the rectangle somebody drew around it.
+//
 // ========================= THE CAMERA IS A WINDOW, NOT A TRANSFORM =========================
 // The table is drawn once at its own size, and the screen shows a rectangle of it. Nothing is scaled
 // and nothing is translated during drawing: `blitView` copies rows. That keeps the pixel grid exact —
@@ -45,6 +63,13 @@ export const ROLE_COLORS: Readonly<Record<Role, number>> = {
 };
 
 export const PLAYFIELD_COLOR = pack(26, 30, 38, 255);
+
+/**
+ * How wide a collision line is drawn. Two pixels rather than one: a single-pixel edge disappears against
+ * the playfield at this size, and rather than one, because the ball has radius 3 and a wall it cannot
+ * see is the same defect this whole module was just fixed for, pointing the other way.
+ */
+export const EDGE_THICKNESS = 2;
 export const BALL_COLOR = pack(235, 240, 245, 255);
 
 /** Fills a rectangle, clipped to the buffer. Nothing here draws outside its target. */
@@ -78,6 +103,25 @@ export function fillCircle(fb: Framebuffer, cx: number, cy: number, radius: numb
   }
 }
 
+/**
+ * A line, stroked at `EDGE_THICKNESS`. Walks the long axis a pixel at a time and stamps a square, which
+ * is enough for a straight segment and keeps the two ends square rather than pointed — a rounded cap
+ * would suggest the ball can slide off an end that the physics treats as a hard stop.
+ */
+export function strokeLine(
+  fb: Framebuffer, ax: number, ay: number, bx: number, by: number, color: number,
+): void {
+  const dx = bx - ax;
+  const dy = by - ay;
+  const steps = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy))));
+  const half = EDGE_THICKNESS / 2;
+
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    fillRect(fb, { x: ax + dx * t - half, y: ay + dy * t - half, width: EDGE_THICKNESS, height: EDGE_THICKNESS }, color);
+  }
+}
+
 export interface DrawnBall {
   readonly active: boolean;
   readonly position: { readonly x: number; readonly y: number };
@@ -104,7 +148,18 @@ export function drawTable(o: TableViewOptions): Framebuffer {
     // THE ROLE MOVES WITH THE MISSION, in the picture as well as in the contract: a bumper the
     // mission is counting is drawn as a goal, and goes back to furniture when it stops counting.
     const role = targets.has(component.name) ? 'goal' : component.role;
-    fillRect(fb, component.bounds, ROLE_COLORS[role]);
+    const color = ROLE_COLORS[role];
+
+    if (!component.collision?.length) {
+      // Nothing solid was declared, so the bounds is the whole claim and there is nothing to overstate.
+      fillRect(fb, component.bounds, color);
+      continue;
+    }
+
+    for (const shape of component.collision) {
+      if (shape.kind === 'circle') fillCircle(fb, shape.at.x, shape.at.y, shape.radius, color);
+      else strokeLine(fb, shape.from.x, shape.from.y, shape.to.x, shape.to.y, color);
+    }
   }
 
   return fb;
