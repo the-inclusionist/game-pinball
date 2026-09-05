@@ -98,6 +98,12 @@ export interface OriginalDispatchOptions {
    */
   readonly kickouts?: ReadonlyMap<string, Kickout>;
   /**
+   * ⚠️ THE NINE POPUP TARGETS, WHICH A BANK PUTS BACK UP. `TPopupTargetEnable` is what the three banks
+   * send when they complete, and a struck target disables its own edges — so without this a bank fills
+   * once and never again, because the ball can no longer reach any of its three.
+   */
+  readonly popupTargets?: ReadonlyMap<string, { popUp(): void }>;
+  /**
    * ⚠️ THE GATES, WHICH ARE NOT COMPONENTS OF THE COMPONENT BUILDER. A gate is the table's geometry
    * plus a switch, so it can only exist once the geometry does — see `table/original-gates`. Absent
    * means the two hazard spot sets are declined rather than run with their completion missing.
@@ -615,7 +621,7 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
           // Through the group's own control, which is what starts the thirty seconds.
           turnOnNext: () => { multiplierGroup?.('TLightGroupResetAndTurnOn'); return true; },
         },
-        popUp: () => {},
+        popUp: (target) => o.popupTargets?.get(target.name)?.popUp(),
         multiplierTexts: MULTIPLIER_BANK.textIds.map((id) => o.textFor(id)),
       });
       for (const target of bank) {
@@ -637,7 +643,7 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
           lightOneMore: () => { medalGroup?.('TLightGroupResetAndTurnOn'); },
         },
         addExtraBall: (seconds) => addExtraBall(ctx, extraBallText, seconds),
-        popUp: () => {},
+        popUp: (target) => o.popupTargets?.get(target.name)?.popUp(),
         texts: MEDAL_BANK.textIds.map((id) => o.textFor(id)),
       });
       for (const target of bank) {
@@ -692,7 +698,7 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
     if (missionLamp && chain.length === BOOSTER_BANK.chain.length) {
       const bank = bankOf(BOOSTER_BANK);
       const control = makeBoosterTargetControl({
-        bank, chain, popUp: () => {}, missionLamp,
+        bank, chain, popUp: (target) => o.popupTargets?.get(target.name)?.popUp(), missionLamp,
       });
       for (const target of bank) {
         byName.set(target.name, target);

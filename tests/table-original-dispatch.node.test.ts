@@ -39,6 +39,12 @@ function wired(o: { gates?: boolean; easy?: boolean; drain?: boolean } = {}) {
     currentPlayer: 0, playerCount: 1, unlimitedBalls: false,
   };
   const outcomes: string[] = [];
+  /** Stubs, because what is under test here is WHO is asked to come back up, not the rising. */
+  const poppedUp: string[] = [];
+  const popupTargets = new Map(
+    ['a_targ1', 'a_targ2', 'a_targ3', 'a_targ4', 'a_targ5', 'a_targ6', 'a_targ7', 'a_targ8', 'a_targ9']
+      .map((name) => [name, { popUp: () => poppedUp.push(name) }] as const),
+  );
   const table = manifest();
   if (!table) return null;
   const components = buildOriginalComponents(table);
@@ -63,7 +69,7 @@ function wired(o: { gates?: boolean; easy?: boolean; drain?: boolean } = {}) {
     missionControl: () => {},
   };
   const dispatch = createOriginalDispatch({
-    components, context, ...(gates ? { gates } : {}), ...(kickouts ? { kickouts } : {}),
+    components, context, popupTargets, ...(gates ? { gates } : {}), ...(kickouts ? { kickouts } : {}),
     ...(o.easy ? { isEasyMode: () => true } : {}),
     ...(o.drain ? { drain: {
       table: drainTable,
@@ -73,7 +79,7 @@ function wired(o: { gates?: boolean; easy?: boolean; drain?: boolean } = {}) {
   });
   return {
     components, score, shown, sounds, dispatch, context, geometry, gates, kickouts,
-    drainTable, outcomes,
+    drainTable, outcomes, poppedUp,
   };
 }
 
@@ -1682,5 +1688,29 @@ describe('⚠️ the wormhole’s destination, a number kept in a lamp’s messa
     w.dispatch.hit(WORM_HOLE.component);
 
     expect(w.components.lights.get(WORM_HOLE.destinationLamp)!.messageField).toBe(0);
+  });
+});
+
+describe('⚠️ and a bank puts its three targets back up', () => {
+  test('completing the multiplier bank asks all three to rise', () => {
+    // A struck popup target disables its own edges. Without `TPopupTargetEnable` the bank fills once
+    // and never again, because the ball can no longer reach any of its three — and nothing about the
+    // score would look wrong, because the score never comes a second time either.
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+
+    for (const target of MULTIPLIER_BANK.targets) w.dispatch.hit(target);
+
+    expect(w.poppedUp.sort()).toEqual([...MULTIPLIER_BANK.targets].sort());
+  });
+
+  test('and two of three asks nobody', () => {
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+
+    w.dispatch.hit(MULTIPLIER_BANK.targets[0]!);
+    w.dispatch.hit(MULTIPLIER_BANK.targets[1]!);
+
+    expect(w.poppedUp).toEqual([]);
   });
 });

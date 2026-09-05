@@ -26,6 +26,7 @@ import { buildOriginalComponents, type OriginalComponents } from '../table/origi
 import { createOriginalDispatch, type OriginalDispatch } from '../table/original-dispatch.js';
 import { buildOriginalGates } from '../table/original-gates.js';
 import { buildOriginalKickouts, kickoutGeometry } from '../table/original-kickouts.js';
+import { buildOriginalPopupTargets } from '../table/original-popup-targets.js';
 import { flipperSides } from '../table/original-flippers.js';
 import { blockerNames } from '../table/original-blockers.js';
 import { buildOriginalPlunger } from '../table/original-plunger.js';
@@ -245,6 +246,12 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
    * off it.
    */
   const kickouts: ReturnType<typeof buildOriginalKickouts> = new Map();
+  /**
+   * ⚠️ THE NINE THAT DROP. A popup target reports only a hard hit and disables its own edges before it
+   * does — so the payment comes from the component, like the bumper's, and the ball stops being able
+   * to touch a target it has already knocked down.
+   */
+  const popupTargets: ReturnType<typeof buildOriginalPopupTargets> = new Map();
 
   const table = buildOriginalTable(groups, {
     geometryFor: kickoutGeometry(manifest),
@@ -273,6 +280,7 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
     // never receive is a saver the ball goes straight past — it would arm nothing, because nothing
     // would ever touch it.
     componentFor: (name) => (name === 'plunger' ? table.plunger ?? undefined : undefined)
+      ?? popupTargets.get(name)
       ?? components.bumpers.get(name) ?? components.kickbacks.get(name)
       // Only the bound ones: an unbound hole must not be given a ball it cannot give back.
       ?? (kickouts.get(name)?.control ? kickouts.get(name) : undefined),
@@ -289,7 +297,7 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
       // `control::handler` only when the hit was HARD; a graze bounces and pays nothing. This wrapper
       // reports every collision, so routing the payment through it paid a ball rolling along a bumper
       // once per frame of the roll — six touches, six payments, and a score that reads as luck.
-      if (components.bumpers.has(hit.group)) return;
+      if (components.bumpers.has(hit.group) || popupTargets.has(hit.group)) return;
 
       payFor(hit.group);
     },
@@ -321,13 +329,17 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
     scored.push(row.name);
   }
 
+  for (const [name, target] of buildOriginalPopupTargets(manifest, table, {
+    table: { tiltLocked: false }, timer: components.timer, onStruck: (struck) => payFor(struck),
+  })) popupTargets.set(name, target);
+
   const gates = buildOriginalGates(manifest, table);
   for (const [name, kickout] of buildOriginalKickouts(manifest, table, {
     table: { tiltLocked: false }, timer: components.timer,
   })) kickouts.set(name, kickout);
 
   dispatch = createOriginalDispatch({
-    components, context, gates, kickouts,
+    components, context, gates, kickouts, popupTargets,
     drain: {
       table: drainTable,
       onOutcome: (outcome, over) => {
