@@ -8,6 +8,7 @@ import { buildOriginalGates } from '../app/js/table/original-gates.js';
 import {
   REENTRY_LANES, LAMP_BINDINGS, FUEL_ROLLOVERS, OUT_LANES, BONUS_LANE, SPOT_TARGET_SETS,
   MEDAL_BANK, MULTIPLIER_BANK, BOOSTER_BANK, TABLE_ACTIONS, GATE_LAMPS, KICKERS, SKILL_SHOT,
+  LAUNCH_RAMP, FLAGS,
 } from '../app/js/control/bindings.js';
 import { createScoreState } from '../app/js/control/score.js';
 import { SCORE_COMPONENTS } from '../app/js/control/score-table.js';
@@ -63,13 +64,13 @@ describe('a lane crossing reaches the 1995 control function', () => {
     const w = wired();
     if (!w) return expect(existsSync(DAT)).toBe(false);
 
-    expect(w.dispatch.wired.size).toBe(52);
+    expect(w.dispatch.wired.size).toBe(55);
     expect(w.dispatch.wired.has('a_roll3')).toBe(true);
     expect(w.dispatch.wired.has('a_roll9')).toBe(true);
-    // ⚠️ THE EXAMPLE OF SOMETHING DECLINED KEEPS MOVING, and that is the point of keeping one. It was
-    // `a_bump1`, then `a_targ13` when the mission spot set was still transcribed-but-not-run. Both
-    // run now. `a_flag1` is the current one: `FlagControl` is written and its component is not built.
-    expect(w.dispatch.wired.has('a_flag1')).toBe(false);
+    // ⚠️ THE EXAMPLE OF SOMETHING DECLINED KEEPS MOVING, and that is the point of keeping one: it was
+    // `a_bump1`, then `a_targ13`, then `a_flag1`, and all three run now. `v_sink1` is the current one
+    // — `WormHoleControl` needs `TSink` components, which this build does not construct.
+    expect(w.dispatch.wired.has('v_sink1')).toBe(false);
   });
 
   test('⚠️ and the two lamp controls with NO EVENT SOURCE are declined, not faked', () => {
@@ -218,7 +219,7 @@ describe('a lane crossing reaches the 1995 control function', () => {
     const w = wired();
     if (!w) return expect(existsSync(DAT)).toBe(false);
 
-    expect(() => w.dispatch.hit('a_flag1')).not.toThrow();
+    expect(() => w.dispatch.hit('v_sink1')).not.toThrow();
     expect(w.score.curScore).toBe(0);
   });
 });
@@ -1130,5 +1131,93 @@ describe('⚠️ an award with a clock ends when the clock does, not when the la
 
     expect(lamp.flashing).toBe(false);
     expect(lamp.messageField, 'the latch is let go').toBe(0);
+  });
+});
+
+describe('⚠️ the ramp pays four ways, and only one of them is points', () => {
+  test('with no lamp lit it is the ordinary five thousand', () => {
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+
+    w.dispatch.hit(LAUNCH_RAMP.component);
+
+    expect(w.score.curScore).toBe(5000);
+    expect(w.sounds).toEqual(['plain']);
+  });
+
+  test('⚠️ and a LIT lamp REPLACES that score rather than adding to it', () => {
+    // The ordinary score lives in the `else`. Paying it first and then the award would make every
+    // ramp award worth five thousand more than the table intends — and would look like generosity.
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    w.components.lights.get(LAUNCH_RAMP.rampLamp)!.turnOn();
+
+    w.dispatch.hit(LAUNCH_RAMP.component);
+
+    expect(w.score.curScore).toBe(0);
+    expect(w.sounds).toEqual(['rampAward']);
+  });
+
+  test('the reflex lamp is the only one that pays, and it says how much', () => {
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    w.components.lights.get(LAUNCH_RAMP.reflexLamp)!.turnOn();
+
+    w.dispatch.hit(LAUNCH_RAMP.component);
+
+    expect(w.score.curScore).toBe(25000);
+    expect(w.shown.some((line) => line.startsWith('text:STRING111'))).toBe(true);
+    expect(w.sounds).toEqual(['reflexOnly']);
+  });
+
+  test('⚠️ and the mission lamp outranks the other two, whichever else is lit', () => {
+    // The three lamps are read as bits 1, 2 and 4, and the branch is on the whole number: anything
+    // above three is the mission sound. So `lite56` decides on its own.
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    w.components.lights.get(LAUNCH_RAMP.reflexLamp)!.turnOn();
+    w.components.lights.get(LAUNCH_RAMP.missionLamp)!.turnOn();
+
+    w.dispatch.hit(LAUNCH_RAMP.component);
+
+    expect(w.sounds).toEqual(['mission']);
+  });
+});
+
+describe('⚠️ the flags, whose score index IS a lamp', () => {
+  test('dark, a flag is worth five hundred', () => {
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+
+    w.dispatch.hit(FLAGS.components[0]!);
+
+    expect(w.score.curScore).toBe(500);
+  });
+
+  test('⚠️ and lit by the booster bank at the far end of the table, five times that', () => {
+    // `get_scoring(lite20->light_on())` — the boolean is the index, with no conditional anywhere. And
+    // `lite20` is one of the three lamps `table_set_flag_lights` lights for sixty seconds, which is
+    // the booster bank's first rung. Two mechanics, one lamp.
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    for (const target of BOOSTER_BANK.targets) w.dispatch.hit(target);
+    expect(w.components.lights.get(FLAGS.lamp)!.lit, 'the booster lit it').toBe(true);
+    const afterBank = w.score.curScore;
+
+    w.dispatch.hit(FLAGS.components[1]!);
+
+    expect(w.score.curScore - afterBank).toBe(2500);
+  });
+
+  test('and sixty seconds later it is worth five hundred again', () => {
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    for (const target of BOOSTER_BANK.targets) w.dispatch.hit(target);
+    w.components.advance(61);
+    const afterBank = w.score.curScore;
+
+    w.dispatch.hit(FLAGS.components[0]!);
+
+    expect(w.score.curScore - afterBank).toBe(500);
   });
 });

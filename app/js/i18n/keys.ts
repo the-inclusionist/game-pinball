@@ -45,6 +45,8 @@ export const RESOURCE_KEYS: Readonly<Record<string, string>> = {
   // `15000 30000 75000 30000 15000 7500` indexed by the lit count minus one, so running the whole set
   // is worth a TENTH of stopping at three. The line names the amount, which is the only way a player
   // finds that out.
+  // The reflex shot, which is the ONLY one of the ramp's four payouts worth any points.
+  STRING111: 'pinball.award.reflexShot',
   STRING122: 'pinball.award.skillShot',
   STRING154: 'pinball.award.medal1',
   STRING155: 'pinball.award.medal2',

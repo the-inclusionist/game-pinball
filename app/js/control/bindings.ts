@@ -440,6 +440,65 @@ export const BOOSTER_BANK: BoosterBankBinding = {
 };
 
 /**
+ * `LaunchRampControl`: the four ways the ramp can pay, chosen by three lamps read as bits.
+ *
+ * ⚠️ THE ORDINARY SCORE LIVES IN THE `else`. Any lit lamp REPLACES it — the ramp's five thousand is
+ * what you get for a ramp that was worth nothing else, and a transcription that paid it first would
+ * make every award worth five thousand more than the table intends.
+ *
+ * ⚠️ AND ONLY THE REFLEX LAMP IS WORTH POINTS. `lite55` and `lite56` change the SOUND and nothing
+ * else: they are the mission logic's way of saying the ramp mattered, and the mission is what pays.
+ */
+export interface LaunchRampBinding {
+  readonly control: string;
+  readonly component: string;
+  /** `lite54`. The only one of the three that pays. */
+  readonly reflexLamp: string;
+  /** `lite55`. */
+  readonly rampLamp: string;
+  /** `lite56`. */
+  readonly missionLamp: string;
+  readonly textId: string;
+  readonly sounds: {
+    readonly reflexOnly: string;
+    readonly rampAward: string;
+    readonly mission: string;
+    readonly plain: string;
+  };
+}
+
+export const LAUNCH_RAMP: LaunchRampBinding = {
+  control: 'LaunchRampControl',
+  component: 'ramp',
+  reflexLamp: 'lite54',
+  rampLamp: 'lite55',
+  missionLamp: 'lite56',
+  textId: 'STRING111',
+  // `soundwave21`, `23`, `24` and `30` — the four the effect bank was written for.
+  sounds: { reflexOnly: 'reflexOnly', rampAward: 'rampAward', mission: 'mission', plain: 'plain' },
+};
+
+/**
+ * `FlagControl`: the two flags, whose score index IS a lamp.
+ *
+ * ⚠️ `get_scoring(lite20->light_on())` — no conditional anywhere, the boolean is the index. And
+ * `lite20` is one of the three the booster bank's first rung lights for sixty seconds, so a flag is
+ * worth five hundred or two thousand five hundred depending on work done at the other end of the
+ * table.
+ */
+export interface FlagBinding {
+  readonly control: string;
+  readonly components: readonly string[];
+  readonly lamp: string;
+}
+
+export const FLAGS: FlagBinding = {
+  control: 'FlagControl',
+  components: ['a_flag1', 'a_flag2'],
+  lamp: 'lite20',
+};
+
+/**
  * THE SKILL SHOT: one entry, five gates, and two ways out.
  *
  * ⚠️ IT PAYS MOST FOR THE THIRD LAMP, NOT THE SIXTH. `s_onewy4` carries

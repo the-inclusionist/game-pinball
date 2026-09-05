@@ -45,15 +45,18 @@ import {
 } from '../control/light-groups.js';
 import {
   makeSkillShotEntryControl, makeSkillShotGateControl, makeSkillShotCollectControl,
-  makeSkillShotLostControl, makeShootAgainLightControl, type SkillShotGroup,
+  makeSkillShotLostControl, makeShootAgainLightControl, makeLaunchRampControl,
+  type SkillShotGroup,
 } from '../control/launch.js';
 import {
   BUMPER_LANE_BINDINGS, LAMP_BINDINGS, RETURN_LANES, FUEL_ROLLOVERS, FUEL_BARGRAPH,
   FUEL_REFUEL_TEXT_ID, OUT_LANES, BONUS_LANE, SPOT_TARGET_SETS, MEDAL_BANK, MULTIPLIER_BANK,
   BOOSTER_BANK, TABLE_ACTIONS, FLIPPER_REBOUNDERS, GATE_LAMPS, KICKERS, SKILL_SHOT,
-  type BumperLaneBinding,
+  LAUNCH_RAMP, FLAGS, type BumperLaneBinding,
 } from '../control/bindings.js';
 import { addExtraBall, createTableActions } from '../control/table-actions.js';
+import { makeFlagControl } from '../control/wormhole.js';
+import { NEW_BALL_REFLEX_SCORE } from '../control/feed.js';
 import {
   handler, bumperControl, rebounderControl, makeFlipperRebounderControl,
   type ControlContext, type ControlledComponent, type MessageCode,
@@ -762,6 +765,57 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
       ? makeAccumulatorLampControl({ flag: binding.accumulator })
       : makeShootAgainLightControl({ lamp });
     lamp.control = () => control('ControlTimerExpired', caller, o.context);
+  }
+
+  // ⚠️ THE RAMP, WHOSE ORDINARY SCORE LIVES IN THE `else`. Any of the three lamps lit REPLACES the
+  // five thousand — and only the reflex lamp pays anything in its place; the other two change the
+  // SOUND, because they are the mission logic saying the ramp mattered and the mission is what pays.
+  {
+    const reflexLamp = o.components.lights.get(LAUNCH_RAMP.reflexLamp);
+    const rampLamp = o.components.lights.get(LAUNCH_RAMP.rampLamp);
+    const missionLamp = o.components.lights.get(LAUNCH_RAMP.missionLamp);
+
+    if (reflexLamp && rampLamp && missionLamp) {
+      const control = makeLaunchRampControl({
+        reflexLamp: reflexLamp as unknown as LaneLight,
+        rampLamp: rampLamp as unknown as LaneLight,
+        missionLamp: missionLamp as unknown as LaneLight,
+        // ⚠️ THE VALUE A NEW BALL STARTS WITH, and it stays there. `ReflexShotScore` is raised by the
+        // missions, which this build does not run — so the reflex shot pays its opening price all
+        // game. Reading it from a table field that nothing writes would have looked the same and said
+        // less.
+        reflexScore: () => NEW_BALL_REFLEX_SCORE,
+        reflexText: (points) => o.textFor(LAUNCH_RAMP.textId, { points }),
+        sounds: LAUNCH_RAMP.sounds,
+      });
+      const row = scoreRows.get(LAUNCH_RAMP.component);
+      byName.set(LAUNCH_RAMP.component, {
+        name: LAUNCH_RAMP.component, scores: row?.scores ?? [], control: null,
+      });
+      controls.set(LAUNCH_RAMP.component,
+        (component) => control('ControlCollision', component, o.context));
+    }
+  }
+
+  // ⚠️ THE FLAGS, WHOSE SCORE INDEX IS A LAMP. `get_scoring(lite20->light_on())` — the boolean is the
+  // index, with no conditional anywhere. `lite20` is one of the three the booster bank's first rung
+  // lights for sixty seconds, so a flag is worth five hundred or two thousand five hundred depending
+  // on work done at the other end of the table.
+  {
+    const lamp = o.components.lights.get(FLAGS.lamp);
+    if (lamp) {
+      const control = makeFlagControl({
+        lamp: lamp as unknown as LaneLight,
+        // `ControlSpinnerLoopReset` is the other branch, and nothing in this build sends it: the
+        // wormhole's arrow lights are not built. The dispatcher only ever passes a collision.
+        advance: () => {},
+      });
+      for (const name of FLAGS.components) {
+        const row = scoreRows.get(name);
+        byName.set(name, { name, scores: row?.scores ?? [], control: null });
+        controls.set(name, (component) => control('ControlCollision', component, o.context));
+      }
+    }
   }
 
   return {
