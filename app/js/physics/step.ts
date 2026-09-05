@@ -19,6 +19,7 @@
 import { NO_COLLISION, normalize2d, type Ray, type Vector2 } from '../maths/maths.js';
 import type { EdgeManager } from './grid.js';
 import { createCollisionMemory, type CollisionMemory } from './ball.js';
+import { flipperStepAngle, flipperSweep, type Flipper } from './flipper.js';
 
 /** Multipliers derived from the ball's radius, as in `pb::init`. */
 const MAX_SPEED_PER_RADIUS = 200;
@@ -53,6 +54,20 @@ export interface StepContext {
   grid: EdgeManager;
   /** The sum of forces on the ball (table gravity, ramp fields). Writes into `destination`. */
   fieldEffects(ball: Ball, destination: Vector2): void;
+  /**
+   * ⚠️ THE FLIPPERS ARE STEPPED INSIDE THIS FRAME, NOT BESIDE IT.
+   *
+   * `pb::simulate_ball` counts each ball's substeps AND each flipper's in the same pass, takes the
+   * larger of the two for the loop, and inside every substep moves the balls first and the flippers
+   * second. The interleaving is what lets a fast flipper catch a fast ball: run the two loops one
+   * after the other and the ball crosses the swept area in between.
+   *
+   * Optional because a table under construction may have none, and because every test written before
+   * flippers existed passes a context without them.
+   */
+  flippers?: readonly Flipper[];
+  /** Called when a sweeping flipper strikes a ball, so the game can score and sound it. */
+  onFlipperHit?: (flipper: Flipper, ball: Ball) => void;
 }
 
 export function createBall(p: { radius: number; position: Vector2; direction: Vector2; speed: number }): Ball {
@@ -111,6 +126,16 @@ export function advanceFrame(balls: readonly Ball[], ctx: StepContext, timeDelta
     if (step > maxStep) maxStep = step;
   }
 
+  // ---- PHASE 1b: and how many the flippers need, into the SAME budget ----
+  const flippers = ctx.flippers ?? [];
+  const swingOf = new Map<Flipper, { steps: number; delta: number }>();
+  for (const flipper of flippers) {
+    const swing = flipperStepAngle(flipper, timeDelta);
+    swingOf.set(flipper, swing);
+    // `- 1` because the original counts steps from zero, exactly as the ball's does above.
+    if (swing.steps - 1 > maxStep) maxStep = swing.steps - 1;
+  }
+
   // ---- PHASE 2: the substeps ----
   for (let step = 0; step <= maxStep; step++) {
     for (const ball of balls) {
@@ -156,6 +181,13 @@ export function advanceFrame(balls: readonly Ball[], ctx: StepContext, timeDelta
         if (found.distance <= 0 || ball.collisionDisabled) break;
         traveled += found.distance;
       }
+    }
+
+    // The balls have moved; now the flippers do, and they see where the balls ended up.
+    for (const flipper of flippers) {
+      const swing = swingOf.get(flipper)!;
+      if (swing.steps - 1 < step) continue;
+      flipperSweep(flipper, balls, swing.delta, (ball) => ctx.onFlipperHit?.(flipper, ball as Ball));
     }
   }
 }
