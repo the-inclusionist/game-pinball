@@ -12,7 +12,7 @@ function fakeLight(on = false): LaneLight & { readonly log: string[] } {
   const log: string[] = [];
   return {
     log,
-    get on() { return on; },
+    get lit() { return on; },
     get flashing() { return false; },
     turnOn() { on = true; log.push('on'); },
     turnOff() { on = false; log.push('off'); },
@@ -197,7 +197,7 @@ describe('the three lamps on top of the ladder', () => {
 
     b.control('ControlCollision', component(), b.ctx);
 
-    expect(b.lamps.everything.on).toBe(false);
+    expect(b.lamps.everything.lit).toBe(false);
   });
 
   test('the fanfare flashes the reflex lamp for LONGER than an ordinary hit', () => {
@@ -261,7 +261,7 @@ describe('the everything award, on its own', () => {
       'multiplier', 'bumperTargets', 'setJackpot', 'setBonus', 'flagLights', 'bonusHold',
       'armExtraBall', 'raiseBlocker', 'gravityWell',
     ]);
-    expect(b.lamps.every((l) => l.on)).toBe(true);
+    expect(b.lamps.every((l) => l.lit)).toBe(true);
   });
 
   test('multiball is started only when the table is already in multiball', () => {

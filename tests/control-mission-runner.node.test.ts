@@ -23,7 +23,7 @@ function fakeCounter(field = 0): LampWithField {
     messageField: field,
     turnOn: () => {}, turnOff: () => {}, resetTimed: () => {},
     flasherStart: () => {}, flasherStartTimedThenStayOn: () => {},
-    get on() { return true; },
+    get lit() { return true; },
   };
 }
 

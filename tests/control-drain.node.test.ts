@@ -8,7 +8,7 @@ function lamp(on = false): DrainLamp & { readonly log: string[] } {
   const log: string[] = [];
   return {
     log,
-    get on() { return on; },
+    get lit() { return on; },
     turnOn() { on = true; log.push('on'); },
     turnOff() { on = false; log.push('off'); },
     resetTimed() { log.push('reset'); },
@@ -64,7 +64,7 @@ describe('the drain asks four questions, in order', () => {
 
     expect(result).toEqual({ outcome: 'shootAgain', gameOver: false });
     expect(b.o.table.ballCount).toBe(3);
-    expect(b.shootAgainLamp.on).toBe(true);
+    expect(b.shootAgainLamp.lit).toBe(true);
   });
 
   test('a lit SPARE is SPENT into the shoot again', () => {
@@ -75,8 +75,8 @@ describe('the drain asks four questions, in order', () => {
     const result = drainBall(b.o);
 
     expect(result.outcome).toBe('spareSpent');
-    expect(b.spareLamp.on).toBe(false);
-    expect(b.shootAgainLamp.on).toBe(true);
+    expect(b.spareLamp.lit).toBe(false);
+    expect(b.shootAgainLamp.lit).toBe(true);
     expect(b.o.table.ballCount).toBe(3);
   });
 
@@ -88,7 +88,7 @@ describe('the drain asks four questions, in order', () => {
     b.spareLamp.turnOn();
 
     expect(drainBall(b.o).outcome).toBe('shootAgain');
-    expect(b.spareLamp.on).toBe(true);
+    expect(b.spareLamp.lit).toBe(true);
   });
 
   test('with other balls in play NOTHING happens but a lamp going out', () => {
@@ -168,8 +168,8 @@ describe('the bonus is cashed in when the ball dies', () => {
 
     expect(result.outcome).toBe('ballLost');
     expect(b.o.score.curScore).toBe(0);
-    expect(b.shootAgainLamp.on).toBe(false);
-    expect(b.spareLamp.on).toBe(false);
+    expect(b.shootAgainLamp.lit).toBe(false);
+    expect(b.spareLamp.lit).toBe(false);
   });
 
   test('a save keeps the bonus for the next attempt: nothing is cashed in', () => {
@@ -203,7 +203,7 @@ describe('extra balls are spent before the ball count is', () => {
     drainBall(b.o);
 
     expect(b.o.score.curScore).toBe(50000);
-    expect(b.perBallLamps.every((l) => !l.on)).toBe(true);
+    expect(b.perBallLamps.every((l) => !l.lit)).toBe(true);
   });
 });
 
@@ -263,7 +263,7 @@ describe('the reset list is the definition of "per ball"', () => {
 
     drainBall(b.o);
 
-    expect(b.perBallLamps.every((l) => l.on)).toBe(true);
+    expect(b.perBallLamps.every((l) => l.lit)).toBe(true);
     expect(b.perBallComponents[0]!.resets).toBe(0);
   });
 });
@@ -287,7 +287,7 @@ describe('what bonus hold bought', () => {
     drainBall(b.o);
 
     expect(b.o.score.bonusScore).toBe(400000);
-    expect(b.bonusHoldLamp.on).toBe(false);
+    expect(b.bonusHoldLamp.lit).toBe(false);
   });
 
   test('the hold is spent per ball, not per game', () => {

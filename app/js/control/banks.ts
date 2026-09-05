@@ -73,7 +73,7 @@ export function makeBoosterTargetControl(o: BoosterTargetOptions): ControlFunc {
     partialIndex: 0,
     completeIndex: 1,
     onComplete: (ctx) => {
-      const step = o.chain.findIndex((s) => !s.lamp.on);
+      const step = o.chain.findIndex((s) => !s.lamp.lit);
 
       if (step === -1) {
         // The whole chain is lit: the top score, which the shared tail then pays AGAIN. Transcribed.

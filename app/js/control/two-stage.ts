@@ -42,7 +42,11 @@ export const MASK_ALL_TARGETS = 0b111;
 export const MASK_STAGE_TWO = 0b1111;
 
 export interface StageLamp {
-  readonly on: boolean;
+  /**
+   * ⚠️ `TLight::light_on()` — `LightOnFlag || ToggledOnFlag || FlasherOnFlag`, not the persistent flag
+   * alone. Awards light their lamps with `TLightTurnOnTimed`, so asking `on` here finds them dark.
+   */
+  readonly lit: boolean;
   turnOff(): void;
   resetTimed(): void;
   flasherStartTimed(seconds: number): void;
@@ -174,12 +178,12 @@ export function makeGatedTwoStageMission(o: GatedTwoStageOptions): MissionContro
       // business knowing.
       if (o.inStageTwo()) {
         ctx.showMissionText(o.texts.stageTwo, -1);
-        if (o.stageOneLamp?.on) darken(o.stageOneLamp);
-        if (!o.stageTwoLamp?.on) o.stageTwoLamp?.flasherStartTimed(0);
+        if (o.stageOneLamp?.lit) darken(o.stageOneLamp);
+        if (!o.stageTwoLamp?.lit) o.stageTwoLamp?.flasherStartTimed(0);
       } else {
         ctx.showMissionText(o.texts.stageOne, -1);
-        if (o.stageTwoLamp?.on) darken(o.stageTwoLamp);
-        if (!o.stageOneLamp?.on) o.stageOneLamp?.flasherStartTimed(0);
+        if (o.stageTwoLamp?.lit) darken(o.stageTwoLamp);
+        if (!o.stageOneLamp?.lit) o.stageOneLamp?.flasherStartTimed(0);
       }
       return;
     }

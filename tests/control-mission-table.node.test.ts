@@ -167,7 +167,7 @@ describe('a row from the table actually runs', () => {
       messageField: 0,
       turnOn: () => {}, turnOff: () => {}, resetTimed: () => {},
       flasherStart: () => {}, flasherStartTimed: () => {}, flasherStartTimedThenStayOn: () => {},
-      get on() { return false; },
+      get lit() { return false; },
     };
     const missionLamp = { messageField: rowNumber };
     const score = createScoreState();

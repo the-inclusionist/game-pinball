@@ -364,6 +364,76 @@ export const MULTIPLIER_BANK: TargetBankBinding = {
 };
 
 /**
+ * `control::table_set_*` — the table-level awards, which several controls reach through.
+ *
+ * ⚠️ THE LAMP IS THE TIMER. `table_set_bonus` lights `lite59` for sixty seconds and sets a flag;
+ * nothing separately counts those sixty seconds down. The lamp going dark IS the award expiring, as
+ * far as the player is concerned — see `control/table-actions`.
+ */
+export const TABLE_ACTIONS = {
+  lamps: {
+    /** `table_set_bonus_hold`, and the fourth rung of the booster chain. */
+    bonusHold: 'lite58',
+    bonus: 'lite59',
+    jackpot: 'lite60',
+    replay: 'lite199',
+    multiball: ['lite38', 'lite39', 'lite40'],
+    /** All three timed together by `table_set_flag_lights`; `lite61` is the one the chain tests. */
+    flagLights: ['lite20', 'lite19', 'lite61'],
+  },
+  textIds: {
+    extraBall: 'STRING110',
+    bonusHeld: 'STRING153',
+    bonusSet: 'STRING105',
+    jackpotSet: 'STRING116',
+    multiball: 'STRING117',
+    flagLightsSet: 'STRING152',
+    replay: 'STRING101',
+  },
+} as const;
+
+/**
+ * `control::BoosterTargetControl`: the third popup bank, and the one that pays an award CHAIN.
+ *
+ * ⚠️ EACH AWARD LIGHTS THE LAMP THE NEXT RUNG TESTS. The original is four nested `if`s over
+ * `lite61 → lite60 → lite59 → lite58`, which is a linear search for the first DARK lamp — and the
+ * awards themselves are what advance it. Three of the four lamps are lit on a sixty-second timer, so
+ * the chain is not a ratchet: it slides back as awards expire and the bank refills whichever lapsed.
+ *
+ * ⚠️ AND THE ORIGINAL GIVES EACH RUNG ITS OWN EMITTER — `soundwave47`, `45`, `46`, `48`. This port has
+ * one `chain` voice for all four, which is a SIMPLIFICATION and not a transcription: a player hears
+ * that an award was granted but not which. `audio/voices` says its timbres are scaffolding, and this is
+ * one of the places where the real sound set will have something to say.
+ */
+export interface BoosterChainStep {
+  /** Lit means this award has already been granted. */
+  readonly lamp: string;
+  readonly award: 'flagLights' | 'jackpot' | 'bonus' | 'bonusHold';
+  readonly sound: string;
+}
+
+export interface BoosterBankBinding {
+  readonly control: string;
+  readonly targets: readonly string[];
+  /** In the order the original tests them: the first DARK one is granted. */
+  readonly chain: readonly BoosterChainStep[];
+  /** `lite198`, whose message field carries the running mission's number. */
+  readonly missionLamp: string;
+}
+
+export const BOOSTER_BANK: BoosterBankBinding = {
+  control: 'BoosterTargetControl',
+  targets: ['a_targ1', 'a_targ2', 'a_targ3'],
+  chain: [
+    { lamp: 'lite61', award: 'flagLights', sound: 'chain' },
+    { lamp: 'lite60', award: 'jackpot', sound: 'chain' },
+    { lamp: 'lite59', award: 'bonus', sound: 'chain' },
+    { lamp: 'lite58', award: 'bonusHold', sound: 'chain' },
+  ],
+  missionLamp: 'lite198',
+};
+
+/**
  * ⚠️ A CONTROL WHOSE WHOLE BINDING IS A LIST OF LAMPS, IN ORDER.
  *
  * Some control functions reach for nothing but lights, and their factories take exactly that. Those

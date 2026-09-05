@@ -42,7 +42,25 @@ export interface LightOptions {
 }
 
 export interface Light {
+  /**
+   * Layer 1 alone: `LightOnFlag`. What the GAME means, and the only thing a light GROUP reads —
+   * `next_light_up`, `next_light_down` and `TLightGroupGetOnCount` all count this flag and nothing
+   * else, so an animation can run over live state without changing any count.
+   */
   readonly on: boolean;
+  /**
+   * ⚠️ `TLight::light_on()`, WHICH IS THREE FLAGS: `LightOnFlag || ToggledOnFlag || FlasherOnFlag`.
+   * This is the question the CONTROL layer asks, and it is not the same question as `on`.
+   *
+   * Nearly every award in the game lights its lamp with `TLightTurnOnTimed` — the lamp's own sixty
+   * seconds ARE the award — so a control reading `on` would find every one of those lamps dark. The
+   * booster chain would never advance past its first rung and an out lane would never notice the extra
+   * ball it is standing on, both without an error.
+   *
+   * A timed-OFF lamp over a lit one still reports lit: `light_on()` does not subtract `ToggledOffFlag`.
+   * Transcribed rather than tidied.
+   */
+  readonly lit: boolean;
   readonly flashing: boolean;
   /** Layer 2 is holding it lit. The group reads this to rotate an animation without touching layer 1. */
   readonly timedOn: boolean;
@@ -156,6 +174,7 @@ export function createLight(o: LightOptions): Light {
 
   const light: Light = {
     get on() { return lightOn; },
+    get lit() { return lightOn || toggledOn || flashing; },
     get flashing() { return flashing; },
     get timedOn() { return toggledOn; },
     get timedOff() { return toggledOff; },

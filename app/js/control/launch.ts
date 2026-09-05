@@ -72,7 +72,7 @@ export function makeSkillShotEntryControl(o: SkillShotEntryOptions): ControlFunc
 
     o.shootAgainLamp.turnOnTimed(5);
 
-    if (!o.firstLamp.on) return;
+    if (!o.firstLamp.lit) return;
 
     o.group.resetGroup();
     o.group.resetAndTurnOff();
@@ -95,7 +95,7 @@ export interface SkillShotGateOptions {
 export function makeSkillShotGateControl(o: SkillShotGateOptions): ControlFunc {
   return (code, _caller, ctx) => {
     if (code !== 'ControlCollision') return;
-    if (!o.armLamp.on) return;
+    if (!o.armLamp.lit) return;
 
     o.lamp.resetTimed();
     o.lamp.turnOn();
@@ -124,7 +124,7 @@ export function makeSkillShotCollectControl(o: SkillShotCollectOptions): Control
     const points = addScore(ctx.score, getScoring(caller, count - 1));
     ctx.showInfo(o.scoreText(points), 2);
 
-    if (!o.trekGuardLamp.on) {
+    if (!o.trekGuardLamp.lit) {
       for (const group of o.trekGroups) {
         group.resetGroup();
         group.resetAndTurnOff();
@@ -174,13 +174,13 @@ export function makeLaunchRampControl(o: LaunchRampOptions): ControlFunc {
 
     // The original builds this as bits 1, 2 and 4 and then branches on the whole number.
     let flag = 0;
-    if (o.reflexLamp.on) {
+    if (o.reflexLamp.lit) {
       flag = 1;
       const points = specialAddScore(ctx.score, o.reflexScore());
       ctx.showInfo(o.reflexText(points), 2);
     }
-    if (o.rampLamp.on) flag |= 2;
-    if (o.missionLamp.on) flag |= 4;
+    if (o.rampLamp.lit) flag |= 2;
+    if (o.missionLamp.lit) flag |= 4;
 
     if (!flag) {
       // The ordinary score lives HERE, in the else. Any lit lamp replaces it — see the header.

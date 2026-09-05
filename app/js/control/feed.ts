@@ -47,7 +47,11 @@ export interface FeedTable {
 }
 
 export interface PlungerLamp {
-  readonly on: boolean;
+  /**
+   * ⚠️ `TLight::light_on()` — `LightOnFlag || ToggledOnFlag || FlasherOnFlag`, not the persistent flag
+   * alone. Awards light their lamps with `TLightTurnOnTimed`, so asking `on` here finds them dark.
+   */
+  readonly lit: boolean;
   turnOn(): void;
   resetTimed(): void;
   /** The self-retriggering latch, not game state. See this module's header. */
@@ -85,7 +89,7 @@ export function makePlungerControl(o: PlungerControlOptions): ControlFunc {
     o.table.unlimitedBalls = false;
     if (!o.middleCircle.onCount) o.middleCircle.offsetAnimationForward(0);
 
-    if (!o.shootAgainLamp.on) {
+    if (!o.shootAgainLamp.lit) {
       // Everything below happens ONLY for a genuinely new ball. See this module's header.
       o.skillShotGroup.lightsResetAndTurnOff();
       o.firstSkillLamp.resetTimed();

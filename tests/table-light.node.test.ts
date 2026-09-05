@@ -261,3 +261,42 @@ describe('light — reset', () => {
     expect(sprites).toEqual([0]);
   });
 });
+
+describe('⚠️ `light_on()` is THREE flags, and the control layer asks that question', () => {
+  test('a lamp lit by a TIMED command is lit, though its persistent state is dark', () => {
+    // `TLight::light_on()` is `LightOnFlag || ToggledOnFlag || FlasherOnFlag`. Nearly every award in
+    // the game lights its lamp with `TLightTurnOnTimed` — the lamp's own sixty seconds ARE the award —
+    // so a control that asked only the persistent flag would find every one of those lamps dark. The
+    // booster chain would never advance past its first rung, and an out lane would never notice the
+    // extra ball it is standing on.
+    //
+    // The GROUP is the other way round: `next_light_up`, `next_light_down` and `GetOnCount` all read
+    // `LightOnFlag` alone, which is why the two questions need two names.
+    const { light } = build();
+
+    light.turnOnTimed(60);
+
+    expect(light.on, 'the persistent flag is untouched').toBe(false);
+    expect(light.lit, 'but the lamp IS lit, and that is what a control asks').toBe(true);
+  });
+
+  test('and a FLASHING lamp is lit too', () => {
+    const { light } = build();
+
+    light.flasherStart();
+
+    expect(light.on).toBe(false);
+    expect(light.lit).toBe(true);
+  });
+
+  test('⚠️ but a timed-OFF lamp over a lit one still reports lit, which is the original', () => {
+    // `light_on()` does not subtract `ToggledOffFlag`. Transcribed rather than tidied: a control that
+    // turned a lamp off for two seconds would otherwise change what every other control sees.
+    const { light } = build();
+    light.turnOn();
+
+    light.turnOffTimed(2);
+
+    expect(light.lit).toBe(true);
+  });
+});

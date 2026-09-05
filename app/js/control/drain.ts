@@ -35,7 +35,11 @@ import { specialAddScore, type ScoreState } from './score.js';
 export const BASE_BONUS = 25000;
 
 export interface DrainLamp {
-  readonly on: boolean;
+  /**
+   * ⚠️ `TLight::light_on()` — `LightOnFlag || ToggledOnFlag || FlasherOnFlag`, not the persistent flag
+   * alone. Awards light their lamps with `TLightTurnOnTimed`, so asking `on` here finds them dark.
+   */
+  readonly lit: boolean;
   turnOn(): void;
   turnOff(): void;
   resetTimed(): void;
@@ -104,7 +108,7 @@ export function drainBall(o: DrainOptions): DrainResult {
   }
 
   // 1. Already holding a shoot again.
-  if (o.shootAgainLamp.on) {
+  if (o.shootAgainLamp.lit) {
     o.playSound('drain');
     o.shootAgainLamp.turnOn(); o.shootAgainLamp.resetTimed();
     o.showInfo(o.shootAgainText(t.currentPlayer), -1);
@@ -113,7 +117,7 @@ export function drainBall(o: DrainOptions): DrainResult {
   }
 
   // 2. A spare, spent into a shoot again.
-  if (o.spareLamp.on) {
+  if (o.spareLamp.lit) {
     o.playSound('drain');
     o.spareLamp.turnOff(); o.spareLamp.resetTimed();
     o.shootAgainLamp.turnOn(); o.shootAgainLamp.resetTimed();
@@ -163,7 +167,7 @@ export function drainBall(o: DrainOptions): DrainResult {
   o.clearTiltLock();
 
   // What bonus hold bought: spend the lamp and keep the accumulator, or start again from the base.
-  if (o.bonusHoldLamp.on) {
+  if (o.bonusHoldLamp.lit) {
     o.bonusHoldLamp.turnOff();
     o.bonusHoldLamp.resetTimed();
   } else {

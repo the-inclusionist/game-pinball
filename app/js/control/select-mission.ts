@@ -61,7 +61,11 @@ export interface LampWithField {
   resetTimed(): void;
   flasherStart(): void;
   flasherStartTimedThenStayOn(seconds: number): void;
-  readonly on: boolean;
+  /**
+   * ⚠️ `TLight::light_on()` — `LightOnFlag || ToggledOnFlag || FlasherOnFlag`, not the persistent flag
+   * alone. Awards light their lamps with `TLightTurnOnTimed`, so asking `on` here finds them dark.
+   */
+  readonly lit: boolean;
 }
 
 export interface GroupCount {
@@ -113,7 +117,7 @@ export function makeSelectMissionController(o: SelectMissionOptions): MissionCon
     if (column < 0) {
       // Not a target. The only other thing that matters here is the ramp, and only when a mission has
       // been picked and there is fuel to fly it with.
-      if (caller !== o.ramp || !o.selectionLamp.on || o.fuelBargraph.onCount === 0) return;
+      if (caller !== o.ramp || !o.selectionLamp.lit || o.fuelBargraph.onCount === 0) return;
 
       o.selectionLamp.turnOff();
       o.selectionLamp.resetTimed();

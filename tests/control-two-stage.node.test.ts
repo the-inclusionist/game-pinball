@@ -12,7 +12,7 @@ function stageLamp(on = false) {
   const log: string[] = [];
   return {
     log,
-    get on() { return on; },
+    get lit() { return on; },
     turnOn() { on = true; log.push('on'); },
     turnOff() { on = false; log.push('off'); },
     resetTimed() { log.push('reset'); },

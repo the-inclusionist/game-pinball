@@ -90,7 +90,11 @@ export interface LightLike {
   turnOnTimed(seconds: number): void;
   resetTimed(): void;
   flasherStartTimed(seconds: number): void;
-  readonly on: boolean;
+  /**
+   * ⚠️ `TLight::light_on()` — `LightOnFlag || ToggledOnFlag || FlasherOnFlag`, not the persistent flag
+   * alone. Awards light their lamps with `TLightTurnOnTimed`, so asking `on` here finds them dark.
+   */
+  readonly lit: boolean;
 }
 
 export interface LightGroupLike {

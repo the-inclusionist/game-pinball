@@ -135,12 +135,12 @@ export function makeHyperspaceKickOutControl(o: HyperspaceKickOutOptions): Contr
 
     // The same three-bit flag as the launch ramp, and again only the first bit pays.
     let flag = 0;
-    if (o.lamps.reflex.on) {
+    if (o.lamps.reflex.lit) {
       flag = 1;
       ctx.showInfo(o.texts.reflex(specialAddScore(ctx.score, o.reflexScore())), 2);
     }
-    if (o.lamps.second.on) flag |= 2;
-    if (o.lamps.everything.on) {
+    if (o.lamps.second.lit) flag |= 2;
+    if (o.lamps.everything.lit) {
       flag |= 4;
       o.lamps.everything.resetTimed();
       o.lamps.everything.turnOff();

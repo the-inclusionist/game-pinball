@@ -51,6 +51,17 @@ export const RESOURCE_KEYS: Readonly<Record<string, string>> = {
   STRING158: 'pinball.award.multiplier3',
   STRING159: 'pinball.award.multiplier5',
   STRING160: 'pinball.award.multiplier10',
+
+  /* ===================== THE TABLE-LEVEL AWARDS ===================== */
+  //
+  // Every one of them is the same three moves: change a flag, light a lamp, say something. The lamp's
+  // own sixty-second timeout is what tells the player how long they have — see `control/table-actions`.
+  STRING152: 'pinball.award.flagLights',
+  STRING116: 'pinball.award.jackpotArmed',
+  STRING105: 'pinball.award.bonusArmed',
+  STRING153: 'pinball.award.bonusHeld',
+  STRING117: 'pinball.award.multiball',
+  STRING101: 'pinball.award.replay',
   STRING208: 'pinball.mission.bumpers.run',
   STRING209: 'pinball.mission.practice.done',
   STRING231: 'pinball.mission.alienMenace2.done',

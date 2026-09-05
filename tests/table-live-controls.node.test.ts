@@ -74,7 +74,7 @@ describe('the lamps are the table’s own', () => {
 
     for (const name of LOW_ORBIT.lamps) {
       expect(live.context.light(name), name).toBeDefined();
-      expect(live.context.light(name)!.on, name).toBe(false);
+      expect(live.context.light(name)!.lit, name).toBe(false);
     }
   });
 
@@ -84,7 +84,7 @@ describe('the lamps are the table’s own', () => {
 
     live.hit('target1');
 
-    expect(live.context.light(lit)!.on).toBe(true);
+    expect(live.context.light(lit)!.lit).toBe(true);
   });
 
   test('⚠️ a BUMPER lights too, which it did not', () => {
@@ -100,7 +100,7 @@ describe('the lamps are the table’s own', () => {
 
     live.hit(bumper.name);
 
-    expect(live.context.light(bumper.lamps![0]!)!.on).toBe(true);
+    expect(live.context.light(bumper.lamps![0]!)!.lit).toBe(true);
   });
 
   test('a lamp the table never declared is simply absent', () => {

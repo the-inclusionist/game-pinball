@@ -16,7 +16,7 @@ function fakeLamp(field = 0, on = false): LampWithField {
     resetTimed: () => {},
     flasherStart: () => {},
     flasherStartTimedThenStayOn: () => { lit = true; },
-    get on() { return lit; },
+    get lit() { return lit; },
   };
 }
 

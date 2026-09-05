@@ -49,7 +49,7 @@ export interface AdvanceOptions {
   /** `lite198`, whose message field is the current mission. */
   readonly missionLamp: { readonly messageField: number };
   /** `lite4` — one of the arrow lamps, and where the destination is read back from. */
-  readonly destinationLamp: { readonly messageField: number; readonly on: boolean };
+  readonly destinationLamp: { readonly messageField: number; readonly lit: boolean };
   readonly arrowLights: {
     setMessageField(value: number): void;
     setOnFrame(value: number): void;
@@ -75,7 +75,7 @@ export function advanceWormHoleDestination(o: AdvanceOptions, forced: boolean): 
   // The arrow's frame and the destination are the same fact drawn two ways.
   o.arrowLights.setOnFrame(3 - next);
 
-  if (!o.destinationLamp.on) {
+  if (!o.destinationLamp.lit) {
     o.wormHoleLights.lightsResetAndTurnOn();
     o.arrowLights.lightsResetAndTurnOn();
   }
@@ -188,7 +188,7 @@ export function makeWormHoleDestinationControl(o: WormHoleDestinationOptions): C
   return (code, caller, ctx) => {
     if (code !== 'ControlCollision') return;
 
-    if (!o.targetLamp.on) {
+    if (!o.targetLamp.lit) {
       o.targetLamp.flasherStartTimedThenStayOn(3);
       ctx.showInfo(o.announceText, 2);
     }
@@ -212,7 +212,7 @@ export function makeFlagControl(o: FlagOptions): ControlFunc {
       return;
     }
     if (code !== 'ControlCollision') return;
-    addScore(ctx.score, getScoring(caller, o.lamp.on ? 1 : 0));
+    addScore(ctx.score, getScoring(caller, o.lamp.lit ? 1 : 0));
   };
 }
 

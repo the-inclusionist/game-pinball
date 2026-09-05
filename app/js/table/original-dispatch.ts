@@ -35,13 +35,13 @@ import {
   type LaneGroup, type LaneLight,
 } from '../control/lanes.js';
 import { makeSpotTargetControl, makeMultiplierBankControl, type FieldComponent } from '../control/controls.js';
-import { makeMedalTargetControl } from '../control/banks.js';
+import { makeMedalTargetControl, makeBoosterTargetControl, type AwardChainStep } from '../control/banks.js';
 import {
   BUMPER_LANE_BINDINGS, LAMP_BINDINGS, RETURN_LANES, FUEL_ROLLOVERS, FUEL_BARGRAPH,
   FUEL_REFUEL_TEXT_ID, OUT_LANES, BONUS_LANE, SPOT_TARGET_SETS, MEDAL_BANK, MULTIPLIER_BANK,
-  type BumperLaneBinding, type TargetBankBinding,
+  BOOSTER_BANK, TABLE_ACTIONS, type BumperLaneBinding,
 } from '../control/bindings.js';
-import { addExtraBall } from '../control/table-actions.js';
+import { addExtraBall, createTableActions } from '../control/table-actions.js';
 import { handler, type ControlContext, type ControlledComponent } from '../control/dispatch.js';
 import { SCORE_COMPONENTS } from '../control/score-table.js';
 import type { OriginalComponents } from './original-components.js';
@@ -336,7 +336,8 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
   // targets are static geometry that never dropped in the first place. The SCORING rule is unaffected,
   // because it is the message field and not the geometry that stops a struck target paying twice —
   // what is missing is the target sinking out of the ball's way, which is animation and collision.
-  const bankOf = (binding: TargetBankBinding): FieldComponent[] => binding.targets.map((name) => {
+  const bankOf = (binding: { readonly targets: readonly string[] }): FieldComponent[] =>
+    binding.targets.map((name) => {
     const row = scoreRows.get(name);
     return { name, scores: row?.scores ?? [], control: null, messageField: 0 };
   });
@@ -369,6 +370,60 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
         addExtraBall: (seconds) => addExtraBall(o.context, extraBallText, seconds),
         popUp: () => {},
         texts: MEDAL_BANK.textIds.map((id) => o.textFor(id)),
+      });
+      for (const target of bank) {
+        byName.set(target.name, target);
+        controls.set(target.name, (component) => control('ControlCollision', component, o.context));
+      }
+    }
+  }
+
+  // ⚠️ THE BOOSTER BANK, WHICH REACHES THE TABLE-LEVEL AWARDS. `control/table-actions` is the single
+  // implementation of all of them — a flag, a lamp and a line — and it is built here rather than having
+  // four of its rules copied into the chain's grants. Three of its seven actions have no caller yet:
+  // multiball and replay belong to the missions, which this build does not run.
+  {
+    const actions = createTableActions({
+      ctx: o.context,
+      text: {
+        extraBall: o.textFor(TABLE_ACTIONS.textIds.extraBall),
+        bonusHeld: o.textFor(TABLE_ACTIONS.textIds.bonusHeld),
+        bonusSet: o.textFor(TABLE_ACTIONS.textIds.bonusSet),
+        jackpotSet: o.textFor(TABLE_ACTIONS.textIds.jackpotSet),
+        multiball: o.textFor(TABLE_ACTIONS.textIds.multiball),
+        flagLightsSet: o.textFor(TABLE_ACTIONS.textIds.flagLightsSet),
+        replay: o.textFor(TABLE_ACTIONS.textIds.replay),
+      },
+      lamps: {
+        bonusHold: TABLE_ACTIONS.lamps.bonusHold,
+        bonus: TABLE_ACTIONS.lamps.bonus,
+        jackpot: TABLE_ACTIONS.lamps.jackpot,
+        replay: TABLE_ACTIONS.lamps.replay,
+        multiball: TABLE_ACTIONS.lamps.multiball,
+        flagLights: TABLE_ACTIONS.lamps.flagLights,
+      },
+    });
+
+    const grantOf: Readonly<Record<string, () => void>> = {
+      flagLights: () => actions.setFlagLights(),
+      jackpot: () => actions.setJackpot(),
+      bonus: () => actions.setBonus(),
+      bonusHold: () => actions.setBonusHold(),
+    };
+
+    const missionLamp = o.components.lights.get(BOOSTER_BANK.missionLamp);
+    const chain: AwardChainStep[] = [];
+    for (const step of BOOSTER_BANK.chain) {
+      const lamp = o.components.lights.get(step.lamp);
+      const grant = grantOf[step.award];
+      if (!lamp || !grant) continue;
+      chain.push({ lamp: lamp as unknown as LaneLight, grant, sound: step.sound });
+    }
+
+    if (missionLamp && chain.length === BOOSTER_BANK.chain.length) {
+      const bank = bankOf(BOOSTER_BANK);
+      const control = makeBoosterTargetControl({
+        bank, chain, popUp: () => {}, missionLamp,
       });
       for (const target of bank) {
         byName.set(target.name, target);

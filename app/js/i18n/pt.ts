@@ -78,6 +78,12 @@ const pt: Record<string, string> = {
   'pinball.award.multiplier3': 'Pontuação em triplo.',
   'pinball.award.multiplier5': 'Pontuação em cinco.',
   'pinball.award.multiplier10': 'Pontuação em dez.',
+  'pinball.award.bonusArmed': 'Bônus armado.',
+  'pinball.award.bonusHeld': 'Bônus retido.',
+  'pinball.award.flagLights': 'Bandeiras acesas.',
+  'pinball.award.jackpotArmed': 'Jackpot armado.',
+  'pinball.award.multiball': 'Multibola!',
+  'pinball.award.replay': 'Repetição ganha.',
   'pinball.award.bonusCollected': 'Bônus: {points}',
   'pinball.award.scored': '{points} pontos',
 

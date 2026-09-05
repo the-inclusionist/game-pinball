@@ -13,7 +13,7 @@ function fakeLight(on = false, flashing = false): LaneLight & { readonly log: st
   const log: string[] = [];
   return {
     log,
-    get on() { return on; },
+    get lit() { return on; },
     get flashing() { return flashing; },
     turnOn() { on = true; log.push('on'); },
     turnOff() { on = false; log.push('off'); },
@@ -81,7 +81,7 @@ describe('the bumper lanes — filling a lane set upgrades a bumper', () => {
 
     b.control('ControlCollision', b.roll, b.ctx);
 
-    expect(b.light.on).toBe(true);
+    expect(b.light.lit).toBe(true);
     expect(b.ctx.score.curScore).toBe(1000);
     expect(b.bumpers.incs).toBe(0);
   });
@@ -92,7 +92,7 @@ describe('the bumper lanes — filling a lane set upgrades a bumper', () => {
 
     b.control('ControlCollision', b.roll, b.ctx);
 
-    expect(b.light.on).toBe(false);
+    expect(b.light.lit).toBe(false);
     expect(b.ctx.score.curScore).toBe(1000);
   });
 
@@ -101,7 +101,7 @@ describe('the bumper lanes — filling a lane set upgrades a bumper', () => {
 
     b.control('ControlCollision', b.roll, b.ctx);
 
-    expect(b.light.on).toBe(true);
+    expect(b.light.lit).toBe(true);
   });
 
   test('a FLASHING lane is untouchable, on or off', () => {
@@ -109,7 +109,7 @@ describe('the bumper lanes — filling a lane set upgrades a bumper', () => {
 
     b.control('ControlCollision', b.roll, b.ctx);
 
-    expect(b.light.on).toBe(false);
+    expect(b.light.lit).toBe(false);
     expect(b.ctx.score.curScore).toBe(1000); // still scores, though
   });
 
@@ -255,8 +255,8 @@ describe('the out lanes — where an extra ball is collected', () => {
     b.control('ControlCollision', b.roll4, b.ctx);
 
     expect(b.extraBalls).toEqual([2]);
-    expect(b.lite17.on).toBe(false);
-    expect(b.lite18.on).toBe(false);
+    expect(b.lite17.lit).toBe(false);
+    expect(b.lite18.lit).toBe(false);
   });
 
   test('with the lamp dark there is only a noise', () => {
@@ -348,8 +348,8 @@ describe('the space warp: lit in one place, collected in another', () => {
 
     control('ControlCollision', component('roll8'), ctx);
 
-    expect(lite27.on).toBe(true);
-    expect(lite28.on).toBe(true);
+    expect(lite27.lit).toBe(true);
+    expect(lite28.lit).toBe(true);
   });
 
   function build(lit: boolean) {
@@ -369,8 +369,8 @@ describe('the space warp: lit in one place, collected in another', () => {
     b.control('ControlCollision', b.roll6, b.ctx);
 
     expect(b.ctx.score.curScore).toBe(20000);
-    expect(b.lite27.on).toBe(false);
-    expect(b.lite59.on).toBe(false);
+    expect(b.lite27.lit).toBe(false);
+    expect(b.lite59.lit).toBe(false);
   });
 
   test('with the lamp dark it is an ordinary lane', () => {
@@ -379,7 +379,7 @@ describe('the space warp: lit in one place, collected in another', () => {
     b.control('ControlCollision', b.roll6, b.ctx);
 
     expect(b.ctx.score.curScore).toBe(500);
-    expect(b.lite59.on).toBe(true);
+    expect(b.lite59.lit).toBe(true);
   });
 
   test('a lane this control does not own scores nothing at all', () => {
@@ -415,7 +415,7 @@ describe('the bonus lane — the OTHER place the bonus pays out', () => {
 
     expect(b.ctx.score.curScore).toBe(120000);
     expect(b.ctx.score.bonusScore).toBe(120000);
-    expect(b.lite16.on).toBe(false);
+    expect(b.lite16.lit).toBe(false);
     expect(b.sounds).toEqual(['fanfare']);
   });
 

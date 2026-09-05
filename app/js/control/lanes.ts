@@ -42,7 +42,11 @@ import { addScore, specialAddScore } from './score.js';
 
 /** The slice of a lamp the lanes drive. `TLight`. */
 export interface LaneLight {
-  readonly on: boolean;
+  /**
+   * ⚠️ `TLight::light_on()` — `LightOnFlag || ToggledOnFlag || FlasherOnFlag`, not the persistent flag
+   * alone. Awards light their lamps with `TLightTurnOnTimed`, so asking `on` here finds them dark.
+   */
+  readonly lit: boolean;
   /** `FlasherOnFlag`. A flashing lamp is mid-animation and must not be disturbed. */
   readonly flashing: boolean;
   turnOn(): void;
@@ -108,7 +112,7 @@ export function makeBumperLaneControl(o: BumperLaneOptions): ControlFunc {
 
     const light = o.lightFor(caller);
     if (light && !light.flashing) {
-      if (light.on) {
+      if (light.lit) {
         // Hitting a lit lane puts it OUT — unless Full Tilt, which dropped the branch.
         if (!o.isFullTilt()) resetAndTurnOff(light);
       } else {
@@ -202,7 +206,7 @@ export function makeOutLaneControl(o: OutLaneOptions): ControlFunc {
   return (code, caller, ctx) => {
     if (code !== 'ControlCollision') return;
 
-    if (o.extraBallLamps.some((l) => l.on)) {
+    if (o.extraBallLamps.some((l) => l.lit)) {
       o.addExtraBall(2);
       for (const lamp of o.extraBallLamps) resetAndTurnOff(lamp);
     } else {
@@ -211,7 +215,7 @@ export function makeOutLaneControl(o: OutLaneOptions): ControlFunc {
 
     const warp = o.warpLampsFor(caller);
     // The FIRST lamp being lit is what arms the pair; the second only follows it.
-    if (warp && warp[0]?.on) {
+    if (warp && warp[0]?.lit) {
       for (const lamp of warp) lamp.flasherStart();
     }
 
@@ -280,7 +284,7 @@ export function makeReturnLaneControl(o: ReturnLaneOptions): ControlFunc {
     // Unlike the bumper lanes, a caller this control does not own scores NOTHING.
     if (!lane) return;
 
-    if (lane.lamp.on) {
+    if (lane.lamp.lit) {
       resetAndTurnOff(o.warpLamp);
       resetAndTurnOff(lane.lamp);
       addScore(ctx.score, getScoring(caller, 1));
@@ -308,7 +312,7 @@ export function makeBonusLaneControl(o: BonusLaneOptions): ControlFunc {
   return (code, caller, ctx) => {
     if (code !== 'ControlCollision') return;
 
-    if (o.lamp.on) {
+    if (o.lamp.lit) {
       // The accumulator is PAID but not cleared — the drain will pay it again. See the header.
       const points = specialAddScore(ctx.score, ctx.score.bonusScore);
       ctx.showInfo(o.bonusText(points), 2);

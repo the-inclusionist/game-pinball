@@ -15,7 +15,7 @@ function fakeLight(on = false): LaneLight & { readonly log: string[] } {
   const log: string[] = [];
   return {
     log,
-    get on() { return on; },
+    get lit() { return on; },
     get flashing() { return false; },
     turnOn() { on = true; log.push('on'); },
     turnOff() { on = false; log.push('off'); },
@@ -99,7 +99,7 @@ describe('the skill shot is armed by the first gate', () => {
     b.control('ControlCollision', component('gate1'), b.ctx);
 
     expect(b.group.log).toEqual(['resetGroup', 'allOff']);
-    expect(b.firstLamp.on).toBe(true);
+    expect(b.firstLamp.lit).toBe(true);
     expect(b.bargraph.log).toEqual(['split:11']);
     expect(b.sounds).toEqual(['chime']);
   });
@@ -127,7 +127,7 @@ describe('the other five gates are one function', () => {
 
     b.control('ControlCollision', component('gate3'), b.ctx);
 
-    expect(b.lamp.on).toBe(true);
+    expect(b.lamp.lit).toBe(true);
     expect(b.sounds).toEqual(['blip']);
   });
 
@@ -137,7 +137,7 @@ describe('the other five gates are one function', () => {
 
     b.control('ControlCollision', component('gate3'), b.ctx);
 
-    expect(b.lamp.on).toBe(false);
+    expect(b.lamp.lit).toBe(false);
     expect(b.sounds).toEqual([]);
   });
 

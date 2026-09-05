@@ -12,7 +12,7 @@ function fakeLight(on = false): LaneLight & { readonly log: string[] } {
   const log: string[] = [];
   return {
     log,
-    get on() { return on; },
+    get lit() { return on; },
     get flashing() { return false; },
     turnOn() { on = true; log.push('on'); },
     turnOff() { on = false; log.push('off'); },

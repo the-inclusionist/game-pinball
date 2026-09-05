@@ -16,7 +16,7 @@ function fakeLight() {
     turnOnTimed: (s) => { on = true; calls.push(`turnOnTimed:${s}`); },
     resetTimed: () => calls.push('resetTimed'),
     flasherStartTimed: (s) => calls.push(`flasherStartTimed:${s}`),
-    get on() { return on; },
+    get lit() { return on; },
   };
   return { light, calls };
 }

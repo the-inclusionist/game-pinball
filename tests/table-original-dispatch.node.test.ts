@@ -5,7 +5,7 @@ import { createOriginalDispatch } from '../app/js/table/original-dispatch.js';
 import { buildOriginalComponents } from '../app/js/table/original-components.js';
 import {
   REENTRY_LANES, LAMP_BINDINGS, FUEL_ROLLOVERS, OUT_LANES, BONUS_LANE, SPOT_TARGET_SETS,
-  MEDAL_BANK, MULTIPLIER_BANK,
+  MEDAL_BANK, MULTIPLIER_BANK, BOOSTER_BANK, TABLE_ACTIONS,
 } from '../app/js/control/bindings.js';
 import { createScoreState } from '../app/js/control/score.js';
 import { loadTable } from '../app/js/dat/loader.js';
@@ -56,7 +56,7 @@ describe('a lane crossing reaches the 1995 control function', () => {
     const w = wired();
     if (!w) return expect(existsSync(DAT)).toBe(false);
 
-    expect(w.dispatch.wired.size).toBe(27);
+    expect(w.dispatch.wired.size).toBe(30);
     expect(w.dispatch.wired.has('a_roll3')).toBe(true);
     expect(w.dispatch.wired.has('a_roll9')).toBe(true);
     expect(w.dispatch.wired.has('a_bump1')).toBe(false);
@@ -460,5 +460,56 @@ describe('⚠️ the two popup banks, where the memory is in the TARGETS', () =>
 
     expect(w.context.table.extraBalls).toBe(1);
     expect(w.shown).toContain('text:STRING156');
+  });
+});
+
+describe('⚠️ the booster bank, which walks an award chain one rung per round', () => {
+  const fill = (w: NonNullable<ReturnType<typeof wired>>) => {
+    for (const target of BOOSTER_BANK.targets) w.dispatch.hit(target);
+  };
+
+  test('the first round lights the FLAG lamps and says so', () => {
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+
+    fill(w);
+
+    // ⚠️ `lit`, NOT `on`. The award lights its lamps with `TLightTurnOnTimed`: the sixty seconds ARE
+    // the award, and the persistent flag is never touched. `light_on()` is what a control asks.
+    for (const name of TABLE_ACTIONS.lamps.flagLights) {
+      expect(w.components.lights.get(name)!.lit, name).toBe(true);
+      expect(w.components.lights.get(name)!.on, name).toBe(false);
+    }
+    expect(w.shown).toContain('text:STRING152');
+    expect(w.sounds).toContain('chain');
+  });
+
+  test('⚠️ and the SECOND round grants the next rung, because the award lit its own lamp', () => {
+    // The chain is a linear search for the first dark lamp and the awards advance it. Nothing counts
+    // rounds — which is why an award expiring puts its rung back, rather than being skipped for ever.
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+
+    fill(w);
+    fill(w);
+
+    expect(w.score.jackpotScoreFlag).toBe(true);
+    expect(w.components.lights.get(TABLE_ACTIONS.lamps.jackpot)!.lit).toBe(true);
+    expect(w.shown).toContain('text:STRING116');
+  });
+
+  test('⚠️ two missions refuse the first rung, and NOTHING takes its place', () => {
+    // `lite198`'s message field carries the running mission. During fifteen and twenty-nine the flag
+    // lights are refused — no award, no sound — and the bank still completes and still pays. The
+    // player cannot tell they were refused except by the silence.
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    w.components.lights.get(BOOSTER_BANK.missionLamp)!.messageField = 15;
+
+    fill(w);
+
+    expect(w.components.lights.get('lite61')!.lit).toBe(false);
+    expect(w.sounds).not.toContain('chain');
+    expect(w.score.curScore).toBeGreaterThan(0);
   });
 });

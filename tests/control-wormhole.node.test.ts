@@ -20,7 +20,7 @@ function fakeLight(on = false): TestLight {
   const log: string[] = [];
   return {
     log,
-    get on() { return on; },
+    get lit() { return on; },
     get flashing() { return false; },
     turnOn() { on = true; log.push('on'); },
     turnOff() { on = false; log.push('off'); },
@@ -57,7 +57,7 @@ function context() {
 describe('the wormhole destination cycles 1, 2, 3 and round again', () => {
   function build(o: { mission?: number; current?: number; lit?: boolean } = {}) {
     const log: string[] = [];
-    const destinationLamp = { messageField: o.current ?? 0, on: o.lit ?? false };
+    const destinationLamp = { messageField: o.current ?? 0, lit: o.lit ?? false };
     const arrowLights = {
       // The group writes the field through EVERY member, `lite4` included.
       setMessageField(v: number) { destinationLamp.messageField = v; log.push('field:' + v); },
@@ -201,7 +201,7 @@ describe('the wormhole sinks move the ball', () => {
     expect(b.destinationLamp.messageField).toBe(0);
     expect(b.calls).toContain('holesOff');
     expect(b.calls).toContain('arrowsOff');
-    expect(b.targetLamp.on).toBe(false);
+    expect(b.targetLamp.lit).toBe(false);
   });
 
   test('during MULTIBALL the right sink LOCKS a ball instead of paying a replay', () => {
@@ -350,7 +350,7 @@ describe('the gravity well is armed from outside and spends itself on one ball',
     b.control('ControlCollision', component('kickout1', [20000]), b.ctx);
 
     expect(b.ctx.score.curScore).toBe(20000);
-    expect(b.lamp.on).toBe(false);
+    expect(b.lamp.lit).toBe(false);
     expect(b.kickout.active).toBe(false);
   });
 

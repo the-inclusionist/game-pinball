@@ -13,7 +13,7 @@ function fakeLight(on = false): LaneLight & { readonly log: string[]; messageFie
   const log: string[] = [];
   return {
     log, messageField: 7,
-    get on() { return on; },
+    get lit() { return on; },
     get flashing() { return false; },
     turnOn() { on = true; log.push('on'); },
     turnOff() { on = false; log.push('off'); },
@@ -123,7 +123,7 @@ describe('feeding a new ball', () => {
     b.control('PlungerStartFeedTimer', component('plunger'), b.ctx);
 
     expect(b.skillShotGroup.log).toEqual(['allOff', 'back:0.25']);
-    expect(b.firstSkillLamp.on).toBe(true);
+    expect(b.firstSkillLamp.lit).toBe(true);
     expect(b.trekGroups[0]!.log).toEqual(['allOff', 'fwd:0.2', 'back:0.2']);
     expect(b.fuelBargraph.log).toEqual(['allOn']);
     expect(b.gates[0]!.disabled).toBe(1);

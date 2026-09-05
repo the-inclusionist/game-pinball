@@ -13,7 +13,7 @@ function stageLamp(on = false) {
   const log: string[] = [];
   return {
     log,
-    get on() { return on; },
+    get lit() { return on; },
     turnOff() { on = false; log.push('off'); },
     resetTimed() { log.push('reset'); },
     flasherStartTimed(s: number) { log.push('flash:' + s); },
@@ -81,7 +81,7 @@ describe('Alien Menace is won without hitting anything', () => {
 
     expect(b.missionLamp.messageField).toBe(20);
     expect(b.dispatched).toEqual(['ControlMissionComplete']);
-    expect(b.lamp.on).toBe(false);
+    expect(b.lamp.lit).toBe(false);
   });
 
   test('the level message that puts it back to ZERO is ignored', () => {
@@ -234,7 +234,7 @@ describe('Time Warp part two, where the rank can go BACKWARDS', () => {
     expect(down.score.curScore).toBe(TIME_WARP_AWARD);
     expect(up.missionLamp.messageField).toBe(1);
     expect(down.missionLamp.messageField).toBe(1);
-    expect(down.lamps[0]!.on).toBe(false);
+    expect(down.lamps[0]!.lit).toBe(false);
   });
 
   test('a component that is neither pays nothing', () => {
