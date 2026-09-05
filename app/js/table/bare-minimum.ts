@@ -23,7 +23,7 @@ export const BARE_MINIMUM: AuthoredTable = {
   name: 'bare-minimum',
   size: { width: 100, height: 181 },
   ballRadius: 3,
-  lamps: [],
+  lamps: ['lamp.target'],
   components: [
     { name: 'plunger', kind: 'plunger', role: 'structure', bounds: { x: 86, y: 150, width: 10, height: 28 } },
     // The floor of the format is still a table: a flipper the ball goes through is not a flipper, and
@@ -35,5 +35,13 @@ export const BARE_MINIMUM: AuthoredTable = {
       } },
     { name: 'drain', kind: 'drain', role: 'hazard', bounds: { x: 40, y: 172, width: 20, height: 8 },
       control: 'DrainControl' },
+
+    // ⚠️ ONE THING TO REACH, because a table with none cannot be described to a player who cannot see
+    // it — the contract's fifth field would be empty and blind mode silent. That is part of the FLOOR,
+    // so the table that documents the floor has to carry it, exactly as its flipper had to grow a
+    // collision. It does not make this table playable: one flipper still cannot cover a drain.
+    { name: 'target', kind: 'target', role: 'goal', bounds: { x: 44, y: 20, width: 12, height: 10 },
+      scores: [1000], control: 'TargetControl', lamps: ['lamp.target'],
+      collision: [{ kind: 'line', from: { x: 56, y: 30 }, to: { x: 44, y: 30 } }] },
   ],
 };

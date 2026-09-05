@@ -56,7 +56,10 @@ function table(over: Partial<AuthoredTable> = {}): AuthoredTable {
       piece({ name: 'drain1', kind: 'drain', role: 'hazard', bounds: { x: 80, y: 225, width: 20, height: 8 } }),
       piece({ name: 'plunger1', kind: 'plunger', role: 'structure', bounds: { x: 170, y: 200, width: 8, height: 30 } }),
       piece({ name: 'flipL', kind: 'flipper', role: 'structure', bounds: { x: 50, y: 210, width: 25, height: 6 } }),
-      piece({ name: 'bump1', kind: 'bumper', role: 'structure', lamps: ['lamp1'] }),
+      // ⚠️ `role: 'key'` rather than `structure`, because a table must declare SOMETHING TO PURSUE: the
+      // contract's fifth field is what the sonar reads, and a fixture without one describes a table
+      // that could not open.
+      piece({ name: 'bump1', kind: 'bumper', role: 'key', lamps: ['lamp1'] }),
     ],
     ...over,
   };

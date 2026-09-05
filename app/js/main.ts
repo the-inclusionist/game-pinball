@@ -24,6 +24,7 @@ import { advanceFrame } from './physics/step.js';
 import { bindPinballControls } from './shell/controls.js';
 import { createLiveControls } from './table/live-controls.js';
 import { createRolloverWatch } from './table/rollovers.js';
+import { objectiveOf, AUTHORED_OBJECTIVE_ID } from './table/objective.js';
 import { mountHud } from './shell/hud-dom.js';
 
 // `?table=wide-arc` opens another one of the five. There is no menu yet, and a query parameter is
@@ -47,13 +48,46 @@ if (tableProblems.length) {
 const physics = buildPhysics(authored);
 const ball = physics.spawnBall();
 
+/**
+ * ⚠️ THESE WERE NOUGHT AND EMPTY AND NOTHING EVER WROTE TO THEM, so the contract's fifth field returned
+ * no targets on every frame and blind mode was silence over a table full of things to hit. That field
+ * is what makes the sonar work, and it is most of the reason this game consumes the engine at all.
+ *
+ * An authored table has no missions, so the objective is read off the table itself — see
+ * `table/objective`, and note that inventing a mission to fill the field would have been worse than the
+ * silence it replaced.
+ */
 let state: TableState = {
   balls: [ball],
-  missionTextId: 'STRING151',
+  // ⚠️ AN i18n KEY, NOT A 1995 RESOURCE ID. `keyOf` maps the STRINGnnn identifiers the original's data
+  // uses and returns anything else unchanged, so an authored table's id IS its key. Getting this wrong
+  // is not a crash: the translator returns the key it was given, and `STRING151` was once on screen for
+  // exactly that reason. A test walks all three languages.
+  missionTextId: AUTHORED_OBJECTIVE_ID,
   missionHave: 0,
   missionNeed: 0,
   missionTargets: [],
 };
+
+/**
+ * Recomputed when a lamp changes, which is the only thing that can finish a target.
+ *
+ * ⚠️ AND ONCE AT STARTUP, because the declaration is read before the first frame. Without that call the
+ * contract answers "no targets, nought of nought" to anything that asks between boot and the first
+ * `step` — and a player who turns blind mode on at the title screen is exactly that reader.
+ */
+function refreshObjective(force = false): void {
+  const objective = objectiveOf(authored, live);
+  if (!force && objective.have === state.missionHave
+    && objective.targets.length === state.missionTargets.length) return;
+  state = {
+    ...state,
+    missionHave: objective.have,
+    missionNeed: objective.need,
+    missionTargets: objective.targets,
+  };
+  tablePicture = drawTable({ table: authored, missionTargets: state.missionTargets });
+}
 
 /**
  * Launches from the plunger. Up the table, which is toward y = 0.
@@ -181,6 +215,7 @@ function step(frames: number): void {
       }
     }
     live.advance(frames * FRAME_SECONDS);
+    refreshObjective();
   }
 
   if (phase === 'playing') {
@@ -247,6 +282,8 @@ const unbindControls = bindPinballControls({
  * ⚠️ ADR-0002'S FOUR BLOCKS, ON SCREEN FOR THE FIRST TIME. `layoutHud` computed them from phase 6 and
  * nothing drew them. Words rather than pixels: see `shell/hud-dom` for the engine rule that decides it.
  */
+refreshObjective(true);
+
 const hud = mountHud({
   doc: document, host: region, layout: shell.hud, screen: { ...DEFAULT_HUD, playfieldWidth: authored.size.width },
   t: shell.t,
@@ -271,6 +308,7 @@ Object.assign(window as unknown as Record<string, unknown>, {
     get score() { return live.score.curScore; },
     get lamps() { return live.litLamps(); },
     get hint() { return hint; },
+    get objective() { return { have: state.missionHave, need: state.missionNeed, targets: state.missionTargets }; },
     get balls() { return live.flags.ballCount; },
     launch,
     /** Steps the game by hand, for a check that cannot rely on the browser compositing. */

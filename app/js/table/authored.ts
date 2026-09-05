@@ -245,6 +245,18 @@ export function validateTable(table: AuthoredTable, o: ValidationOptions): strin
   if (!kinds.has('plunger')) {
     problems.push('no plunger: a ball would have nowhere to come from');
   }
+  // ⚠️ A TABLE WITH NOTHING TO PURSUE CANNOT BE DESCRIBED TO A PLAYER WHO CANNOT SEE IT. The contract's
+  // fifth field is the list of live targets, and it is what makes the sonar work — which is most of the
+  // reason this game consumes the engine at all. `goal` and `key` are the contract's own words for what
+  // the player is after; a table naming neither leaves blind mode silent over a table full of things.
+  //
+  // The rule reaches `bare-minimum` too. It is the floor of the FORMAT, so if being describable is part
+  // of the format then the example that documents the floor has to show it — the same reason its
+  // flipper had to grow a collision. It is still not PLAYABLE, and that is a different axis.
+  if (!table.components.some((c) => c.role === 'goal' || c.role === 'key')) {
+    problems.push('nothing to pursue: no component has the role "goal" or "key", so the accessibility'
+      + ' contract has no targets to report and blind mode would be silent');
+  }
   if (!kinds.has('flipper')) {
     problems.push('no flipper: nothing to play with, and a held ball would be treated as stuck');
   }

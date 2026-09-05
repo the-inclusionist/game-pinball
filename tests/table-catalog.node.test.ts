@@ -215,18 +215,25 @@ describe('four-flippers — the table that contradicts an inherited assumption',
 
 describe('bare-minimum — the floor of the format', () => {
   test('it has exactly what the rules demand and nothing else', () => {
-    expect(BARE_MINIMUM.components).toHaveLength(3);
-    expect(BARE_MINIMUM.lamps).toEqual([]);
+    // ⚠️ THE FLOOR GREW, TWICE, AND BOTH TIMES BECAUSE A RULE FOUND SOMETHING THE FORMAT REALLY DEMANDS.
+    // It was three components and no lamps. Then flippers had to declare geometry, because a flipper
+    // the ball goes through is not a flipper. Then a table had to declare SOMETHING TO PURSUE, because
+    // the contract's fifth field is what the sonar reads and a table with an empty one cannot be
+    // described to a player who cannot see it. A rule does not get to exempt the example that
+    // documents it.
+    expect(BARE_MINIMUM.components).toHaveLength(4);
+    expect(BARE_MINIMUM.lamps).toHaveLength(1);
     expect(BARE_MINIMUM.size.height).toBe(DEFAULT_CAMERA.viewHeight + 1);
   });
 
   test('⚠️ IT PASSES, AND IT IS NOT PLAYABLE', () => {
-    // The finding, not a gap: one flipper cannot cover a drain and there is nothing to score. The
-    // validator checks that a table can RUN, not that it is worth running, and only the first of those
-    // has a machine answer.
+    // Still the finding, and now on narrower ground: it has something to REACH and no way to reach it.
+    // One flipper cannot cover a drain, and `tests/table-playable` holds that the ball never leaves the
+    // plunger lane here. Describable and playable are different axes, and only the first has a machine
+    // answer — which is exactly what the validator can and cannot do.
     expect(validateTable(BARE_MINIMUM, VIEW)).toEqual([]);
     expect(BARE_MINIMUM.components.filter((c) => c.kind === 'flipper')).toHaveLength(1);
-    expect(BARE_MINIMUM.components.filter((c) => c.scores)).toEqual([]);
+    expect(BARE_MINIMUM.components.filter((c) => c.scores)).toHaveLength(1);
   });
 
   test('removing any one of its three components breaks it', () => {
