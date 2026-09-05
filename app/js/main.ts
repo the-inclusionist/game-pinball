@@ -73,3 +73,4 @@ Object.assign(window as unknown as Record<string, unknown>, {
     setPhase(next: Phase) { phase = next; },
   },
 });
+

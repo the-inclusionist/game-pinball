@@ -20,12 +20,10 @@
     "isolatedModules": true,
     "resolveJsonModule": true
   },
-  "//6": "app/js/main.ts is the ONE file that imports the engine's runtime. The engine ships raw .ts,",
-  "//7": "so importing it type-checks the engine's SOURCE here — and this project enables",
-  "//8": "noUncheckedIndexedAccess while the engine does not, which yields 60 errors across 7 engine",
-  "//9": "files that are not defects, only the difference between two tsconfigs. The boundary moves",
-  "//10": "instead of the strictness: shell/boot takes createGame as an argument and IS checked, main.ts",
-  "//11": "only assembles and is compiled by Vite. Delete this exclusion when the engine ships types.",
-  "include": ["app/js", "tests", "vite.config.ts"],
-  "exclude": ["app/js/main.ts"]
+  "//6": "app/js/main.ts USED to be excluded here. The engine shipped raw .ts, so importing it",
+  "//7": "type-checked the engine's own source under this project's stricter settings and produced 60",
+  "//8": "errors that were not defects. The engine now publishes dist-pkg/ with .d.ts beside each",
+  "//9": "module, skipLibCheck skips those, and the exclusion is gone — which is exactly what the note",
+  "//10": "it replaced said would happen. main.ts is type-checked like everything else.",
+  "include": ["app/js", "tests", "vite.config.ts"]
 }

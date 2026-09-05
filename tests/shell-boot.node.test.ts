@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, test, expect } from 'vitest';
-import { conformanceProblems } from '@the-inclusionist/engine/core/contract.ts';
+import { conformanceProblems } from '@the-inclusionist/engine/core/contract.js';
 import {
   bootPinball, createPinballOptions, createPinballWorld, pinballDeclines, REQUIRED_MARKUP,
   type BootOptions, type LiveTable, type PinballGameOptions,

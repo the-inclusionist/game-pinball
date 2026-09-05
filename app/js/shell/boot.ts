@@ -10,20 +10,18 @@
 // The alternative — rebuilding the declaration every frame — would allocate sixty objects a second to
 // say the same thing; and passing a snapshot instead would have the sonar point at where the ball was.
 //
-// ========================= WHY `createGame` IS INJECTED AND NOT IMPORTED =========================
-// ⚠️ THE ENGINE SHIPS RAW `.ts` THROUGH ITS EXPORTS MAP, AND THIS PROJECT IS STRICTER THAN IT IS.
-// Importing `@the-inclusionist/engine` here puts the engine's own source into this repository's
-// type-check, which then reports SIXTY errors across seven engine files — every one of them from
-// `noUncheckedIndexedAccess`, which this project enables and the engine does not.
+// ========================= WHY `createGame` IS STILL INJECTED =========================
+// It began as a workaround. The engine used to publish raw `.ts`, so importing it dragged the engine's
+// own source into this repository's stricter type-check and produced sixty errors that were not
+// defects — only the difference between two tsconfigs. The boundary moved instead of the strictness.
 //
-// None of those is a defect in the engine. They are the difference between two tsconfigs, and the
-// options are: weaken this project to match, edit somebody else's repository, or move the boundary.
-// The boundary moves. `bootPinball` takes `createGame` as an argument, so `tsc` here checks THIS code
-// and the engine's source is checked by the engine's own build, which is where it belongs.
+// ⚠️ THAT REASON IS GONE. The engine now publishes `dist-pkg/` with a `.d.ts` beside each module,
+// `skipLibCheck` skips them, and `app/js/main.ts` imports `createGame` directly and IS type-checked.
+// The tsconfig exclusion that used to protect it has been deleted.
 //
-// What is still imported for real is `core/contract.ts` — the seven fields, which do compile under
-// these settings and are the part that must not drift. The entry point in `app/main.ts` holds the real
-// engine types and is outside this project's `include` for exactly this reason.
+// The injection stays anyway, and for a better reason than the one that created it: it is what lets
+// every rule in this module be exercised in a node test with no DOM. Keeping it is now a choice about
+// testability rather than a way around somebody else's build.
 //
 // ========================= WHAT THIS GAME DECLINES: NOTHING =========================
 // The engine lets a game declare what it does not have. A quiz declines the pause menu because it has
@@ -48,7 +46,7 @@
 // in the HOST document. So `problems` comes back as a list, and this module hands it on rather than
 // swallowing it.
 
-import type { GameDeclaration, Speakable } from '@the-inclusionist/engine/core/contract.ts';
+import type { GameDeclaration, Speakable } from '@the-inclusionist/engine/core/contract.js';
 import { createDeclaration, type DeclaredBall, type DeclaredComponent } from './declaration.js';
 import {
   createCamera, stepCamera, DEFAULT_CAMERA, type CameraConfig, type CameraState,

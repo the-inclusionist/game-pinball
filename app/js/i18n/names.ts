@@ -31,7 +31,7 @@
 // adding `flip` beside an existing `f` would — so there is a test that asserts it directly, instead of
 // a comment asking the next reader to be careful.
 
-import type { Speakable } from '@the-inclusionist/engine/core/contract.ts';
+import type { Speakable } from '@the-inclusionist/engine/core/contract.js';
 import { type Locale, BASE_LOCALE } from './index.js';
 
 export type ComponentKind =

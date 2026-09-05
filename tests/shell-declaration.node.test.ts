@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, test, expect } from 'vitest';
-import { conformanceProblems } from '@the-inclusionist/engine/core/contract.ts';
-import type { Speakable } from '@the-inclusionist/engine/core/contract.ts';
+import { conformanceProblems } from '@the-inclusionist/engine/core/contract.js';
+import type { Speakable } from '@the-inclusionist/engine/core/contract.js';
 import {
   createDeclaration, headingOf, centerOf,
   type DeclaredComponent, type PinballWorld,

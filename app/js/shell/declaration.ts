@@ -43,7 +43,7 @@
 
 import type {
   Focus, GameDeclaration, Heading, Objective, Role, Speakable, Spot, Topology,
-} from '@the-inclusionist/engine/core/contract.ts';
+} from '@the-inclusionist/engine/core/contract.js';
 
 export interface Rect {
   readonly x: number;

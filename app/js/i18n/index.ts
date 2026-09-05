@@ -2,11 +2,21 @@
 // i18n — the game's own translator.
 //
 // ========================= WHY NOT THE ENGINE'S =========================
-// The engine has `core/i18n`, and this could have used it. It does not, for one reason: the engine's
-// `t()` reads a MODULE-LEVEL dictionary that `setLocale` replaces, so a consumer game cannot add its
-// own keys to it without reaching into the engine's state, and a node test cannot exercise a locale
-// without setting a global. Twenty lines here buy a translator that is a value rather than a global,
-// which is what makes every string in this game testable without a browser.
+// ⚠️ THE ORIGINAL REASON HAS EXPIRED, AND SAYING SO IS THE POINT OF THIS NOTE.
+//
+// This module was written because the engine's `t()` read a module-level dictionary that `setLocale`
+// replaced, so a consumer could not add its own keys without reaching into engine state. The engine
+// has since gained `registerDict(code, entries)` — a consumer can now register a dictionary — and that
+// sentence is no longer true of it.
+//
+// What remains true is the second half: the engine's translator is a GLOBAL, and this one is a VALUE.
+// `createTranslator('en')` can be built, used and thrown away inside one test with no global to set
+// and nothing to restore afterwards, which is what makes every string in this game testable without a
+// browser. That is why it stays.
+//
+// The two are not exclusive. Registering these dictionaries with the engine as well would let the
+// engine's own menus speak this game's words, and it is worth doing when the shell has menus of its
+// own to name. Recorded here rather than done silently.
 //
 // The CONVENTIONS are the engine's, deliberately, so the two behave the same way to a reader: `{name}`
 // parameters, a missing key falling through to Portuguese, and an unknown key returning ITSELF rather
