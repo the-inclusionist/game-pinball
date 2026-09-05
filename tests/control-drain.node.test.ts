@@ -42,7 +42,9 @@ function build(over: Partial<DrainOptions['table']> = {}) {
     playSound: (n) => sounds.push(n),
     playMusic: (n) => music.push(n),
     bonusText: (points) => 'BONUS ' + points,
-    shootAgainText: (player) => 'SHOOT AGAIN P' + player,
+    heldShootAgainText: 'STILL HOLDING ONE',
+    spareSpentText: 'SPARE SPENT',
+    extraBallText: (player) => 'EXTRA BALL P' + player,
     returnBall: () => calls.push('returnBall'),
     switchToNextPlayer: () => calls.push('nextPlayer'),
     dispatchMissionComplete: () => calls.push('missionComplete'),
@@ -300,5 +302,39 @@ describe('what bonus hold bought', () => {
     drainBall(b.o);
 
     expect(b.o.score.bonusScore).toBe(BASE_BONUS);
+  });
+});
+
+describe('⚠️ the three shoot-again lines mean three different things', () => {
+  test('holding one already shows the HELD line, and it stays on screen', () => {
+    // `STRING197`, displayed for -1 — until something replaces it. The port had all three of these
+    // collapsed into one per-player line, which said "player two, shoot again" at three moments that
+    // are not the same moment.
+    const b = build();
+    b.shootAgainLamp.turnOn();
+
+    drainBall(b.o);
+
+    expect(b.info[0]).toEqual({ text: 'STILL HOLDING ONE', seconds: -1 });
+  });
+
+  test('a spare spent shows the SPARE line, for two seconds', () => {
+    // `STRING196`. A different string and a different duration: this one is news, the other is a state.
+    const b = build();
+    b.spareLamp.turnOn();
+
+    drainBall(b.o);
+
+    expect(b.info[0]).toEqual({ text: 'SPARE SPENT', seconds: 2 });
+  });
+
+  test('⚠️ and an extra ball names the PLAYER, which the other two never do', () => {
+    // `STRING198`..`STRING201`, one per player. This is the only one of the three that changes with
+    // who is playing, and it is the one the original chose by `CurrentPlayer`.
+    const b = build({ extraBalls: 1, currentPlayer: 2 });
+
+    drainBall(b.o);
+
+    expect(b.info.some((line) => line.text === 'EXTRA BALL P2')).toBe(true);
   });
 });

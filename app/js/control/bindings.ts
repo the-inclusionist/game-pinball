@@ -440,6 +440,69 @@ export const BOOSTER_BANK: BoosterBankBinding = {
 };
 
 /**
+ * WHAT THE END OF A BALL SWITCHES OFF, transcribed from `BallDrainControl`'s own forty lines.
+ *
+ * ⚠️ WHAT IS MISSING FROM THIS LIST IS WHAT SURVIVES THE BALL. `lite58` is not here, because holding
+ * the bonus is the whole point of it; `lite199` is not here, because the spare is spent by the cascade
+ * and not by the reset; `lite200` is not here, because a shoot-again the player is holding outlives
+ * the ball it was won on. A list that swept everything would take those three away and nothing would
+ * look broken — the player would simply stop being paid for work they had done.
+ *
+ * ⚠️ AND THE GROUPS ARE SENT THE SAME MESSAGE AS THE LAMPS. `TLightResetAndTurnOff` on a group is not
+ * a group operation: the default branch forwards it to every member, last to first. `outer_circle` and
+ * `middle_circle` get `TLightGroupReset` instead, which stops an animation and leaves the lamps alone —
+ * the rank circles are the two things on this table that do NOT go out at the end of a ball.
+ */
+export interface PerBallResetBinding {
+  /** Individual lamps, every one of them off and untimed. */
+  readonly lamps: readonly string[];
+  /** Light groups, forwarded to every member. */
+  readonly groups: readonly string[];
+  /** ⚠️ The rank circles: the ANIMATION stops, the lamps stay. */
+  readonly animationsStopped: readonly string[];
+  /** Lamps whose message field is zeroed without the lamp being touched. */
+  readonly messageFieldsCleared: readonly string[];
+  /** Bumper groups reset to level zero. */
+  readonly bumperGroups: readonly string[];
+  /** Gates put back, which is what makes an outlane dangerous again. */
+  readonly gates: readonly string[];
+}
+
+export const PER_BALL_RESET: PerBallResetBinding = {
+  lamps: [
+    'lite30', 'lite29', 'lite1', 'lite54', 'lite55', 'lite56', 'lite17', 'lite18', 'lite27', 'lite28',
+    'lite16', 'lite20', 'lite25', 'lite26', 'lite130', 'lite19', 'lite60', 'lite59', 'lite61',
+    'lite110', 'lite77', 'lite198', 'lite196', 'lite195', 'lite62',
+  ],
+  groups: [
+    'bmpr_inc_lights', 'ramp_bmpr_inc_lights', 'hyperspace_lights', 'worm_hole_lights',
+    'bsink_arrow_lights', 'l_trek_lights', 'r_trek_lights', 'bumper_target_lights', 'top_target_lights',
+    'top_circle_tgt_lights', 'ramp_tgt_lights', 'lchute_tgt_lights', 'bpr_solotgt_lights',
+    'skill_shot_lights',
+  ],
+  animationsStopped: ['outer_circle', 'middle_circle'],
+  messageFieldsCleared: ['lite4', 'lite101', 'lite102', 'lite103'],
+  bumperGroups: ['attack_bumpers', 'launch_bumpers'],
+  gates: ['v_gate1', 'v_gate2'],
+};
+
+/**
+ * `BallDrainControl` is run by the component called `drain`, and the two halves of it talk to each
+ * other through `lite199`'s message field — see `control/drain`'s header for how little that is
+ * defensible and how faithfully it is kept.
+ */
+export const DRAIN = {
+  component: 'drain',
+  shootAgainLamp: 'lite200',
+  spareLamp: 'lite199',
+  bonusHoldLamp: 'lite58',
+  missionLamp: 'lite198',
+  /** The bonus paid out on the way down, and the line that says a ball is being given back. */
+  bonusTextId: 'STRING167',
+  shootAgainTextId: 'STRING168',
+} as const;
+
+/**
  * The two holes whose control this build can run.
  *
  * ⚠️ AND THE THIRD IS DELIBERATELY ABSENT. `a_kout2` runs `HyperspaceKickOutControl`, which needs the

@@ -78,7 +78,16 @@ export interface DrainOptions {
   readonly playSound: (name: string) => void;
   readonly playMusic: (track: string) => void;
   readonly bonusText: (points: number) => string;
-  readonly shootAgainText: (player: number) => string;
+  /**
+   * ⚠️ THREE DIFFERENT LINES, NOT ONE WITH A PLAYER IN IT. The original shows `STRING197` when the
+   * player was already holding a shoot again, `STRING196` when a spare is spent into one, and one of
+   * `STRING198`..`STRING201` — chosen by player number — when an extra ball is cashed. This port had
+   * them collapsed into a single per-player line, which said "player two, shoot again" at three
+   * moments that mean three different things.
+   */
+  readonly heldShootAgainText: string;
+  readonly spareSpentText: string;
+  readonly extraBallText: (player: number) => string;
   readonly returnBall: () => void;
   readonly switchToNextPlayer: () => void;
   readonly dispatchMissionComplete: () => void;
@@ -111,7 +120,7 @@ export function drainBall(o: DrainOptions): DrainResult {
   if (o.shootAgainLamp.lit) {
     o.playSound('drain');
     o.shootAgainLamp.turnOn(); o.shootAgainLamp.resetTimed();
-    o.showInfo(o.shootAgainText(t.currentPlayer), -1);
+    o.showInfo(o.heldShootAgainText, -1);
     o.playSound('shootAgain');
     return { outcome: 'shootAgain', gameOver: false };
   }
@@ -121,7 +130,7 @@ export function drainBall(o: DrainOptions): DrainResult {
     o.playSound('drain');
     o.spareLamp.turnOff(); o.spareLamp.resetTimed();
     o.shootAgainLamp.turnOn(); o.shootAgainLamp.resetTimed();
-    o.showInfo(o.shootAgainText(t.currentPlayer), 2);
+    o.showInfo(o.spareSpentText, 2);
     o.playSound('shootAgain');
     return { outcome: 'spareSpent', gameOver: false };
   }
@@ -144,7 +153,7 @@ export function drainBall(o: DrainOptions): DrainResult {
   if (t.extraBalls) {
     t.extraBalls--;
     o.playSound('shootAgain');
-    o.showInfo(o.shootAgainText(t.currentPlayer), -1);
+    o.showInfo(o.extraBallText(t.currentPlayer), -1);
   } else {
     t.ballCount--;
     // The last ball of the LAST player is the only thing that ends a game.
