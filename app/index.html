@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Space Cadet Pinball</title>
+</head>
+<body>
+  <!-- #game-region: a engine liga o teclado AQUI, nunca em `window`. O id nao e decorativo. -->
+  <main id="game-region" tabindex="-1"></main>
+  <div id="sr-status" role="status" aria-live="polite"></div>
+  <div id="sr-alert" role="alert" aria-live="assertive"></div>
+  <script type="module" src="./js/main.ts"></script>
+</body>
+</html>
