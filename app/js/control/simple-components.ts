@@ -113,3 +113,41 @@ export function resolveSimpleComponents(
   }
   return { resolved, missing };
 }
+
+/**
+ * ⚠️ WHICH GROUP IN `PINBALL.DAT` EACH OF THESE IS.
+ *
+ * The upstream's list is not names at all — it is pointers to tags, and a tag carries the archive's own
+ * string:
+ *
+ *     component_tag<TLight> control_lite8_tag = {"lite8"};
+ *
+ * `make_component_link` uses that and nothing else. For lights the two happen to agree, because nothing
+ * renamed them between the file and the control layer, so a hundred and thirty-seven of these are the
+ * identity.
+ *
+ * ⚠️ EIGHT ARE NOT, AND THAT IS THE WHOLE REASON THIS EXISTS. `soundwave50_1` and `soundwave50_2` are
+ * two components pointing at ONE `soundwave50` group — one emitter that two different things can
+ * trigger. A rule of "the tag is the name" would work for a hundred and thirty-seven components and
+ * fail silently for eight, which is the worst kind of nearly-right; and a map keyed by TAG would lose
+ * one of each pair, so this is keyed by name.
+ *
+ * `control/score-table` carries the same field for the opposite reason: there, eighty of eighty-nine
+ * differ.
+ */
+const RENAMED: Readonly<Record<string, string>> = {
+  soundwave14_1: 'soundwave14',
+  soundwave14_2: 'soundwave14',
+  soundwave35_1: 'soundwave35',
+  soundwave35_2: 'soundwave35',
+  soundwave36_1: 'soundwave36',
+  soundwave36_2: 'soundwave36',
+  soundwave50_1: 'soundwave50',
+  soundwave50_2: 'soundwave50',
+};
+
+/** The archive's name for a simple component. Identity unless `RENAMED` says otherwise. */
+export const SIMPLE_TAGS: Readonly<Record<string, string>> = new Proxy(RENAMED, {
+  get: (target, key: string) => target[key] ?? key,
+  has: () => true,
+});

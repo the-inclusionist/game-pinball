@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, test, expect } from 'vitest';
+import { readFileSync, existsSync } from 'node:fs';
+import { readGroups } from '../app/js/dat/partman.js';
+
+const DAT = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/PINBALL.DAT';
 import {
-  SIMPLE_COMPONENTS, SIMPLE_LIGHTS, SIMPLE_LIGHT_GROUPS, SIMPLE_SOUNDS, SIMPLE_TEXT_BOXES,
+  SIMPLE_COMPONENTS, SIMPLE_LIGHTS, SIMPLE_LIGHT_GROUPS, SIMPLE_SOUNDS, SIMPLE_TEXT_BOXES, SIMPLE_TAGS,
   resolveSimpleComponents,
 } from '../app/js/control/simple-components.js';
 import { SCORE_COMPONENTS } from '../app/js/control/score-table.js';
@@ -101,5 +105,45 @@ describe('resolving the address book against a table', () => {
     const result = resolveSimpleComponents(['lite8'], () => null);
 
     expect(result.missing).toEqual(['lite8']);
+  });
+});
+
+describe('⚠️ and each of them says which group in the archive it is', () => {
+  test('every simple component has a tag', () => {
+    for (const name of SIMPLE_COMPONENTS) {
+      expect(SIMPLE_TAGS[name], name).toBeTruthy();
+    }
+  });
+
+  test('⚠️ most tags ARE the name, and eight are not — which is why they are written down', () => {
+    // The opposite balance from `score-table`, where eighty of eighty-nine differ. Lights were never
+    // renamed between the archive and the control layer, so `lite8` is `lite8`. Leaving the map out
+    // would have worked for a hundred and thirty-seven components and quietly failed for eight, which
+    // is the worst kind of nearly-right.
+    const differ = SIMPLE_COMPONENTS.filter((name) => SIMPLE_TAGS[name] !== name);
+
+    expect(differ).toHaveLength(8);
+  });
+
+  test('⚠️ and those eight are PAIRS pointing at one emitter, which is not a mistake', () => {
+    // `soundwave50_1` and `soundwave50_2` are two components linked to the same `soundwave50` group.
+    // The original does that on purpose: one sound, two things that can trigger it. A map keyed by tag
+    // would silently lose one of each pair, so the list stays keyed by NAME.
+    const differ = SIMPLE_COMPONENTS.filter((name) => SIMPLE_TAGS[name] !== name);
+    const tags = differ.map((name) => SIMPLE_TAGS[name]!);
+
+    expect(new Set(tags).size).toBeLessThan(differ.length);
+    for (const name of differ) expect(name).toMatch(/^soundwave\d+_[12]$/);
+  });
+
+  test('every tag names a group that is really in PINBALL.DAT', () => {
+    if (!existsSync(DAT)) return expect(existsSync(DAT)).toBe(false);
+    const buf = readFileSync(DAT);
+    const groups = readGroups(new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength));
+    const names = new Set(groups.map((g) => g.name).filter(Boolean));
+
+    const absent = SIMPLE_COMPONENTS.filter((n) => !names.has(SIMPLE_TAGS[n]!));
+
+    expect(absent).toEqual([]);
   });
 });
