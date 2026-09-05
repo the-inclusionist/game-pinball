@@ -187,3 +187,35 @@ describe('the accessibility keys', () => {
     expect(() => region.send('keydown', { code: DEFAULT_BINDINGS.blindMode[0] })).not.toThrow();
   });
 });
+
+describe('⚠️ a table with a plunger holds it, and one without still launches', () => {
+  test('the launch key reports BOTH edges when a plunger is given', () => {
+    // The 1995 plunger is drawn back while the key is down and fires at whatever was drawn. A
+    // one-shot on the way down would always fire at the minimum and take away the only choice the
+    // player makes before the ball is in play.
+    const pressed: boolean[] = [];
+    const region = fakeRegion();
+    bindPinballControls({
+      region: region as never, setFlipper: () => {}, launch: () => pressed.push(true),
+      setPlunger: (down) => pressed.push(down),
+    });
+
+    region.send('keydown', { code: 'Space' });
+    region.send('keyup', { code: 'Space' });
+
+    expect(pressed).toEqual([true, false]);
+  });
+
+  test('⚠️ and WITHOUT one the key still launches, on the way down', () => {
+    // `bindPinballControls` calls `setPlunger` INSTEAD of `launch` when it has one, so a table with no
+    // plunger has to keep the one-shot — otherwise its launch key does nothing at all.
+    const launched: number[] = [];
+    const region = fakeRegion();
+    bindPinballControls({ region: region as never, setFlipper: () => {}, launch: () => launched.push(1) });
+
+    region.send('keydown', { code: 'Space' });
+    region.send('keyup', { code: 'Space' });
+
+    expect(launched).toEqual([1]);
+  });
+});

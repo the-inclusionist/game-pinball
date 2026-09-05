@@ -31,6 +31,8 @@ import {
   flipperCollision, type Flipper,
 } from '../physics/flipper.js';
 import { readFlipperGeometry } from './original-flippers.js';
+import { plungerPosition } from './original-plunger.js';
+import type { Plunger } from './plunger.js';
 import { readVisual } from '../dat/visual.js';
 import { basicCollision } from '../physics/collision.js';
 import { createBall, type Ball, type StepContext } from '../physics/step.js';
@@ -85,6 +87,13 @@ export interface OriginalTable {
   readonly flippers: readonly Flipper[];
   /** Both flippers of one side, by the archive's object type rather than by the sign of x. */
   setFlippers(side: 'left' | 'right', extended: boolean): void;
+  /**
+   * ⚠️ WHERE THE BALL WAITS, WHICH IS RECORD 601 AND NOT A GUESS. Until the plunger was built this
+   * table dropped its ball from near the top, because there was nothing to launch it with.
+   */
+  readonly plungerPosition: Vector2 | null;
+  /** The plunger itself, when the archive has one. Pressed and released by the player. */
+  readonly plunger: Plunger | null;
   spawnBall(): Ball;
 }
 
@@ -155,6 +164,11 @@ export interface OriginalOptions {
   readonly flipperSideFor?: (groupName: string) => 'left' | 'right' | undefined;
   /** Reported when a sweeping flipper strikes the ball, like any other hit. */
   readonly onFlipperHit?: (groupName: string) => void;
+  /**
+   * Builds the plunger. Absent leaves the table without one — which every test about walls wants, and
+   * which is what this table had until the plunger existed.
+   */
+  readonly plungerFor?: (groups: readonly Group[], groupIndex: number) => Plunger | null;
 }
 
 export function buildOriginalTable(groups: readonly Group[], o: OriginalOptions = {}): OriginalTable {
@@ -272,10 +286,24 @@ export function buildOriginalTable(groups: readonly Group[], o: OriginalOptions 
     });
   }
 
+  // The plunger, if the caller builds one. Its own line is already installed by the wall loop above;
+  // what is missing without this is the component that pulls back and lets go.
+  let plunger: Plunger | null = null;
+  let plungerAt: Vector2 | null = null;
+  for (let index = 0; index < groups.length; index++) {
+    const at = plungerPosition(groups[index]!);
+    if (!at) continue;
+    plungerAt = at;
+    plunger = o.plungerFor?.(groups, index) ?? null;
+    break;
+  }
+
   return {
     grid,
     bounds,
     flippers,
+    plunger,
+    plungerPosition: plungerAt,
     setFlippers(side, extended) {
       for (const flipper of flippers) {
         if (flipperSide.get(flipper) !== side) continue;
@@ -316,14 +344,16 @@ export function buildOriginalTable(groups: readonly Group[], o: OriginalOptions 
       },
     },
     spawnBall() {
-      // Near the top of the table, which is somewhere a ball can fall from without the plunger this
-      // build does not yet have.
+      // ⚠️ ON THE PLUNGER, WHERE THE FILE SAYS. Record 601 is `table->PlungerPosition` and it is the
+      // only thing `TPlunger`'s constructor reads. Before the plunger existed this dropped the ball
+      // near the top of the table, which is a ball that starts its life already in play.
+      const at = plungerAt ?? {
+        x: (bounds.xMin + bounds.xMax) / 2,
+        y: bounds.yMin + (bounds.yMax - bounds.yMin) * 0.2,
+      };
       return createBall({
         radius: ballRadius,
-        position: {
-          x: (bounds.xMin + bounds.xMax) / 2,
-          y: bounds.yMin + (bounds.yMax - bounds.yMin) * 0.2,
-        },
+        position: { x: at.x, y: at.y },
         direction: { x: 0, y: 1 },
         speed: 0,
       });

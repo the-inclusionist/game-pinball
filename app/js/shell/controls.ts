@@ -63,6 +63,13 @@ export interface ControlOptions {
   readonly region: KeyTarget;
   readonly setFlipper: (side: FlipperSide, extended: boolean) => void;
   readonly launch: () => void;
+  /**
+   * ⚠️ THE 1995 PLUNGER IS HELD, NOT PRESSED. Holding it draws it back a hundredth at a time and
+   * letting go launches at whatever was drawn, so the launch key has to report both edges. The
+   * authored table's `launch` is a single call and stays one; a table that has a plunger takes this
+   * instead, and a table that does not simply leaves it out.
+   */
+  readonly setPlunger?: (pressed: boolean) => void;
   /** Optional, because a table under construction has no engine behind it. */
   readonly toggleBlindMode?: () => void;
   readonly sweep?: () => void;
@@ -96,7 +103,13 @@ export function bindPinballControls(o: ControlOptions): () => void {
     // kicking a few milliseconds in, and nothing would look broken.
     if (event.repeat) return;
 
-    if (action === 'plunger') o.launch();
+    // ⚠️ A TABLE WITH A PLUNGER TAKES THE HOLD, and only falls back to the one-shot without one.
+    // Calling both would launch twice: once at the minimum on the way down, once at whatever was
+    // drawn on the way up.
+    if (action === 'plunger') {
+      if (o.setPlunger) o.setPlunger(true);
+      else o.launch();
+    }
     else if (action === 'blindMode') o.toggleBlindMode?.();
     else if (action === 'sweep') o.sweep?.();
     else o.setFlipper(action, true);
@@ -104,7 +117,12 @@ export function bindPinballControls(o: ControlOptions): () => void {
 
   const onUp = (event: KeyLikeEvent): void => {
     const action = actionFor(event.code);
-    // Only the flippers have a release. The rest happen once, on the way down.
+    if (action === 'plunger' && o.setPlunger) {
+      event.preventDefault();
+      o.setPlunger(false);
+      return;
+    }
+    // Otherwise only the flippers have a release. The rest happen once, on the way down.
     if (action !== 'left' && action !== 'right') return;
     event.preventDefault();
     o.setFlipper(action, false);

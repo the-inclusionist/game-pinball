@@ -424,6 +424,19 @@ const unbindControls = bindPinballControls({
     else physics.setFlippers(side, extended);
   },
   launch: () => { if (!ball.active) launch(); },
+  /**
+   * ⚠️ AND THE HOLD, WHICH ONLY THE 1995 TABLE HAS. Its plunger is drawn back while the key is
+   * down and fires at whatever was drawn; the authored table has no plunger component at all, so this
+   * falls back to the one-shot on the way down.
+   *
+   * ⚠️ THE FALLBACK IS NOT OPTIONAL. `bindPinballControls` calls `setPlunger` INSTEAD of
+   * `launch` whenever it is given one, so a version of this that only forwarded to the demonstration
+   * would leave the authored table with a launch key that does nothing at all.
+   */
+  setPlunger: (pressed: boolean) => {
+    if (demo) demo.plunge(pressed);
+    else if (pressed && !ball.active) launch();
+  },
   toggleBlindMode: () => {
     blind = !blind;
     // Announced through the host's own live region, which is where an EVENT belongs — the HUD blocks

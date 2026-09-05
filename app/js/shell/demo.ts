@@ -27,6 +27,7 @@ import { createOriginalDispatch, type OriginalDispatch } from '../table/original
 import { buildOriginalGates } from '../table/original-gates.js';
 import { buildOriginalKickouts, kickoutGeometry } from '../table/original-kickouts.js';
 import { flipperSides } from '../table/original-flippers.js';
+import { buildOriginalPlunger } from '../table/original-plunger.js';
 import type { ControlContext } from '../control/dispatch.js';
 import { loadTable } from '../dat/loader.js';
 import { readMidiFile } from '../audio/midi.js';
@@ -96,6 +97,12 @@ export interface Demo {
    * archive's object type rather than by the sign of x — see `table/original-flippers`.
    */
   setFlippers(side: 'left' | 'right', extended: boolean): void;
+  /**
+   * ⚠️ THE PLUNGER IS HELD, NOT PRESSED. Holding it draws it back a hundredth at a time and letting
+   * go launches at whatever was drawn — a one-shot `launch()` would always fire at the minimum and
+   * take away the only choice the player makes before the ball is in play.
+   */
+  plunge(pressed: boolean): void;
   drop(): void;
 }
 
@@ -196,6 +203,11 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
     // points and two times, and the table builds one only for a group it is told the side of.
     flipperSideFor: (name) => sides.get(name),
     ...(o.random ? { random: o.random } : {}),
+    plungerFor: (all, index) => buildOriginalPlunger(all, index, {
+      table: { tiltLocked: false },
+      timer: components.timer,
+      ...(o.random ? { random: o.random } : {}),
+    }),
     onFlipperHit: (name) => {
       touched.push(name);
       const kind = kindOf(name);
@@ -208,7 +220,8 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
     // ⚠️ EVERY COLLISION COMPONENT THIS PORT BUILDS, not only the bumpers. A kickback that the walls
     // never receive is a saver the ball goes straight past — it would arm nothing, because nothing
     // would ever touch it.
-    componentFor: (name) => components.bumpers.get(name) ?? components.kickbacks.get(name)
+    componentFor: (name) => (name === 'plunger' ? table.plunger ?? undefined : undefined)
+      ?? components.bumpers.get(name) ?? components.kickbacks.get(name)
       // Only the bound ones: an unbound hole must not be given a ball it cannot give back.
       ?? (kickouts.get(name)?.control ? kickouts.get(name) : undefined),
     onHit: (hit) => {
@@ -324,6 +337,10 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
     },
 
     setFlippers: (side, extended) => table.setFlippers(side, extended),
+    plunge: (pressed) => {
+      if (pressed) table.plunger?.press();
+      else table.plunger?.release();
+    },
     drop(): void {
       ball = table.spawnBall();
       touched.length = 0;
