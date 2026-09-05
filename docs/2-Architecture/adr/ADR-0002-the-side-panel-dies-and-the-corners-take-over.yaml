@@ -1,0 +1,114 @@
+---
+metadata:
+  status: "accepted"
+  date: 2026-09-05
+  decision-makers: [Dev]
+  consulted:
+    - "ADR-0001 (this repository) — the camera, which is why the playfield fills the screen vertically
+       and therefore why the bottom of the screen is the flippers"
+    - "ADR-0010 pillar 5 (engine) — 320x180, honoured to the letter"
+    - "The original 3D Pinball for Windows, whose 203x394 side panel this record removes"
+  informed: []
+
+title: The 203x394 side panel dies, the four things it carried go to the corners, and nothing covers the play
+
+context-and-problem-statement: |
+  3D Pinball for Windows puts everything that is not the table into one column on the right, 203x394:
+  the Space Cadet artwork, the ball number, the player name, the running hint and the score.
+
+  On a 320x180 screen that column would be nearly two thirds of the width. The Dev decided it dies and
+  the four pieces of information move to the corners "as in an ordinary HUD": score top right, hint
+  lower, ball count top left, player name above the ball count.
+
+  ⚠️ AND AN ORDINARY HUD OVERLAYS THE PLAY, WHICH THIS ONE MUST NOT. The halved playfield is 183x235
+  against a 320x180 screen: 137 pixels spare across, and none at all down. So the playfield fills the
+  screen VERTICALLY, and the bottom of the screen is exactly where the flippers are drawn. A HUD bar
+  across the bottom — which is what "the hint goes to the lower part" describes on any other game —
+  would cover the one thing a pinball player reads the ball's line off.
+
+decision-drivers:
+  - "The four pieces of information the Dev listed, in the corners he listed them in."
+  - "Nothing may cover the playfield, and the flippers least of all."
+  - "The screen is 320x180 and the camera's travel is 55 pixels. Neither is negotiable to make room."
+  - "Phase 8 may author a table wider than 320, at which point there are no columns at all."
+
+considered-options:
+  - &beside "Playfield centred, blocks in the two columns beside it"
+  - &overlay "Blocks overlaid on the playfield corners, as a conventional HUD"
+  - &bar "Trade 12 pixels of playfield height for a full-width hint bar at the bottom"
+
+pros-and-cons-of-the-options:
+  beside:
+    description: |
+      The playfield sits in the middle of the screen and the 137 spare pixels become two columns. Three
+      blocks live in the left column, the score in the right.
+    pros:
+      - "Nothing is ever covered, in any camera position, at any moment of play."
+      - "Uses the margin the halving already created rather than asking for more."
+    cons:
+      - &hint-not-across "The hint cannot span the bottom of the screen. It gets the bottom of a
+                          68-pixel column instead, which is narrower than 'lower part' suggests."
+  overlay:
+    description: |
+      Playfield full width, four blocks drawn over its corners with a translucent backing.
+    pros:
+      - "Exactly the layout the phrase 'ordinary HUD' calls to mind, and the hint can span the bottom."
+      - "Leaves the playfield free to grow, which phase 8 may want."
+    cons:
+      - &covers-flippers "The bottom of the screen is the flippers. A hint bar there covers them at the
+                          moment the player most needs them, and a translucent backing over pixel art
+                          at this scale is unreadable both ways."
+  bar:
+    description: |
+      Shrink the playfield viewport to 168 tall, leaving a 12-pixel hint bar across the bottom.
+    pros:
+      - "The hint goes exactly where it was asked to go, full width."
+    cons:
+      - &changes-travel "It changes the camera's travel from 55 pixels to 67. The Dev specified 55, and
+                         a HUD decision must not quietly rewrite a camera decision."
+
+decision-outcome:
+  chosen: *beside
+  because: |
+    § 1 — THE PANEL IS GONE. Nothing in this layout is 203 wide and no block is taller than a third of
+    the screen. The artwork it carried is not reproduced anywhere: it is Microsoft's, and this project
+    does not ship Microsoft's art.
+
+    § 2 — THE PLAYFIELD IS CENTRED AND NOTHING COVERS IT. 137 spare pixels become two columns. There is
+    a test that walks every block against the playfield rectangle and fails on a single shared pixel.
+
+    § 3 — 137 IS ODD, AND THE WIDER COLUMN IS THE LEFT ONE. 69 against 68. The choice is arbitrary, and
+    that is precisely why it is written here rather than left to whoever reads the rounding: three of
+    the four blocks live on the left and only the score is on the right.
+
+    § 4 — ⚠️ THE HINT IS NOT WHERE IT WAS ASKED FOR, AND THIS IS THE DEVIATION. It was asked for at
+    "the lower part". It sits at the bottom of the LEFT COLUMN, which is as low as it can go without
+    covering the flippers (⚠️ `covers-flippers`). The option that would have honoured the phrase
+    literally is `bar`, and it was refused because it rewrites the camera's 55 pixels (⚠️
+    `changes-travel`) — a HUD decision must not do that silently. If the Dev prefers the full-width bar
+    knowing that cost, this record is superseded and the camera's numbers change with it.
+
+    § 5 — A WIDER TABLE HAS NO COLUMNS, AND THE LAYOUT SAYS SO. Phase 8 may exceed 320 across. The
+    layout then reports `overlaying`, keeps every block on screen and still forbids blocks colliding
+    with each other — and holds them to a minimum readable width, because a worse layout honestly
+    reported still has to be a layout. Blocks with negative width would satisfy every other rule and
+    show nothing.
+
+consequences:
+  good:
+    - "The play area is inviolable, and a test enforces it rather than a convention."
+    - "The rules are geometric and hold for any table size, including the authored one."
+    - "The dead panel takes Microsoft's artwork with it, which the licence position wanted anyway."
+  bad:
+    - "⚠️ The hint has a 63-pixel column instead of the width of the screen. At the shipped font that
+       is roughly fifteen characters a line over four lines, and the mission texts of the original are
+       longer than that. Wrapping and truncation are now an i18n problem, not a layout one."
+    - "Two narrow columns are an awkward shape for a player name."
+  ugly:
+    - "The layout is decided before there is anything to draw in it. The block sizes come from a font
+       that does not exist yet, and the numbers will move once it does."
+
+more-information: |
+  Implemented in `app/js/shell/hud.ts`, tested in `tests/shell-hud.node.test.ts`. The rule in § 2 is
+  the test named "every block is clear of it"; § 5 is "the blocks stay READABLE", which exists because
+  a mutation removing the minimum width passed every other test in the file.

@@ -15,3 +15,4 @@ question, the drivers, the options that were weighed, the decision, and its cons
 | Record | Title |
 |---|---|
 | [ADR-0001](ADR-0001-the-camera-follows-the-ball-and-the-flippers-are-given-up.yaml) | The camera follows the ball, and losing the flippers is part of the game |
+| [ADR-0002](ADR-0002-the-side-panel-dies-and-the-corners-take-over.yaml) | The side panel dies, the corners take over, and nothing covers the play |
