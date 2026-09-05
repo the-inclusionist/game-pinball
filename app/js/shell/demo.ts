@@ -11,11 +11,18 @@
 // where the file arrives over HTTP is a redistribution with extra steps.
 //
 // ========================= WHAT THIS SHOWS, AND WHAT IT DOES NOT =========================
-// The real playfield, the real 143 walls, the real gravity and drag, and a ball obeying them. Nothing
-// scores, no lamp lights and no mission runs: that needs the forty `T*` components built from the
-// archive's object manifest, which is its own piece of work. Said here rather than discovered.
+// The real playfield, the real 143 walls, the real gravity and drag, a ball obeying them — and the
+// 1995 SCORES, because `control/score-table` can finally be addressed: its rows now carry the tag that
+// names each component's group in the archive, which is what `make_component_link` uses upstream.
+//
+// ⚠️ STILL NO LAMPS AND NO MISSIONS. Those need the forty `T*` components built from the object
+// manifest, each with its own state — a bumper that knows its own level, a target that knows it is
+// down. This scores a hit at the component's FIRST level, which is what the original pays for a fresh
+// one, and does not pretend the rest is there.
 
 import { buildOriginalTable, type OriginalTable } from '../table/original.js';
+import { SCORE_COMPONENTS } from '../control/score-table.js';
+import { createScoreState, addScore, type ScoreState } from '../control/score.js';
 import { decodePlayfield, readCamera, type OriginalCamera } from '../gfx/original-view.js';
 import { readGroups, type Group } from '../dat/partman.js';
 import { advanceFrame, type Ball } from '../physics/step.js';
@@ -38,13 +45,37 @@ export interface Demo {
   ballOnScreen(): { x: number; y: number };
   /** Everything the ball has touched, by group name. */
   readonly touched: string[];
+  /** The 1995 score, paid from `control/score-table`'s own arrays. */
+  readonly score: ScoreState;
+  /** What the ball has scored on, by the control layer's name for it. */
+  readonly scored: string[];
   drop(): void;
 }
 
 export function createDemo(archive: ArrayBuffer): Demo {
   const groups: readonly Group[] = readGroups(new Uint8Array(archive));
   const touched: string[] = [];
-  const table = buildOriginalTable(groups, { onHit: (hit) => touched.push(hit.group) });
+  const scored: string[] = [];
+  const score = createScoreState();
+
+  /**
+   * ⚠️ BY TAG, NOT BY NAME. The archive calls a component `a_targ1` and the control layer calls it
+   * `target1`; the tag is the bridge, and it is what `make_component_link` uses upstream. Without it
+   * this map would be empty for eighty of the eighty-nine rows.
+   */
+  const scoringByTag = new Map(SCORE_COMPONENTS.map((row) => [row.tag, row]));
+
+  const table = buildOriginalTable(groups, {
+    onHit: (hit) => {
+      touched.push(hit.group);
+      const row = scoringByTag.get(hit.group);
+      if (!row?.scores.length) return;
+      // Level zero: what the original pays for a component that has not been worked up yet. The levels
+      // above it live on the components this build does not construct.
+      addScore(score, row.scores[0]!);
+      scored.push(row.name);
+    },
+  });
   const camera = readCamera(groups);
   const playfield = decodePlayfield(groups);
 
@@ -72,6 +103,8 @@ export function createDemo(archive: ArrayBuffer): Demo {
     camera,
     table,
     touched,
+    score,
+    scored,
     get ball() { return ball; },
 
     step(frames: number): void {
@@ -92,6 +125,7 @@ export function createDemo(archive: ArrayBuffer): Demo {
     drop(): void {
       ball = table.spawnBall();
       touched.length = 0;
+      scored.length = 0;
     },
   };
 }

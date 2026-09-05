@@ -2,6 +2,7 @@
 import { describe, test, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
 import { createDemo, DEMO_BALL_COLOR } from '../app/js/shell/demo.js';
+import { SCORE_COMPONENTS } from '../app/js/control/score-table.js';
 
 const DAT = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/PINBALL.DAT';
 const archive = (): ArrayBuffer | null => {
@@ -84,6 +85,34 @@ describe('the 1995 table, from an ArrayBuffer', () => {
     expect([...demo.playfield.pixels]).toEqual([...before]);
   });
 
+  test('⚠️ and it SCORES, from the 1995 table’s own arrays', () => {
+    // The join the tag made possible. Until `score-table` carried the archive's name for each
+    // component, this map was empty for eighty of its eighty-nine rows and the demonstration could say
+    // what the ball had hit while paying nothing for any of it.
+    const bytes = archive();
+    if (!bytes) return expect(existsSync(DAT)).toBe(false);
+
+    const demo = createDemo(bytes);
+    demo.step(900);
+
+    expect(demo.scored.length).toBeGreaterThan(0);
+    expect(demo.score.curScore).toBeGreaterThan(0);
+  });
+
+  test('and what it scores on is a component the control layer knows by name', () => {
+    // Not the archive's name. `a_bump1` is what the file calls it; `bump1` is what `control::` calls it,
+    // and the score arrays are indexed by the second.
+    const bytes = archive();
+    if (!bytes) return expect(existsSync(DAT)).toBe(false);
+
+    const demo = createDemo(bytes);
+    demo.step(900);
+
+    for (const name of demo.scored) {
+      expect(SCORE_COMPONENTS.some((row) => row.name === name), name).toBe(true);
+    }
+  });
+
   test('dropping again puts a fresh ball back and forgets what the last one touched', () => {
     const bytes = archive();
     if (!bytes) return expect(existsSync(DAT)).toBe(false);
@@ -93,5 +122,6 @@ describe('the 1995 table, from an ArrayBuffer', () => {
     demo.drop();
 
     expect(demo.touched).toEqual([]);
+    expect(demo.scored).toEqual([]);
   });
 });

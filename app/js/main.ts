@@ -280,6 +280,9 @@ function step(frames: number): void {
       demo.step(frames);
       demoPage!.blit(demo);
       paint();
+      // The 1995 score in ADR-0002's corner. The other three blocks carry what the demo can honestly
+      // fill: no ball count, because nothing here loses a ball, and no mission.
+      hud.update({ score: demo.score.curScore, ballCount: 1, playerNumber: 1, hint: '' });
     }
     return;
   }
