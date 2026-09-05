@@ -27,6 +27,7 @@ import { createOriginalDispatch, type OriginalDispatch } from '../table/original
 import { buildOriginalGates } from '../table/original-gates.js';
 import { buildOriginalKickouts, kickoutGeometry } from '../table/original-kickouts.js';
 import { buildOriginalPopupTargets } from '../table/original-popup-targets.js';
+import { buildOriginalSoloTargets } from '../table/original-solo-targets.js';
 import { flipperSides } from '../table/original-flippers.js';
 import { blockerNames } from '../table/original-blockers.js';
 import { buildOriginalPlunger } from '../table/original-plunger.js';
@@ -252,6 +253,8 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
    * to touch a target it has already knocked down.
    */
   const popupTargets: ReturnType<typeof buildOriginalPopupTargets> = new Map();
+  /** The thirteen that duck and come straight back, and are paid the same way. */
+  const soloTargets: ReturnType<typeof buildOriginalSoloTargets> = new Map();
 
   const table = buildOriginalTable(groups, {
     geometryFor: kickoutGeometry(manifest),
@@ -280,7 +283,7 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
     // never receive is a saver the ball goes straight past — it would arm nothing, because nothing
     // would ever touch it.
     componentFor: (name) => (name === 'plunger' ? table.plunger ?? undefined : undefined)
-      ?? popupTargets.get(name)
+      ?? popupTargets.get(name) ?? soloTargets.get(name)
       ?? components.bumpers.get(name) ?? components.kickbacks.get(name)
       // Only the bound ones: an unbound hole must not be given a ball it cannot give back.
       ?? (kickouts.get(name)?.control ? kickouts.get(name) : undefined),
@@ -297,7 +300,8 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
       // `control::handler` only when the hit was HARD; a graze bounces and pays nothing. This wrapper
       // reports every collision, so routing the payment through it paid a ball rolling along a bumper
       // once per frame of the roll — six touches, six payments, and a score that reads as luck.
-      if (components.bumpers.has(hit.group) || popupTargets.has(hit.group)) return;
+      if (components.bumpers.has(hit.group) || popupTargets.has(hit.group)
+        || soloTargets.has(hit.group)) return;
 
       payFor(hit.group);
     },
@@ -332,6 +336,9 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
   for (const [name, target] of buildOriginalPopupTargets(manifest, table, {
     table: { tiltLocked: false }, timer: components.timer, onStruck: (struck) => payFor(struck),
   })) popupTargets.set(name, target);
+  for (const [name, target] of buildOriginalSoloTargets(manifest, table, {
+    table: { tiltLocked: false }, timer: components.timer, onStruck: (struck) => payFor(struck),
+  })) soloTargets.set(name, target);
 
   const gates = buildOriginalGates(manifest, table);
   for (const [name, kickout] of buildOriginalKickouts(manifest, table, {

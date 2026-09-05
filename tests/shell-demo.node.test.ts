@@ -366,3 +366,24 @@ describe('⚠️ a bumper scores when it FIRES, not when it is grazed', () => {
     expect(bumperScores).toBeLessThan(bumperTouches);
   });
 });
+
+describe('⚠️ and a target is never paid TWICE for one hit', () => {
+  test('the payments for targets never outnumber the touches on them', () => {
+    // Three kinds of component decide for themselves whether a hit counts — the bumper, the popup
+    // target and the solo target — and each reports through its own hook. The table's wall wrapper
+    // reports every collision as well, so a component left in BOTH paths is paid twice for one hard
+    // hit and once for every graze. Equal counts are the healthy case; more payments than touches is
+    // the double.
+    const bytes = archive();
+    if (!bytes) return expect(existsSync(DAT)).toBe(false);
+
+    const demo = createDemo(bytes, { random: seeded() });
+    demo.step(1800);
+
+    const touches = demo.touched.filter((name) => /^a_targ/.test(name)).length;
+    const payments = demo.scored.filter((name) => /^target/.test(name)).length;
+
+    expect(touches, 'the ball did reach a target').toBeGreaterThan(0);
+    expect(payments).toBeLessThanOrEqual(touches);
+  });
+});
