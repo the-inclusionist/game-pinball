@@ -60,14 +60,23 @@ describe('gate — it does not move, it switches off', () => {
     expect(played).toEqual([]);
   });
 
-  test('opening and shutting by message do play their sounds', () => {
+  test('⚠️ opening plays the OPEN sound and shutting the SHUT one, which is not obvious', () => {
+    // The original says it in messages rather than in names: `TGateDisable` clears the active flag —
+    // the gate lets the ball through — and plays `SoundIndex3`; `TGateEnable` puts the wall back and
+    // plays `SoundIndex4`. Record 1101 carries the first and 1100 the second.
+    //
+    // ⚠️ THE PORT HAD THEM CROSSED, and the test that covered this asked only whether A sound played.
+    // Both orders satisfy "opening and shutting do play their sounds", so the assertion passed while
+    // the gate announced its opening with the sound of shutting — audible, wrong, and attributable to
+    // nothing until somebody wired a gate to the archive's two records.
     const played: number[] = [];
     const gate = createGate({ edges: [], openSoundId: 1, shutSoundId: 2, sound: { play: (id) => played.push(id) } });
 
     gate.openGate();
-    gate.shutGate();
+    expect(played).toEqual([1]);
 
-    expect(played).toEqual([2, 1]);
+    gate.shutGate();
+    expect(played).toEqual([1, 2]);
   });
 });
 

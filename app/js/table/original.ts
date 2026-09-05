@@ -22,7 +22,9 @@
 // to the ball's own speed, with a random jitter on X. The drag is why the 1995 ball settles instead of
 // bouncing for ever, and the jitter is why it does not repeat the same path twice.
 
-import { createEdgeManager, placeLineInGrid, placeCircleInGrid, type EdgeManager } from '../physics/grid.js';
+import {
+  createEdgeManager, placeLineInGrid, placeCircleInGrid, type EdgeManager, type Edge,
+} from '../physics/grid.js';
 import { installWall } from '../physics/wall.js';
 import { basicCollision } from '../physics/collision.js';
 import { createBall, type Ball, type StepContext } from '../physics/step.js';
@@ -60,6 +62,14 @@ export interface OriginalTable {
   readonly wallCount: number;
   /** The groups that contributed geometry, so a hit can be reported by name. */
   readonly wallGroups: readonly string[];
+  /**
+   * ⚠️ THE EDGES ONE GROUP INSTALLED, WHICH IS HOW A GATE IS BUILT AT ALL. `TGate` has no collision
+   * override: opening it clears the `active` flag on its own edges and the grid stops looking at them.
+   * So a gate is not a component the table can build on its own — it is the table's geometry plus a
+   * switch, and the switch has to be handed the very edge objects that went into the grid. A copy
+   * would toggle nothing.
+   */
+  edgesOf(groupName: string): readonly Edge[];
   spawnBall(): Ball;
 }
 
@@ -131,6 +141,7 @@ export function buildOriginalTable(groups: readonly Group[], o: OriginalOptions 
 
   let wallCount = 0;
   const wallGroups: string[] = [];
+  const edgesByGroup = new Map<string, Edge[]>();
 
   for (const group of groups) {
     // A group with no float arrays cannot carry geometry, and most of the 541 do not.
@@ -157,10 +168,13 @@ export function buildOriginalTable(groups: readonly Group[], o: OriginalOptions 
       },
     };
 
+    const installed: Edge[] = [];
     for (const edge of installWall(data, { component, offset: ballRadius })) {
       if (edge.kind === 'line') placeLineInGrid(grid, edge);
       else placeCircleInGrid(grid, edge);
+      installed.push(edge);
     }
+    edgesByGroup.set(name, installed);
     wallCount++;
     wallGroups.push(name);
   }
@@ -171,6 +185,7 @@ export function buildOriginalTable(groups: readonly Group[], o: OriginalOptions 
     ballRadius,
     wallCount,
     wallGroups,
+    edgesOf: (groupName) => edgesByGroup.get(groupName) ?? [],
     context: {
       grid,
       fieldEffects(ball, destination) {

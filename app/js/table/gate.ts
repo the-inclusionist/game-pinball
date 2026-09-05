@@ -10,13 +10,19 @@
 // geometry switched off, and nothing is ever rebuilt mid-game.
 
 import type { Edge } from '../physics/grid.js';
+import { playSoundId, type SoundSink } from './sound-id.js';
 
 export interface GateOptions {
   readonly edges: readonly Edge[];
-  /** Sound when the gate is opened by a message (not on reset). */
+  /**
+   * ⚠️ `SoundIndex3`, RECORD 1101, played when the gate OPENS — which the original writes as
+   * `TGateDisable`, because opening a gate is disabling a wall. The two are easy to cross, and a
+   * crossed pair is audible and attributable to nothing.
+   */
   readonly openSoundId?: number;
+  /** `SoundIndex4`, record 1100, played by `TGateEnable` — the wall coming back. */
   readonly shutSoundId?: number;
-  readonly sound?: { play(soundId: number, source: unknown): void };
+  readonly sound?: SoundSink;
   /** Shows or hides the gate's sprite. -1 is the original's "no sprite". */
   readonly setSprite?: (index: number) => void;
 }
@@ -45,14 +51,14 @@ export function createGate(o: GateOptions): Gate {
       open = true;
       setActive(false);
       o.setSprite?.(-1);
-      if (o.shutSoundId !== undefined) o.sound?.play(o.shutSoundId, gate);
+      playSoundId(o.sound, o.openSoundId, gate);
     },
 
     shutGate(): void {
       open = false;
       setActive(true);
       o.setSprite?.(0);
-      if (o.openSoundId !== undefined) o.sound?.play(o.openSoundId, gate);
+      playSoundId(o.sound, o.shutSoundId, gate);
     },
 
     reset(): void {

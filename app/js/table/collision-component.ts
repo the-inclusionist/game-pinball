@@ -14,6 +14,7 @@
 
 import { basicCollision, type BallState } from '../physics/collision.js';
 import { NO_COLLISION, type Vector2 } from '../maths/maths.js';
+import { playSoundId } from './sound-id.js';
 
 /** Above this rebound speed a hit is audible at all. The original's literal 0.2. */
 const AUDIBLE_REBOUND = 0.2;
@@ -61,12 +62,10 @@ export function createCollisionComponent(o: CollisionComponentOptions): Collisio
       { elasticity: o.elasticity, smoothness: o.smoothness, threshold: o.threshold, boost: o.boost });
 
     if (reboundSpeed > o.threshold) {
-      if (o.hardHitSoundId !== undefined) o.sound?.play(o.hardHitSoundId, ball);
+      playSoundId(o.sound, o.hardHitSoundId, ball);
       return true;
     }
-    if (reboundSpeed > AUDIBLE_REBOUND && o.softHitSoundId !== undefined) {
-      o.sound?.play(o.softHitSoundId, ball);
-    }
+    if (reboundSpeed > AUDIBLE_REBOUND) playSoundId(o.sound, o.softHitSoundId, ball);
     return false;
   }
 

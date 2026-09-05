@@ -17,6 +17,7 @@
 import type { Edge } from '../physics/grid.js';
 import type { SoundPlayer } from './collision-component.js';
 import type { TimerService } from './bumper.js';
+import { playSoundId } from './sound-id.js';
 
 export interface BlockerOptions {
   readonly timer: TimerService;
@@ -60,7 +61,7 @@ export function createBlocker(o: BlockerOptions): Blocker {
 
     enable(seconds: number): void {
       setActive(true);
-      if (o.enableSoundId !== undefined) o.sound?.play(o.enableSoundId, blocker);
+      playSoundId(o.sound, o.enableSoundId, blocker);
       clearTimer();
       if (seconds >= 0) {
         timerId = o.timer.set(seconds, () => { timerId = 0; o.onTimeout?.(); });
@@ -70,7 +71,7 @@ export function createBlocker(o: BlockerOptions): Blocker {
     disable(): void {
       clearTimer();
       setActive(false);
-      if (o.disableSoundId !== undefined) o.sound?.play(o.disableSoundId, blocker);
+      playSoundId(o.sound, o.disableSoundId, blocker);
     },
 
     restartTimeout(seconds: number): void {
