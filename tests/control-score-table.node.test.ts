@@ -26,9 +26,10 @@ describe('score table — the shape the original ships', () => {
     expect(SCORE_ARRAYS.bump_scores2).toEqual([1500, 2500, 3500, 4500]);
   });
 
-  test('the skill-shot chute pays most in the MIDDLE of its window', () => {
-    // 15000, 30000, 75000, then back down. Up and then down is what makes it a timing shot rather than
-    // a "hold it longer" shot.
+  test('the skill-shot chute pays most at THREE gates', () => {
+    // The index is the number of launch-chute gates the ball passed — see `control/launch`. So the
+    // peak is one particular plunger strength, and overshooting to six gates is worth a tenth of
+    // getting it right.
     expect(SCORE_ARRAYS.oneway4_score1).toEqual([15000, 30000, 75000, 30000, 15000, 7500]);
   });
 

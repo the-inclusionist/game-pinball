@@ -33,6 +33,7 @@ export type MessageCode =
   | 'ControlTimerExpired'
   | 'ControlNotifyTimerExpired'
   | 'TLightResetAndTurnOn'
+  | 'ControlBallReleased'
   | 'Reset'
   | 'SetTiltLock'
   | 'GameOver'
