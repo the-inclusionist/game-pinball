@@ -44,6 +44,7 @@ export type MessageCode =
   | 'TBlockerEnable'
   | 'ControlSpinnerLoopReset'
   | 'TLightTurnOn'
+  | 'TBumperSetBmpIndex'
   | 'Reset'
   | 'SetTiltLock'
   | 'GameOver'
