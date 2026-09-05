@@ -43,15 +43,27 @@ export interface TableActionOptions {
   readonly resetSinkTimers?: (seconds: number) => void;
 }
 
+/**
+ * `control::table_add_extra_ball`. Exported on its own because the OUT LANES grant one directly, and
+ * two copies of a three-line rule is how the counter and the announcement drift apart.
+ *
+ * ⚠️ THE SECONDS ARE HOW LONG THE LINE IS SHOWN, not how long the ball lasts. The original passes 2.0
+ * from every call site, and reading it as a duration of the award would be a plausible and completely
+ * wrong transcription.
+ */
+export function addExtraBall(ctx: ControlContext, text: string, seconds: number): void {
+  ctx.table.extraBalls++;
+  ctx.playSound('extraBall');
+  ctx.showInfo(text, seconds);
+}
+
 export function createTableActions(o: TableActionOptions) {
   const { ctx } = o;
 
   return {
     /** An extra ball is a counter and an announcement, and nothing else. */
     addExtraBall(count: number): void {
-      ctx.table.extraBalls++;
-      ctx.playSound('extraBall');
-      ctx.showInfo(o.text.extraBall, count);
+      addExtraBall(ctx, o.text.extraBall, count);
     },
 
     /** Holds the bonus into the next ball. Only the lamp records it. */

@@ -63,6 +63,7 @@ const es: Record<string, string> = {
   'pinball.mission.timeWarp2.promoted': 'Ascendido a {rank}.',
   'pinball.mission.timeWarp2.demoted': 'Degradado a {rank}.',
 
+  'pinball.award.bonusCollected': 'Bonificación: {points}',
   'pinball.award.scored': '{points} puntos',
 
   /* ===================== HUD ===================== */
@@ -75,6 +76,7 @@ const es: Record<string, string> = {
   'pinball.demo.failed': 'No pude leer ese archivo: {n}',
   'pinball.event.attackBumpersRaised': 'Los bumpers del centro valen más.',
   'pinball.event.launchBumpersRaised': 'Los bumpers de la rampa valen más.',
+  'pinball.event.extraBall': '¡Bola extra!',
   'pinball.event.refuel': 'Depósito lleno.',
   'pinball.hud.score': 'Puntuación: {n}',
   'pinball.objective.authored': 'Objetivos por encender: {n}',

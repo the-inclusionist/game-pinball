@@ -66,6 +66,7 @@ const en: Record<string, string> = {
   'pinball.mission.timeWarp2.promoted': 'Promoted to {rank}.',
   'pinball.mission.timeWarp2.demoted': 'Demoted to {rank}.',
 
+  'pinball.award.bonusCollected': 'Bonus: {points}',
   'pinball.award.scored': '{points} points',
 
   /* ===================== HUD ===================== */
@@ -78,6 +79,7 @@ const en: Record<string, string> = {
   'pinball.demo.failed': 'I could not read that file: {n}',
   'pinball.event.attackBumpersRaised': 'The centre bumpers are worth more.',
   'pinball.event.launchBumpersRaised': 'The ramp bumpers are worth more.',
+  'pinball.event.extraBall': 'Extra ball!',
   'pinball.event.refuel': 'Fuel tank filled.',
   'pinball.hud.score': 'Score: {n}',
   'pinball.objective.authored': 'Targets left to light: {n}',

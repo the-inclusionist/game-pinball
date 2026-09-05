@@ -106,7 +106,7 @@ export function mountDemoPage(o: DemoPageOptions): DemoPage {
       try {
         // The completion lines are the game's own resources, so the demo is given the translator
         // rather than left to show a `STRING106` at the player.
-        const demo = createDemo(bytes, { textFor: (id) => o.t(keyOf(id)) });
+        const demo = createDemo(bytes, { textFor: (id, params) => o.t(keyOf(id), params) });
         panel.remove();
         if (o.onMusic) o.host.appendChild(musicPanel);
         o.onReady(demo);

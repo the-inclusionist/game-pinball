@@ -31,12 +31,14 @@
 
 import {
   makeBumperLaneControl, makeSpaceWarpRolloverControl, makeReturnLaneControl,
-  makeFuelRolloverControl, type LaneGroup, type LaneLight,
+  makeFuelRolloverControl, makeOutLaneControl, makeBonusLaneControl,
+  type LaneGroup, type LaneLight,
 } from '../control/lanes.js';
 import {
   BUMPER_LANE_BINDINGS, LAMP_BINDINGS, RETURN_LANES, FUEL_ROLLOVERS, FUEL_BARGRAPH,
-  FUEL_REFUEL_TEXT_ID, type BumperLaneBinding,
+  FUEL_REFUEL_TEXT_ID, OUT_LANES, BONUS_LANE, type BumperLaneBinding,
 } from '../control/bindings.js';
+import { addExtraBall } from '../control/table-actions.js';
 import { handler, type ControlContext, type ControlledComponent } from '../control/dispatch.js';
 import { SCORE_COMPONENTS } from '../control/score-table.js';
 import type { OriginalComponents } from './original-components.js';
@@ -46,8 +48,11 @@ export interface OriginalDispatchOptions {
   readonly context: ControlContext;
   /** `pb::FullTiltMode`. False for Space Cadet, which is the only table this port targets. */
   readonly isFullTilt?: () => boolean;
-  /** The line a completed chain shows, already translated. */
-  readonly textFor: (resourceId: string) => string;
+  /**
+   * The line a control shows, already translated. `params` is for the ones that carry a number —
+   * `STRING104` names the bonus it just paid, and a translator is the only thing that can put it in.
+   */
+  readonly textFor: (resourceId: string, params?: Record<string, string | number>) => string;
 }
 
 export interface OriginalDispatch {
@@ -205,6 +210,68 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
         byName.set(lane.component, { name: lane.component, scores: row?.scores ?? [], control: null });
         controls.set(lane.component, (component) => control('ControlCollision', component, o.context));
       }
+    }
+  }
+
+  // ⚠️ THE TWO OUT LANES, WHICH RUN THE SAME CONTROL AND BRANCH ON WHO CALLED IT. `roll4 == caller`
+  // takes `lite30 + lite196` and everything else takes `lite29 + lite195`, so the two lanes share one
+  // function and differ only in a lookup. Losing the ball here banks an extra ball when either of
+  // `lite17`/`lite18` is lit — the ball still drains, which is what makes an out lane worth something.
+  {
+    const extraBallLamps = OUT_LANES.extraBallLamps
+      .map((name) => o.components.lights.get(name))
+      .filter((light): light is NonNullable<typeof light> => Boolean(light));
+
+    const warpOf = new Map<string, LaneLight[]>();
+    for (const [component, names] of Object.entries(OUT_LANES.warpLamps)) {
+      const lamps = names
+        .map((name) => o.components.lights.get(name))
+        .filter((light): light is NonNullable<typeof light> => Boolean(light));
+      if (lamps.length === names.length) warpOf.set(component, lamps as unknown as LaneLight[]);
+    }
+
+    if (extraBallLamps.length === OUT_LANES.extraBallLamps.length) {
+      // ⚠️ THE SAME `addExtraBall` THE TABLE ACTIONS USE, not a copy of it. It is three lines — a
+      // counter, a sound and a line — and two copies of three lines is exactly how a counter and its
+      // announcement drift apart without either looking wrong.
+      const extraBallText = o.textFor(OUT_LANES.extraBallTextId);
+      const control = makeOutLaneControl({
+        extraBallLamps: extraBallLamps as unknown as LaneLight[],
+        addExtraBall: (seconds) => addExtraBall(o.context, extraBallText, seconds),
+        warpLampsFor: (caller) => warpOf.get(caller.name),
+        missSound: OUT_LANES.missSound,
+      });
+
+      for (const name of OUT_LANES.components) {
+        const row = scoreRows.get(name);
+        byName.set(name, { name, scores: row?.scores ?? [], control: null });
+        controls.set(name, (component) => control('ControlCollision', component, o.context));
+      }
+    }
+  }
+
+  // ⚠️ THE BONUS LANE, WHICH FILLS THE TANK EITHER WAY. The refill sits outside the branch in the
+  // original: collecting the bonus and missing it both end with the tank at eleven. Reading it as part
+  // of the `else` would make a lit lamp COST the player their fuel — a rule inverted by an indentation.
+  {
+    const lamp = o.components.lights.get(BONUS_LANE.lamp);
+    const tank = o.components.bargraphs.get(FUEL_BARGRAPH);
+    if (lamp && tank) {
+      const control = makeBonusLaneControl({
+        lamp: lamp as unknown as LaneLight,
+        bargraph: tank,
+        topSplitIndex: BONUS_LANE.topSplitIndex,
+        bonusText: (points) => o.textFor(BONUS_LANE.bonusTextId, { points }),
+        missText: o.textFor(BONUS_LANE.missTextId),
+        collectSound: BONUS_LANE.collectSound,
+        missSound: BONUS_LANE.missSound,
+      });
+      const row = scoreRows.get(BONUS_LANE.component);
+      byName.set(BONUS_LANE.component, {
+        name: BONUS_LANE.component, scores: row?.scores ?? [], control: null,
+      });
+      controls.set(BONUS_LANE.component,
+        (component) => control('ControlCollision', component, o.context));
     }
   }
 

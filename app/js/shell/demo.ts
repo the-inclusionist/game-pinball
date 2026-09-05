@@ -90,8 +90,13 @@ export interface Demo {
 }
 
 export interface DemoOptions {
-  /** Translates a control's completion line. Absent = the resource id itself, which is visible. */
-  readonly textFor?: (resourceId: string) => string;
+  /**
+   * Translates a line a control shows. Absent = the resource id itself, which is visible.
+   *
+   * ⚠️ AND IT TAKES PARAMETERS, because `STRING104` names the bonus it just paid. A translator that
+   * could only take an id would have to show the amount separately or not at all.
+   */
+  readonly textFor?: (resourceId: string, params?: Record<string, string | number>) => string;
 }
 
 export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
@@ -136,7 +141,7 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
     missionControl: () => {},
   };
   const dispatch = createOriginalDispatch({
-    components, context, textFor: (id) => o.textFor?.(id) ?? id,
+    components, context, textFor: (id, params) => o.textFor?.(id, params) ?? id,
   });
 
   const table = buildOriginalTable(groups, {

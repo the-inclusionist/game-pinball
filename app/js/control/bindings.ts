@@ -160,6 +160,80 @@ export const FUEL_ROLLOVERS: readonly FuelRolloverBinding[] = [
 ];
 
 /**
+ * `control::OutLaneRolloverControl`, run by BOTH out lanes — `a_roll4` and `a_roll8`.
+ *
+ * ⚠️ THE FUNCTION BRANCHES ON WHICH ONE CALLED IT, and the original writes that as `roll4 == caller`
+ * with everything else in the `else`. Transcribed as a table it is two entries, and the FIRST lamp of
+ * each pair is the one whose lit state arms it: `lite30` arms `lite30 + lite196`, `lite29` arms
+ * `lite29 + lite195`. Storing the pair in the other order would flash on the wrong condition.
+ *
+ * ⚠️ AND LOSING THE BALL HERE IS WHERE AN EXTRA BALL IS COLLECTED. `lite17` or `lite18` lit turns the
+ * loss into a grant — the ball still drains, and one is banked. That is the whole reason an out lane
+ * is not simply a drain.
+ */
+export interface OutLaneBinding {
+  readonly control: string;
+  /** Both lanes, by the archive's name. */
+  readonly components: readonly string[];
+  /** `lite17` and `lite18`. Either lit means an extra ball is waiting. */
+  readonly extraBallLamps: readonly string[];
+  /** Per lane, the warp pair it flashes. The first is the one that has to be lit. */
+  readonly warpLamps: Readonly<Record<string, readonly string[]>>;
+  readonly missSound: string;
+  /** `table_add_extra_ball`'s own line. */
+  readonly extraBallTextId: string;
+}
+
+export const OUT_LANES: OutLaneBinding = {
+  control: 'OutLaneRolloverControl',
+  components: ['a_roll4', 'a_roll8'],
+  extraBallLamps: ['lite17', 'lite18'],
+  warpLamps: {
+    a_roll4: ['lite30', 'lite196'],
+    a_roll8: ['lite29', 'lite195'],
+  },
+  missSound: 'miss',
+  extraBallTextId: 'STRING110',
+};
+
+/**
+ * `control::BonusLaneRolloverControl`, run by `a_roll5`.
+ *
+ * ⚠️ IT FILLS THE TANK EITHER WAY, and that is outside the branch in the original. Collecting the bonus
+ * and missing it both end with `TLightGroupToggleSplitIndex 11` — so the lane is worth crossing even
+ * when the lamp is dark, and a transcription that tucked the refill into the `else` would have made a
+ * lit lamp cost the player their fuel.
+ *
+ * ⚠️ AND THE MISS BRANCH SHOWS THE REFUEL LINE, the same `STRING145` the six fuel rollovers show. The
+ * consolation for crossing an unlit bonus lane is a full tank, and the game says so in those words.
+ */
+export interface BonusLaneBinding {
+  readonly control: string;
+  readonly component: string;
+  /** `lite16`. Lit, the lane pays the accumulated bonus instead of its own score. */
+  readonly lamp: string;
+  /** The level the tank is filled to, which is the top of it. */
+  readonly topSplitIndex: number;
+  /** `STRING104`, which carries the amount paid. */
+  readonly bonusTextId: string;
+  /** `STRING145` — the refuel line, shared with the fuel rollovers. */
+  readonly missTextId: string;
+  readonly collectSound: string;
+  readonly missSound: string;
+}
+
+export const BONUS_LANE: BonusLaneBinding = {
+  control: 'BonusLaneRolloverControl',
+  component: 'a_roll5',
+  lamp: 'lite16',
+  topSplitIndex: 11,
+  bonusTextId: 'STRING104',
+  missTextId: FUEL_REFUEL_TEXT_ID,
+  collectSound: 'collect',
+  missSound: 'miss',
+};
+
+/**
  * ⚠️ A CONTROL WHOSE WHOLE BINDING IS A LIST OF LAMPS, IN ORDER.
  *
  * Some control functions reach for nothing but lights, and their factories take exactly that. Those

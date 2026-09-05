@@ -36,6 +36,10 @@ export const RESOURCE_KEYS: Readonly<Record<string, string>> = {
   // ⚠️ SHOWN BY ALL SIX FUEL ROLLOVERS, WHICH SHARE ONE LINE IN THE ORIGINAL. The tank has six
   // segments and one message: the player learns where they are from the lamps, not from the text.
   STRING145: 'pinball.event.refuel',
+  // ⚠️ THE OUT LANE'S CONSOLATION, and the only line in the game that announces a ball being given.
+  STRING110: 'pinball.event.extraBall',
+  // The bonus lane's payout, which carries the amount. The original formats an int into it.
+  STRING104: 'pinball.award.bonusCollected',
   STRING208: 'pinball.mission.bumpers.run',
   STRING209: 'pinball.mission.practice.done',
   STRING231: 'pinball.mission.alienMenace2.done',

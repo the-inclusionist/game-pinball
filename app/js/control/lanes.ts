@@ -295,7 +295,7 @@ export function makeReturnLaneControl(o: ReturnLaneOptions): ControlFunc {
 export interface BonusLaneOptions {
   /** `lite16`. Lit, it turns this lane into a bonus payout. */
   readonly lamp: LaneLight;
-  readonly bargraph: LaneGroup;
+  readonly bargraph: Bargraph;
   /** The lane fills the tank right to the top whatever else happens. */
   readonly topSplitIndex: number;
   readonly bonusText: (points: number) => string;

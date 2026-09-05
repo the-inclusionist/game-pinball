@@ -3,7 +3,9 @@ import { describe, test, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
 import { createOriginalDispatch } from '../app/js/table/original-dispatch.js';
 import { buildOriginalComponents } from '../app/js/table/original-components.js';
-import { REENTRY_LANES, LAMP_BINDINGS, FUEL_ROLLOVERS } from '../app/js/control/bindings.js';
+import {
+  REENTRY_LANES, LAMP_BINDINGS, FUEL_ROLLOVERS, OUT_LANES, BONUS_LANE,
+} from '../app/js/control/bindings.js';
 import { createScoreState } from '../app/js/control/score.js';
 import { loadTable } from '../app/js/dat/loader.js';
 import type { ControlContext } from '../app/js/control/dispatch.js';
@@ -29,6 +31,7 @@ function wired() {
   const components = buildOriginalComponents(table);
   const score = createScoreState();
   const shown: string[] = [];
+  const sounds: string[] = [];
   const context: ControlContext = {
     score,
     table: { extraBalls: 0, multiballCount: 1, ballCount: 3, tiltLocked: false },
@@ -36,14 +39,15 @@ function wired() {
     group: () => undefined,
     showInfo: (text) => shown.push(text),
     showMission: (text) => shown.push(text),
-    playSound: () => {},
+    playSound: (name) => sounds.push(name),
     playMusic: () => {},
     missionControl: () => {},
   };
   const dispatch = createOriginalDispatch({
-    components, context, textFor: (id) => `text:${id}`,
+    components, context,
+    textFor: (id, params) => (params ? `text:${id}:${JSON.stringify(params)}` : `text:${id}`),
   });
-  return { components, score, shown, dispatch };
+  return { components, score, shown, sounds, dispatch, context };
 }
 
 describe('a lane crossing reaches the 1995 control function', () => {
@@ -51,7 +55,7 @@ describe('a lane crossing reaches the 1995 control function', () => {
     const w = wired();
     if (!w) return expect(existsSync(DAT)).toBe(false);
 
-    expect(w.dispatch.wired.size).toBe(15);
+    expect(w.dispatch.wired.size).toBe(18);
     expect(w.dispatch.wired.has('a_roll3')).toBe(true);
     expect(w.dispatch.wired.has('a_roll9')).toBe(true);
     expect(w.dispatch.wired.has('a_bump1')).toBe(false);
@@ -254,5 +258,85 @@ describe('⚠️ the six fuel rollovers, which fill one tank between them', () =
     w.dispatch.hit('a_roll179');
 
     expect(w.score.curScore).toBeGreaterThan(after);
+  });
+});
+
+describe('⚠️ the two out lanes, where losing the ball can still pay', () => {
+  test('both are wired, and they are the same control with different lamps', () => {
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+
+    for (const name of OUT_LANES.components) expect(w.dispatch.wired.has(name), name).toBe(true);
+  });
+
+  test('with an extra ball waiting it is BANKED and both lamps go out', () => {
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    w.components.lights.get('lite17')!.turnOn();
+
+    w.dispatch.hit('a_roll4');
+
+    expect(w.context.table.extraBalls).toBe(1);
+    expect(w.components.lights.get('lite17')!.on).toBe(false);
+    expect(w.components.lights.get('lite18')!.on).toBe(false);
+    expect(w.sounds).toContain('extraBall');
+  });
+
+  test('with neither lamp lit it is a miss, and nothing is banked', () => {
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+
+    w.dispatch.hit('a_roll4');
+
+    expect(w.context.table.extraBalls).toBe(0);
+    expect(w.sounds).toContain('miss');
+  });
+
+  test('⚠️ each lane flashes ITS OWN warp pair, armed by the FIRST lamp of that pair', () => {
+    // `roll4 == caller` picks `lite30 + lite196`; anything else picks `lite29 + lite195`. The pair is
+    // flashed only when the first of the two is lit, so wiring the pair in the other order would make
+    // the lane flash on a condition that belongs to the other side of the table.
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    w.components.lights.get('lite30')!.turnOn();
+
+    w.dispatch.hit('a_roll8'); // the OTHER lane: its own guard, `lite29`, is dark
+    expect(w.components.lights.get('lite30')!.flashing).toBe(false);
+
+    w.dispatch.hit('a_roll4');
+    expect(w.components.lights.get('lite30')!.flashing).toBe(true);
+    expect(w.components.lights.get('lite196')!.flashing).toBe(true);
+  });
+});
+
+describe('⚠️ the bonus lane, which fills the tank whether it pays or not', () => {
+  test('with the lamp dark it scores, says the refuel line, and fills the tank', () => {
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    const tank = w.components.bargraphs.get('fuel_bargraph')!;
+
+    w.dispatch.hit(BONUS_LANE.component);
+
+    expect(w.score.curScore).toBeGreaterThan(0);
+    expect(w.shown).toContain('text:STRING145');
+    expect(tank.onCount).toBe(11);
+  });
+
+  test('⚠️ with the lamp LIT it pays the bonus, darkens the lamp, and STILL fills the tank', () => {
+    // The refill is outside the branch in the original. Tucking it into the `else` would make a lit
+    // lamp cost the player their fuel — a rule inverted by an indentation.
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    const tank = w.components.bargraphs.get('fuel_bargraph')!;
+    w.components.lights.get('lite16')!.turnOn();
+    w.score.bonusScore = 25000;
+
+    w.dispatch.hit(BONUS_LANE.component);
+
+    expect(w.score.curScore).toBeGreaterThanOrEqual(25000);
+    expect(w.components.lights.get('lite16')!.on).toBe(false);
+    expect(tank.onCount).toBe(11);
+    expect(w.sounds).toContain('collect');
+    expect(w.shown.some((line) => line.startsWith('text:STRING104'))).toBe(true);
   });
 });
