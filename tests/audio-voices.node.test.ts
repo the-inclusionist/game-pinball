@@ -3,7 +3,7 @@ import { describe, test, expect } from 'vitest';
 import {
   VOICES, soundForKind, soundEntriesOf, SILENT_KINDS, type VoiceSpec,
 } from '../app/js/audio/voices.js';
-import { CATALOG } from '../app/js/table/catalog.js';
+import { COMPONENT_KINDS } from '../app/js/i18n/names.js';
 import { createSoundBoard } from '../app/js/audio/sfx.js';
 
 /**
@@ -27,9 +27,10 @@ describe('one voice per kind, and the table can be heard', () => {
     // ⚠️ MY FIRST VERSION OF THIS SAID "every kind has a name" AND CONTRADICTED THE TEST BELOW IT.
     // Silence has to be part of the claim, and it has to be a NAMED silence: "not in the map" and
     // "meant to be quiet" look identical from outside, and only one of them is a decision.
-    const kinds = new Set(CATALOG.flatMap((t) => t.components.map((c) => c.kind)));
-
-    for (const kind of kinds) {
+    // ⚠️ ALL OF THEM, NOT THE ONES THE AUTHORED CATALOGUE USES. This walked `CATALOG` and therefore
+    // could not see a kind that only the 1995 archive reaches — `tripwire` was added, went unheard and
+    // unlisted, and this gate stayed green. `COMPONENT_KINDS` is the whole vocabulary.
+    for (const kind of COMPONENT_KINDS) {
       if (SILENT_KINDS.includes(kind)) {
         expect(soundForKind(kind), kind).toBeUndefined();
         continue;

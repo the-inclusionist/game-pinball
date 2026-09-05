@@ -128,3 +128,48 @@ describe('the namer, which is what the declaration is handed', () => {
     expect(createNamer('de' as never)('flip1')?.text).toBe('pá');
   });
 });
+
+describe("⚠️ and the archive's own names carry an `a_` the prefix table does not", () => {
+  test('a collision component is `a_bump1` in the file and a bumper all the same', () => {
+    // Every collision component in `PINBALL.DAT` is named `a_something`; the light groups and lamps are
+    // not. The prefix table was written from the control layer's names, so until the `a_` came off,
+    // every component of the 1995 table answered `null` — no role for the sonar, no name to speak and
+    // no sound to make, all three failing silently because `null` is a legitimate answer for a wall.
+    expect(kindOf('a_bump1')).toBe('bumper');
+    expect(kindOf('a_roll179')).toBe('lane');
+    expect(kindOf('a_targ1')).toBe('target');
+    // And the lamps, which have no `a_`, are unaffected.
+    expect(kindOf('lite30')).toBe('lamp');
+  });
+
+  test('⚠️ and the letter is not always `a`: there are `s_` and `v_` families too', () => {
+    // `a_` is the collision components, `s_` the surfaces and `v_` the volumes — three letters, one
+    // rule. Stripping only `a_` would have left twenty-five components without a kind and looking
+    // exactly like the wall they are not.
+    expect(kindOf('s_onewy1')).toBe('oneway');
+    expect(kindOf('s_ramp1')).toBe('ramp');
+    expect(kindOf('v_rebo1')).toBe('rebounder');
+    expect(kindOf('v_sink1')).toBe('well');
+    expect(kindOf('v_gate1')).toBe('gate');
+    expect(kindOf('v_bloc1')).toBe('blocker');
+  });
+
+  test('⚠️ and the archive ABBREVIATES what the control layer spells out', () => {
+    // `target` in the code is `targ` in the file; `oneway` is `onewy`; `block` is `bloc`; a kickout is
+    // `kick` in one place and `kout` in another. The table has to match the shorter form, or the
+    // longer one is the only name that works — and the file is the one that decides.
+    expect(kindOf('targ1')).toBe('target');
+    expect(kindOf('target22')).toBe('target');
+    expect(kindOf('kick1')).toBe('kicker');
+    expect(kindOf('kout1')).toBe('kicker');
+    expect(kindOf('kickout1')).toBe('kicker');
+    expect(kindOf('bloc1')).toBe('blocker');
+    expect(kindOf('block1')).toBe('blocker');
+  });
+
+  test('a tripwire is its own kind, because it is neither a wall nor a gate', () => {
+    // Five `s_trip` components sense the ball passing and stop nothing. Calling them walls would make
+    // the sonar describe a barrier where the ball goes straight through.
+    expect(kindOf('s_trip1')).toBe('tripwire');
+  });
+});

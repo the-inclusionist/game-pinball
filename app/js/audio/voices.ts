@@ -147,8 +147,13 @@ const NAME_OF_KIND: Readonly<Partial<Record<ComponentKind, string>>> = {
  * The kinds that make no sound, NAMED rather than left as a gap in the map above. "It is not in the
  * table" and "it is meant to be quiet" look identical from outside, and only one of them is a decision
  * somebody can disagree with.
+ *
+ * ⚠️ A TRIPWIRE IS SILENT FOR THE WALL'S REASON, NOT THE LAMP'S. The five `s_trip` components sense the
+ * ball passing and stop nothing; the original gives each one a sound id from its own data, and this
+ * port has no such data for an authored table. Guessing one would put a click in five places on the
+ * playfield where the player can see no reason for it.
  */
-export const SILENT_KINDS: readonly ComponentKind[] = ['wall', 'lamp'];
+export const SILENT_KINDS: readonly ComponentKind[] = ['wall', 'lamp', 'tripwire'];
 
 export function soundForKind(kind: ComponentKind): string | undefined {
   return NAME_OF_KIND[kind];

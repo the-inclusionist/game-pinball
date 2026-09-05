@@ -3,7 +3,8 @@ import { describe, test, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
 import { buildOriginalComponents, visualStatesOf } from '../app/js/table/original-components.js';
 import { readGroups, type Group } from '../app/js/dat/partman.js';
-import { loadTable } from '../app/js/dat/loader.js';
+import { loadTable, ObjectType } from '../app/js/dat/loader.js';
+import { kindOf } from '../app/js/i18n/names.js';
 
 /**
  * ⚠️ THE FORTY `T*` PORTS, REACHED FROM THE ARCHIVE FOR THE FIRST TIME.
@@ -286,5 +287,35 @@ describe('⚠️ the fuel tank, which is a light group with a different answer t
     tank.toggleSplitIndex(1);
     built.advance(13.9);
     expect(tank.onCount).toBe(1);
+  });
+});
+
+describe('⚠️ every component the ball can touch has a KIND, which is what names it and sounds it', () => {
+  test('nothing in the archive answers `null` except the groups and the emitters', () => {
+    // `kindOf` decides three things at once: the role the sonar announces, the word the namer speaks
+    // and the voice the mixer plays. `null` is a legitimate answer — a wall has no name worth saying —
+    // so a component that fell through the prefix table looked exactly like a wall and failed all
+    // three silently. Twenty-five of them did, because the table had been written from the control
+    // layer's spellings and the file spells them differently.
+    //
+    // This walks the file itself, so a name shape nobody anticipated fails here rather than in the
+    // sonar of somebody playing blind.
+    const table = manifest();
+    if (!table) return expect(existsSync(DAT)).toBe(false);
+
+    // The light GROUPS, the bumper lists, the tank, the sound emitters, the text boxes and the demo
+    // marker are not things the ball touches; they have no kind and want none.
+    const notTouched: readonly number[] = [
+      ObjectType.Lights, ObjectType.BumperList, ObjectType.FuelBargraph,
+      ObjectType.Sound, ObjectType.TextBox, ObjectType.Demo,
+    ];
+
+    const missing = table.tableObjects
+      .filter((object) => !notTouched.includes(object.type))
+      .map((object) => table.groups[object.group]?.name)
+      .filter((name): name is string => Boolean(name))
+      .filter((name) => kindOf(name) === null);
+
+    expect(missing).toEqual([]);
   });
 });

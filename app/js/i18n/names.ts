@@ -34,18 +34,38 @@
 import type { Speakable } from '@the-inclusionist/engine/core/contract.js';
 import { type Locale, BASE_LOCALE } from './index.js';
 
-export type ComponentKind =
-  | 'bumper' | 'target' | 'lane' | 'well' | 'kicker' | 'ramp' | 'oneway' | 'gate'
-  | 'drain' | 'plunger' | 'flipper' | 'rebounder' | 'flag' | 'blocker' | 'wall'
-  | 'lamp' | 'hole';
+/**
+ * Every kind there is, as a VALUE rather than only a type.
+ *
+ * ⚠️ A UNION CANNOT BE WALKED AT RUN TIME, and that is not a technicality: `audio/voices` has a gate
+ * saying every kind either has a voice or is named silent, and it could only walk the kinds the
+ * AUTHORED catalogue happens to use. A kind reached solely from the 1995 archive was outside it. The
+ * list is the source of truth now and the type is derived from it, so the gate can walk all of them.
+ */
+export const COMPONENT_KINDS = [
+  'bumper', 'target', 'lane', 'well', 'kicker', 'ramp', 'oneway', 'gate',
+  'drain', 'plunger', 'flipper', 'rebounder', 'flag', 'blocker', 'wall',
+  'lamp', 'hole', 'tripwire',
+] as const;
 
-/** Order-independent: no prefix is a prefix of another, and a test holds that. */
+export type ComponentKind = typeof COMPONENT_KINDS[number];
+
+/**
+ * Order-independent: no prefix is a prefix of another, and a test holds that.
+ *
+ * ⚠️ WRITTEN FROM THE FILE, NOT FROM THE CODE. The control layer says `target1` and `oneway3`; the
+ * archive says `a_targ1` and `s_onewy3`, and a kickout is `kick` in one place and `kout` in another.
+ * The table was first transcribed from the control layer's spellings, which matched none of the
+ * archive's — so the whole 1995 table answered `null`, and `null` is exactly what a wall answers.
+ * Every prefix here is the SHORTER form, so both spellings land on it.
+ */
 const PREFIXES: readonly (readonly [string, ComponentKind])[] = [
   ['plunger', 'plunger'],
-  ['kickout', 'kicker'],
-  ['oneway', 'oneway'],
-  ['target', 'target'],
-  ['block', 'blocker'],
+  ['kick', 'kicker'],
+  ['kout', 'kicker'],
+  ['onew', 'oneway'],
+  ['targ', 'target'],
+  ['bloc', 'blocker'],
   ['drain', 'drain'],
   ['flag', 'flag'],
   ['bump', 'bumper'],
@@ -56,6 +76,7 @@ const PREFIXES: readonly (readonly [string, ComponentKind])[] = [
   ['rebo', 'rebounder'],
   ['roll', 'lane'],
   ['sink', 'well'],
+  ['trip', 'tripwire'],
   ['wall', 'wall'],
   ['flip', 'flipper'],
 ];
@@ -63,10 +84,21 @@ const PREFIXES: readonly (readonly [string, ComponentKind])[] = [
 /** The prefixes themselves, so a test can assert the property the table depends on. */
 export const KIND_PREFIXES: readonly string[] = PREFIXES.map(([prefix]) => prefix);
 
-/** What a `.DAT` group name is, or `null` when nothing claims it. */
+/**
+ * What a `.DAT` group name is, or `null` when nothing claims it.
+ *
+ * ⚠️ THE ARCHIVE PREFIXES EVERY COLLISION COMPONENT WITH `a_`, and the prefix table was written from
+ * the control layer's names, which do not carry it. So `a_bump1` matched nothing and answered `null` —
+ * and `null` is the correct answer for a wall, which is why nothing complained: the 1995 table's
+ * components had no role for the sonar, no name to speak and no sound to make, all three at once.
+ * The lamps and the light groups have no `a_`, so stripping it costs them nothing.
+ */
 export function kindOf(componentName: string): ComponentKind | null {
+  // `a_` for the collision components, `s_` for the surfaces, `v_` for the volumes. One rule rather
+  // than three, because a fourth letter would otherwise be a silent `null` again.
+  const name = /^[a-z]_/.test(componentName) ? componentName.slice(2) : componentName;
   for (const [prefix, kind] of PREFIXES) {
-    if (componentName.startsWith(prefix)) return kind;
+    if (name.startsWith(prefix)) return kind;
   }
   return null;
 }
@@ -94,6 +126,7 @@ const pt: NameTable = {
   wall: n('parede', 'f'),
   lamp: n('luz', 'f'),
   hole: n('buraco', 'm'),
+  tripwire: n('sensor', 'm'),
 };
 
 // English has no grammatical gender, so every one of these is neutral. That is a fact about the
@@ -116,6 +149,7 @@ const en: NameTable = {
   wall: n('wall', 'n'),
   lamp: n('light', 'n'),
   hole: n('hole', 'n'),
+  tripwire: n('tripwire', 'n'),
 };
 
 const es: NameTable = {
@@ -136,6 +170,7 @@ const es: NameTable = {
   wall: n('pared', 'f'),
   lamp: n('luz', 'f'),
   hole: n('agujero', 'm'),
+  tripwire: n('sensor', 'm'),
 };
 
 const TABLES: Readonly<Record<Locale, NameTable>> = { pt, en, es };
