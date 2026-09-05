@@ -52,7 +52,8 @@ import {
   BUMPER_LANE_BINDINGS, LAMP_BINDINGS, RETURN_LANES, FUEL_ROLLOVERS, FUEL_BARGRAPH,
   FUEL_REFUEL_TEXT_ID, OUT_LANES, BONUS_LANE, SPOT_TARGET_SETS, MEDAL_BANK, MULTIPLIER_BANK,
   BOOSTER_BANK, TABLE_ACTIONS, FLIPPER_REBOUNDERS, GATE_LAMPS, KICKERS, SKILL_SHOT,
-  LAUNCH_RAMP, FLAGS, KICKOUTS, DRAIN, PER_BALL_RESET, MISSIONS, type BumperLaneBinding,
+  LAUNCH_RAMP, FLAGS, KICKOUTS, DRAIN, PER_BALL_RESET, MISSIONS, RANK,
+  type BumperLaneBinding,
 } from '../control/bindings.js';
 import { addExtraBall, createTableActions } from '../control/table-actions.js';
 import {
@@ -65,6 +66,7 @@ import {
 } from '../control/mission.js';
 import { makeMissionController } from '../control/mission-runner.js';
 import { MISSION_TABLE } from '../control/mission-table.js';
+import { addRankProgress as advanceRank } from '../control/rank.js';
 import { NEW_BALL_REFLEX_SCORE } from '../control/feed.js';
 import {
   handler, bumperControl, rebounderControl, makeFlipperRebounderControl,
@@ -232,7 +234,7 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
    * can dispatch before then: the first message comes from a collision.
    */
   let missions: MissionMachine | null = null;
-  /** Rank progress earned by missions, kept because `control/rank` is not wired yet. */
+  /** Rank progress earned by missions, which is also what the outer circle is showing. */
   let rankPoints = 0;
   const missionTextBox: ControlledComponent = { name: MISSIONS.textBox, scores: [], control: null };
   const ctx: ControlContext = {
@@ -1045,6 +1047,31 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
   //
   // The seven declined need `target22`, the three sinks and `kickout2`: the wormhole, the escape
   // chute and the hyperspace, which are on ADR-0003's list of work rather than of decisions.
+  // ⚠️ THE RANK LADDER, WHICH IS TWO CIRCLES OF LAMPS AND NOTHING ELSE. Progress lights the outer
+  // circle one lamp at a time; when it fills it flashes away and the middle circle gains one — and the
+  // middle circle's lit count IS the rank. Nothing stores a number.
+  //
+  // ⚠️ AND ITS PROGRESS LAMP IS THE BONUS LANE'S. `AddRankProgress` turns `lite16` on and
+  // `BonusLaneRolloverControl` pays the accumulated bonus when it is lit, so earning rank progress
+  // ARMS THE BONUS LANE — one lamp, two mechanics, and neither function mentions the other.
+  const outerCircle = o.components.lightGroups.get(RANK.outerCircle);
+  const middleCircle = o.components.lightGroups.get(RANK.middleCircle);
+  const progressLamp = o.components.lights.get(RANK.progressLamp);
+  const rankNames = RANK.nameTextIds.map((id) => o.textFor(id));
+
+  const earnRank = (points: number): boolean => {
+    rankPoints += points;
+    if (!outerCircle || !middleCircle || !progressLamp) return false;
+    return advanceRank(points, {
+      outerCircle,
+      middleCircle,
+      progressLight: progressLamp,
+      rankNames,
+      showMessage: (text, seconds) => ctx.showMission(text, seconds),
+      promotionTemplate: (rankName) => o.textFor(RANK.promotionTextId, { rank: rankName }),
+    }).promoted;
+  };
+
   const missionLamp = o.components.lights.get(MISSIONS.lamp);
   const counterLamp = o.components.lights.get(MISSIONS.counterLamp);
   const tagOf = new Map(SCORE_COMPONENTS.map((row) => [row.name, row.tag]));
@@ -1083,11 +1110,8 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
         counterLamp,
         missionLamp,
         score: ctx.score,
-        // ⚠️ THE RANK LADDER IS NOT WIRED, AND THE POINTS ARE KEPT RATHER THAN DROPPED. `control/rank`
-        // needs the two circles and nine rank names; until it has them this counts what was earned and
-        // answers "no promotion", which is what the runner uses the boolean for — a false here only
-        // means the score line is shown, which is the ordinary case.
-        addRankProgress: (points) => { rankPoints += points; return false; },
+        // A promotion suppresses the mission's own score line, which is why this answers a boolean.
+        addRankProgress: earnRank,
       });
     }
   }

@@ -54,6 +54,20 @@ export const RESOURCE_KEYS: Readonly<Record<string, string>> = {
   // already holding a shoot again and stays on screen; `STRING196` when a spare is spent into one, for
   // two seconds; and one of `STRING198`..`STRING201`, by player, when an extra ball is cashed. Only the
   // last names a player.
+  /* ===================== THE RANK LADDER ===================== */
+  //
+  // ⚠️ NINE RANKS AND ONE TEMPLATE. `RankRcArray` is `STRING185`..`STRING193` and `STRING184` is the
+  // line that names the new one. The words are this project's, like every other line a player reads.
+  STRING185: 'pinball.rank.1',
+  STRING186: 'pinball.rank.2',
+  STRING187: 'pinball.rank.3',
+  STRING188: 'pinball.rank.4',
+  STRING189: 'pinball.rank.5',
+  STRING190: 'pinball.rank.6',
+  STRING191: 'pinball.rank.7',
+  STRING192: 'pinball.rank.8',
+  STRING193: 'pinball.rank.9',
+  STRING184: 'pinball.rank.promoted',
   STRING195: 'pinball.ball.bonus',
   STRING196: 'pinball.ball.spareSpent',
   STRING197: 'pinball.ball.held',

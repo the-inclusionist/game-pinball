@@ -451,6 +451,29 @@ export const BOOSTER_BANK: BoosterBankBinding = {
  * for its payout and its loss, which is why they are named here by the archive's names rather than
  * bound a second time.
  */
+/**
+ * The rank ladder: two circles of lamps and nothing else.
+ *
+ * ⚠️ THE OUTER CIRCLE IS THE PROGRESS AND THE MIDDLE ONE IS THE RANK. Every point of progress lights
+ * one more lamp on the outer circle; when it fills, it flashes away and the middle circle gains a
+ * lamp — and the middle circle's lit count IS the rank. Nothing stores a number anywhere.
+ *
+ * ⚠️ AND THE PROGRESS LAMP IS `lite16`, WHICH IS ALSO THE BONUS LANE'S. `AddRankProgress` turns it on,
+ * and `BonusLaneRolloverControl` pays the accumulated bonus when it is lit — so earning rank progress
+ * arms the bonus lane. One lamp, two mechanics, and neither function mentions the other.
+ */
+export const RANK = {
+  outerCircle: 'outer_circle',
+  middleCircle: 'middle_circle',
+  progressLamp: 'lite16',
+  /** `RankRcArray`, nine of them, lowest first. */
+  nameTextIds: [
+    'STRING185', 'STRING186', 'STRING187', 'STRING188', 'STRING189',
+    'STRING190', 'STRING191', 'STRING192', 'STRING193',
+  ],
+  promotionTextId: 'STRING184',
+} as const;
+
 export const MISSIONS = {
   lamp: 'lite198',
   /** `lite56`, which holds the countdown while a mission runs. */

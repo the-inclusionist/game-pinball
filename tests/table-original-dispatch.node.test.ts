@@ -1565,3 +1565,57 @@ describe('⚠️ the sixteen missions that can run, and the seven that cannot', 
     expect(w.dispatch.rankPoints).toBe(6);
   });
 });
+
+describe('⚠️ the rank ladder, which is two circles of lamps and no number anywhere', () => {
+  /** Finishes launch training, which is three ramps and six points of rank progress. */
+  const finishLaunchTraining = (w: NonNullable<ReturnType<typeof wired>>) => {
+    w.components.lights.get('lite198')!.messageField = 3;
+    w.dispatch.missions.dispatch('ControlMissionComplete', null, missionContextOf(w));
+    w.dispatch.hit('ramp');
+    w.dispatch.hit('ramp');
+    w.dispatch.hit('ramp');
+  };
+
+  test('progress lights the OUTER circle, one lamp per point', () => {
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    const outer = w.components.lightGroups.get('outer_circle')!;
+    expect(outer.onCount).toBe(0);
+
+    finishLaunchTraining(w);
+
+    expect(outer.onCount).toBe(6);
+    expect(w.dispatch.rankPoints).toBe(6);
+  });
+
+  test('⚠️ and the progress lamp is the BONUS LANE’S, which arms it', () => {
+    // `AddRankProgress` turns `lite16` on and `BonusLaneRolloverControl` pays the accumulated bonus
+    // when it is lit. One lamp, two mechanics, and neither function mentions the other — so finishing
+    // a mission makes the bonus lane worth crossing without anything saying so.
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    expect(w.components.lights.get('lite16')!.lit).toBe(false);
+
+    finishLaunchTraining(w);
+
+    expect(w.components.lights.get('lite16')!.lit).toBe(true);
+  });
+
+  test('⚠️ filling the outer circle promotes, and the MIDDLE circle’s lit count IS the rank', () => {
+    // Nothing stores a rank. The middle circle gains a lamp and that is the whole record of it.
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    const outer = w.components.lightGroups.get('outer_circle')!;
+    const middle = w.components.lightGroups.get('middle_circle')!;
+
+    // Enough missions to fill the outer circle at least once.
+    for (let i = 0; i < 6; i++) {
+      finishLaunchTraining(w);
+      w.components.advance(6);
+    }
+
+    expect(middle.onCount).toBeGreaterThan(0);
+    expect(outer.lightCount).toBeGreaterThan(0);
+    expect(w.shown.some((line) => line.startsWith('text:STRING184'))).toBe(true);
+  });
+});
