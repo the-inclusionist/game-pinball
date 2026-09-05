@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, test, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
 import { buildPhysics, drainedBy, launchSpeedFor, FRAME_SECONDS } from '../app/js/table/physics-build.js';
 import { advanceFrame } from '../app/js/physics/step.js';
 import { CATALOG, BARE_MINIMUM } from '../app/js/table/catalog.js';
@@ -90,5 +93,29 @@ describe('the floor of the format is exempt, and says so', () => {
     const { furthestFromLane } = launchAndWatch(BARE_MINIMUM);
 
     expect(furthestFromLane).toBeLessThan(BARE_MINIMUM.ballRadius * 6);
+  });
+});
+
+describe('⚠️ and the GAME has to launch the way the test launches', () => {
+  test('the entry point never hard-codes a launch speed', () => {
+    // The fault this exists for was green on every gate. `launchSpeedFor` was written because a fixed
+    // 260 cleared low-orbit's 235 and fell 75 pixels short of narrow-tower's 420; the test above
+    // adopted it immediately, and `main.ts` — the only launch a PLAYER ever performs — kept the
+    // constant. A suite that proves a formula while the game ignores it is worse than no suite: it
+    // reports the opposite of the truth.
+    //
+    // So this reads the source rather than the behaviour, on purpose. There is no seam to test through
+    // — `launch()` is glue inside a module with side effects — and the rule worth holding is textual
+    // anyway: the speed comes from the table, or it is zero.
+    const main = readFileSync(
+      resolve(dirname(fileURLToPath(import.meta.url)), '../app/js/main.ts'), 'utf8',
+    );
+    const assignments = [...main.matchAll(/ball\.speed\s*=\s*([^;]+);/g)].map((m) => m[1]!.trim());
+
+    expect(assignments.length).toBeGreaterThan(0);
+    for (const value of assignments) {
+      // `0` is how a drained ball is stopped, and is not a launch.
+      expect(value === '0' || value.startsWith('launchSpeedFor(')).toBe(true);
+    }
   });
 });

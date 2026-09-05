@@ -19,7 +19,7 @@ import { DEFAULT_CAMERA } from './shell/camera.js';
 import { DEFAULT_HUD } from './shell/hud.js';
 import { createFramebuffer } from './gfx/framebuffer.js';
 import { drawTable, blitView, drawBall } from './gfx/table-view.js';
-import { buildPhysics, drainedBy, FRAME_SECONDS } from './table/physics-build.js';
+import { buildPhysics, drainedBy, launchSpeedFor, FRAME_SECONDS } from './table/physics-build.js';
 import { advanceFrame } from './physics/step.js';
 
 // `?table=wide-arc` opens another one of the five. There is no menu yet, and a query parameter is
@@ -51,11 +51,19 @@ let state: TableState = {
   missionTargets: [],
 };
 
-/** Launches from the plunger. Up the table, which is toward y = 0. */
+/**
+ * Launches from the plunger. Up the table, which is toward y = 0.
+ *
+ * ⚠️ THIS SAID 260, AND 260 IS THE NUMBER THE PLAYABILITY TEST WAS WRITTEN TO KILL. A ball at speed v
+ * against gravity g rises v² / 2g: 260 against 120 is 282 pixels, enough for this table's 235 and 75
+ * short of `narrow-tower`'s 420. `launchSpeedFor` was added for exactly that and the test used it — and
+ * this line, the only launch a PLAYER ever performs, went on using the constant. The gate was green and
+ * the game was broken, which is the worst arrangement of the two.
+ */
 function launch(): void {
   ball.active = true;
   ball.direction = { x: 0, y: -1 };
-  ball.speed = 260;
+  ball.speed = launchSpeedFor(authored);
   phase = 'playing';
 }
 
