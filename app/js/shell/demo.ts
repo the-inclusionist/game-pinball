@@ -34,6 +34,8 @@ import { readGroups, type Group } from '../dat/partman.js';
 import { advanceFrame, type Ball } from '../physics/step.js';
 import { fillCircle } from '../gfx/table-view.js';
 import { pack, type Framebuffer } from '../gfx/framebuffer.js';
+import { kindOf } from '../i18n/names.js';
+import { soundForKind } from '../audio/voices.js';
 
 /**
  * ⚠️ HOW MUCH MUSIC IS HANDED TO THE AUDIO THREAD AT ONCE, and how far ahead of the playhead the
@@ -97,6 +99,13 @@ export interface DemoOptions {
    * could only take an id would have to show the amount separately or not at all.
    */
   readonly textFor?: (resourceId: string, params?: Record<string, string | number>) => string;
+  /**
+   * ⚠️ EVERY NOISE THE DEMONSTRATION MAKES, BY VOICE NAME. Two sources reach it: the KIND of whatever
+   * the ball touched, and whatever a wired control asked for by name. Without it `playSound` was an
+   * empty function and the whole 1995 table was mute — including the three controls that name a sound
+   * explicitly, which is the loudest kind of silence to miss.
+   */
+  readonly onSound?: (name: string) => void;
 }
 
 export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
@@ -136,7 +145,7 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
     group: () => undefined,
     showInfo: (text) => { info = text; },
     showMission: (text) => { info = text; },
-    playSound: () => {},
+    playSound: (name) => o.onSound?.(name),
     playMusic: () => {},
     missionControl: () => {},
   };
@@ -148,6 +157,12 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
     componentFor: (name) => components.bumpers.get(name),
     onHit: (hit) => {
       touched.push(hit.group);
+      // ⚠️ BY KIND, NOT PER COLLISION. A ball resting against a wall collides many times a second, and
+      // `SILENT_KINDS` is what keeps that from becoming a rattle — the original sounds each component
+      // from its own data, and a wall's is silence. The kind comes from the archive's own name.
+      const kind = kindOf(hit.group);
+      const voice = kind ? soundForKind(kind) : undefined;
+      if (voice) o.onSound?.(voice);
 
       if (dispatch.wired.has(hit.group)) {
         dispatch.hit(hit.group);

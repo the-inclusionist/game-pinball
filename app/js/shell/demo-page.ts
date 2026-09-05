@@ -26,6 +26,8 @@ export interface DemoPageOptions {
   readonly onError: (message: string) => void;
   /** The player's own `PINBALL.MID`, offered after the table has opened. Optional, like the music. */
   readonly onMusic?: (bytes: ArrayBuffer) => boolean;
+  /** Every noise the table makes, by voice name. Absent leaves the demonstration silent. */
+  readonly onSound?: (name: string) => void;
 }
 
 export interface DemoPage {
@@ -106,7 +108,10 @@ export function mountDemoPage(o: DemoPageOptions): DemoPage {
       try {
         // The completion lines are the game's own resources, so the demo is given the translator
         // rather than left to show a `STRING106` at the player.
-        const demo = createDemo(bytes, { textFor: (id, params) => o.t(keyOf(id), params) });
+        const demo = createDemo(bytes, {
+          textFor: (id, params) => o.t(keyOf(id), params),
+          ...(o.onSound ? { onSound: o.onSound } : {}),
+        });
         panel.remove();
         if (o.onMusic) o.host.appendChild(musicPanel);
         o.onReady(demo);

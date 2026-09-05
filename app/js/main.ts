@@ -471,6 +471,11 @@ const demoPage = demoRequested
     screen,
     t: shell.t,
     onReady: (ready) => { demo = ready; },
+    // ⚠️ THE SAME BOARD THE AUTHORED TABLE USES, so the demonstration is mixed, channel-limited and
+    // released like everything else rather than given a second path to the speakers. `ensureAudio` is
+    // called per sound because a browser will not start a context before a gesture, and the first
+    // collision may well BE the gesture.
+    onSound: (name) => { ensureAudio(); board.play(name); },
     onMusic: (bytes) => {
       ensureAudio();
       if (!demo?.loadMusic(bytes)) return false;

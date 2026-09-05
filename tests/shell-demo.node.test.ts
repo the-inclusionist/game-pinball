@@ -3,6 +3,10 @@ import { describe, test, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
 import { createDemo, DEMO_BALL_COLOR } from '../app/js/shell/demo.js';
 import { SCORE_COMPONENTS } from '../app/js/control/score-table.js';
+import { VOICES, SILENT_KINDS, soundForKind } from '../app/js/audio/voices.js';
+import { kindOf, COMPONENT_KINDS } from '../app/js/i18n/names.js';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const DAT = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/PINBALL.DAT';
 const archive = (): ArrayBuffer | null => {
@@ -167,5 +171,72 @@ describe('⚠️ and the eighteen wired components run their 1995 control functi
     demo.step(1800);
 
     expect(demo.paidFlat.filter((name) => demo.wired.has(name))).toEqual([]);
+  });
+});
+
+describe('⚠️ and the demonstration can be HEARD, which it could not be at all', () => {
+  test('a ball crossing the table makes sounds, and every one is a real voice', () => {
+    // `playSound` was `() => {}`. Three wired controls ask for a noise — the out lanes for a miss, the
+    // bonus lane for a collect, an extra ball for its own fanfare — and every one of them went into
+    // that empty function. So did every ordinary collision, which the original sounds from each
+    // component's own data.
+    const bytes = archive();
+    if (!bytes) return expect(existsSync(DAT)).toBe(false);
+
+    const heard: string[] = [];
+    const demo = createDemo(bytes, { onSound: (name) => heard.push(name) });
+    demo.step(900);
+
+    expect(heard.length).toBeGreaterThan(0);
+    for (const name of heard) expect(VOICES[name], name).toBeDefined();
+  });
+
+  test('⚠️ and the table’s ANONYMOUS geometry makes none, which is most of what is touched', () => {
+    // The archive names its components and does NOT name its walls: the ball spends a ball's life
+    // colliding with `group-1`, and a resting ball hits the same one many times a second. So the bulk
+    // of the collisions carry no kind at all and are silent for that reason — the `wall` entry in the
+    // prefix table serves the authored table, not this one. Playing a sound per COLLISION rather than
+    // per kind would turn every rest into a rattle.
+    const bytes = archive();
+    if (!bytes) return expect(existsSync(DAT)).toBe(false);
+
+    const heard: string[] = [];
+    const demo = createDemo(bytes, { onSound: (name) => heard.push(name) });
+    demo.step(900);
+
+    const audible = demo.touched.filter((name) => {
+      const kind = kindOf(name);
+      return kind !== null && !SILENT_KINDS.includes(kind);
+    });
+
+    // The unnamed geometry IS reached — the run would prove nothing otherwise. How much of it depends
+    // on the run: the table's gravity carries an X jitter, so two balls never take the same path.
+    expect(demo.touched.some((name) => kindOf(name) === null)).toBe(true);
+
+    // ⚠️ COUNTING ONLY THE KIND VOICES. A wired control can add one of its own on the same collision —
+    // an out lane's miss, the bonus lane's collect — and an exact count over EVERY sound would then
+    // fail on the runs where the ball happens to reach one. Which runs those are is decided by the
+    // gravity jitter, so the test would have been flaky in a way that looks like a real bug.
+    const kindVoices = new Set(
+      COMPONENT_KINDS.map((kind) => soundForKind(kind)).filter((name): name is string => Boolean(name)),
+    );
+    expect(heard.filter((name) => kindVoices.has(name))).toHaveLength(audible.length);
+  });
+});
+
+describe('⚠️ and a control that names its own sound reaches the same output', () => {
+  test('`playSound` is routed to `onSound`, not swallowed', () => {
+    // ⚠️ READ FROM THE SOURCE, BECAUSE THE BALL DECIDES WHETHER THIS RUNS. Only three of the eighteen
+    // wired controls name a sound — the two out lanes and the bonus lane — and whether a ball reaches
+    // one in nine hundred frames is up to the gravity jitter. A behavioural test would pass for the
+    // wrong reason most runs and fail for the right one occasionally.
+    //
+    // The regression this forbids is exact and was the state of the file until now: `playSound: () =>
+    // {}`, an empty function that made three controls silent without anything to notice.
+    const source = readFileSync(
+      resolve(dirname(fileURLToPath(import.meta.url)), '../app/js/shell/demo.ts'), 'utf8',
+    );
+
+    expect(source).toMatch(/playSound:\s*\(name\)\s*=>\s*o\.onSound\?\.\(name\)/);
   });
 });
