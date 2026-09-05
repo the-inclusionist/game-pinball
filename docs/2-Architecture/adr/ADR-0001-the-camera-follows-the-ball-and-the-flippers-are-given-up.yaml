@@ -1,0 +1,144 @@
+---
+metadata:
+  status: "accepted"
+  date: 2026-09-05
+  decision-makers: [Dev]
+  consulted:
+    - "ADR-0010 pillar 5 (engine) — the 320x180 screen, honoured to the letter: no exception is claimed
+       here and none is owed"
+    - "ADR-0068 (engine) — one repository per game, which is why this record lives in this repository
+       and starts its own numbering"
+    - "The original 3D Pinball for Windows, which shows the whole table at once and therefore has no
+       camera to port. This is the first decision in the project that is NOT a transcription."
+  informed: []
+
+title: The camera follows the ball up the table, and losing sight of the flippers is part of the game
+
+context-and-problem-statement: |
+  The playfield art measures 365x470. Halved for this engine it is 183x235, and the screen is 320x180.
+  So along the vertical axis 55 pixels of the table are off-screen at every moment, and something has
+  to decide which 55.
+
+  The original does not have this problem and therefore does not have an answer to borrow: 3D Pinball
+  for Windows draws the whole table in a 600x416 window and never moves. Every other decision in this
+  port has been "what did the original do"; this one cannot be.
+
+  ⚠️ AND THE QUESTION IS NOT FRAMING, IT IS PLAYABILITY. A pinball player reads the ball's line off the
+  flippers. A camera that hides them at the wrong moment does not make the game look different, it
+  makes it unplayable — and a camera that jerks or overtakes the ball makes it unpleasant in a way
+  players describe as motion sickness, not as bad framing.
+
+decision-drivers:
+  - "The screen is 320x180 and stays 320x180. Pillar 5 is not up for negotiation to solve a framing
+     problem."
+  - "The player must be able to follow the ball with their eyes. A view that moves faster than the
+     thing being watched breaks that, and it is the specific complaint the Dev raised."
+  - "A view that starts and stops on the same threshold chatters on the boundary. That shimmer is
+     worse than either state it is oscillating between."
+  - "The thresholds are not universal. They depend on the table, and phase 8 authors a different one."
+  - "Whatever is decided has to work for a WIDER table too: phase 8 may exceed 320 across, and a second
+     camera written later would be a second set of these mistakes."
+
+considered-options:
+  - &whole "Shrink the playfield until the whole table fits"
+  - &jump "Snap the view between a low half and a high half"
+  - &follow "Follow the ball continuously, with a dead zone, hysteresis and a speed cap"
+
+pros-and-cons-of-the-options:
+  whole:
+    description: |
+      Scale the 183x235 playfield down again until 235 fits inside 180 — roughly another 24% — and
+      never move the view.
+    pros:
+      - "No camera at all. Nothing to tune, nothing to get wrong, and the flippers are always visible."
+      - "Closest to the original, which shows everything at once."
+    cons:
+      - &too-small "The ball is already ~6px across at half scale and the flippers ~15px. Another
+                    reduction puts the ball near 4px, which is below what a player can track and far
+                    below what the accessibility work in the engine can enlarge back."
+      - "It spends the whole of pillar 5's budget on avoiding a decision."
+  jump:
+    description: |
+      Two fixed views, low and high. Cut between them when the ball crosses a line.
+    pros:
+      - "Trivial to implement and impossible to make jittery in the middle, because there is no middle."
+    cons:
+      - &cut-is-worse "A cut is the most violent camera move there is. At the moment the player most
+                       needs continuity — a fast ball crossing the line — the view teleports."
+      - "The line becomes a place where the game feels broken, and no amount of tuning fixes a cut."
+  follow:
+    description: |
+      The view sits at the bottom, on the flippers, and rises as the ball climbs. It keeps the ball at
+      a fixed distance from the top of the view, moves only once the error passes a threshold, stops
+      at a SMALLER threshold, and never covers more ground per frame than a fixed fraction of the
+      ball's own speed.
+    pros:
+      - "Continuous: no cut, and the ball never leaves the view."
+      - "The speed cap makes the constraint the Dev stated a property of the code rather than a hope."
+      - "Two thresholds instead of one is what stops the boundary chattering."
+      - "It is one axis solver, so the wider table of phase 8 scrolls sideways through the same rule."
+    cons:
+      - "Four numbers to tune, and they are table-specific."
+      - "While the view is up, the flippers are off-screen."
+
+decision-outcome:
+  chosen: *follow
+  because: |
+    The alternatives fail on the two things that are not negotiable. Shrinking further breaks the ball
+    (⚠️ `too-small`); cutting breaks the moment that matters most (⚠️ `cut-is-worse`).
+
+    § 1 — THE VIEW STARTS AT THE BOTTOM. `offset = 55`, showing the flippers. That is where a pinball
+    player looks when nothing is happening.
+
+    § 2 — IT KEEPS THE BALL AT A FIXED DISTANCE FROM THE TOP OF THE VIEW. One number, `anchor`, set to
+    100 for this table. With the view at rest the ball reaches that line at a table height of 155,
+    which is where the Dev said the follow should begin, and the view has covered its whole 55 pixels
+    by the time the ball is at 100.
+
+    § 3 — IT STARTS MOVING LATER THAN IT STOPS. `startTolerance` is strictly larger than
+    `stopTolerance`. ⚠️ THIS IS THE CLAUSE THAT IS EASIEST TO LOSE: they look like one number written
+    twice, and a later reader may "simplify" them into one. They are not one number. With one
+    threshold the camera starts and stops on the same value and a ball hovering on the boundary makes
+    it chatter once per frame. A test fails if they are ever equalised.
+
+    § 4 — IT IS NEVER AS FAST AS THE BALL. Each frame covers `damping` of the remaining distance, but
+    never more than `maxSpeedFactor` of the ball's own vertical speed, and `maxSpeedFactor` is
+    strictly below 1. ⚠️ This is a HARD rule, not a preference: it is the whole reason the Dev asked
+    for a camera design instead of a camera.
+
+    § 5 — LOSING THE FLIPPERS IS PART OF THE GAME. While the ball is high the view is up and the base
+    of the table is not on screen. That is not a defect to be tuned away, and nobody should "fix" it.
+    The player gives up the flippers for as long as the ball is up there, and gets them back as it
+    comes down. It changes how the game is played, and it is the price of a 320x180 screen showing a
+    235-tall table honestly.
+
+    § 6 — THE NUMBERS ARE PER TABLE. `anchor`, both tolerances, `damping` and `maxSpeedFactor` are
+    gathered in one exported object precisely so that tuning them is one edit. The values shipped
+    today are for the 1995 playfield at half scale; the authored table of phase 8 gets its own.
+
+    § 7 — ONE AXIS, CALLED TWICE. The solver takes a position, a speed and a pair of sizes, and knows
+    nothing about "vertical". A table wider than 320 scrolls horizontally through the same function.
+
+consequences:
+  good:
+    - "The constraint the Dev stated in prose is now a property with a test behind it: the view cannot
+       outpace the ball, and the two thresholds cannot be equalised without a red suite."
+    - "Phase 8's horizontal scrolling costs nothing: it is the same function with different sizes."
+    - "The tuning surface is one object, so play testing does not become archaeology."
+  bad:
+    - "⚠️ A ball that is completely still cannot move the camera, because the cap is a fraction of a
+       speed of zero. In play the ball is only still when it is held or stuck, and both are handled
+       elsewhere — but if this ever looks wrong on the table it is a tuning decision to bring back
+       here, not a bug to patch quietly."
+    - "The game is no longer a faithful port along this axis, and this project will not call it one.
+       The original shows everything; this shows what it can."
+  ugly:
+    - "Four tuning numbers with no principled derivation. They were chosen to match the behaviour the
+       Dev described in words and they will be wrong for the authored table until somebody plays it."
+
+more-information: |
+  Implemented in `app/js/shell/camera.ts`, tested in `tests/shell-camera.node.test.ts`. Two of those
+  tests exist only to enforce §3 and §4 and say so in their names.
+
+  The camera's `damping` is per FRAME, not per second, because the engine's `update(dt)` counts in
+  frames. Reading it as a rate per second would make the camera roughly sixty times too slow.
