@@ -172,3 +172,43 @@ export function drainBall(o: DrainOptions): DrainResult {
 
   return { outcome: 'ballLost', gameOver };
 }
+
+/* ===================== THE OTHER HALF, ONE TIMEOUT LATER ===================== */
+//
+// `BallDrainControl` has a second arm, `ControlTimerExpired`, which runs after the drain animation has
+// had its moment. It decides between ending the game and feeding the next ball — and the ONLY thing it
+// looks at is `lite199->MessageField`, the flag the collision arm left behind.
+//
+// So the two halves of the same function talk to each other through a LAMP. Nothing is queued, no
+// state is kept between them, and the spare lamp is carrying a boolean that has nothing to do with
+// spares. It is the same habit as everywhere else in this game, at its least defensible.
+
+export interface DrainTimerOptions {
+  /** `lite199`. Its message field is 1 when the collision arm decided the game was over. */
+  readonly spareLamp: { readonly messageField: number };
+  readonly endGame: () => void;
+  readonly isHighScore: () => boolean;
+  /** The table's whole light group, flashed once as a curtain. */
+  readonly tableLights: { flasherStartTimedThenStayOff(seconds: number): void };
+  readonly showMission: (text: string, seconds: number) => void;
+  readonly highScoreText: string;
+  readonly playSound: (name: string) => void;
+  readonly highScoreSound: string;
+  readonly startFeedTimer: () => void;
+}
+
+export function drainTimerExpired(o: DrainTimerOptions): 'gameOver' | 'feedNextBall' {
+  if (!o.spareLamp.messageField) {
+    o.startFeedTimer();
+    return 'feedNextBall';
+  }
+
+  o.endGame();
+  if (o.isHighScore()) {
+    o.playSound(o.highScoreSound);
+    o.tableLights.flasherStartTimedThenStayOff(3);
+    // -1: the prompt stays until the player answers it.
+    o.showMission(o.highScoreText, -1);
+  }
+  return 'gameOver';
+}
