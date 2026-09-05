@@ -160,8 +160,17 @@ export interface TablePhysics {
   readonly flippers: readonly Flipper[];
   /** By name, because the control layer and the keyboard both address them that way. */
   flipperNamed(name: string): Flipper | undefined;
-  /** Raises or drops one. The keyboard calls this and nothing else. */
+  /** Raises or drops one, by name. */
   setFlipper(name: string, extended: boolean): void;
+  /**
+   * ⚠️ Raises or drops EVERY flipper on a side, which is what a key press means.
+   *
+   * The side is read off the pivot's position relative to the table's middle, not off the component's
+   * name. Names happen to say `left` on all five tables today and would work; the first table that
+   * called one `paddle.port` would bind to nothing, silently, and a flipper that does not answer the
+   * key looks like a physics bug. `four-flippers` is the table that makes the plural matter.
+   */
+  setFlippers(side: 'left' | 'right', extended: boolean): void;
   /** Hits since the last `takeHits`. Collected, never dispatched from inside the physics. */
   takeHits(): readonly Hit[];
   /** A ball at the plunger, ready to be launched. */
@@ -281,6 +290,14 @@ export function buildPhysics(table: AuthoredTable, o: PhysicsOptions = {}): Tabl
     setFlipper(name, extended) {
       const flipper = flipperByName.get(name);
       if (flipper) setFlipperMotion(flipper, extended ? 'extending' : 'retracting');
+    },
+    setFlippers(side, extended) {
+      const middle = table.size.width / 2;
+      for (const [name, flipper] of flipperByName) {
+        const pivot = table.components.find((c) => c.name === name)!.flipper!.pivot;
+        if ((pivot.x < middle) !== (side === 'left')) continue;
+        setFlipperMotion(flipper, extended ? 'extending' : 'retracting');
+      }
     },
     context: {
       grid,

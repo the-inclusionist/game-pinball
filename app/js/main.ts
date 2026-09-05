@@ -21,6 +21,7 @@ import { createFramebuffer } from './gfx/framebuffer.js';
 import { drawTable, blitView, drawBall } from './gfx/table-view.js';
 import { buildPhysics, drainedBy, launchSpeedFor, FRAME_SECONDS } from './table/physics-build.js';
 import { advanceFrame } from './physics/step.js';
+import { bindPinballControls } from './shell/controls.js';
 
 // `?table=wide-arc` opens another one of the five. There is no menu yet, and a query parameter is
 // enough to look at all of them without one.
@@ -127,12 +128,21 @@ function step(frames: number): void {
   frameCount++;
   lastFrames = frames;
 
-  if (phase === 'playing') {
+  // ⚠️ THE FLIPPERS MOVE WHETHER OR NOT A BALL IS IN PLAY, and this used to run only while playing.
+  // A player pressing the button on the title screen got nothing back — no movement, no sound, no way
+  // to find out what the controls are before committing a ball to them. Found by pressing a real key
+  // in the browser and watching the angle stay at zero while the motion said `extending`.
+  //
+  // The BALL is what depends on the phase. `advanceFrame` takes an empty list and steps the flippers
+  // alone, which is the same path a test uses.
+  {
     // ⚠️ The physics wants TIME, not a frame count — see `FRAME_SECONDS`. The camera wants frames.
     // They are two different units in the same loop and mixing them is silent in both directions.
-    advanceFrame([ball], physics.context, frames * FRAME_SECONDS);
+    advanceFrame(phase === 'playing' ? [ball] : [], physics.context, frames * FRAME_SECONDS);
     for (const hit of physics.takeHits()) hits.push(hit.name);
+  }
 
+  if (phase === 'playing') {
     // The drain is a POSITION, not a collision — see `drainedBy`. Without this the ball leaves the
     // table and is simulated forever, which is what the first run did.
     const drained = drainedBy(authored, ball);
@@ -166,6 +176,18 @@ function frame(now: number): void {
 }
 requestAnimationFrame(frame);
 
+/**
+ * ⚠️ THE GAME HAD NO INPUT UNTIL THIS LINE, AND A THOUSAND TESTS WERE GREEN OVER IT.
+ *
+ * Bound to `#game-region` and not to `window`, so a table embedded in a page does not eat the reader's
+ * arrow keys. See `shell/controls` for the rest, including why a held key is not a stream of presses.
+ */
+const unbindControls = bindPinballControls({
+  region: document.getElementById('game-region')!,
+  setFlipper: (side, extended) => physics.setFlippers(side, extended),
+  launch: () => { if (!ball.active) launch(); },
+});
+
 // Exposed so the browser gate can confirm a real boot rather than a screenshot.
 Object.assign(window as unknown as Record<string, unknown>, {
   __pinball: {
@@ -185,6 +207,12 @@ Object.assign(window as unknown as Record<string, unknown>, {
     launch,
     /** Steps the game by hand, for a check that cannot rely on the browser compositing. */
     step,
+    /** The flippers, so a check can confirm a key press reached them. */
+    get flippers() {
+      return physics.flippers.map((f) => ({ motion: f.motion, angle: f.currentAngle }));
+    },
+    setFlippers: (side: 'left' | 'right', extended: boolean) => physics.setFlippers(side, extended),
+    unbindControls,
     get diag() { return { frameCount, lastFrames, phase, ballsLost, speed: ball.speed, y: ball.position.y }; },
     setState(next: Partial<TableState>) {
       state = { ...state, ...next };

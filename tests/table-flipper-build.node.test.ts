@@ -101,3 +101,38 @@ describe('and the physics builds them', () => {
     expect(physics.flipperNamed('flipper.left')).toBeDefined();
   });
 });
+
+describe('⚠️ which side a flipper is on is geometry, not its name', () => {
+  test('a table with four flippers moves BOTH of a side together', () => {
+    // `four-flippers` exists to find the places where "one pair" is assumed, and this is one of them.
+    // Reading the side off the name would work here and break on the first table whose flippers are
+    // called something else; the pivot's position relative to the table's middle cannot be misspelled.
+    const four = CATALOG.find((t) => t.name === 'four-flippers')!;
+    const physics = buildPhysics(four);
+
+    physics.setFlippers('left', true);
+
+    const moving = physics.flippers.filter((f) => f.motion === 'extending');
+    expect(moving).toHaveLength(2);
+  });
+
+  test('and the other side stays down', () => {
+    const four = CATALOG.find((t) => t.name === 'four-flippers')!;
+    const physics = buildPhysics(four);
+
+    physics.setFlippers('left', true);
+
+    expect(physics.flippers.filter((f) => f.motion === 'still')).toHaveLength(2);
+  });
+
+  test('a lone flipper belongs to the side it sits on', () => {
+    const bare = CATALOG.find((t) => t.name === 'bare-minimum')!;
+    const physics = buildPhysics(bare);
+
+    physics.setFlippers('right', true);
+    expect(physics.flippers.every((f) => f.motion === 'still')).toBe(true);
+
+    physics.setFlippers('left', true);
+    expect(physics.flippers.some((f) => f.motion === 'extending')).toBe(true);
+  });
+});
