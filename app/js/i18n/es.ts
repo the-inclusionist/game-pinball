@@ -75,6 +75,7 @@ const es: Record<string, string> = {
   'pinball.demo.failed': 'No pude leer ese archivo: {n}',
   'pinball.event.attackBumpersRaised': 'Los bumpers del centro valen más.',
   'pinball.event.launchBumpersRaised': 'Los bumpers de la rampa valen más.',
+  'pinball.event.refuel': 'Depósito lleno.',
   'pinball.hud.score': 'Puntuación: {n}',
   'pinball.objective.authored': 'Objetivos por encender: {n}',
   'pinball.hud.player': 'Jugador {n}',

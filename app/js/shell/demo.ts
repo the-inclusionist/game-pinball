@@ -154,9 +154,10 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
       if (!row?.scores.length) return;
       paidFlat.push(hit.group);
       // ⚠️ THE COMPONENT'S OWN LEVEL, where there is a component. `bumperControl` indexes the score
-      // array by it and never advances it — the LANES do that, which this build does not wire yet, so a
-      // bumper sits at level zero until it does. The indexing is right even while the raising is
-      // missing, and doing it the other way round would have hidden the gap.
+      // array by it and never advances it — the LANES do, by sending `TBumperIncBmpIndex` to the bumper
+      // GROUP. Both lane chains are wired now, so a bumper sits at level zero only until the ball works
+      // the lanes; the indexing was written before the raising existed, and doing it the other way
+      // round would have hidden the gap.
       const level = components.bumpers.get(hit.group)?.level ?? 0;
       addScore(score, row.scores[Math.min(level, row.scores.length - 1)]!);
       scored.push(row.name);

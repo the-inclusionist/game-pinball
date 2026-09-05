@@ -31,10 +31,11 @@
 
 import {
   makeBumperLaneControl, makeSpaceWarpRolloverControl, makeReturnLaneControl,
-  type LaneGroup, type LaneLight,
+  makeFuelRolloverControl, type LaneGroup, type LaneLight,
 } from '../control/lanes.js';
 import {
-  BUMPER_LANE_BINDINGS, LAMP_BINDINGS, RETURN_LANES, type BumperLaneBinding,
+  BUMPER_LANE_BINDINGS, LAMP_BINDINGS, RETURN_LANES, FUEL_ROLLOVERS, FUEL_BARGRAPH,
+  FUEL_REFUEL_TEXT_ID, type BumperLaneBinding,
 } from '../control/bindings.js';
 import { handler, type ControlContext, type ControlledComponent } from '../control/dispatch.js';
 import { SCORE_COMPONENTS } from '../control/score-table.js';
@@ -177,6 +178,32 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
       for (const lane of lanes) {
         byName.set(lane.component.name, lane.component);
         controls.set(lane.component.name, (component) => control('ControlCollision', component, o.context));
+      }
+    }
+  }
+
+  // ⚠️ THE SIX FUEL ROLLOVERS, WHOSE THRESHOLD ONLY MEANS ANYTHING AGAINST THE TANK ITSELF. Each asks
+  // whether the level is already past its own — one, three, five, seven, nine, eleven — and the sixth
+  // therefore asks about ELEVEN with six lamps on the table. That question is answerable only because
+  // `table/light-bargraph` counts in half-lamps; handed a plain light group it would be false for ever
+  // and every rollover would refill, so crossing the bottom one on a full tank would empty it.
+  {
+    const tank = o.components.bargraphs.get(FUEL_BARGRAPH);
+    if (tank) {
+      const refuelText = o.textFor(FUEL_REFUEL_TEXT_ID);
+      for (const lane of FUEL_ROLLOVERS) {
+        const lamp = o.components.lights.get(lane.lamp);
+        if (!lamp) continue;
+
+        const control = makeFuelRolloverControl({
+          lamp: lamp as unknown as LaneLight,
+          splitIndex: lane.splitIndex,
+          bargraph: tank,
+          refuelText,
+        });
+        const row = scoreRows.get(lane.component);
+        byName.set(lane.component, { name: lane.component, scores: row?.scores ?? [], control: null });
+        controls.set(lane.component, (component) => control('ControlCollision', component, o.context));
       }
     }
   }

@@ -78,6 +78,7 @@ const en: Record<string, string> = {
   'pinball.demo.failed': 'I could not read that file: {n}',
   'pinball.event.attackBumpersRaised': 'The centre bumpers are worth more.',
   'pinball.event.launchBumpersRaised': 'The ramp bumpers are worth more.',
+  'pinball.event.refuel': 'Fuel tank filled.',
   'pinball.hud.score': 'Score: {n}',
   'pinball.objective.authored': 'Targets left to light: {n}',
   'pinball.hud.player': 'Player {n}',

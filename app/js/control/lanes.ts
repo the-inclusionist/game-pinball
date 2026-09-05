@@ -147,12 +147,24 @@ export function makeBumperGroupControl(o: BumperGroupOptions): ControlFunc {
 
 /* ===================== THE FUEL BARGRAPH ===================== */
 
+/**
+ * ⚠️ WHAT A FUEL CONTROL REACHES FOR, WHICH IS LESS THAN A GROUP. The tank is a `TLightBargraph`: it
+ * answers `onCount` with its LEVEL rather than with a count of lit lamps, and the two rollover
+ * controls touch nothing else on it. Asking for a whole `LaneGroup` would oblige every caller to
+ * supply a `turnOff` and a `flasherStartTimed` that are never called — two methods that exist only to
+ * satisfy a type, which is the smallest version of the defect this port keeps finding.
+ */
+export interface Bargraph {
+  readonly onCount: number;
+  toggleSplitIndex(index: number): void;
+}
+
 export interface FuelRolloverOptions {
   /** The rollover's own lamp, blinked when the tank is already fuller than this segment. */
   readonly lamp: LaneLight;
   /** Both the threshold and the fill level. They are the same number — see the header. */
   readonly splitIndex: number;
-  readonly bargraph: LaneGroup;
+  readonly bargraph: Bargraph;
   readonly refuelText: string;
 }
 

@@ -33,6 +33,9 @@ export const RESOURCE_KEYS: Readonly<Record<string, string>> = {
   // finished. The gate that walks every binding found this one missing the moment the second chain was
   // transcribed, which is what walking them all is for.
   STRING107: 'pinball.event.launchBumpersRaised',
+  // ⚠️ SHOWN BY ALL SIX FUEL ROLLOVERS, WHICH SHARE ONE LINE IN THE ORIGINAL. The tank has six
+  // segments and one message: the player learns where they are from the lamps, not from the text.
+  STRING145: 'pinball.event.refuel',
   STRING208: 'pinball.mission.bumpers.run',
   STRING209: 'pinball.mission.practice.done',
   STRING231: 'pinball.mission.alienMenace2.done',

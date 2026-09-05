@@ -33,6 +33,7 @@
 import { createBumper, type Bumper, type TimerService } from './bumper.js';
 import { createLight, type Light } from './light.js';
 import { createLightGroup, type LightGroup } from './light-group.js';
+import { createLightBargraph, type LightBargraph } from './light-bargraph.js';
 import { readVisual } from '../dat/visual.js';
 import { floatAttribute, int16Attribute } from '../dat/attributes.js';
 import { EntryType, type Group } from '../dat/partman.js';
@@ -47,6 +48,8 @@ export const LIGHT_LIT_RECORD = 901;
 export const GROUP_PERIOD_RECORD = 903;
 /** The group indices of a light group's members. Read with the ATTRIBUTE form, id included. */
 export const GROUP_MEMBERS_RECORD = 1027;
+/** `TLightBargraph`'s decay times: one per LEVEL, so twice the lamp count of them. */
+export const BARGRAPH_TIMES_RECORD = 904;
 
 /** `loader::query_visual_states`. One unless the group opens with a `[100, n]` pair. */
 export function visualStatesOf(groups: readonly Group[], groupIndex: number): number {
@@ -72,6 +75,8 @@ export interface OriginalComponents {
    * notice.
    */
   readonly lightGroups: ReadonlyMap<string, LightGroup>;
+  /** The fuel tank, kept apart from the light groups — see `table/light-bargraph`. */
+  readonly bargraphs: ReadonlyMap<string, LightBargraph>;
   /** The lights a group holds, so a caller can check identity rather than assume it. */
   membersOf(group: LightGroup): readonly Light[];
   /** `Timer1TimeDefault`, from record 903. */
@@ -125,6 +130,7 @@ export function buildOriginalComponents(
   const lights = new Map<string, Light>();
   const thresholds = new Map<string, number>();
   const lightGroups = new Map<string, LightGroup>();
+  const bargraphs = new Map<string, LightBargraph>();
   const groupMembers = new Map<LightGroup, Light[]>();
   const periods = new Map<string, number>();
   const bumperGroups = new Map<string, readonly string[]>();
@@ -192,6 +198,36 @@ export function buildOriginalComponents(
     periods.set(name, period);
   }
 
+  // ⚠️ THE FUEL TANK, WHICH IS OBJECT TYPE 1030 AND NOT 1026. `TLightBargraph` derives from
+  // `TLightGroup` and is built from the same two records, so the pass looks like the one above it. What
+  // differs is the answer it gives: `TLightGroupGetOnCount` returns its LEVEL, and the fuel rollovers
+  // compare that against eleven with six lamps on the table. Building it as a light group would make
+  // every one of those comparisons false for ever, which is why it is kept in a map of its own.
+  //
+  // ⚠️ AND ITS TWO ANNOUNCEMENTS HAVE NO LISTENER IN THIS BUILD. Draining a level sends
+  // `ControlTimerExpired` and reaching empty sends `TLightGroupCountdownEnded`; both belong to the
+  // mission machine, which this demonstration does not run. The tank still drains — that is the part a
+  // player feels — and the events are left unbound rather than pointed at a handler that ignores them.
+  for (const object of table.tableObjects) {
+    if (object.type !== ObjectType.FuelBargraph) continue;
+    const group = groups[object.group];
+    const name = group?.name;
+    if (!group || !name) continue;
+
+    const members = (int16Attribute(group, GROUP_MEMBERS_RECORD) ?? [])
+      .map((at) => groups[at]?.name)
+      .map((memberName) => (memberName ? lights.get(memberName) : undefined))
+      .filter((light): light is Light => Boolean(light));
+
+    const underlying = createLightGroup({
+      timer, lights: members, defaultPeriod: floatAttribute(group, GROUP_PERIOD_RECORD)?.[0] ?? 0,
+    });
+    bargraphs.set(name, createLightBargraph({
+      timer, group: underlying, lights: members,
+      times: floatAttribute(group, BARGRAPH_TIMES_RECORD) ?? [],
+    }));
+  }
+
   // The bumper groups, in the same second pass and for the same reason as the light groups.
   for (const object of table.tableObjects) {
     if (object.type !== ObjectType.BumperList) continue;
@@ -209,6 +245,7 @@ export function buildOriginalComponents(
     bumpers,
     lights,
     lightGroups,
+    bargraphs,
     bumperGroups,
     membersOf: (group) => groupMembers.get(group) ?? [],
     periodOf: (name) => periods.get(name) ?? 0,

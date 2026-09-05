@@ -3,7 +3,7 @@ import { describe, test, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
 import { createOriginalDispatch } from '../app/js/table/original-dispatch.js';
 import { buildOriginalComponents } from '../app/js/table/original-components.js';
-import { REENTRY_LANES, LAMP_BINDINGS } from '../app/js/control/bindings.js';
+import { REENTRY_LANES, LAMP_BINDINGS, FUEL_ROLLOVERS } from '../app/js/control/bindings.js';
 import { createScoreState } from '../app/js/control/score.js';
 import { loadTable } from '../app/js/dat/loader.js';
 import type { ControlContext } from '../app/js/control/dispatch.js';
@@ -51,7 +51,7 @@ describe('a lane crossing reaches the 1995 control function', () => {
     const w = wired();
     if (!w) return expect(existsSync(DAT)).toBe(false);
 
-    expect(w.dispatch.wired.size).toBe(9);
+    expect(w.dispatch.wired.size).toBe(15);
     expect(w.dispatch.wired.has('a_roll3')).toBe(true);
     expect(w.dispatch.wired.has('a_roll9')).toBe(true);
     expect(w.dispatch.wired.has('a_bump1')).toBe(false);
@@ -205,5 +205,54 @@ describe('a lane crossing reaches the 1995 control function', () => {
 
     expect(() => w.dispatch.hit('a_bump1')).not.toThrow();
     expect(w.score.curScore).toBe(0);
+  });
+});
+
+describe('⚠️ the six fuel rollovers, which fill one tank between them', () => {
+  test('all six are wired, each to its own level', () => {
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+
+    for (const lane of FUEL_ROLLOVERS) expect(w.dispatch.wired.has(lane.component), lane.control).toBe(true);
+  });
+
+  test('crossing the first one fills the tank to level one and says so', () => {
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    const tank = w.components.bargraphs.get('fuel_bargraph')!;
+
+    w.dispatch.hit('a_roll179');
+
+    expect(tank.onCount).toBe(1);
+    expect(w.shown).toContain('text:STRING145');
+    expect(w.score.curScore).toBeGreaterThan(0);
+  });
+
+  test('⚠️ a LOWER rollover on a fuller tank blinks its lamp and does NOT drain it', () => {
+    // This is the whole point of the threshold. `onCount` is the LEVEL, and the sixth rollover asks
+    // whether it is already past eleven — a question a plain light group would answer with the number
+    // of lit lamps, which cannot exceed six. Wired that way every rollover would refill for ever and
+    // crossing the first one on a full tank would EMPTY it back to a single segment.
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    const tank = w.components.bargraphs.get('fuel_bargraph')!;
+    w.dispatch.hit('a_roll184'); // fill to the top
+    expect(tank.onCount).toBe(11);
+
+    w.dispatch.hit('a_roll179'); // the bottom rollover, on a full tank
+
+    expect(tank.onCount, 'the tank is untouched').toBe(11);
+    expect(w.components.lights.get('literoll179')!.timedOff, 'its lamp blinks instead').toBe(true);
+  });
+
+  test('and it still scores on the crossing that changed nothing', () => {
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    w.dispatch.hit('a_roll184');
+    const after = w.score.curScore;
+
+    w.dispatch.hit('a_roll179');
+
+    expect(w.score.curScore).toBeGreaterThan(after);
   });
 });

@@ -125,6 +125,41 @@ export const RETURN_LANES: ReturnLaneBinding = {
 };
 
 /**
+ * `control::FuelRollover1Control` to `FuelRollover6Control`: six rollovers that fill one tank.
+ *
+ * ⚠️ THE THRESHOLD AND THE FILL ARE THE SAME NUMBER, AND IT IS A LEVEL, NOT A LAMP. Each rollover asks
+ * whether the tank is already past its own level and, if not, fills to exactly that level. Six lamps
+ * make TWELVE levels — see `table/light-bargraph` — so the numbers run 1, 3, 5, 7, 9, 11 and every one
+ * of them is odd: a rollover always leaves a solid lamp, never a flashing half.
+ *
+ * ⚠️ AND THE ROLLOVER'S OWN LAMP IS A SEGMENT OF THE TANK. `literoll179` is both the lamp blinked when
+ * the tank is already fuller and the first bar of the bargraph, so a rollover that arrives too late
+ * blinks the very segment it would have lit. That is the table telling the player where the shot went.
+ */
+export interface FuelRolloverBinding {
+  readonly control: string;
+  readonly component: string;
+  /** Blinked for a twentieth of a second when the tank is already past this level. */
+  readonly lamp: string;
+  /** Both the threshold and the fill. See above. */
+  readonly splitIndex: number;
+}
+
+/** The tank every one of them fills, by the archive's name. */
+export const FUEL_BARGRAPH = 'fuel_bargraph';
+/** The line shown on a successful refuel, the same one for all six. */
+export const FUEL_REFUEL_TEXT_ID = 'STRING145';
+
+export const FUEL_ROLLOVERS: readonly FuelRolloverBinding[] = [
+  { control: 'FuelRollover1Control', component: 'a_roll179', lamp: 'literoll179', splitIndex: 1 },
+  { control: 'FuelRollover2Control', component: 'a_roll180', lamp: 'literoll180', splitIndex: 3 },
+  { control: 'FuelRollover3Control', component: 'a_roll181', lamp: 'literoll181', splitIndex: 5 },
+  { control: 'FuelRollover4Control', component: 'a_roll182', lamp: 'literoll182', splitIndex: 7 },
+  { control: 'FuelRollover5Control', component: 'a_roll183', lamp: 'literoll183', splitIndex: 9 },
+  { control: 'FuelRollover6Control', component: 'a_roll184', lamp: 'literoll184', splitIndex: 11 },
+];
+
+/**
  * ⚠️ A CONTROL WHOSE WHOLE BINDING IS A LIST OF LAMPS, IN ORDER.
  *
  * Some control functions reach for nothing but lights, and their factories take exactly that. Those

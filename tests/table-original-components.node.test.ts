@@ -225,3 +225,66 @@ describe('⚠️ the bumper GROUPS, which are what a lane raises', () => {
     }
   });
 });
+
+describe('⚠️ the fuel tank, which is a light group with a different answer to one question', () => {
+  test('it is built from the archive with six lamps and twelve levels', () => {
+    const table = manifest();
+    if (!table) return expect(existsSync(DAT)).toBe(false);
+
+    const built = buildOriginalComponents(table);
+    const tank = built.bargraphs.get('fuel_bargraph');
+
+    expect(tank?.lightCount).toBe(6);
+  });
+
+  test('⚠️ and it is NOT among the light groups, because it answers `onCount` differently', () => {
+    // `TLightBargraph::Message(TLightGroupGetOnCount)` returns the LEVEL. `FuelRollover6Control` asks
+    // whether that count is greater than eleven, which against a six-lamp light group can never be
+    // true. Letting the tank be found as a light group is how a caller gets the wrong answer without
+    // an error, so it is kept in its own map.
+    const table = manifest();
+    if (!table) return expect(existsSync(DAT)).toBe(false);
+
+    const built = buildOriginalComponents(table);
+
+    expect(built.lightGroups.has('fuel_bargraph')).toBe(false);
+    expect(built.bargraphs.has('fuel_bargraph')).toBe(true);
+  });
+
+  test('filling it lights the lamps and reports the LEVEL, not the lit count', () => {
+    const table = manifest();
+    if (!table) return expect(existsSync(DAT)).toBe(false);
+
+    const built = buildOriginalComponents(table);
+    const tank = built.bargraphs.get('fuel_bargraph')!;
+
+    tank.toggleSplitIndex(11);
+
+    expect(tank.onCount).toBe(11);
+    expect(built.lights.get('literoll179')?.on).toBe(true);
+  });
+
+  test('⚠️ and a FULL tank drains FASTER than a nearly empty one, which the archive decides', () => {
+    // Record 904 reads `3 14 3 12 3 10 3 8 3 6 3 4`: one time per level, and the odd levels — a solid
+    // lamp — fall from fourteen seconds at the bottom to four at the top. So the reward for filling the
+    // tank is worth less the longer it is held, and a port that used one constant decay would make the
+    // last segment three times too generous.
+    const table = manifest();
+    if (!table) return expect(existsSync(DAT)).toBe(false);
+
+    const built = buildOriginalComponents(table);
+    const tank = built.bargraphs.get('fuel_bargraph')!;
+
+    tank.toggleSplitIndex(11);
+    built.advance(3.9);
+    expect(tank.onCount, 'four seconds at the top, so it is still full at 3.9').toBe(11);
+
+    built.advance(0.2);
+    expect(tank.onCount).toBe(10);
+
+    // And the bottom of the tank is patient: level 1 lasts fourteen seconds.
+    tank.toggleSplitIndex(1);
+    built.advance(13.9);
+    expect(tank.onCount).toBe(1);
+  });
+});
