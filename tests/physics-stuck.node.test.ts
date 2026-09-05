@@ -5,6 +5,7 @@ import {
   STUCK_IDLE_TICKS, STUCK_ACTIVE_SPEED, STUCK_GIVE_UP_COUNT,
   type StuckBall,
 } from '../app/js/physics/stuck.js';
+import { createBall } from '../app/js/physics/step.js';
 
 function ball(over: Partial<StuckBall> = {}): StuckBall {
   return {
@@ -230,5 +231,34 @@ describe('getting a stuck ball moving again', () => {
 
     expect(t.b.active).toBe(true);
     expect(t.calls).toEqual([]);
+  });
+});
+
+describe('⚠️ a ball can be thrown, and throwing RELEASES whatever held it', () => {
+  test('the method puts the ball on the given direction at the given speed', () => {
+    // `speedMult2` of zero makes the speed exact: `speedMult1 + 0`. The angle spread is zero when the
+    // random source answers exactly a half, which is what makes this checkable at all.
+    const ball = createBall({
+      radius: 5, position: { x: 0, y: 0 }, direction: { x: 0, y: 1 }, speed: 0, random: () => 0.5,
+    });
+
+    ball.throwBall({ x: 1, y: 0 }, 45, 30, 0);
+
+    expect(ball.speed).toBeCloseTo(30);
+    expect(ball.direction.x).toBeCloseTo(1);
+    expect(ball.direction.y).toBeCloseTo(0);
+  });
+
+  test('⚠️ and the component that was holding it is let go', () => {
+    // A ball thrown while still held is moved by the component on the very next frame, and the throw
+    // goes nowhere. `inCollisionComponent = false` is the same line upstream.
+    const ball = createBall({
+      radius: 5, position: { x: 0, y: 0 }, direction: { x: 0, y: 1 }, speed: 0, random: () => 0.5,
+    });
+    ball.component = { fieldEffect: () => {} } as unknown as typeof ball.component;
+
+    ball.throwBall({ x: 0, y: -1 }, 0, 10, 0);
+
+    expect(ball.component).toBe(null);
   });
 });

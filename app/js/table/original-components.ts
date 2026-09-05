@@ -92,6 +92,12 @@ export interface OriginalComponents {
   thresholdOf(name: string): number;
   /** Drives every component's timers. Seconds. */
   advance(seconds: number): void;
+  /**
+   * The clock every component here was built with. Exposed so a component that can only be built
+   * AFTER the geometry — a gate, a kickout — shares it rather than starting a second one that
+   * `advance` would never move.
+   */
+  readonly timer: TimerService;
   /** A hit on a bumper, at the speed that guarantees it fires. For tests and for the demo's dispatch. */
   fire(name: string): void;
   /** `TBumperIncBmpIndex`: what a bumper LANE sends. See this module's header for why it is separate. */
@@ -284,6 +290,7 @@ export function buildOriginalComponents(
     bargraphs,
     kickbacks,
     bumperGroups,
+    timer,
     membersOf: (group) => groupMembers.get(group) ?? [],
     periodOf: (name) => periods.get(name) ?? 0,
     thresholdOf: (name) => thresholds.get(name) ?? Number.POSITIVE_INFINITY,

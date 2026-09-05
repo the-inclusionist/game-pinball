@@ -25,6 +25,7 @@ import { SCORE_COMPONENTS } from '../control/score-table.js';
 import { buildOriginalComponents, type OriginalComponents } from '../table/original-components.js';
 import { createOriginalDispatch, type OriginalDispatch } from '../table/original-dispatch.js';
 import { buildOriginalGates } from '../table/original-gates.js';
+import { buildOriginalKickouts, kickoutGeometry } from '../table/original-kickouts.js';
 import type { ControlContext } from '../control/dispatch.js';
 import { loadTable } from '../dat/loader.js';
 import { readMidiFile } from '../audio/midi.js';
@@ -160,11 +161,21 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
    */
   let dispatch: OriginalDispatch | null = null;
 
+  /**
+   * ⚠️ THE HOLES ARE INSTALLED WITH THEIR OWN MOUTH, which is much smaller than the circle the file
+   * draws — see `table/original-kickouts`. And they are BUILT after the geometry, because a kickout
+   * switches the very edges the table installs; `componentFor` is looked up at collision time for
+   * exactly that reason.
+   */
+  let kickouts: ReturnType<typeof buildOriginalKickouts> = new Map();
+
   const table = buildOriginalTable(groups, {
+    geometryFor: kickoutGeometry(manifest),
     // ⚠️ EVERY COLLISION COMPONENT THIS PORT BUILDS, not only the bumpers. A kickback that the walls
     // never receive is a saver the ball goes straight past — it would arm nothing, because nothing
     // would ever touch it.
-    componentFor: (name) => components.bumpers.get(name) ?? components.kickbacks.get(name),
+    componentFor: (name) => components.bumpers.get(name) ?? components.kickbacks.get(name)
+      ?? kickouts.get(name),
     onHit: (hit) => {
       touched.push(hit.group);
       // ⚠️ BY KIND, NOT PER COLLISION. A ball resting against a wall collides many times a second, and
@@ -197,6 +208,9 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
       addScore(score, row.scores[0]!);
       scored.push(row.name);
     },
+  });
+  kickouts = buildOriginalKickouts(manifest, table, {
+    table: { tiltLocked: false }, timer: components.timer,
   });
   const gates = buildOriginalGates(manifest, table);
   dispatch = createOriginalDispatch({

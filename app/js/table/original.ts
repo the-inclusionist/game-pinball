@@ -111,6 +111,16 @@ export interface OriginalOptions {
    * every part whose component this port does not build yet.
    */
   readonly componentFor?: (groupName: string) => Component | undefined;
+  /**
+   * ⚠️ A COMPONENT MAY OWN ITS SHAPE, AND ONE DOES. A kickout's mouth is not the circle its wall
+   * record draws: `TKickout`'s constructor multiplies that radius by record 306, and for `a_kout1`
+   * that record is 0.05 — a twentieth. Installing the drawn circle would swallow the ball from twenty
+   * times too far away, and the hole would look like a bug in the physics rather than in the geometry.
+   *
+   * Returning `undefined` keeps the record exactly as the file has it, which is right for everything
+   * else on the table.
+   */
+  readonly geometryFor?: (groupName: string, data: readonly number[]) => readonly number[] | undefined;
 }
 
 export function buildOriginalTable(groups: readonly Group[], o: OriginalOptions = {}): OriginalTable {
@@ -146,21 +156,28 @@ export function buildOriginalTable(groups: readonly Group[], o: OriginalOptions 
   for (const group of groups) {
     // A group with no float arrays cannot carry geometry, and most of the 541 do not.
     if (!group.entries.some((e) => e.type === EntryType.Float32s)) continue;
-    const data = floatAttribute(group, WALL_RECORD);
-    if (!data?.length) continue;
+    const raw = floatAttribute(group, WALL_RECORD);
+    if (!raw?.length) continue;
 
     const name = group.name ?? `group-${wallCount}`;
-    // The real component if this port builds one, and the generic bounce otherwise.
-    const owner = o.componentFor?.(name);
-    // The same shape `physics-build` uses: the edge knows who it belongs to and only records.
-    const component = owner ? {
+    const data = o.geometryFor?.(name, raw) ?? raw;
+    /**
+     * ⚠️ THE OWNER IS LOOKED UP AT COLLISION TIME, NOT AT INSTALL TIME. A kickout cannot exist before
+     * the geometry, because it switches the very edges installed here — so asking for it while
+     * installing would always answer `undefined` and every hole would bounce like a wall. The cost is
+     * a map lookup per collision; the alternative is an ordering nobody can satisfy.
+     *
+     * The same shape `physics-build` uses: the edge knows who it belongs to and only records.
+     */
+    const component = {
       collision(ball: unknown, position: { x: number; y: number }, direction: { x: number; y: number },
         distance: number, edge: unknown) {
-        owner.collision(ball, position, direction, distance, edge);
-        o.onHit?.({ group: name, reboundSpeed: 0 });
-      },
-    } : {
-      collision(ball: unknown, position: { x: number; y: number }, direction: { x: number; y: number }) {
+        const owner = o.componentFor?.(name);
+        if (owner) {
+          owner.collision(ball, position, direction, distance, edge);
+          o.onHit?.({ group: name, reboundSpeed: 0 });
+          return;
+        }
         const rebound = basicCollision(ball as Ball, position, direction, {
           elasticity: 0.7, smoothness: 0.1, threshold: 1e9, boost: 0,
         });

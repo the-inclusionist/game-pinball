@@ -20,6 +20,7 @@ import { NO_COLLISION, normalize2d, type Ray, type Vector2 } from '../maths/math
 import type { EdgeManager } from './grid.js';
 import { createCollisionMemory, type CollisionMemory } from './ball.js';
 import { flipperStepAngle, flipperSweep, type Flipper } from './flipper.js';
+import { throwBall } from './stuck.js';
 
 /** Multipliers derived from the ball's radius, as in `pb::init`. */
 const MAX_SPEED_PER_RADIUS = 200;
@@ -37,6 +38,8 @@ export interface HoldingComponent {
 
 export interface Ball {
   active: boolean;
+  /** `TBall::throw_ball` — see `createBall`. */
+  throwBall(direction: Vector2, angleMult: number, speedMult1: number, speedMult2: number): void;
   position: Vector2;
   direction: Vector2;
   speed: number;
@@ -83,8 +86,14 @@ export interface StepContext {
   onFlipperHit?: (flipper: Flipper, ball: Ball) => void;
 }
 
-export function createBall(p: { radius: number; position: Vector2; direction: Vector2; speed: number }): Ball {
-  return {
+export function createBall(
+  p: {
+    radius: number; position: Vector2; direction: Vector2; speed: number;
+    /** Injected so a throw can be made repeatable. `RandFloat` in the original. */
+    random?: () => number;
+  },
+): Ball {
+  const ball: Ball = {
     active: true, position: p.position, direction: p.direction, speed: p.speed, radius: p.radius,
     timeDelta: 0, collisionDisabled: false, collisionMask: 1, component: null,
     memory: createCollisionMemory(), collisionResetFlag: false,
@@ -92,7 +101,21 @@ export function createBall(p: { radius: number; position: Vector2; direction: Ve
     prevPosition: { x: p.position.x, y: p.position.y },
     stuckCounter: 0,
     lastActiveTime: 0,
+    /**
+     * `TBall::throw_ball`. A METHOD because that is how a holding component reaches it — a kickout
+     * calls `heldBall.throwBall(...)` and has no way to reach a free function. The arithmetic stays in
+     * `physics/stuck`, which is where the unstuck path already uses it.
+     */
+    throwBall(direction, angleMult, speedMult1, speedMult2) {
+      // ⚠️ AND IT RELEASES THE COMPONENT, which is what `inCollisionComponent = false` means upstream.
+      // A ball thrown while still held would be moved by the component on the next frame and the throw
+      // would go nowhere.
+      ball.component = null;
+      throwBall(ball as unknown as Parameters<typeof throwBall>[0],
+        direction, angleMult, speedMult1, speedMult2, p.random ?? Math.random);
+    },
   };
+  return ball;
 }
 
 export function advanceFrame(balls: readonly Ball[], ctx: StepContext, timeDelta: number): void {
