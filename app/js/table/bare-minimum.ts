@@ -26,7 +26,10 @@ export const BARE_MINIMUM: AuthoredTable = {
   lamps: [],
   components: [
     { name: 'plunger', kind: 'plunger', role: 'structure', bounds: { x: 86, y: 150, width: 10, height: 28 } },
-    { name: 'flipper', kind: 'flipper', role: 'structure', bounds: { x: 30, y: 160, width: 24, height: 6 } },
+    // The floor of the format is still a table: a flipper the ball goes through is not a flipper, and
+    // the rule that says so does not get to make an exception for the example that demonstrates it.
+    { name: 'flipper', kind: 'flipper', role: 'structure', bounds: { x: 30, y: 160, width: 24, height: 6 },
+      collision: [{ kind: 'line', from: { x: 30, y: 160 }, to: { x: 54, y: 166 } }] },
     { name: 'drain', kind: 'drain', role: 'hazard', bounds: { x: 40, y: 172, width: 20, height: 8 },
       control: 'BallDrainControl' },
   ],

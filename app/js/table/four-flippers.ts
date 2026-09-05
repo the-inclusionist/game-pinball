@@ -70,7 +70,9 @@ export const FOUR_FLIPPERS: AuthoredTable = {
       scores: [500, 1000, 1500, 2000], control: 'BumperControl', lamps: ['lamp.right'],
       collision: [{ kind: 'circle', at: { x: 151, y: 49 }, radius: 9 }] },
 
+    // Between the two bumpers, struck from below: bottom edge, right to left.
     { name: 'target.centre', kind: 'target', role: 'goal', bounds: { x: 92, y: 40, width: 16, height: 14 },
-      scores: [1000, 12000], control: 'BoosterTargetControl' },
+      scores: [1000, 12000], control: 'BoosterTargetControl',
+      collision: [{ kind: 'line', from: { x: 108, y: 54 }, to: { x: 92, y: 54 } }] },
   ],
 };

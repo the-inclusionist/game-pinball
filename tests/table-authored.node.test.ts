@@ -1,18 +1,37 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, test, expect } from 'vitest';
 import {
-  validateTable, declaredComponentsOf, toLiveTable,
+  validateTable, declaredComponentsOf, toLiveTable, STRUCK_KINDS,
   type AuthoredTable, type AuthoredComponent, type TableState,
 } from '../app/js/table/authored.js';
 import { DEFAULT_CAMERA } from '../app/js/shell/camera.js';
+import { CATALOG, LOW_ORBIT } from '../app/js/table/catalog.js';
 
 const VIEW = { viewHeight: DEFAULT_CAMERA.viewHeight };
 
-const piece = (over: Partial<AuthoredComponent> = {}): AuthoredComponent => ({
-  name: 'thing', kind: 'bumper', role: 'structure',
-  bounds: { x: 10, y: 10, width: 8, height: 8 },
-  ...over,
-});
+/**
+ * A valid component of whatever kind is asked for. The collision is supplied rather than omitted
+ * because `STRUCK_KINDS` makes it part of being valid: a bumper the ball goes through is not a
+ * bumper, and a fixture that leaves it out is testing a table that could not open.
+ */
+const piece = (over: Partial<AuthoredComponent> = {}): AuthoredComponent => {
+  const base: AuthoredComponent = {
+    name: 'thing', kind: 'bumper', role: 'structure',
+    bounds: { x: 10, y: 10, width: 8, height: 8 },
+    ...over,
+  };
+  if (!STRUCK_KINDS.includes(base.kind) || base.collision?.length) return base;
+
+  const b = base.bounds;
+  return {
+    ...base,
+    collision: [{
+      kind: 'circle',
+      at: { x: b.x + b.width / 2, y: b.y + b.height / 2 },
+      radius: Math.min(b.width, b.height) / 2,
+    }],
+  };
+};
 
 function table(over: Partial<AuthoredTable> = {}): AuthoredTable {
   return {
@@ -203,5 +222,40 @@ describe('what the rest of the game reads', () => {
     expect(live.playfieldWidth).toBe(183);
     expect(live.playfieldHeight).toBe(235);
     expect(live.ballRadius).toBe(3);
+  });
+});
+
+describe('⚠️ a thing the ball must STRIKE has to be there to be struck', () => {
+  test('a target with no collision is reported, because it can never score', () => {
+    // Found by drawing collisions instead of bounds. Five targets across the catalogue were painted
+    // rectangles with nothing solid in them: `low-orbit`'s target1..3, `narrow-tower`'s summit,
+    // `four-flippers`' target.centre. Each has `scores` and a `control`, and none of them could ever
+    // fire, because the physics only ever reports an EDGE being hit.
+    //
+    // A `narrow-tower` run made the cost visible before the cause was known: five thousand frames, and
+    // the ball met walls and flippers and nothing else. The summit was on screen the whole time.
+    const table = {
+      ...LOW_ORBIT,
+      components: LOW_ORBIT.components.map((c) =>
+        c.name === 'bumper1' ? { ...c, collision: undefined } : c),
+    };
+
+    const problems = validateTable(table, { viewHeight: 180 });
+
+    expect(problems.some((p) => p.includes('bumper1') && p.includes('collision'))).toBe(true);
+  });
+
+  test('but a lane, a well and a drain are regions and are right to have none', () => {
+    // The distinction is not a special case, it is what the two groups ARE. A bumper is a body the
+    // ball bounces off; a lane is a stretch of table the ball rolls OVER, a well is a hole it falls
+    // INTO, and giving either one an edge would make it a wall. So the rule is about the kinds that
+    // answer a ball, and it must not creep into the kinds that swallow one.
+    expect(validateTable(LOW_ORBIT, { viewHeight: 180 })).toEqual([]);
+  });
+
+  test('every table in the catalogue satisfies it', () => {
+    for (const table of CATALOG) {
+      expect(validateTable(table, { viewHeight: 180 })).toEqual([]);
+    }
   });
 });

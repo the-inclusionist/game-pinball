@@ -132,12 +132,19 @@ export const LOW_ORBIT: AuthoredTable = {
 
     /* ===================== THE TARGET BANK ===================== */
     // Three targets whose fields sum to three, which is the shape `control/controls` ports.
+    //
+    // ⚠️ ALL THREE HAD A SCORE, A CONTROL, A LAMP AND NO COLLISION, so the ball passed through them and
+    // `BoosterTargetControl` could never fire. They stand against the left wall, so the face is the
+    // RIGHT edge, written top to bottom to put the normal on the side the ball arrives from.
     { name: 'target1', kind: 'target', role: 'key', bounds: { x: 12, y: 104, width: 10, height: 12 },
-      scores: [500, 5000], control: 'BoosterTargetControl', lamps: ['lamp.target1'] },
+      scores: [500, 5000], control: 'BoosterTargetControl', lamps: ['lamp.target1'],
+      collision: [{ kind: 'line', from: { x: 22, y: 104 }, to: { x: 22, y: 116 } }] },
     { name: 'target2', kind: 'target', role: 'key', bounds: { x: 12, y: 122, width: 10, height: 12 },
-      scores: [500, 5000], control: 'BoosterTargetControl', lamps: ['lamp.target2'] },
+      scores: [500, 5000], control: 'BoosterTargetControl', lamps: ['lamp.target2'],
+      collision: [{ kind: 'line', from: { x: 22, y: 122 }, to: { x: 22, y: 134 } }] },
     { name: 'target3', kind: 'target', role: 'key', bounds: { x: 12, y: 140, width: 10, height: 12 },
-      scores: [500, 5000], control: 'BoosterTargetControl', lamps: ['lamp.target3'] },
+      scores: [500, 5000], control: 'BoosterTargetControl', lamps: ['lamp.target3'],
+      collision: [{ kind: 'line', from: { x: 22, y: 140 }, to: { x: 22, y: 152 } }] },
 
     /* ===================== THE REENTRY LANES ===================== */
     { name: 'lane1', kind: 'lane', role: 'free', bounds: { x: 40, y: 16, width: 12, height: 14 },
@@ -166,7 +173,9 @@ export const LOW_ORBIT: AuthoredTable = {
       scores: [15000], control: 'BlackHoleKickoutControl', lamps: ['lamp.jackpot'] },
 
     /* ===================== THE FLAG ===================== */
+    // Struck from the middle of the table, so the face is its LEFT edge, written bottom to top.
     { name: 'flag', kind: 'flag', role: 'key', bounds: { x: 136, y: 40, width: 12, height: 20 },
-      scores: [750, 7500], control: 'FlagControl', lamps: ['lamp.mission'] },
+      scores: [750, 7500], control: 'FlagControl', lamps: ['lamp.mission'],
+      collision: [{ kind: 'line', from: { x: 136, y: 60 }, to: { x: 136, y: 40 } }] },
   ],
 };

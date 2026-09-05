@@ -46,8 +46,12 @@ export const NARROW_TOWER: AuthoredTable = {
     { name: 'landing3', kind: 'lane', role: 'free', bounds: { x: 20, y: 100, width: 30, height: 12 },
       scores: [4000], lamps: ['lamp.climb3'] },
 
+    // Struck from BELOW by a ball that has climbed the whole tower, so the face is the bottom edge,
+    // written right to left to put the solid side downward. It had none, which is why a five-thousand
+    // frame run met walls and flippers and nothing else with the summit on screen throughout.
     { name: 'summit', kind: 'target', role: 'goal', bounds: { x: 50, y: 20, width: 20, height: 16 },
-      scores: [25000], control: 'BoosterTargetControl', lamps: ['lamp.summit'] },
+      scores: [25000], control: 'BoosterTargetControl', lamps: ['lamp.summit'],
+      collision: [{ kind: 'line', from: { x: 70, y: 36 }, to: { x: 50, y: 36 } }] },
 
     { name: 'bumper.mid', kind: 'bumper', role: 'structure', bounds: { x: 51, y: 150, width: 18, height: 18 },
       scores: [500, 1000, 1500, 2000], control: 'BumperControl',

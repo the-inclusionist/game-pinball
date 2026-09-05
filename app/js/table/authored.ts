@@ -122,6 +122,25 @@ export interface ValidationOptions {
  * Every problem with a table. EMPTY means it can open — the same contract the engine's
  * `conformanceProblems` uses, and for the same reason: a promise without a check is a comment.
  */
+/**
+ * ⚠️ THE KINDS THE BALL BOUNCES OFF, AS AGAINST THE KINDS IT ROLLS OVER OR FALLS INTO.
+ *
+ * This is not a special case with a list attached; it is what the two groups are. A bumper, a target, a
+ * ramp, a flipper, a wall are BODIES: the ball arrives and the edge answers, and the physics reports the
+ * hit by name. A lane is a stretch of table the ball rolls over. A well, a kicker, a drain and a hole
+ * swallow it. A plunger is where it starts. None of those has an edge, and giving one an edge would
+ * turn it into a wall.
+ *
+ * The rule exists because five components in the catalogue were on the wrong side of it and nothing
+ * said so: `low-orbit`'s three targets, `narrow-tower`'s summit and `four-flippers`' target.centre each
+ * had a score table and a control and no collision at all, so each was a painted rectangle the ball
+ * flew through. A five-thousand-frame run of `narrow-tower` met walls and flippers and nothing else,
+ * with the summit on screen throughout.
+ */
+export const STRUCK_KINDS: readonly ComponentKind[] = [
+  'bumper', 'target', 'ramp', 'oneway', 'gate', 'flipper', 'rebounder', 'flag', 'blocker', 'wall',
+];
+
 export function validateTable(table: AuthoredTable, o: ValidationOptions): string[] {
   const problems: string[] = [];
 
@@ -150,6 +169,10 @@ export function validateTable(table: AuthoredTable, o: ValidationOptions): strin
       if (!table.lamps.includes(lamp)) {
         problems.push(`${component.name}: names lamp "${lamp}", which the table does not have`);
       }
+    }
+    if (STRUCK_KINDS.includes(component.kind) && !component.collision?.length) {
+      problems.push(`${component.name}: a ${component.kind} is something the ball STRIKES, and this one`
+        + ' declares no collision, so it can never be hit and its score can never fire');
     }
     for (const shape of component.collision ?? []) {
       if (!shapeInside(shape, table)) {
