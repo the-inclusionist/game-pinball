@@ -23,7 +23,8 @@
 import { buildOriginalTable, type OriginalTable } from '../table/original.js';
 import { SCORE_COMPONENTS } from '../control/score-table.js';
 import { buildOriginalComponents, type OriginalComponents } from '../table/original-components.js';
-import { createOriginalDispatch } from '../table/original-dispatch.js';
+import { createOriginalDispatch, type OriginalDispatch } from '../table/original-dispatch.js';
+import { buildOriginalGates } from '../table/original-gates.js';
 import type { ControlContext } from '../control/dispatch.js';
 import { loadTable } from '../dat/loader.js';
 import { readMidiFile } from '../audio/midi.js';
@@ -116,7 +117,8 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
    * bounce, so a bumper neither kicked nor debounced nor kept a level — and the score was paid at level
    * zero because nothing could raise it.
    */
-  const components = buildOriginalComponents(loadTable(bytes));
+  const manifest = loadTable(bytes);
+  const components = buildOriginalComponents(manifest);
   const touched: string[] = [];
   const scored: string[] = [];
   const score = createScoreState();
@@ -149,9 +151,14 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
     playMusic: () => {},
     missionControl: () => {},
   };
-  const dispatch = createOriginalDispatch({
-    components, context, textFor: (id, params) => o.textFor?.(id, params) ?? id,
-  });
+  /**
+   * ⚠️ THE TABLE IS BUILT BEFORE THE DISPATCHER NOW, AND THE ORDER IS A DEPENDENCY. A gate is the
+   * table's own edges plus a switch — `table/original-gates` needs the geometry to exist — and two
+   * control functions reach for a gate. So: components, geometry, gates, dispatcher.
+   *
+   * `onHit` fires only from `step()`, which is why it can name a dispatcher declared after it.
+   */
+  let dispatch: OriginalDispatch | null = null;
 
   const table = buildOriginalTable(groups, {
     componentFor: (name) => components.bumpers.get(name),
@@ -164,7 +171,7 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
       const voice = kind ? soundForKind(kind) : undefined;
       if (voice) o.onSound?.(voice);
 
-      if (dispatch.wired.has(hit.group)) {
+      if (dispatch?.wired.has(hit.group)) {
         dispatch.hit(hit.group);
         scored.push(scoringByTag.get(hit.group)?.name ?? hit.group);
         return;
@@ -183,6 +190,12 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
       scored.push(row.name);
     },
   });
+  const gates = buildOriginalGates(manifest, table);
+  dispatch = createOriginalDispatch({
+    components, context, gates,
+    textFor: (id, params) => o.textFor?.(id, params) ?? id,
+  });
+
   const camera = readCamera(groups);
   const playfield = decodePlayfield(groups);
 

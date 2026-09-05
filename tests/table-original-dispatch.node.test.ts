@@ -3,6 +3,8 @@ import { describe, test, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
 import { createOriginalDispatch } from '../app/js/table/original-dispatch.js';
 import { buildOriginalComponents } from '../app/js/table/original-components.js';
+import { buildOriginalTable } from '../app/js/table/original.js';
+import { buildOriginalGates } from '../app/js/table/original-gates.js';
 import {
   REENTRY_LANES, LAMP_BINDINGS, FUEL_ROLLOVERS, OUT_LANES, BONUS_LANE, SPOT_TARGET_SETS,
   MEDAL_BANK, MULTIPLIER_BANK, BOOSTER_BANK, TABLE_ACTIONS,
@@ -26,10 +28,13 @@ const manifest = () => {
   return loadTable(new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength));
 };
 
-function wired() {
+function wired(o: { gates?: boolean } = {}) {
   const table = manifest();
   if (!table) return null;
   const components = buildOriginalComponents(table);
+  // The gates need the GEOMETRY, which is a different build — see `table/original-gates`.
+  const geometry = o.gates ? buildOriginalTable(table.groups) : null;
+  const gates = geometry ? buildOriginalGates(table, geometry) : undefined;
   const score = createScoreState();
   const shown: string[] = [];
   const sounds: string[] = [];
@@ -45,10 +50,10 @@ function wired() {
     missionControl: () => {},
   };
   const dispatch = createOriginalDispatch({
-    components, context,
+    components, context, ...(gates ? { gates } : {}),
     textFor: (id, params) => (params ? `text:${id}:${JSON.stringify(params)}` : `text:${id}`),
   });
-  return { components, score, shown, sounds, dispatch, context };
+  return { components, score, shown, sounds, dispatch, context, geometry };
 }
 
 describe('a lane crossing reaches the 1995 control function', () => {
@@ -390,7 +395,7 @@ describe('⚠️ the spot targets: three lamps, and the set is what pays', () =>
     expect(tank.onCount).toBe(0);
   });
 
-  test('⚠️ and the other three sets are DECLINED, each for its own stated reason', () => {
+  test('⚠️ the other three sets are declined WITHOUT GATES, each for its own stated reason', () => {
     // Two of them disable a gate on completion and this build constructs no gates; the third chooses
     // its sound from a lamp rather than from whether the set completed, which the shared factory
     // cannot express. Their bindings are transcribed and correct — the dispatcher says which it runs.
@@ -511,5 +516,68 @@ describe('⚠️ the booster bank, which walks an award chain one rung per round
     expect(w.components.lights.get('lite61')!.lit).toBe(false);
     expect(w.sounds).not.toContain('chain');
     expect(w.score.curScore).toBeGreaterThan(0);
+  });
+});
+
+describe('⚠️ the hazard spot sets, whose reward is a wall that stops being one', () => {
+  const left = SPOT_TARGET_SETS.find((set) => set.control === 'LeftHazardSpotTargetControl')!;
+
+  test('given gates, both hazard sets run — and the mission set still does not', () => {
+    const w = wired({ gates: true });
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+
+    for (const set of SPOT_TARGET_SETS) {
+      const runs = !set.soundFromLamp;
+      for (const target of set.targets) {
+        expect(w.dispatch.wired.has(target), `${set.control}/${target}`).toBe(runs);
+      }
+    }
+  });
+
+  test('⚠️ and completing the set OPENS its gate, which is what the reward is', () => {
+    // `TGateDisable` clears the active flag: the chute stops being a wall. Two of the three hits are
+    // worth their own score and nothing else — it is the set completing that opens the way through.
+    const w = wired({ gates: true });
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    const gateName = left.completion.kind === 'disableGate' ? left.completion.gate : '';
+    const edges = w.geometry!.edgesOf(gateName);
+    expect(edges.length).toBeGreaterThan(0);
+
+    w.dispatch.hit(left.targets[0]!);
+    w.dispatch.hit(left.targets[1]!);
+    expect(edges.every((edge) => edge.active), 'two of three leaves the wall standing').toBe(true);
+
+    w.dispatch.hit(left.targets[2]!);
+
+    expect(edges.some((edge) => edge.active)).toBe(false);
+  });
+
+  test('⚠️ and each set opens ITS OWN gate, which needs BOTH sets to say so', () => {
+    // Completing one set and checking the other gate is still shut is not enough: pointing the right
+    // set at `v_gate1` as well passes that, because the left set is the only one ever completed. The
+    // mutation survived until this test finished both.
+    const w = wired({ gates: true });
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    const right = SPOT_TARGET_SETS.find((set) => set.control === 'RightHazardSpotTargetControl')!;
+
+    for (const target of left.targets) w.dispatch.hit(target);
+    expect(w.geometry!.edgesOf('v_gate1').some((edge) => edge.active)).toBe(false);
+    expect(w.geometry!.edgesOf('v_gate2').every((edge) => edge.active)).toBe(true);
+
+    for (const target of right.targets) w.dispatch.hit(target);
+
+    expect(w.geometry!.edgesOf('v_gate2').some((edge) => edge.active)).toBe(false);
+  });
+
+  test('the mask lamp records which of the three were struck, as BITS', () => {
+    // `lite104->MessageField |= 1u`, `|= 2u`, `|= 4u` — a second memory of the same hit, with a
+    // different lifetime, which nothing in the control ever clears. The missions read it.
+    const w = wired({ gates: true });
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+
+    w.dispatch.hit(left.targets[0]!);
+    w.dispatch.hit(left.targets[2]!);
+
+    expect(w.components.lights.get(left.maskLamp!)!.messageField).toBe(1 | 4);
   });
 });

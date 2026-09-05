@@ -45,9 +45,16 @@ import { addExtraBall, createTableActions } from '../control/table-actions.js';
 import { handler, type ControlContext, type ControlledComponent } from '../control/dispatch.js';
 import { SCORE_COMPONENTS } from '../control/score-table.js';
 import type { OriginalComponents } from './original-components.js';
+import type { Gate } from './gate.js';
 
 export interface OriginalDispatchOptions {
   readonly components: OriginalComponents;
+  /**
+   * ⚠️ THE GATES, WHICH ARE NOT COMPONENTS OF THE COMPONENT BUILDER. A gate is the table's geometry
+   * plus a switch, so it can only exist once the geometry does — see `table/original-gates`. Absent
+   * means the two hazard spot sets are declined rather than run with their completion missing.
+   */
+  readonly gates?: ReadonlyMap<string, Gate>;
   readonly context: ControlContext;
   /** `pb::FullTiltMode`. False for Space Cadet, which is the only table this port targets. */
   readonly isFullTilt?: () => boolean;
@@ -292,30 +299,44 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
   // different reasons a set cannot run, and the day a gate exists the first half stops covering the
   // second. This is the same shape as the pair of guards over `LAMP_BINDINGS` above.
   for (const set of SPOT_TARGET_SETS) {
-    if (set.completion.kind !== 'fillTank' || set.soundFromLamp) continue;
+    if (set.soundFromLamp) continue;
 
     const group = o.components.lightGroups.get(set.lightGroup);
-    const tank = o.components.bargraphs.get(FUEL_BARGRAPH);
     const lamps = set.lamps
       .map((name) => o.components.lights.get(name))
       .filter((light): light is NonNullable<typeof light> => Boolean(light));
-    if (!group || !tank || lamps.length !== set.lamps.length) continue;
+    if (!group || lamps.length !== set.lamps.length) continue;
+
+    // What the set DOES when it completes, or nothing to wire it to.
+    let onComplete: ((ctx: ControlContext) => void) | null = null;
+    if (set.completion.kind === 'fillTank') {
+      const tank = o.components.bargraphs.get(FUEL_BARGRAPH);
+      const completion = set.completion;
+      const completionText = o.textFor(completion.textId);
+      if (tank) {
+        onComplete = (ctx) => {
+          tank.toggleSplitIndex(completion.splitIndex);
+          ctx.showInfo(completionText, 2);
+        };
+      }
+    } else if (set.completion.kind === 'disableGate') {
+      // ⚠️ `TGateDisable` OPENS THE GATE. Clearing a gate's active flag is opening a way through, and
+      // the hazard set's reward is precisely that the chute stops being a wall.
+      const gate = o.gates?.get(set.completion.gate);
+      if (gate) onComplete = () => gate.openGate();
+    }
+    if (!onComplete) continue;
 
     const targets: ControlledComponent[] = set.targets.map((name) => {
       const row = scoreRows.get(name);
       return { name, scores: row?.scores ?? [], control: null };
     });
 
-    const completion = set.completion;
-    const completionText = o.textFor(completion.textId);
     const control = makeSpotTargetControl({
       targets,
       lamps,
       group,
-      onComplete: (ctx) => {
-        tank.toggleSplitIndex(completion.splitIndex);
-        ctx.showInfo(completionText, 2);
-      },
+      onComplete,
       hitSound: set.hitSound,
       completeSound: set.completeSound,
       ...(set.maskLamp ? { maskLamp: o.components.lights.get(set.maskLamp)! } : {}),
