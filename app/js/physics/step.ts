@@ -46,6 +46,19 @@ export interface Ball {
   collisionMask: number;
   component: HoldingComponent | null;
   memory: CollisionMemory;
+
+  /* ===================== THE STUCK DETECTOR'S FIELDS ===================== */
+  //
+  // ⚠️ THEY LIVE ON THE BALL IN THE ORIGINAL TOO. `TBall` carries `HasGroupFlag`, `PrevPosition`,
+  // `StuckCounter` and `LastActiveTime`, and `physics/stuck` reads all four. They were left out when
+  // the ball was ported because nothing called the detector — which is exactly why nothing did.
+
+  /** `HasGroupFlag`: the ball belongs to a component's group and is not free. */
+  inGroup: boolean;
+  /** The reference point the detector measures from. Moved only by its idle branch. */
+  prevPosition: Vector2;
+  stuckCounter: number;
+  lastActiveTime: number;
   /** The original's `EdgeCollisionResetFlag` — see the comment in the inner loop. */
   collisionResetFlag: boolean;
 }
@@ -75,6 +88,10 @@ export function createBall(p: { radius: number; position: Vector2; direction: Ve
     active: true, position: p.position, direction: p.direction, speed: p.speed, radius: p.radius,
     timeDelta: 0, collisionDisabled: false, collisionMask: 1, component: null,
     memory: createCollisionMemory(), collisionResetFlag: false,
+    inGroup: false,
+    prevPosition: { x: p.position.x, y: p.position.y },
+    stuckCounter: 0,
+    lastActiveTime: 0,
   };
 }
 

@@ -37,6 +37,7 @@ import {
   flipperCollision, type Flipper, type FlipperGeometry,
 } from '../physics/flipper.js';
 import { extendedTipOf, type AuthoredComponent, type AuthoredTable } from './authored.js';
+import { createStuckWatch, type StuckWatch } from './stuck-watch.js';
 
 /** How a surface answers a ball. One per kind, because a bumper is not a wall. */
 export const RESPONSES: Readonly<Record<string, CollisionResponse>> = {
@@ -175,6 +176,11 @@ export interface TablePhysics {
   takeHits(): readonly Hit[];
   /** A ball at the plunger, ready to be launched. */
   spawnBall(): Ball;
+  /**
+   * ⚠️ THE STUCK DETECTOR, which was ported and reached from nothing. A ball that wedges itself stays
+   * wedged for ever otherwise, and the game goes on running around it.
+   */
+  readonly stuck: StuckWatch;
 }
 
 /**
@@ -191,6 +197,11 @@ export interface TablePhysics {
 export const FRAME_SECONDS = 1 / 60;
 
 export interface PhysicsOptions {
+  /**
+   * What to do when twenty nudges have not freed the ball. Absent = nothing, which is honest for a test
+   * that only wants geometry, and is why the option exists rather than a default that pretends.
+   */
+  readonly relaunch?: () => void;
   /**
    * Down the table, in the same units. Chosen for how the ball BEHAVES rather than transcribed: an
    * authored table's gravity is an authoring decision, and the tests below check the behaviour
@@ -286,6 +297,7 @@ export function buildPhysics(table: AuthoredTable, o: PhysicsOptions = {}): Tabl
   return {
     grid,
     flippers,
+    stuck: createStuckWatch(table, { relaunch: o.relaunch ?? (() => {}) }),
     flipperNamed: (name) => flipperByName.get(name),
     setFlipper(name, extended) {
       const flipper = flipperByName.get(name);

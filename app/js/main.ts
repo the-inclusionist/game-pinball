@@ -49,7 +49,10 @@ if (tableProblems.length) {
 // physics owns is handed STRAIGHT to the declaration and the renderer — the same object, not a copy —
 // which is the same "a view, never a snapshot" rule `shell/boot` follows, at one level down.
 
-const physics = buildPhysics(authored);
+const physics = buildPhysics(authored, {
+  // Twenty nudges having failed, the ball goes back to the plunger rather than being nudged for ever.
+  relaunch: () => { phase = 'title'; },
+});
 const ball = physics.spawnBall();
 
 /**
@@ -291,6 +294,10 @@ function step(frames: number): void {
     }
     live.advance(frames * FRAME_SECONDS);
     refreshObjective();
+
+    // ⚠️ IN MILLISECONDS. `STUCK_IDLE_TICKS` is 500 and the original's `time_ticks` is the SDL clock, so
+    // half a second of stillness is the bar. Feeding frames would make it eight seconds.
+    physics.stuck.check(ball, frameCount * (1000 / 60));
   }
 
   {
