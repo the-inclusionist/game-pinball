@@ -44,6 +44,9 @@ export interface Region {
   readonly dstY?: number;
   readonly srcX?: number;
   readonly srcY?: number;
+  /** `fillZ` accepts a plain rectangle too. */
+  readonly x?: number;
+  readonly y?: number;
 }
 
 export function createZBuffer(width: number, height: number): ZBuffer {
@@ -51,8 +54,19 @@ export function createZBuffer(width: number, height: number): ZBuffer {
   return { width, height, stride, depths: new Uint16Array(stride * height).fill(FAR) };
 }
 
-export function fillZ(z: ZBuffer, value: number): void {
-  z.depths.fill(value);
+/**
+ * `zdrv::fill`. With no region it fills everything; with one it fills that rectangle row by row,
+ * stepping by `stride` rather than by width — the compositor clears a dirty rectangle this way, and
+ * stepping by width instead would skew the cleared area against the image it is clearing.
+ */
+export function fillZ(z: ZBuffer, value: number, region?: Region): void {
+  if (!region) { z.depths.fill(value); return; }
+  const x = region.x ?? region.dstX ?? 0;
+  const y = region.y ?? region.dstY ?? 0;
+  for (let row = 0; row < region.height; row++) {
+    const start = (y + row) * z.stride + x;
+    z.depths.fill(value, start, start + region.width);
+  }
 }
 
 /** `zdrv::paint`: the sprite brings its own depth and prints it into the scene. */

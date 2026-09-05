@@ -46,3 +46,21 @@ export function createFramebuffer(width: number, height: number): Framebuffer {
   const buf = new ArrayBuffer(width * height * 4);
   return { width, height, pixels: new Uint32Array(buf), bytes: new Uint8ClampedArray(buf) };
 }
+
+/**
+ * `gdrv::copy_bitmap`: a straight rectangular copy, no transparency and no depth test.
+ *
+ * The compositor uses it for the two jobs that must not consult anything: restoring the background
+ * over a dirty rectangle, and saving and putting back the pixels beneath a ball. Both need the pixels
+ * exactly as they were, including transparent ones.
+ */
+export function copyBitmap(
+  dst: Framebuffer, width: number, height: number, dstX: number, dstY: number,
+  src: Framebuffer, srcX: number, srcY: number,
+): void {
+  for (let y = 0; y < height; y++) {
+    const from = (srcY + y) * src.width + srcX;
+    const to = (dstY + y) * dst.width + dstX;
+    dst.pixels.set(src.pixels.subarray(from, from + width), to);
+  }
+}
