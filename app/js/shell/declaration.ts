@@ -37,7 +37,7 @@
 //   free      — open playfield with nothing on it.
 //
 // ========================= AND THE HEADING IS THE BALL'S DIRECTION, BUCKETED =========================
-// The contract wants one of eight compass points. Table coordinates grow DOWNWARD, so a ball travelling
+// The contract wants one of eight compass points. Table coordinates grow DOWNWARD, so a ball traveling
 // toward smaller `y` is heading north — up the table, away from the flippers. A ball that is not moving
 // has heading `none`, which is the contract's own answer for "not pointing anywhere".
 
@@ -101,8 +101,8 @@ function contains(bounds: Rect, at: Spot): boolean {
     && at.y >= bounds.y && at.y < bounds.y + bounds.height;
 }
 
-/** The centre of a component, which is what a sonar points at. */
-export function centreOf(bounds: Rect): Spot {
+/** The center of a component, which is what a sonar points at. */
+export function centerOf(bounds: Rect): Spot {
   return { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 };
 }
 
@@ -163,7 +163,7 @@ export function createDeclaration(world: PinballWorld): GameDeclaration {
       const wanted = new Set(world.mission.targets);
       return world.components
         .filter((c) => wanted.has(c.name))
-        .map((c) => centreOf(c.bounds));
+        .map((c) => centerOf(c.bounds));
     },
   };
 }

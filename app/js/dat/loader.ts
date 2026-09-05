@@ -86,7 +86,7 @@ export function loadTable(file: Uint8Array): Table {
     : null;
 
   // THE FIRST INTEGER IS NOT AN OBJECT. The spec marks it unknown and the pairs follow it; starting at
-  // zero shifts the whole list and every object gets its neighbour's group.
+  // zero shifts the whole list and every object gets its neighbor's group.
   const raw = intsOfGroup(groups, groupIndex('table_objects')) ?? [];
   const tableObjects: TableObject[] = [];
   for (let i = 1; i + 1 < raw.length; i += 2) {

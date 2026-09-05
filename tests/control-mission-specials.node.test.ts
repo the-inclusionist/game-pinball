@@ -204,7 +204,7 @@ describe('Time Warp part two, where the rank can go BACKWARDS', () => {
 
   test('at the top rank it says NOTHING rather than printing rubbish', () => {
     // The original formats its message inside `if (onCount < 9)` and displays it unconditionally, so
-    // at the top rank it prints an uninitialised stack buffer. This port shows nothing instead — the
+    // at the top rank it prints an uninitialized stack buffer. This port shows nothing instead — the
     // one deliberate deviation in this module.
     const b = build(TOP_RANK);
 

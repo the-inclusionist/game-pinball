@@ -28,7 +28,7 @@ at once leaves no way to isolate a bug.
 npm run data:extract
 ```
 
-## Licence
+## License
 
-Code: **AGPL-3.0-or-later** (see `LICENSE`). Art follows its own author's terms — see the licence note in
+Code: **AGPL-3.0-or-later** (see `LICENSE`). Art follows its own author's terms — see the license note in
 `docs/`. The upstream decompilation is MIT; attribution is preserved in `docs/CREDITS.md`.

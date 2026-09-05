@@ -6,16 +6,16 @@
 // formula is the interesting part:
 //
 //     dst = normalize(center - ballPos) * FieldMult  -  ballDirection * ballSpeed
-//                    \___ pull toward the centre ___/    \___ the ball's ENTIRE velocity ___/
+//                    \___ pull toward the center ___/    \___ the ball's ENTIRE velocity ___/
 //
 // The second term subtracts everything the ball is currently doing. So the field does not merely
-// attract: it CANCELS the ball's momentum and substitutes a pull toward the centre. That is why a
+// attract: it CANCELS the ball's momentum and substitutes a pull toward the center. That is why a
 // kicker hole grabs a ball rolling past at speed instead of letting it skim by the mouth — and it is
 // why the formula reads like a velocity controller rather than a force. Dropping the second term would
 // leave a hole that a fast ball simply flies over.
 //
 // ========================= CAPTURE HANDS THE BALL TO THE COMPONENT =========================
-// On the first contact the ball is teleported to the circle's centre, its Z is pushed down so it sinks
+// On the first contact the ball is teleported to the circle's center, its Z is pushed down so it sinks
 // into the hole, collision is disabled, and the ball's `component` is set to this kickout. From that
 // moment `physics/step` skips the grid for that ball entirely and lets the component move it — see the
 // held-ball branch there.
@@ -52,7 +52,7 @@ export interface KickoutOptions {
   readonly center: Vector2;
   /** The field's reach, squared. Outside it the field says nothing. */
   readonly fieldRadiusSq: number;
-  /** How hard the field pulls toward the centre. `FieldMult` in the original. */
+  /** How hard the field pulls toward the center. `FieldMult` in the original. */
   readonly fieldMult: number;
   /** The Z the ball takes while it sits in the hole. */
   readonly capturedZ: number;
@@ -143,7 +143,7 @@ export function createKickout(o: KickoutOptions): Kickout {
       if (direction.y * direction.y + direction.x * direction.x > o.fieldRadiusSq) return false;
 
       normalize2d(direction);
-      // Pull toward the centre MINUS the ball's whole velocity — see this module's header.
+      // Pull toward the center MINUS the ball's whole velocity — see this module's header.
       destination.x = direction.x * o.fieldMult - ball.direction.x * ball.speed;
       destination.y = direction.y * o.fieldMult - ball.direction.y * ball.speed;
       return true;

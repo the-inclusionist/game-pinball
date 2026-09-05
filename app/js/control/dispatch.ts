@@ -50,7 +50,7 @@ export type MessageCode =
   | 'GameOver'
   | 'PlayerChanged';
 
-/** A component as the control layer sees it: a score table and, sometimes, a behaviour. */
+/** A component as the control layer sees it: a score table and, sometimes, a behavior. */
 export interface ControlledComponent {
   readonly name: string;
   /** The score table from the component's control entry. */

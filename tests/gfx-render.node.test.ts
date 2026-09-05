@@ -9,10 +9,10 @@ const RED = pack(255, 0, 0, 255);
 const GREEN = pack(0, 255, 0, 255);
 const BACKGROUND = pack(20, 20, 20, 255);
 
-/** A framebuffer filled with one colour. */
-function filled(width: number, height: number, colour: number): Framebuffer {
+/** A framebuffer filled with one color. */
+function filled(width: number, height: number, color: number): Framebuffer {
   const fb = createFramebuffer(width, height);
-  fb.pixels.fill(colour);
+  fb.pixels.fill(color);
   return fb;
 }
 
@@ -107,13 +107,13 @@ describe('render — a dirty rectangle is the union of where it WAS and where it
   });
 });
 
-describe('render — clearing destroys the neighbours, so repaint redraws them', () => {
+describe('render — clearing destroys the neighbors, so repaint redraws them', () => {
   test('a sprite overlapping the dirty rectangle is redrawn', () => {
     // Restoring the background erases everything that was there, including sprites that merely overlap.
     // That is the whole reason the occlusion list exists.
     const { renderer, screen } = build();
 
-    const neighbour = makeSprite({
+    const neighbor = makeSprite({
       bmp: filled(4, 4, GREEN),
       zMap: zFilled(4, 4, 10),
       bmpRect: makeRect(0, 0, 4, 4),
@@ -126,13 +126,13 @@ describe('render — clearing destroys the neighbours, so repaint redraws them',
       boundingRect: makeRect(2, 2, 2, 2),
       dirty: true,
     });
-    renderer.addSprite(neighbour);
+    renderer.addSprite(neighbor);
     renderer.addSprite(mover);
     renderer.buildOccludeList();
 
     renderer.update();
 
-    // The neighbour's green survives inside the erased rectangle, because repaint put it back.
+    // The neighbor's green survives inside the erased rectangle, because repaint put it back.
     expect(at(screen, 2, 2)).toBe(GREEN);
   });
 
@@ -149,7 +149,7 @@ describe('render — clearing destroys the neighbours, so repaint redraws them',
   });
 
   test('a sprite with NO bitmap keeps its list even when alone', () => {
-    // A sprite without pixels is a pure hole puncher: it clears its rectangle so the neighbours redraw.
+    // A sprite without pixels is a pure hole puncher: it clears its rectangle so the neighbors redraw.
     const { renderer } = build();
     const puncher = makeSprite({ bmp: null, boundingRect: makeRect(0, 0, 2, 2) });
     renderer.addSprite(puncher);
@@ -200,7 +200,7 @@ describe('render — balls live outside the scene', () => {
   });
 
   test('a ball NEVER writes into the z-buffer', () => {
-    // paintFlat writes colour only. A ball that carved the depth buffer would leave a hole in the scene
+    // paintFlat writes color only. A ball that carved the depth buffer would leave a hole in the scene
     // it is meant to pass over.
     const { renderer, screen, zScreen } = build();
     screen.pixels.fill(GREEN);

@@ -51,7 +51,7 @@ describe('the cheat buffer is eleven characters and a set of suffixes', () => {
 
   test('the longest cheat is exactly the size of the buffer', () => {
     // `hidden test` is eleven characters, and the buffer is eleven. Nothing longer can ever be
-    // recognised, which is the real reason for that number.
+    // recognized, which is the real reason for that number.
     expect(CHEAT_BUFFER_SIZE).toBe(11);
     expect(Math.max(...CHEAT_CODES.map((c) => c.code.length))).toBe(CHEAT_BUFFER_SIZE);
   });
@@ -74,7 +74,7 @@ describe('the cheat buffer is eleven characters and a set of suffixes', () => {
     expect(b.log).toEqual(['cheatMode:true', 'marked']);
   });
 
-  test('an unrecognised key does nothing and marks nothing', () => {
+  test('an unrecognized key does nothing and marks nothing', () => {
     const b = build();
 
     expect(b.type('1mbx')).toBe(false);
@@ -129,7 +129,7 @@ describe('what each cheat does', () => {
     expect(b.log.slice(4)).toEqual(['easy:false', 'expireBlocker', 'marked']);
   });
 
-  test('every recognised cheat marks the game as cheated', () => {
+  test('every recognized cheat marks the game as cheated', () => {
     const b = build();
 
     for (const cheat of CHEAT_CODES) b.type(cheat.code);

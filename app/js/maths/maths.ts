@@ -45,7 +45,7 @@ export function dot(a: Vector2, b: Vector2): number {
   return a.x * b.x + a.y * b.y;
 }
 
-/** Normalises IN PLACE and returns the PREVIOUS magnitude — the original uses that return as a speed. */
+/** Normalizes IN PLACE and returns the PREVIOUS magnitude — the original uses that return as a speed. */
 export function normalize2d(v: Vector2): number {
   const magnitude = Math.sqrt(v.x * v.x + v.y * v.y);
   if (magnitude !== 0) { v.x /= magnitude; v.y /= magnitude; }
@@ -58,7 +58,7 @@ export function normalize2d(v: Vector2): number {
  * TWO RETURNS THAT LOOK LIKE BUGS AND ARE NOT:
  *
  * · `tca < 0` cuts out BEFORE the inside-the-circle test. A ball already inside and moving away from
- *   the centre is not pushed again — without it the ball would buzz against the edge.
+ *   the center is not pushed again — without it the ball would buzz against the edge.
  *
  * · a ray whose origin is INSIDE returns a NEGATIVE distance, and skips the max-distance check. The
  *   sign is the instruction to back out: the nearest positive intersection is behind the ball, and

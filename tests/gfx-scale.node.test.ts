@@ -6,9 +6,9 @@ import { halve, halveNearest, halveDepth } from '../app/js/gfx/scale.js';
 
 const OPAQUE = (r: number, g: number, b: number) => pack(r, g, b, 255);
 
-function fbWith(width: number, height: number, colours: number[]) {
+function fbWith(width: number, height: number, colors: number[]) {
   const fb = createFramebuffer(width, height);
-  colours.forEach((c, i) => { fb.pixels[i] = c; });
+  colors.forEach((c, i) => { fb.pixels[i] = c; });
   return fb;
 }
 
@@ -33,9 +33,9 @@ describe('scale — 2x2 box average', () => {
     expect(r.pixels[1]).toBe(OPAQUE(80, 80, 80)); // alone at the edge
   });
 
-  test('a transparent pixel does NOT contaminate its neighbour colour', () => {
+  test('a transparent pixel does NOT contaminate its neighbor color', () => {
     // A naive average would add the (0,0,0,0) as black and darken every sprite edge — the classic dark
-    // halo of mixing colour without weighting by alpha.
+    // halo of mixing color without weighting by alpha.
     const fb = fbWith(2, 2, [OPAQUE(255, 0, 0), OPAQUE(255, 0, 0), 0, 0]);
 
     const r = halve(fb);
@@ -50,7 +50,7 @@ describe('scale — 2x2 box average', () => {
   });
 });
 
-describe('scale — nearest neighbour', () => {
+describe('scale — nearest neighbor', () => {
   test('samples the top-left pixel of each block, like the original ScaleIndexed', () => {
     const fb = fbWith(2, 2, [OPAQUE(1, 1, 1), OPAQUE(2, 2, 2), OPAQUE(3, 3, 3), OPAQUE(4, 4, 4)]);
 

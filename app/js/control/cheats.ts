@@ -10,7 +10,7 @@
 // It buys two things worth noticing. A cheat can be typed at any moment, after any amount of
 // nonsense, because the nonsense simply falls off the front. And the buffer being eleven characters
 // is not arbitrary — `hidden test` is eleven characters, so the buffer is exactly as long as the
-// longest cheat and nothing longer could ever be recognised.
+// longest cheat and nothing longer could ever be recognized.
 //
 // `hidden test` has a second spelling with a tab in place of the space, because of how the original's
 // key handler reports the character between the two words.

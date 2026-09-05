@@ -3,7 +3,7 @@ import { describe, test, expect } from 'vitest';
 import { conformanceProblems } from '@the-inclusionist/engine/core/contract.ts';
 import type { Speakable } from '@the-inclusionist/engine/core/contract.ts';
 import {
-  createDeclaration, headingOf, centreOf,
+  createDeclaration, headingOf, centerOf,
   type DeclaredComponent, type PinballWorld,
 } from '../app/js/shell/declaration.js';
 
@@ -159,8 +159,8 @@ describe('the role is what a thing does TO THE BALL', () => {
     expect(stacked.roleAt({ x: 45, y: 45 })).toBe('structure');
   });
 
-  test('bounds are half-open, so a component never claims its neighbour’s first pixel', () => {
-    // Written with the neighbour EARLIER in the array on purpose. The search runs last-first, so if
+  test('bounds are half-open, so a component never claims its neighbor’s first pixel', () => {
+    // Written with the neighbor EARLIER in the array on purpose. The search runs last-first, so if
     // `a` were allowed to contain its own far edge it would answer for a point that belongs to `b`,
     // and a closed-bounds test with `a` last would pass by accident.
     const acrossX = createDeclaration(world({
@@ -208,8 +208,8 @@ describe('the objective and the targets are the mission', () => {
     // nearest, and on which side".
     const targets = createDeclaration(world()).targetsOf(0);
 
-    expect(targets).toEqual([centreOf({ x: 40, y: 60, width: 10, height: 10 }),
-      centreOf({ x: 60, y: 60, width: 10, height: 10 })]);
+    expect(targets).toEqual([centerOf({ x: 40, y: 60, width: 10, height: 10 }),
+      centerOf({ x: 60, y: 60, width: 10, height: 10 })]);
   });
 
   test('a mission with nothing to point at returns EMPTY, which is legitimate', () => {

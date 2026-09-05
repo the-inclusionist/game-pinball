@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// gfx/gdrv — the display palette and turning indices into colours. Port of `gdrv::display_palette`
+// gfx/gdrv — the display palette and turning indices into colors. Port of `gdrv::display_palette`
 // and `gdrv::ApplyPalette`.
 //
 // ========================= THE ONE PLACE WHERE TRANSCRIBING WOULD BE WRONG =========================
-// For the file's colours (10 to 245) the original does:
+// For the file's colors (10 to 245) the original does:
 //
 //     srcClr.SetAlpha(0xff);  current_palette[index] = srcClr;  current_palette[index].SetAlpha(2);
 //
 // Alpha TWO. That is not opacity: SDL ignores alpha on that texture path, and the 2 only has to be
 // NON-ZERO so the transparency test (`if ((*srcPtr).Color)`) counts the pixel as drawable. It is a
-// sentinel wearing a colour channel.
+// sentinel wearing a color channel.
 //
 // Canvas does NOT ignore alpha. Copying the 2 literally would paint the whole table at 0.8% opacity —
 // the port would be "faithful" and the screen empty. Translating the sentinel to 255 preserves the

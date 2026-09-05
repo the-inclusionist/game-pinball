@@ -7,7 +7,7 @@
 //
 // Together with the rank — which is the count of lit lamps in the middle circle — this is a pattern
 // rather than a coincidence. THE STATE LIVES IN THE DISPLAY. There is no model kept beside the view
-// and synchronised with it: the view IS the model, and the reason the table can never show something
+// and synchronized with it: the view IS the model, and the reason the table can never show something
 // the game does not believe is that there is nothing else for it to show.
 //
 // ========================= A TRANSITION IS: WRITE THE LAMP, THEN RE-ENTER =========================

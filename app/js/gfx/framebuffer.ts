@@ -8,7 +8,7 @@
 //
 // THE BYTE ORDER IS THE TRAP. Canvas reads `data` as R, G, B, A in that sequence. Packing the 32 bits
 // the wrong way swaps red and blue across the whole image — and the result does not look like a defect,
-// it looks like a table in different colours. Nobody notices until they compare with the original.
+// it looks like a table in different colors. Nobody notices until they compare with the original.
 //
 // AND WHY THE ORDER IS DETECTED RATHER THAN ASSUMED: on a little-endian machine, the bytes R,G,B,A read
 // as one word give `A<<24 | B<<16 | G<<8 | R`; on big-endian, the reverse. Every target platform today
@@ -21,7 +21,7 @@ const LITTLE_ENDIAN = (() => {
   return new Uint8Array(probe)[0] === 1;
 })();
 
-/** Packs a colour into the 32-bit word whose byte reading is R, G, B, A. */
+/** Packs a color into the 32-bit word whose byte reading is R, G, B, A. */
 export const pack = LITTLE_ENDIAN
   ? (r: number, g: number, b: number, a: number): number =>
       (((a & 0xff) << 24) | ((b & 0xff) << 16) | ((g & 0xff) << 8) | (r & 0xff)) >>> 0

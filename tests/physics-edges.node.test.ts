@@ -59,7 +59,7 @@ describe('edges — circle', () => {
     expect(c.findCollisionDistance(ray(0, 0, 1, 0))).toBeCloseTo(3);
   });
 
-  test('on collision it hands over the RADIAL normal out of the centre', () => {
+  test('on collision it hands over the RADIAL normal out of the center', () => {
     const { c, received } = spy();
     const circle = createCircle({ component: c, center: { x: 5, y: 0 }, radius: 2 });
     const ball = { position: { x: 0, y: 0 }, direction: { x: 1, y: 0 }, speed: 1 };
@@ -67,7 +67,7 @@ describe('edges — circle', () => {
     circle.edgeCollision(ball, 3);
 
     expect(received[0]!.position).toEqual({ x: 3, y: 0 });
-    expect(received[0]!.direction.x).toBeCloseTo(-1); // from the centre (5,0) to the contact (3,0)
+    expect(received[0]!.direction.x).toBeCloseTo(-1); // from the center (5,0) to the contact (3,0)
   });
 });
 
@@ -104,7 +104,7 @@ describe('grid — edge registration', () => {
     expect(g.edgesInBox(0, 0)).not.toContain(c);
   });
 
-  test('a large circle covers the neighbouring boxes', () => {
+  test('a large circle covers the neighboring boxes', () => {
     const g = createEdgeManager(0, 0, 100, 150);
     const c = createCircle({ component: spy().c, center: { x: 15, y: 15 }, radius: 8 });
 
@@ -116,11 +116,11 @@ describe('grid — edge registration', () => {
 
   test('the DIAGONAL box stays out, even though it is inside the bounding square', () => {
     // The case that separates a real circle test from a bounding-box test — the only one where the two
-    // disagree. With 10x10 boxes, centre at (18,18), radius 2.2:
+    // disagree. With 10x10 boxes, center at (18,18), radius 2.2:
     //   · the bounding square runs 15.8 to 20.2, so it reaches boxes 1 and 2 on both axes;
-    //   · box (2,1) is 2 away from the centre (along the x=20 edge) and IS included;
+    //   · box (2,1) is 2 away from the center (along the x=20 edge) and IS included;
     //   · box (2,2) only meets it at the corner (20,20), which is 2.83 away — and stays OUT.
-    // The first version of this test used centre (17,17) with radius 2, whose bounding square fits
+    // The first version of this test used center (17,17) with radius 2, whose bounding square fits
     // inside a single box: the diagonal box was never even visited, and the test passed with the
     // distance check deleted. Mutation testing showed that, not re-reading it.
     const g = createEdgeManager(0, 0, 100, 150);

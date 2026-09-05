@@ -14,7 +14,7 @@
 // ========================= TWO DIFFERENT DISTANCES FOR ONE QUESTION =========================
 // The detection loop asks "has it moved?" twice, with different answers:
 //
-//   · A ball that is inactive, held, or travelling at 0.8 or more clears its counter only if it has
+//   · A ball that is inactive, held, or traveling at 0.8 or more clears its counter only if it has
 //     covered TWO RADII since the reference point. A ball spinning against a wall at full speed is
 //     still stuck; speed is not movement.
 //   · A ball that is slow and free, and has been idle for 500 ticks, clears its counter after only
@@ -27,7 +27,7 @@
 // ========================= THE NUDGE IS RANDOM IN DIRECTION AND EXACT IN STRENGTH =========================
 // `throw_ball(&{0,-1,0}, 90, 1.0, 0.0)`. The angle is drawn uniformly from ±90° — anywhere in the
 // upward half-turn — while the second speed multiplier being ZERO cancels the random speed term
-// entirely, leaving exactly 1.0. Randomising the direction is what stops the ball getting stuck the
+// entirely, leaving exactly 1.0. Randomizing the direction is what stops the ball getting stuck the
 // same way twice; keeping the speed fixed is what stops the rescue from looking like a bumper hit.
 //
 // After twenty nudges it gives up: the ball is disabled, THE MULTIBALL COUNT IS DECREMENTED, and the

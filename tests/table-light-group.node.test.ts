@@ -41,7 +41,7 @@ describe('light group — STEP moves the persistent state', () => {
 
     group.stepForward(1);
 
-    expect(persistent(lights)).toBe('1001'); // each takes its neighbour's, the first wraps to the end
+    expect(persistent(lights)).toBe('1001'); // each takes its neighbor's, the first wraps to the end
   });
 
   test('stepping backward rotates the other way', () => {

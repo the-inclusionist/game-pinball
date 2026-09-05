@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// control/links — binding the table's components to their behaviour. Port of `control::make_links`
+// control/links — binding the table's components to their behavior. Port of `control::make_links`
 // and `control::make_component_link`.
 //
 // ========================= A COMPONENT FROM THE .DAT IS INERT =========================
 // `loader` builds components out of the file's groups. None of them does anything: a bumper knows how
 // to bounce a ball and light up, and nothing about scoring. What makes it part of a GAME is this step,
-// where the control table attaches a behaviour and a score array to it:
+// where the control table attaches a behavior and a score array to it:
 //
 //     linkedComp->Control = &score_component.Control;
 //

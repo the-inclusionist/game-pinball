@@ -3,36 +3,36 @@ import { describe, test, expect } from 'vitest';
 import { createFramebuffer, pack } from '../app/js/gfx/framebuffer.js';
 import { createZBuffer, fillZ, paint, paintFlat, FAR } from '../app/js/gfx/zbuffer.js';
 
-const COLOUR_A = pack(10, 20, 30, 255);
-const COLOUR_B = pack(40, 50, 60, 255);
+const COLOR_A = pack(10, 20, 30, 255);
+const COLOR_B = pack(40, 50, 60, 255);
 
 /** A 1x1 scene/depth pair with the scene already filled. */
 function scene(depth: number) {
   const fb = createFramebuffer(1, 1);
   const z = createZBuffer(1, 1);
-  fb.pixels[0] = COLOUR_A;
+  fb.pixels[0] = COLOR_A;
   fillZ(z, depth);
   return { fb, z };
 }
 
 describe('zbuffer — paint (a sprite carrying its own depth)', () => {
-  test('writes colour AND depth when the source is nearer', () => {
+  test('writes color AND depth when the source is nearer', () => {
     const d = scene(500);
-    const s = scene(100); s.fb.pixels[0] = COLOUR_B;
+    const s = scene(100); s.fb.pixels[0] = COLOR_B;
 
     paint(d.fb, d.z, s.fb, s.z, { width: 1, height: 1 });
 
-    expect(d.fb.pixels[0]).toBe(COLOUR_B);
+    expect(d.fb.pixels[0]).toBe(COLOR_B);
     expect(d.z.depths[0]).toBe(100);
   });
 
   test('writes nothing when the source is further away', () => {
     const d = scene(100);
-    const s = scene(500); s.fb.pixels[0] = COLOUR_B;
+    const s = scene(500); s.fb.pixels[0] = COLOR_B;
 
     paint(d.fb, d.z, s.fb, s.z, { width: 1, height: 1 });
 
-    expect(d.fb.pixels[0]).toBe(COLOUR_A);
+    expect(d.fb.pixels[0]).toBe(COLOR_A);
     expect(d.z.depths[0]).toBe(100);
   });
 
@@ -40,27 +40,27 @@ describe('zbuffer — paint (a sprite carrying its own depth)', () => {
     // The original compares `dstZ >= srcZ`. The `=` is not a detail: it decides the order between two
     // sprites at the same depth, and swapping it for `>` would silently invert which one shows.
     const d = scene(300);
-    const s = scene(300); s.fb.pixels[0] = COLOUR_B;
+    const s = scene(300); s.fb.pixels[0] = COLOR_B;
 
     paint(d.fb, d.z, s.fb, s.z, { width: 1, height: 1 });
 
-    expect(d.fb.pixels[0]).toBe(COLOUR_B);
+    expect(d.fb.pixels[0]).toBe(COLOR_B);
   });
 });
 
 describe('zbuffer — paintFlat (a sprite at a single depth, like the ball)', () => {
   test('draws where the scene is further away than the ball', () => {
     const d = scene(500);
-    const ball = createFramebuffer(1, 1); ball.pixels[0] = COLOUR_B;
+    const ball = createFramebuffer(1, 1); ball.pixels[0] = COLOR_B;
 
     paintFlat(d.fb, d.z, ball, 100, { width: 1, height: 1 });
 
-    expect(d.fb.pixels[0]).toBe(COLOUR_B);
+    expect(d.fb.pixels[0]).toBe(COLOR_B);
   });
 
   test('does NOT change the scene depth — the ball leaves no relief', () => {
     const d = scene(500);
-    const ball = createFramebuffer(1, 1); ball.pixels[0] = COLOUR_B;
+    const ball = createFramebuffer(1, 1); ball.pixels[0] = COLOR_B;
 
     paintFlat(d.fb, d.z, ball, 100, { width: 1, height: 1 });
 
@@ -71,11 +71,11 @@ describe('zbuffer — paintFlat (a sprite at a single depth, like the ball)', ()
     // Here the original uses `*zPtr > depth`, not the `>=` of `paint`. The two comparisons differ on
     // purpose, and unifying them would make the ball flicker along the edges of the ramps.
     const d = scene(300);
-    const ball = createFramebuffer(1, 1); ball.pixels[0] = COLOUR_B;
+    const ball = createFramebuffer(1, 1); ball.pixels[0] = COLOR_B;
 
     paintFlat(d.fb, d.z, ball, 300, { width: 1, height: 1 });
 
-    expect(d.fb.pixels[0]).toBe(COLOUR_A);
+    expect(d.fb.pixels[0]).toBe(COLOR_A);
   });
 
   test('skips a fully transparent source pixel', () => {
@@ -84,7 +84,7 @@ describe('zbuffer — paintFlat (a sprite at a single depth, like the ball)', ()
 
     paintFlat(d.fb, d.z, ball, 100, { width: 1, height: 1 });
 
-    expect(d.fb.pixels[0]).toBe(COLOUR_A);
+    expect(d.fb.pixels[0]).toBe(COLOR_A);
   });
 });
 

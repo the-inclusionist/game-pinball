@@ -4,7 +4,7 @@
 // ========================= THE FLIPPER HAS FOUR PIECES, NOT ONE =========================
 // Two LINES (the flat faces, A on top and B underneath) and two CIRCLES (the pivot and the tip). The
 // nearest wins, and the bounce normal depends on which it was: the line's perpendicular, or the radial
-// out of the circle's centre. That is what makes the ball slide along the face and bounce round off
+// out of the circle's center. That is what makes the ball slide along the face and bounce round off
 // the tip.
 //
 // ========================= THE KICK GROWS WITH DISTANCE FROM THE PIVOT =========================
@@ -36,7 +36,7 @@ export function rotatePoint(point: Vector2, sin: number, cos: number, origin: Ve
  * The upstream's `maths::RotateVector` computes Y from the X it has just overwritten, so it traces a
  * figure eight instead of a circle. Upstream documents the defect itself and notes that it only
  * survives because the angle is always zero where the function is called — and at angle zero both
- * versions are the identity. So correcting it CANNOT change current behaviour, and the authored table
+ * versions are the identity. So correcting it CANNOT change current behavior, and the authored table
  * of phase 8 may want a real angle.
  */
 export function rotateVector(vector: Vector2, angle: number): void {

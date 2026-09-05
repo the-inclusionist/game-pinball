@@ -36,7 +36,7 @@ export interface BallWithMemory extends BallState {
 export interface OnewayOptions {
   /** The line the ball may cross. Everything else bounces. */
   readonly passingEdge: Edge;
-  /** Bounce behaviour for the blocking side, shared with every other component. */
+  /** Bounce behavior for the blocking side, shared with every other component. */
   readonly bounce: CollisionComponent;
   readonly table: { tiltLocked: boolean };
   readonly passSoundId?: number;

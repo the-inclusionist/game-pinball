@@ -3,9 +3,9 @@
 // `control::simple_components`, extracted mechanically from the array of 145 tags.
 //
 // ========================= THE CONTROL LAYER TALKS TO THE DISPLAY =========================
-// `make_links` does two passes. The first wires a behaviour into every component that has one — that
+// `make_links` does two passes. The first wires a behavior into every component that has one — that
 // is the score table, in `control/score-table`. The second resolves these 145 names into globals and
-// attaches NO behaviour at all: they are only the things the control code needs to be able to reach.
+// attaches NO behavior at all: they are only the things the control code needs to be able to reach.
 //
 // Sorting them by kind is the whole finding. All 145 are lamps, groups of lamps, sounds, or one of two
 // text boxes:
@@ -20,7 +20,7 @@
 // ========================= AND THE SPLIT BETWEEN THE TWO ARRAYS IS EXACT =========================
 // A lamp that DOES something is not here. `lite200` (the shoot-again fade), `lite17` (the extra ball
 // expiring), `lite59` and `lite60` (the bonus and jackpot windows closing) all carry a control
-// function, so they are score components — with a behaviour and no score. Every lamp that is only
+// function, so they are score components — with a behavior and no score. Every lamp that is only
 // read or written lands here instead. The two arrays are disjoint, and the rule that separates them
 // is simply whether the lamp has a rule of its own.
 //

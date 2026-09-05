@@ -41,7 +41,7 @@ function typeOf(flags: number): BitmapType {
 
 /**
  * The stride of the INDEXED (8bpp) rows, which rounds up to a multiple of 4 when the width does not.
- * The colour destination buffer uses the raw width — two strides on one bitmap, and swapping them
+ * The color destination buffer uses the raw width — two strides on one bitmap, and swapping them
  * skews the image by one column per row.
  *
  * `null` for spliced: that format has no rows, and handing back a number would invite someone to walk

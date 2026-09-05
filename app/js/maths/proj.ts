@@ -14,7 +14,7 @@
 // from geometry.
 //
 // AND BECAUSE THE MATRIX DOES NOT CHANGE WITH RESOLUTION, only `d` (the focal distance) and the screen
-// centre do. That is why halving the table costs two scalars rather than a rewrite.
+// center do. That is why halving the table costs two scalars rather than a rewrite.
 
 export interface Row4 { x: number; y: number; z: number; w: number }
 export interface Matrix { row0: Row4; row1: Row4; row2: Row4 }
@@ -95,8 +95,8 @@ export function createProjection(o: ProjectionOptions): Projection {
      * WARNING: THE ORIGINAL'S GUARD COMPARES MISMATCHED UNITS. It tests `depthScaled <= zmax` while
      * `zmax` was computed in UNSCALED units (`0xffffffff / zScaler + zMin`). So it almost never fires,
      * and the cast to 16 bits WRAPS instead of saturating. That is a latent defect of the original,
-     * not of this port. Transcribed and labelled: real table depths never reach there, and "fixing" it
-     * would change behaviour nobody asked to change.
+     * not of this port. Transcribed and labeled: real table depths never reach there, and "fixing" it
+     * would change behavior nobody asked to change.
      */
     normalizeDepth(depth: number): number {
       if (depth < o.zMin) return 0;

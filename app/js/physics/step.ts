@@ -91,7 +91,7 @@ export function advanceFrame(balls: readonly Ball[], ctx: StepContext, timeDelta
     force.x *= ball.timeDelta;
     force.y *= ball.timeDelta;
 
-    // THE DIRECTION IS DENORMALISED BACK INTO A VELOCITY, the force is added, and the magnitude of the
+    // THE DIRECTION IS DENORMALIZED BACK INTO A VELOCITY, the force is added, and the magnitude of the
     // result becomes the speed again. There is no separate acceleration vector anywhere in the game.
     ball.direction.x *= ball.speed;
     ball.direction.y *= ball.speed;
@@ -120,7 +120,7 @@ export function advanceFrame(balls: readonly Ball[], ctx: StepContext, timeDelta
       const halfRadius = ball.radius * RADIUS_FRACTION_PER_STEP;
       const totalDistance = distanceOf.get(ball)!;
 
-      for (let travelled = 0; travelled < halfRadius;) {
+      for (let traveled = 0; traveled < halfRadius;) {
         // Copies, not references: in the original the ray takes the vectors BY VALUE, and the
         // collision response moves the ball part-way through.
         const ray: Ray = {
@@ -154,7 +154,7 @@ export function advanceFrame(balls: readonly Ball[], ctx: StepContext, timeDelta
 
         found.edge!.edgeCollision(ball, found.distance);
         if (found.distance <= 0 || ball.collisionDisabled) break;
-        travelled += found.distance;
+        traveled += found.distance;
       }
     }
   }

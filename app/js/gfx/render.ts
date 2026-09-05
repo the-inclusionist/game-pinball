@@ -17,7 +17,7 @@
 // `enclosingBox(dirtyRectPrev, bmpRect, dirtyRect)`. Where the sprite WAS and where it IS. Clearing
 // only the new position leaves the old pixels on screen, and a moving sprite paints a trail.
 //
-// ========================= AND CLEARING DESTROYS THE NEIGHBOURS =========================
+// ========================= AND CLEARING DESTROYS THE NEIGHBORS =========================
 // Restoring the background over a dirty rectangle erases everything that was there, including sprites
 // that merely overlap it. So `repaint` redraws not the dirty sprite but EVERY sprite overlapping it,
 // each clipped to the dirty rectangle. `buildOccludeList` precomputes who overlaps whom so that this
@@ -108,7 +108,7 @@ export function createRenderer(o: RendererOptions): Renderer {
       copyBitmap(patch.fb, rect.width, rect.height, 0, 0, o.screen, rect.x, rect.y);
       ballPatches.set(ball, patch);
 
-      // paintFlat: colour only, and only where the scene is further away than this ball.
+      // paintFlat: color only, and only where the scene is further away than this ball.
       paintFlat(o.screen, o.zScreen, ball.bmp, ball.depth, {
         width: rect.width, height: rect.height,
         dstX: rect.x, dstY: rect.y,

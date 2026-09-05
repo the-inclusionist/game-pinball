@@ -19,7 +19,7 @@
 //
 // THE TWO MUST DIFFER. With one threshold the camera starts and stops on the same value, so a ball
 // hovering on the boundary makes it chatter — start, stop, start — once per frame, which is exactly
-// the shimmer this design exists to avoid. There is a test that fails if anybody equalises them.
+// the shimmer this design exists to avoid. There is a test that fails if anybody equalizes them.
 //
 // ========================= AND THE SPEED CAP IS A HARD RULE =========================
 // Each frame the camera covers `damping` of the remaining error, but never more than

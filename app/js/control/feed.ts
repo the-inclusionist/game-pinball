@@ -19,7 +19,7 @@
 // ========================= THE BLOCKER IS SOLID, THEN FLASHING, THEN GONE =========================
 // `DrainBallBlockerControl` gives the blocker across the drain two lives: an initial duration with the
 // lamp lit STEADY, and, when that expires, an extended one with the lamp FLASHING. Nothing is written
-// on screen; the lamp's behaviour is the entire countdown, and the player learns that flashing means
+// on screen; the lamp's behavior is the entire countdown, and the player learns that flashing means
 // "about to open" from the one thing that ever happens next.
 //
 // In easy mode the duration is -1 — the third place in this port where a negative period means never

@@ -60,7 +60,7 @@ describe('flipper — rotation', () => {
   test('rotateVector really rotates — the original traces a FIGURE EIGHT', () => {
     // The upstream computes Y from the X it just overwrote. It documents the defect itself and notes
     // it only survives because the angle is always zero where it is called. Corrected here: it cannot
-    // change current behaviour (angle zero is the identity either way), and the authored table of
+    // change current behavior (angle zero is the identity either way), and the authored table of
     // phase 8 may need a real angle.
     const v = { x: 1, y: 0 };
 

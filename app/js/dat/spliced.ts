@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// dat/spliced — unpicks the "spliced" bitmap, which stores colour AND depth interleaved in one stream.
+// dat/spliced — unpicks the "spliced" bitmap, which stores color AND depth interleaved in one stream.
 //
 // Port of `GroupData::SplitSplicedBitmap`. The upstream does this AT LOAD TIME and says why in its own
 // comment: "Get rid of spliced bitmap early on, to simplify render pipeline". zdrv even asserts that it

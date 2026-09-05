@@ -2,7 +2,7 @@
 import { describe, test, expect } from 'vitest';
 import { createProjection, GAME_MATRIX } from '../app/js/maths/proj.js';
 
-/** Plausible values for one resolution: focal distance and screen centre. */
+/** Plausible values for one resolution: focal distance and screen center. */
 const proj = () => createProjection({ matrix: GAME_MATRIX, d: 350, centerX: 300, centerY: 208, zMin: 0, zScaler: 100 });
 
 describe('proj — the game matrix', () => {
@@ -19,10 +19,10 @@ describe('proj — the game matrix', () => {
 });
 
 describe('proj — table to screen', () => {
-  test('the table origin lands on the screen centre', () => {
+  test('the table origin lands on the screen center', () => {
     const p = proj().toScreen({ x: 0, y: 0, z: 0 });
 
-    expect(p.x).toBe(300); // x0 = 0 projects exactly onto the centre
+    expect(p.x).toBe(300); // x0 = 0 projects exactly onto the center
     expect(typeof p.y).toBe('number');
   });
 
@@ -65,7 +65,7 @@ describe('proj — screen to table', () => {
   });
 });
 
-describe('proj — depth normalisation', () => {
+describe('proj — depth normalization', () => {
   test('depth below the minimum becomes ZERO, which is nearest', () => {
     const p = createProjection({ matrix: GAME_MATRIX, d: 350, centerX: 0, centerY: 0, zMin: 10, zScaler: 100 });
 
@@ -82,7 +82,7 @@ describe('proj — depth normalisation', () => {
     // The original's guard compares `depthScaled <= zmax`, but `zmax` was computed in UNSCALED units —
     // different quantities, so the guard almost never fires and the cast to uint16 wraps. A latent
     // defect of the original, not of this port: transcribed and pointed at here, because real table
-    // depths never get there and "fixing" it would change behaviour.
+    // depths never get there and "fixing" it would change behavior.
     const p = createProjection({ matrix: GAME_MATRIX, d: 350, centerX: 0, centerY: 0, zMin: 0, zScaler: 1 });
 
     expect(p.normalizeDepth(65536)).toBe(0);

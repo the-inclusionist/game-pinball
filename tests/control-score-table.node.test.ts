@@ -9,7 +9,7 @@ describe('score table — the shape the original ships', () => {
     expect(SCORE_COMPONENTS).toHaveLength(88);
   });
 
-  test('every row names a .DAT group and a behaviour', () => {
+  test('every row names a .DAT group and a behavior', () => {
     expect(SCORE_COMPONENTS.every((r) => r.name.length > 0 && r.controlName.length > 0)).toBe(true);
   });
 
@@ -21,7 +21,7 @@ describe('score table — the shape the original ships', () => {
   });
 
   test('the two bumper groups are worth different amounts', () => {
-    // bump1-4 climb 500 to 2000; bump5-7 climb 1500 to 4500. Same behaviour, different table.
+    // bump1-4 climb 500 to 2000; bump5-7 climb 1500 to 4500. Same behavior, different table.
     expect(SCORE_ARRAYS.bump_scores1).toEqual([500, 1000, 1500, 2000]);
     expect(SCORE_ARRAYS.bump_scores2).toEqual([1500, 2500, 3500, 4500]);
   });
@@ -37,7 +37,7 @@ describe('score table — the shape the original ships', () => {
     expect(SCORE_ARRAYS.kickout_score1[1]).toBe(0);
   });
 
-  test('27 components carry a behaviour and no scores at all', () => {
+  test('27 components carry a behavior and no scores at all', () => {
     // Flippers, gates, the drain: they do something without being worth anything.
     const unscored = SCORE_COMPONENTS.filter((r) => r.scores === NO_SCORES);
 
@@ -47,7 +47,7 @@ describe('score table — the shape the original ships', () => {
 });
 
 describe('score table — linking it against a table', () => {
-  /** Only two behaviours are registered so far; the rest of the table waits for them. */
+  /** Only two behaviors are registered so far; the rest of the table waits for them. */
   const REGISTRY: Record<string, ControlFunc> = {
     BumperControl: bumperControl,
     RebounderControl: rebounderControl,
@@ -61,7 +61,7 @@ describe('score table — linking it against a table', () => {
 
   const loaded = (groupName: string): LinkableComponent => ({ groupName, control: null, scores: [] });
 
-  test('a component whose behaviour is registered gets wired', () => {
+  test('a component whose behavior is registered gets wired', () => {
     const bump1 = loaded('bump1');
     const registry = createComponentRegistry([bump1]);
 
@@ -71,8 +71,8 @@ describe('score table — linking it against a table', () => {
     expect(bump1.scores).toEqual([500, 1000, 1500, 2000]);
   });
 
-  test('a component whose behaviour is NOT registered yet stays inert', () => {
-    // Which is how this table can be complete while the behaviours arrive in batches.
+  test('a component whose behavior is NOT registered yet stays inert', () => {
+    // Which is how this table can be complete while the behaviors arrive in batches.
     const ramp = loaded('ramp');
     const registry = createComponentRegistry([ramp]);
 
@@ -91,7 +91,7 @@ describe('score table — linking it against a table', () => {
   });
 
   test('all 88 names are distinct', () => {
-    // A duplicate would silently give one component two behaviours, last one winning.
+    // A duplicate would silently give one component two behaviors, last one winning.
     const names = SCORE_COMPONENTS.map((r) => r.name);
 
     expect(new Set(names).size).toBe(names.length);

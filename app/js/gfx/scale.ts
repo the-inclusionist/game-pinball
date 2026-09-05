@@ -2,9 +2,9 @@
 // gfx/scale — the halving that takes the table from 365x470 to 183x235.
 //
 // ========================= WHY THERE IS A CHOICE HERE AND NONE IN THE ORIGINAL =========================
-// The upstream's `gdrv_bitmap8::ScaleIndexed` is plain nearest neighbour (`px = x / scaleX`, truncated).
+// The upstream's `gdrv_bitmap8::ScaleIndexed` is plain nearest neighbor (`px = x / scaleX`, truncated).
 // Not by taste: it scales PALETTE INDICES, and the average of two indices is a third index pointing at
-// a colour unrelated to either. Nearest is the only valid operation there.
+// a color unrelated to either. Nearest is the only valid operation there.
 //
 // We scale AFTER the palette, in RGBA, where an average exists and means something. So the choice is a
 // choice again, and it is aesthetic: a box average keeps detail and softens the pixel; nearest keeps
@@ -25,9 +25,9 @@ const half = (n: number): number => Math.ceil(n / 2); // UP: 365 becomes 183, no
  * A 2x2 box average WEIGHTED BY ALPHA.
  *
  * Summing a transparent pixel's (0,0,0,0) as if it were black darkens every sprite edge — the classic
- * dark halo of mixing colour without weighting by alpha. Here colour comes only from pixels that have
+ * dark halo of mixing color without weighting by alpha. Here color comes only from pixels that have
  * alpha, and alpha itself is the plain mean: a half-transparent block stays half transparent, with the
- * right colour.
+ * right color.
  */
 export function halve(fb: Framebuffer): Framebuffer {
   const out = createFramebuffer(half(fb.width), half(fb.height));
@@ -64,7 +64,7 @@ export function halve(fb: Framebuffer): Framebuffer {
   return out;
 }
 
-/** Nearest neighbour, as the original's `ScaleIndexed`: the top-left sample of each block. */
+/** Nearest neighbor, as the original's `ScaleIndexed`: the top-left sample of each block. */
 export function halveNearest(fb: Framebuffer): Framebuffer {
   const out = createFramebuffer(half(fb.width), half(fb.height));
   for (let y = 0; y < out.height; y++) {

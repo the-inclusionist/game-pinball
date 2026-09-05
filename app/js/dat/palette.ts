@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// dat/palette — the PARTOUT's 256-colour palette (entry type 5).
+// dat/palette — the PARTOUT's 256-color palette (entry type 5).
 //
-// One colour per little-endian DWORD. The bit layout is the upstream's `ColorRgba` (gdrv.h):
+// One color per little-endian DWORD. The bit layout is the upstream's `ColorRgba` (gdrv.h):
 //
 //     A << 24 | R << 16 | G << 8 | B
 //
@@ -13,8 +13,8 @@
 // and `peFlags` is 0. Treating that byte as alpha paints the entire table transparent. Opacity is
 // decided by whoever draws, in the render phase, and not here.
 
-const COLOURS = 256;
-const BYTES_PER_COLOUR = 4;
+const COLORS = 256;
+const BYTES_PER_COLOR = 4;
 
 export interface Palette {
   readonly length: number;
@@ -27,11 +27,11 @@ export interface Palette {
 
 export function readPalette(payload: Uint8Array): Palette {
   const dv = new DataView(payload.buffer, payload.byteOffset, payload.byteLength);
-  const howMany = Math.min(COLOURS, Math.floor(payload.byteLength / BYTES_PER_COLOUR));
-  const colours = new Uint32Array(howMany);
-  for (let i = 0; i < howMany; i++) colours[i] = dv.getUint32(i * BYTES_PER_COLOUR, true);
+  const howMany = Math.min(COLORS, Math.floor(payload.byteLength / BYTES_PER_COLOR));
+  const colors = new Uint32Array(howMany);
+  for (let i = 0; i < howMany; i++) colors[i] = dv.getUint32(i * BYTES_PER_COLOR, true);
 
-  const channel = (i: number, shift: number): number => ((colours[i] ?? 0) >>> shift) & 0xff;
+  const channel = (i: number, shift: number): number => ((colors[i] ?? 0) >>> shift) & 0xff;
   return {
     length: howMany,
     red: (i) => channel(i, 16),

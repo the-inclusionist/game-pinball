@@ -18,7 +18,7 @@ describe('the screen is 320x180 and the playfield does not fill it', () => {
     expect(DEFAULT_HUD.screenWidth - l.playfield.width).toBe(137);
   });
 
-  test('the playfield is centred, and the odd pixel goes LEFT', () => {
+  test('the playfield is centered, and the odd pixel goes LEFT', () => {
     // 137 is odd, so the two columns cannot be equal. The choice is arbitrary and therefore has to be
     // written down: the wider column is the left one, which is where three of the four blocks live.
     const l = layoutHud(DEFAULT_HUD);

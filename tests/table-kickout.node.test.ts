@@ -50,11 +50,11 @@ const ballAt = (x: number, y: number, dx = 0, dy = 0, speed = 0): KickoutBall =>
 });
 
 describe('kickout — the field is a controller, not an attraction', () => {
-  test('it CANCELS the ball’s velocity and substitutes a pull toward the centre', () => {
-    // dst = normalize(centre - pos) * fieldMult - direction * speed. Dropping the second term would
+  test('it CANCELS the ball’s velocity and substitutes a pull toward the center', () => {
+    // dst = normalize(center - pos) * fieldMult - direction * speed. Dropping the second term would
     // leave a hole a fast ball simply flies over.
     const { k } = build();
-    // Two units left of the centre, travelling right at speed 4.
+    // Two units left of the center, traveling right at speed 4.
     const ball = ballAt(98, 200, 1, 0, 4);
     const out = { x: 0, y: 0 };
 
@@ -90,7 +90,7 @@ describe('kickout — the field is a controller, not an attraction', () => {
 });
 
 describe('kickout — capture', () => {
-  test('the ball is teleported to the centre and handed to the component', () => {
+  test('the ball is teleported to the center and handed to the component', () => {
     // From then on physics/step skips the grid for that ball and lets the component move it.
     const { k, captures, played } = build();
     const ball = ballAt(101, 201);

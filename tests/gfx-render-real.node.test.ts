@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // THE VISUAL GATE OF PHASE 2: the real table, decoded from PINBALL.DAT and written out as a PNG.
 //
-// The assertions here are objective (dimensions, opacity, colour variety), but the artefact exists to
+// The assertions here are objective (dimensions, opacity, color variety), but the artefact exists to
 // be LOOKED AT: numbers over a buffer cannot tell a correct table from a mirrored one, an upside-down
 // one, or one with red and blue swapped — and those three are exactly what this path invites.
 import { describe, test, expect } from 'vitest';
@@ -24,7 +24,7 @@ const DAT_PATH = join(ROOT, 'game_resources', 'PINBALL.DAT');
 const OUT_DIR = join(ROOT, 'shots');
 
 describe.skipIf(!existsSync(DAT_PATH))('render — the real table as a PNG', () => {
-  test('the "table" group decodes at 365x470, the right way up and in the right colours', () => {
+  test('the "table" group decodes at 365x470, the right way up and in the right colors', () => {
     const file = new Uint8Array(readFileSync(DAT_PATH));
     const table = loadTable(file);
 
@@ -76,7 +76,7 @@ describe.skipIf(!existsSync(DAT_PATH))('render — the real table as a PNG', () 
     }
     expect(b / n).toBeGreaterThan((r / n) * 1.3);
 
-    // And it is colourful: an index defect collapsing everything into one colour would pass all the rest.
+    // And it is colorful: an index defect collapsing everything into one color would pass all the rest.
     expect(new Set(Array.from(fb.pixels)).size).toBeGreaterThan(100);
 
     // BOTH REDUCTIONS, side by side, so the aesthetic choice is made by looking rather than imagining.

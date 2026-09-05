@@ -2,9 +2,17 @@
 
 ## Language — decided 2026-09-05, after getting it wrong
 
-**Artefacts are written in ENGLISH.** Code, identifiers, comments, documentation, commit messages, UI
-strings in the source. Portuguese, Spanish and any other language appear **only in i18n dictionaries** —
-never in the code that reads them.
+**Artifacts are written in ENGLISH — en-US spelling.** Code, identifiers, comments, documentation,
+commit messages. Portuguese, Spanish and any other language appear **only in i18n dictionaries** —
+never in the code that reads them, and never as a literal anywhere else.
+
+`color`, `center`, `behavior`, `license`, `normalize`, `neighbor`. Not the British forms. The reason is
+not taste: the point of writing the code in English is that somebody who does not read Portuguese can
+work on it, and one project spelling is one less thing for that person to guess. The interface strings
+in `i18n/en` follow the same rule.
+
+The game itself ships in **pt-BR, en and es**, and a test fails if any of the three loses a key or a
+`{parameter}` the others have.
 
 This is written down because the first 27 files of this repository were written in Portuguese. The
 convention comes from the Inclusionist engine this project consumes, and it was not read before starting.
@@ -25,7 +33,7 @@ populated locally by `npm run data:extract`.
 - **Transcription, not equivalence.** The physics constants of the Space Cadet are calibrated numbers,
   not logic to improve. Where the original does something that looks like a defect, transcribe it and
   write down why it is not — or, where it genuinely is one, say so in the comment and in the commit.
-- **Two deviations are allowed and both must be labelled**: where transcribing would be wrong for the
+- **Two deviations are allowed and both must be labeled**: where transcribing would be wrong for the
   medium (the alpha-2 sentinel in `gfx/gdrv`), and where the upstream duplicated identical code (the
   Bresenham traversal in `physics/grid`).
 - **TDD, and every gate is born red.** Write the test, watch it fail, then implement. Where a test was

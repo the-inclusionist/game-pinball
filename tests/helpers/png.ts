@@ -5,7 +5,7 @@
 // verification. A PNG on disk can be checked by a human, and it is the only way the plan's "compare
 // against pinball.alula.me" stops being a figure of speech.
 //
-// 8-bit RGBA, no filtering (a zero byte per row), Node's own deflate. It is not optimised and does not
+// 8-bit RGBA, no filtering (a zero byte per row), Node's own deflate. It is not optimized and does not
 // need to be: it is test tooling, not game code.
 import { deflateSync } from 'node:zlib';
 

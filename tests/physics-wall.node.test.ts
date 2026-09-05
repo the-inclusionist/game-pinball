@@ -16,7 +16,7 @@ const circles = (es: readonly unknown[]) => es.filter((e) => (e as CircleEdge).k
 const SQUARE = [5, 0, 0, 10, 0, 10, 10, 0, 10, 0, 0];
 
 describe('wall — circle (type 1)', () => {
-  test('reads centre and radius, and the offset ADDS to the radius', () => {
+  test('reads center and radius, and the offset ADDS to the radius', () => {
     // Inflating the wall by the ball's radius is what lets the ball be treated as a point.
     const [e] = installWall([1, 5, 7, 3], { component, offset: 2 });
 

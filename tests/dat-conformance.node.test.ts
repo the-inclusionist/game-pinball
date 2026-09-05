@@ -36,7 +36,7 @@ describe.skipIf(!hasData)('conformance — the real PINBALL.DAT against AdrienTD
     const { readGroups } = await import('../app/js/dat/partman.js');
 
     // The proof of sync is not the count: it is the CONTENT of the first and second groups, which the
-    // dump transcribes. A desynchronised parser would still produce 541 objects, full of garbage.
+    // dump transcribes. A desynchronized parser would still produce 541 objects, full of garbage.
     const groups = readGroups(file);
 
     expect(groups).toHaveLength(541);

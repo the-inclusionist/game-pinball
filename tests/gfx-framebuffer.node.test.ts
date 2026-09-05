@@ -13,7 +13,7 @@ describe('framebuffer — two views on the same memory', () => {
 
   test('the bytes come out in the R, G, B, A order ImageData expects', () => {
     // Canvas reads `data` as RGBA bytes. Packing the 32 bits the wrong way swaps red and blue across
-    // the whole image, and the symptom is a table of plausible colours — nobody blinks until they
+    // the whole image, and the symptom is a table of plausible colors — nobody blinks until they
     // compare it with the original.
     const fb = createFramebuffer(1, 1);
 

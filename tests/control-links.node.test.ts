@@ -11,7 +11,7 @@ const loaded = (groupName: string | null): LinkableComponent => ({ groupName, co
 const BUMP_SCORES = [500, 1000, 2000, 4000];
 
 describe('links — a component from the .DAT is inert until it is wired', () => {
-  test('linking attaches BOTH the behaviour and the score array', () => {
+  test('linking attaches BOTH the behavior and the score array', () => {
     // The table of 88 scoring components is not a lookup the game consults — it is the wiring loom.
     // Run it and the table plays; skip it and the same geometry bounces silently.
     const bump1 = loaded('bump1');

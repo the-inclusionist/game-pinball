@@ -54,7 +54,7 @@ describe('a component is named by WHAT IT IS', () => {
     expect(unnamed.length / physical.length).toBeLessThan(0.2);
   });
 
-  test('every lamp in the address book is recognised as a lamp', () => {
+  test('every lamp in the address book is recognized as a lamp', () => {
     const lamps = SIMPLE_COMPONENTS.filter((name) => name.startsWith('lite'));
 
     expect(lamps.length).toBeGreaterThan(90);

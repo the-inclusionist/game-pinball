@@ -17,7 +17,7 @@
 //
 // One deliberate deviation. In the promotion branch the original formats its message inside
 // `if (onCount < 9)` and then displays it unconditionally — so at the top rank it prints an
-// uninitialised stack buffer. That cannot be transcribed and should not be: at the top rank this port
+// uninitialized stack buffer. That cannot be transcribed and should not be: at the top rank this port
 // shows nothing, which is what the original was trying to do.
 //
 // ========================= GAME OVER IS A CAROUSEL DRIVEN BY A TEXT BOX =========================
@@ -183,7 +183,7 @@ export function makeTimeWarpPartTwoController(o: TimeWarpPartTwoOptions): Missio
         o.rankCircle.resetAndTurnOn(5);
       }
       if (!o.addRankProgress(TIME_WARP_RANK_POINTS)) {
-        // At the top rank the original prints an uninitialised buffer here. We print nothing.
+        // At the top rank the original prints an uninitialized buffer here. We print nothing.
         if (promotionText) {
           ctx.showMissionText(promotionText, 8);
           o.playPromotionSound?.();

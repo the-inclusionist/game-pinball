@@ -29,14 +29,14 @@
 //
 // ========================= THE GRAVITY WELL IS TIMED BY ITS OWN SOUND =========================
 // `soundwave7->Play(...)` RETURNS its duration, and that duration is handed straight to the kickout's
-// timer. The ball is released the instant the noise stops. The animation is not synchronised to the
+// timer. The ball is released the instant the noise stops. The animation is not synchronized to the
 // mechanism — the animation IS the mechanism's clock.
 //
 // ========================= AND ONE DELIBERATE DEVIATION =========================
 // `GravityWellKickoutControl`'s arming branch reads `reinterpret_cast<size_t>(caller)` and prints it as
 // a score: the original smuggles an integer through the component pointer. That is a type pun the
 // decompiler preserved faithfully and it cannot be transcribed into TypeScript, so the arming path
-// takes an explicit number here. The behaviour is the same; the pun is not.
+// takes an explicit number here. The behavior is the same; the pun is not.
 
 import { getScoring, type ControlFunc, type ControlledComponent } from './dispatch.js';
 import { addScore } from './score.js';

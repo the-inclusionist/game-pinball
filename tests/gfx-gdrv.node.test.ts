@@ -3,7 +3,7 @@ import { describe, test, expect } from 'vitest';
 import { buildDisplayPalette, applyPalette } from '../app/js/gfx/gdrv.js';
 import { pack } from '../app/js/gfx/framebuffer.js';
 
-/** A file palette where colour `i` is (i, i+1, i+2). */
+/** A file palette where color `i` is (i, i+1, i+2). */
 const fakePalette = {
   red: (i: number) => i & 0xff,
   green: (i: number) => (i + 1) & 0xff,
@@ -11,7 +11,7 @@ const fakePalette = {
 };
 
 describe('gdrv — the display palette', () => {
-  test('index 0 is TRANSPARENT, which is why the transparency test is "colour != 0"', () => {
+  test('index 0 is TRANSPARENT, which is why the transparency test is "color != 0"', () => {
     expect(buildDisplayPalette(fakePalette)[0]).toBe(0);
   });
 
@@ -23,8 +23,8 @@ describe('gdrv — the display palette', () => {
     expect(p[9]).toBe(pack(0xa6, 0xca, 0xf0, 0xff));
   });
 
-  test('the file colours (10 to 245) come out OPAQUE — the original alpha 2 is a sentinel', () => {
-    // The upstream does `SetAlpha(2)` on those colours. That is not opacity: SDL ignores alpha on that
+  test('the file colors (10 to 245) come out OPAQUE — the original alpha 2 is a sentinel', () => {
+    // The upstream does `SetAlpha(2)` on those colors. That is not opacity: SDL ignores alpha on that
     // path, and the 2 only has to be NON-ZERO so the `Color != 0` test counts the pixel as drawable.
     // Canvas does NOT ignore alpha: copying the 2 would paint the whole table at 0.8% opacity.
     // Translating the sentinel to 255 keeps the exact semantics and fixes the medium.
@@ -47,7 +47,7 @@ describe('gdrv — the display palette', () => {
 });
 
 describe('gdrv — applying the palette', () => {
-  test('turns indices into colours, at the size asked for', () => {
+  test('turns indices into colors, at the size asked for', () => {
     const p = buildDisplayPalette(fakePalette);
     const indices = new Uint8Array([255, 0, 10, 1]);
 

@@ -40,9 +40,9 @@ describe('the address book, as the original ships it', () => {
     expect(SIMPLE_COMPONENTS.filter((n) => !displayShaped.test(n))).toEqual([]);
   });
 
-  test('the two tables are disjoint: a name has a behaviour OR an address, never both', () => {
+  test('the two tables are disjoint: a name has a behavior OR an address, never both', () => {
     // `make_links` runs two passes over two arrays. Nothing is in both, because the second pass
-    // attaches no behaviour and would have nothing to add.
+    // attaches no behavior and would have nothing to add.
     const scored = new Set(SCORE_COMPONENTS.map((r) => r.name));
 
     expect(SIMPLE_COMPONENTS.filter((n) => scored.has(n))).toEqual([]);
@@ -50,13 +50,13 @@ describe('the address book, as the original ships it', () => {
 
   test('a lamp that DOES something is in the other table', () => {
     // This is the rule that decides which of the two arrays a lamp lands in. `lite200`, `lite17`,
-    // `lite59` and `lite60` all carry a behaviour — the shoot-again fade, the extra-ball expiry, the
+    // `lite59` and `lite60` all carry a behavior — the shoot-again fade, the extra-ball expiry, the
     // bonus and jackpot windows closing — so they are score components with a control and no score.
     // Every lamp that is only read or written is here instead.
-    const withBehaviour = ['lite200', 'lite17', 'lite59', 'lite60'];
+    const withBehavior = ['lite200', 'lite17', 'lite59', 'lite60'];
     const scored = new Map(SCORE_COMPONENTS.map((r) => [r.name, r.controlName]));
 
-    for (const name of withBehaviour) {
+    for (const name of withBehavior) {
       expect(SIMPLE_COMPONENTS).not.toContain(name);
       expect(scored.get(name)).toBeDefined();
     }

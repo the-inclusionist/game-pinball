@@ -6,7 +6,7 @@ metadata:
   consulted:
     - "ADR-0001 (this repository) — the camera, which is why the playfield fills the screen vertically
        and therefore why the bottom of the screen is the flippers"
-    - "ADR-0010 pillar 5 (engine) — 320x180, honoured to the letter"
+    - "ADR-0010 pillar 5 (engine) — 320x180, honored to the letter"
     - "The original 3D Pinball for Windows, whose 203x394 side panel this record removes"
   informed: []
 
@@ -33,7 +33,7 @@ decision-drivers:
   - "Phase 8 may author a table wider than 320, at which point there are no columns at all."
 
 considered-options:
-  - &beside "Playfield centred, blocks in the two columns beside it"
+  - &beside "Playfield centered, blocks in the two columns beside it"
   - &overlay "Blocks overlaid on the playfield corners, as a conventional HUD"
   - &bar "Trade 12 pixels of playfield height for a full-width hint bar at the bottom"
 
@@ -74,7 +74,7 @@ decision-outcome:
     the screen. The artwork it carried is not reproduced anywhere: it is Microsoft's, and this project
     does not ship Microsoft's art.
 
-    § 2 — THE PLAYFIELD IS CENTRED AND NOTHING COVERS IT. 137 spare pixels become two columns. There is
+    § 2 — THE PLAYFIELD IS CENTERED AND NOTHING COVERS IT. 137 spare pixels become two columns. There is
     a test that walks every block against the playfield rectangle and fails on a single shared pixel.
 
     § 3 — 137 IS ODD, AND THE WIDER COLUMN IS THE LEFT ONE. 69 against 68. The choice is arbitrary, and
@@ -83,7 +83,7 @@ decision-outcome:
 
     § 4 — ⚠️ THE HINT IS NOT WHERE IT WAS ASKED FOR, AND THIS IS THE DEVIATION. It was asked for at
     "the lower part". It sits at the bottom of the LEFT COLUMN, which is as low as it can go without
-    covering the flippers (⚠️ `covers-flippers`). The option that would have honoured the phrase
+    covering the flippers (⚠️ `covers-flippers`). The option that would have honored the phrase
     literally is `bar`, and it was refused because it rewrites the camera's 55 pixels (⚠️
     `changes-travel`) — a HUD decision must not do that silently. If the Dev prefers the full-width bar
     knowing that cost, this record is superseded and the camera's numbers change with it.
@@ -98,7 +98,7 @@ consequences:
   good:
     - "The play area is inviolable, and a test enforces it rather than a convention."
     - "The rules are geometric and hold for any table size, including the authored one."
-    - "The dead panel takes Microsoft's artwork with it, which the licence position wanted anyway."
+    - "The dead panel takes Microsoft's artwork with it, which the license position wanted anyway."
   bad:
     - "⚠️ The hint has a 63-pixel column instead of the width of the screen. At the shipped font that
        is roughly fifteen characters a line over four lines, and the mission texts of the original are

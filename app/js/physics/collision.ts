@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // physics/collision — the collision response. Port of `maths::basic_collision`.
 //
-// One function, and three behaviours come out of it that look separate in the game: the bounce off a
+// One function, and three behaviors come out of it that look separate in the game: the bounce off a
 // wall, the energy lost in a graze, and the bumper's kick. They are the same ten calculations with
 // different parameters, which is why this is transcribed rather than split into three "clearer"
 // functions — splitting them would invent differences that do not exist.

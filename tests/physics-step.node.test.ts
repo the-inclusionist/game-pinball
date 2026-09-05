@@ -55,7 +55,7 @@ describe('step — frame setup', () => {
 
 describe('step — force integration', () => {
   test('the field force ACCELERATES the ball, scaled by time', () => {
-    // The direction is denormalised into a velocity, the force is added, and the magnitude of the
+    // The direction is denormalized into a velocity, the force is added, and the magnitude of the
     // result becomes the new speed. That is how gravity enters: with no separate acceleration vector.
     const b = ballAt(50, 50, 1, 0, 10);
 
@@ -128,7 +128,7 @@ describe('step — substeps', () => {
     return queries;
   }
 
-  test('the table is queried once per HALF RADIUS travelled', () => {
+  test('the table is queried once per HALF RADIUS traveled', () => {
     // The ball never travels more than half a radius without being tested: that is what stops a fast
     // projectile passing through a thin wall between two frames. Speed 20 over 0.01 is 0.2 of distance;
     // 0.2 / 0.125 is two steps.

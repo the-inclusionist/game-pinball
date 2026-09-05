@@ -13,7 +13,7 @@
 // are in", and they cannot be confused because the two live in different bits.
 //
 // The lamp holding that mask is `lite104`, which is ALSO one of the three lamps the targets light. One
-// lamp, its own lit state, and a bitmask about its neighbours in its message field.
+// lamp, its own lit state, and a bitmask about its neighbors in its message field.
 //
 // ========================= AND THE MASK OUTLIVES THE LAMPS =========================
 // The hazard spot targets flash their lamp group off when all three are down, but they never clear the

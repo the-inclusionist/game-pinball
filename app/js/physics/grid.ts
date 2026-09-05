@@ -125,7 +125,7 @@ export function createEdgeManager(minX: number, minY: number, width: number, hei
 
     // The original uses a `ProcessedFlag` on the edge itself plus a 1000-entry array to clear it
     // afterwards. A local Set does the same and leaves no dirty state on an edge if a query aborts —
-    // the only liberty taken here, and it is in favour of correctness.
+    // the only liberty taken here, and it is in favor of correctness.
     const processed = new Set<Edge>();
 
     const testBox = (x: number, y: number): void => {
@@ -165,9 +165,9 @@ export function placeLineInGrid(g: EdgeManager, edge: WithSegment): void {
 /**
  * `TTableLayer::edges_insert_circle`: the circle enters the boxes it ACTUALLY touches.
  *
- * The original does the overlap test by hand and exhaustively: centre inside the box, then the four
+ * The original does the overlap test by hand and exhaustively: center inside the box, then the four
  * corners against the radius, then four rays along the four box edges. Here is the equivalent analytic
- * test — the point of the box closest to the centre, and the distance to it. Same answers, including in
+ * test — the point of the box closest to the center, and the distance to it. Same answers, including in
  * the one case where a circle test and a bounding-box test disagree: the diagonal box that lies inside
  * the bounding square but outside the circle.
  */

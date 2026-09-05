@@ -61,7 +61,7 @@ describe('bitmap8 — type derived from the flags', () => {
 });
 
 describe('bitmap8 — indexed stride', () => {
-  // The INDEXED (8bpp) rows are padded to a multiple of 4 bytes; the colour destination buffer is not.
+  // The INDEXED (8bpp) rows are padded to a multiple of 4 bytes; the color destination buffer is not.
   // Two different strides on one object, and confusing them skews the image.
   test('a width that is not a multiple of 4 rounds up to the next one', () => {
     const p = bitmap8({ width: 365, height: 2, data: new Uint8Array(368 * 2), flags: BITMAP_FLAG.rawUnaligned });

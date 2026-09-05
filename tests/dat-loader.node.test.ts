@@ -41,7 +41,7 @@ describe('loader — table_size', () => {
 describe('loader — table_objects', () => {
   test('reads type/group pairs, discarding the first integer', () => {
     // The spec: "the first integer is unknown, and then comes a series of 16-bit pairs". Starting at
-    // zero shifts the whole list and every object gets its neighbour's group.
+    // zero shifts the whole list and every object gets its neighbor's group.
     const file = buildPartout({
       groupCount: 1,
       body: bodyOf(namedGroup('table_objects',

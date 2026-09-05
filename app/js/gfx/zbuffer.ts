@@ -6,11 +6,11 @@
 // the game in two different ways:
 //
 //   `paint` (zdrv::paint) — for a sprite that HAS its own depth (a ramp, a wall).
-//       Compares `destination >= source` and writes BOTH COLOUR AND DEPTH. The sprite carves the
+//       Compares `destination >= source` and writes BOTH COLOR AND DEPTH. The sprite carves the
 //       scene's relief. The `=` settles ties: on a tie the source wins, so the last drawn is on top.
 //
 //   `paintFlat` (zdrv::paint_flat) — for a sprite at a single depth (the ball).
-//       Compares `destination > depth`, STRICTLY, writes only the COLOUR, and skips transparent pixels.
+//       Compares `destination > depth`, STRICTLY, writes only the COLOR, and skips transparent pixels.
 //       Not writing depth is what lets the ball pass without leaving a trace in the relief; the strict
 //       `>` is what stops it flickering along ramp edges, where the depths meet.
 //
@@ -99,10 +99,10 @@ export function paintFlat(dst: Framebuffer, dstZ: ZBuffer, src: Framebuffer, dep
       const iDstZ = (dy + y) * dstZ.stride + (dx + x);
       const iSrc = (oy + y) * src.width + (ox + x);
 
-      const colour = src.pixels[iSrc]!;
+      const color = src.pixels[iSrc]!;
       // Non-zero `Color` in the original: an all-zero pixel is transparent and is not drawn.
-      if (colour !== 0 && dstZ.depths[iDstZ]! > depth) {
-        dst.pixels[iDst] = colour;
+      if (color !== 0 && dstZ.depths[iDstZ]! > depth) {
+        dst.pixels[iDst] = color;
       }
     }
   }

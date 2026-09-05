@@ -5,7 +5,7 @@
 // are float arrays, and this is what reads them as geometry.
 //
 // ========================= THE FIRST NUMBER IS THE SHAPE =========================
-//     floatArr[0] === 1  → a circle: centre (arr[1], arr[2]) and radius arr[3]
+//     floatArr[0] === 1  → a circle: center (arr[1], arr[2]) and radius arr[3]
 //     floatArr[0] === 2  → a line: (arr[1], arr[2]) to (arr[3], arr[4])
 //     floatArr[0] === N+1 → a closed polygon of N sides
 //

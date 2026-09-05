@@ -44,7 +44,7 @@ describe('the screen and the table are the sizes that were decided', () => {
 describe('THE GATE: the two thresholds must differ', () => {
   test('the tolerance to start moving is strictly larger than the one to stop', () => {
     // This is the defect the plan named: equal thresholds make the camera chatter on the boundary,
-    // starting and stopping every frame. The test exists to fail if anybody ever equalises them.
+    // starting and stopping every frame. The test exists to fail if anybody ever equalizes them.
     expect(DEFAULT_CAMERA.startTolerance).toBeGreaterThan(DEFAULT_CAMERA.stopTolerance);
   });
 

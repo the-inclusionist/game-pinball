@@ -4,7 +4,7 @@ metadata:
   date: 2026-09-05
   decision-makers: [Dev]
   consulted:
-    - "ADR-0010 pillar 5 (engine) — the 320x180 screen, honoured to the letter: no exception is claimed
+    - "ADR-0010 pillar 5 (engine) — the 320x180 screen, honored to the letter: no exception is claimed
        here and none is owed"
     - "ADR-0068 (engine) — one repository per game, which is why this record lives in this repository
        and starts its own numbering"
@@ -99,7 +99,7 @@ decision-outcome:
     `stopTolerance`. ⚠️ THIS IS THE CLAUSE THAT IS EASIEST TO LOSE: they look like one number written
     twice, and a later reader may "simplify" them into one. They are not one number. With one
     threshold the camera starts and stops on the same value and a ball hovering on the boundary makes
-    it chatter once per frame. A test fails if they are ever equalised.
+    it chatter once per frame. A test fails if they are ever equalized.
 
     § 4 — IT IS NEVER AS FAST AS THE BALL. Each frame covers `damping` of the remaining distance, but
     never more than `maxSpeedFactor` of the ball's own vertical speed, and `maxSpeedFactor` is
@@ -122,7 +122,7 @@ decision-outcome:
 consequences:
   good:
     - "The constraint the Dev stated in prose is now a property with a test behind it: the view cannot
-       outpace the ball, and the two thresholds cannot be equalised without a red suite."
+       outpace the ball, and the two thresholds cannot be equalized without a red suite."
     - "Phase 8's horizontal scrolling costs nothing: it is the same function with different sizes."
     - "The tuning surface is one object, so play testing does not become archaeology."
   bad:
@@ -133,7 +133,7 @@ consequences:
     - "The game is no longer a faithful port along this axis, and this project will not call it one.
        The original shows everything; this shows what it can."
   ugly:
-    - "Four tuning numbers with no principled derivation. They were chosen to match the behaviour the
+    - "Four tuning numbers with no principled derivation. They were chosen to match the behavior the
        Dev described in words and they will be wrong for the authored table until somebody plays it."
 
 more-information: |

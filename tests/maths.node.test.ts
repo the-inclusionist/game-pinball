@@ -14,14 +14,14 @@ describe('maths — vectors', () => {
     expect(cross({ x: 0, y: 1 }, { x: 1, y: 0 })).toBe(-1);
   });
 
-  test('normalising returns the PREVIOUS magnitude and leaves the vector unit length', () => {
+  test('normalizing returns the PREVIOUS magnitude and leaves the vector unit length', () => {
     const v = { x: 3, y: 4 };
 
     expect(normalize2d(v)).toBe(5);
     expect(v).toEqual({ x: 0.6, y: 0.8 });
   });
 
-  test('normalising a zero vector does not divide by zero', () => {
+  test('normalizing a zero vector does not divide by zero', () => {
     const v = { x: 0, y: 0 };
 
     expect(normalize2d(v)).toBe(0);
@@ -55,7 +55,7 @@ describe('maths — ray against circle', () => {
     expect(rayIntersectCircle(ray(0, 0, 1, 0), circle(0, 0, 2))).toBeCloseTo(-2);
   });
 
-  test('inside the circle but MOVING AWAY from the centre, no hit', () => {
+  test('inside the circle but MOVING AWAY from the center, no hit', () => {
     // `tca < 0` cuts out before the inside test. Deliberate in the original: whatever is already
     // leaving does not get pushed again.
     expect(rayIntersectCircle(ray(1, 0, 1, 0), circle(0, 0, 2))).toBe(NO_COLLISION);

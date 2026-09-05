@@ -10,8 +10,8 @@
 //     { name: 'bump1', controlName: 'BumperControl', scores: SCORE_ARRAYS.bump_scores1 }
 //
 // The NAME is a .DAT group name, so it matches the file rather than anything in this codebase. The
-// CONTROL NAME picks a behaviour out of the registry — and a behaviour that is not registered yet
-// simply leaves that component inert, which is how this table can be complete while the behaviours
+// CONTROL NAME picks a behavior out of the registry — and a behavior that is not registered yet
+// simply leaves that component inert, which is how this table can be complete while the behaviors
 // arrive in batches. The SCORES are shared: four bumpers of a group point at one array.
 //
 // ========================= THE ARRAYS SAY WHAT THE TABLE IS WORTH =========================
@@ -56,7 +56,7 @@ export const SCORE_ARRAYS = {
 export interface ScoreTableRow {
   /** A .DAT group name. */
   readonly name: string;
-  /** Picks a behaviour out of the control registry. Unregistered means the component stays inert. */
+  /** Picks a behavior out of the control registry. Unregistered means the component stays inert. */
   readonly controlName: string;
   readonly scores: readonly number[];
 }
