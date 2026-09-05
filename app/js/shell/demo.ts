@@ -180,13 +180,18 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
       const row = scoringByTag.get(hit.group);
       if (!row?.scores.length) return;
       paidFlat.push(hit.group);
-      // ⚠️ THE COMPONENT'S OWN LEVEL, where there is a component. `bumperControl` indexes the score
-      // array by it and never advances it — the LANES do, by sending `TBumperIncBmpIndex` to the bumper
-      // GROUP. Both lane chains are wired now, so a bumper sits at level zero only until the ball works
-      // the lanes; the indexing was written before the raising existed, and doing it the other way
-      // round would have hidden the gap.
-      const level = components.bumpers.get(hit.group)?.level ?? 0;
-      addScore(score, row.scores[Math.min(level, row.scores.length - 1)]!);
+      // ⚠️ THE FIRST SCORE, FLAT, because nothing here knows what else a component's table means.
+      //
+      // This branch used to read the bumper's level and index the table with it — a copy of
+      // `BumperControl`, written before the dispatcher could run the real one. The bumpers are wired
+      // now, so no bumper reaches this line any more, and the copy is gone. What is left is the
+      // honest thing to do for a component whose control function this port has not wired: pay the
+      // first entry and record that it was paid this way, where `paidFlat` can be compared against
+      // `wired` and the two required not to overlap.
+      //
+      // ⚠️ AND IT DIFFERS FROM `getScoring` ON PURPOSE-LESS INPUT: `get_scoring` answers ZERO for an
+      // index past the end, while this clamped to the last entry. That divergence went with the copy.
+      addScore(score, row.scores[0]!);
       scored.push(row.name);
     },
   });

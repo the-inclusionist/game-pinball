@@ -39,10 +39,13 @@ import { makeMedalTargetControl, makeBoosterTargetControl, type AwardChainStep }
 import {
   BUMPER_LANE_BINDINGS, LAMP_BINDINGS, RETURN_LANES, FUEL_ROLLOVERS, FUEL_BARGRAPH,
   FUEL_REFUEL_TEXT_ID, OUT_LANES, BONUS_LANE, SPOT_TARGET_SETS, MEDAL_BANK, MULTIPLIER_BANK,
-  BOOSTER_BANK, TABLE_ACTIONS, type BumperLaneBinding,
+  BOOSTER_BANK, TABLE_ACTIONS, FLIPPER_REBOUNDERS, type BumperLaneBinding,
 } from '../control/bindings.js';
 import { addExtraBall, createTableActions } from '../control/table-actions.js';
-import { handler, type ControlContext, type ControlledComponent } from '../control/dispatch.js';
+import {
+  handler, bumperControl, rebounderControl, makeFlipperRebounderControl,
+  type ControlContext, type ControlledComponent,
+} from '../control/dispatch.js';
 import { SCORE_COMPONENTS } from '../control/score-table.js';
 import type { OriginalComponents } from './original-components.js';
 import type { Gate } from './gate.js';
@@ -451,6 +454,43 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
         controls.set(target.name, (component) => control('ControlCollision', component, o.context));
       }
     }
+  }
+
+  // ⚠️ THE COMPONENTS THAT SCORE FROM THEIR OWN TABLE AND REACH NOTHING ELSE. `BumperControl` is one
+  // line — `AddScore(get_scoring(BmpIndex))` — and `RebounderControl` is the same with a fixed index.
+  // Neither needs a binding, because the score table already says which component runs which control;
+  // reading it here rather than repeating the seven bumper names is one list instead of two.
+  //
+  // ⚠️ AND THE BUMPER'S `self` IS THE BUMPER. The level is the score INDEX and nothing in the control
+  // advances it — the lanes do. Registering these without `self` would pay every bumper its first
+  // price for ever, which looks like the table being stingy rather than like a missing reference.
+  //
+  // ⚠️ THE TWO CONTROLS ARE INDISTINGUISHABLE ON A REBOUNDER, and a mutation running `bumperControl`
+  // for a rebounder SURVIVES. It has to: a rebounder carries no `self`, so the level reads zero and
+  // `getScoring(caller, 0)` is exactly what `rebounderControl` does. Recorded as an equivalent mutant
+  // rather than chased — they are two functions in the original and stay two here, because the day a
+  // rebounder gains a level the difference is real.
+  for (const row of SCORE_COMPONENTS) {
+    if (row.controlName === 'BumperControl') {
+      const bumper = o.components.bumpers.get(row.tag);
+      if (!bumper) continue;
+      byName.set(row.tag, { name: row.tag, scores: row.scores, control: null, self: bumper });
+      controls.set(row.tag, (component) => bumperControl('ControlCollision', component, o.context));
+    } else if (row.controlName === 'RebounderControl') {
+      byName.set(row.tag, { name: row.tag, scores: row.scores, control: null });
+      controls.set(row.tag, (component) => rebounderControl('ControlCollision', component, o.context));
+    }
+  }
+
+  for (const binding of FLIPPER_REBOUNDERS) {
+    if (!o.components.lights.has(binding.lamp)) continue;
+    const row = scoreRows.get(binding.component);
+    const control = makeFlipperRebounderControl(binding.lamp);
+    byName.set(binding.component, {
+      name: binding.component, scores: row?.scores ?? [], control: null,
+    });
+    controls.set(binding.component,
+      (component) => control('ControlCollision', component, o.context));
   }
 
   return {

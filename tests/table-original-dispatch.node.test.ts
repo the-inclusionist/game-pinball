@@ -10,6 +10,7 @@ import {
   MEDAL_BANK, MULTIPLIER_BANK, BOOSTER_BANK, TABLE_ACTIONS,
 } from '../app/js/control/bindings.js';
 import { createScoreState } from '../app/js/control/score.js';
+import { SCORE_COMPONENTS } from '../app/js/control/score-table.js';
 import { loadTable } from '../app/js/dat/loader.js';
 import type { ControlContext } from '../app/js/control/dispatch.js';
 
@@ -57,14 +58,17 @@ function wired(o: { gates?: boolean } = {}) {
 }
 
 describe('a lane crossing reaches the 1995 control function', () => {
-  test('the six lanes of the two chains are wired, plus the space warp, and nothing else', () => {
+  test('the inventory of what runs, which grows deliberately and never quietly', () => {
     const w = wired();
     if (!w) return expect(existsSync(DAT)).toBe(false);
 
-    expect(w.dispatch.wired.size).toBe(30);
+    expect(w.dispatch.wired.size).toBe(41);
     expect(w.dispatch.wired.has('a_roll3')).toBe(true);
     expect(w.dispatch.wired.has('a_roll9')).toBe(true);
-    expect(w.dispatch.wired.has('a_bump1')).toBe(false);
+    // ⚠️ `a_bump1` USED TO BE THE EXAMPLE HERE, and it is wired now. The mission spot set is the
+    // current one: its binding is transcribed and the dispatcher declines it, which is the difference
+    // between a gap and a lie.
+    expect(w.dispatch.wired.has('a_targ13')).toBe(false);
   });
 
   test('⚠️ and the two lamp controls with NO EVENT SOURCE are declined, not faked', () => {
@@ -213,7 +217,7 @@ describe('a lane crossing reaches the 1995 control function', () => {
     const w = wired();
     if (!w) return expect(existsSync(DAT)).toBe(false);
 
-    expect(() => w.dispatch.hit('a_bump1')).not.toThrow();
+    expect(() => w.dispatch.hit('a_targ13')).not.toThrow();
     expect(w.score.curScore).toBe(0);
   });
 });
@@ -579,5 +583,70 @@ describe('⚠️ the hazard spot sets, whose reward is a wall that stops being o
     w.dispatch.hit(left.targets[2]!);
 
     expect(w.components.lights.get(left.maskLamp!)!.messageField).toBe(1 | 4);
+  });
+});
+
+describe('⚠️ the bumpers and rebounders, which score from their OWN table', () => {
+  const bumpers = SCORE_COMPONENTS.filter((row) => row.controlName === 'BumperControl');
+
+  test('all seven bumpers are wired, and a fresh one pays its first score', () => {
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    expect(bumpers).toHaveLength(7);
+
+    for (const row of bumpers) expect(w.dispatch.wired.has(row.tag), row.tag).toBe(true);
+
+    w.dispatch.hit('a_bump1');
+    expect(w.score.curScore).toBe(500);
+  });
+
+  test('⚠️ and the LANES make it worth more, because the level is the score INDEX', () => {
+    // `BumperControl` is one line: `AddScore(get_scoring(BmpIndex))`. There is no conditional — the
+    // bumper's level indexes its own four-entry table, and nothing in the control advances it. The
+    // lanes do. A port that paid a fixed price would lose the whole point of working the lanes.
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+
+    w.components.raiseGroup('attack_bumpers');
+    w.dispatch.hit('a_bump1');
+
+    expect(w.score.curScore).toBe(1000);
+  });
+
+  test('⚠️ and the two bumper groups have different prices, which the archive decides', () => {
+    // `attack_bumpers` pays 500 at level zero and `launch_bumpers` 1500. The tables come from
+    // `score-table`, one row per component, so a shared table would have made the ramp bumpers cheap.
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+
+    w.dispatch.hit('a_bump5');
+
+    expect(w.score.curScore).toBe(1500);
+  });
+
+  test('the plain rebounders pay a flat five hundred', () => {
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+
+    w.dispatch.hit('v_rebo3');
+    w.dispatch.hit('v_rebo4');
+
+    expect(w.score.curScore).toBe(1000);
+  });
+
+  test('⚠️ and the FLIPPER rebounders blink a lamp, which is the only reason they are not plain', () => {
+    // A tenth of a second on `lite84` and `lite85` — the flash under the flipper that says the ball
+    // caught its shoulder. Wiring them as plain rebounders would score identically and look like
+    // nothing happened.
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+
+    w.dispatch.hit('v_rebo1');
+
+    expect(w.components.lights.get('lite84')!.lit).toBe(true);
+    expect(w.components.lights.get('lite85')!.lit).toBe(false);
+
+    w.dispatch.hit('v_rebo2');
+    expect(w.components.lights.get('lite85')!.lit).toBe(true);
   });
 });

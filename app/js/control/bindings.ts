@@ -434,6 +434,25 @@ export const BOOSTER_BANK: BoosterBankBinding = {
 };
 
 /**
+ * `FlipperRebounderControl1` and `2`: a rebounder that blinks a lamp.
+ *
+ * ⚠️ THE BLINK IS THE ONLY REASON THESE ARE NOT `RebounderControl`. A tenth of a second on `lite84` or
+ * `lite85` — the flash under the flipper that says the ball caught its shoulder. Wiring them as plain
+ * rebounders would score identically and look like nothing had happened, which is why they need a
+ * binding at all: everything else about them is in the score table already.
+ */
+export interface FlipperRebounderBinding {
+  readonly control: string;
+  readonly component: string;
+  readonly lamp: string;
+}
+
+export const FLIPPER_REBOUNDERS: readonly FlipperRebounderBinding[] = [
+  { control: 'FlipperRebounderControl1', component: 'v_rebo1', lamp: 'lite84' },
+  { control: 'FlipperRebounderControl2', component: 'v_rebo2', lamp: 'lite85' },
+];
+
+/**
  * ⚠️ A CONTROL WHOSE WHOLE BINDING IS A LIST OF LAMPS, IN ORDER.
  *
  * Some control functions reach for nothing but lights, and their factories take exactly that. Those
