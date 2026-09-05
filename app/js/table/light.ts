@@ -44,8 +44,14 @@ export interface LightOptions {
 export interface Light {
   readonly on: boolean;
   readonly flashing: boolean;
+  /** Layer 2 is holding it lit. The group reads this to rotate an animation without touching layer 1. */
+  readonly timedOn: boolean;
+  /** Layer 2 is holding it dark. */
+  readonly timedOff: boolean;
   /** Which frame "on" currently means. */
   readonly onFrame: number;
+  /** An integer the mission logic parks on the lamp. The group carries it along when it rotates. */
+  messageField: number;
 
   turnOn(): void;
   turnOff(): void;
@@ -151,7 +157,10 @@ export function createLight(o: LightOptions): Light {
   const light: Light = {
     get on() { return lightOn; },
     get flashing() { return flashing; },
+    get timedOn() { return toggledOn; },
+    get timedOff() { return toggledOff; },
     get onFrame() { return onFrame; },
+    messageField: 0,
 
     turnOn(): void {
       lightOn = true;
