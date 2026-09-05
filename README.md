@@ -30,5 +30,9 @@ npm run data:extract
 
 ## License
 
-Code: **AGPL-3.0-or-later** (see `LICENSE`). Art follows its own author's terms — see the license note in
-`docs/`. The upstream decompilation is MIT; attribution is preserved in `docs/CREDITS.md`.
+Code: **AGPL-3.0-or-later** (see `LICENSE`), and not by preference — the engine this consumes is AGPL, and
+copyleft travels one way. Art follows its own author's terms, and there is none in this repository yet.
+The upstream decompilation is MIT.
+
+Both are set out in **[`docs/LICENSES.md`](docs/LICENSES.md)**, with the attribution itself in
+[`docs/CREDITS.md`](docs/CREDITS.md). Read the first before adding anything that is not code.
