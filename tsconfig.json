@@ -2,10 +2,13 @@
   "//": "STRICT FROM THE FIRST COMMIT, unlike the tracer — there the rigour arrived stage by stage because",
   "//2": "it inherited 273 errors from a fourteen-year-old game.js. Here there is no inheritance: every file is born .ts,",
   "//3": "so there is no debt to tolerate and allowJs is not needed. noEmit: Vite emits, tsc only checks.",
+  "//4": "allowImportingTsExtensions: the engine publishes raw .ts through its exports map",
+  "//5": "(@the-inclusionist/engine/core/contract.ts), so a consumer compiles the source itself. Vite does; tsc needs telling.",
   "compilerOptions": {
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "types": ["vite/client", "node"],
     "noEmit": true,
