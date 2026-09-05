@@ -53,7 +53,7 @@ import {
 } from './camera.js';
 import { layoutHud, DEFAULT_HUD, type HudConfig, type HudLayout } from './hud.js';
 import { createTranslator, type Locale, type Translate } from '../i18n/index.js';
-import { createNamer } from '../i18n/names.js';
+import { createNamer, nameTableOf, type ComponentKind } from '../i18n/names.js';
 import { keyOf } from '../i18n/keys.js';
 
 /** The ids `createGame` looks for. Named here so this game can be checked against them. */
@@ -92,6 +92,15 @@ export interface LiveTable {
   readonly ballRadius: number;
   readonly balls: readonly DeclaredBall[];
   readonly components: readonly DeclaredComponent[];
+  /**
+   * ⚠️ What each component IS, when the table knows. An authored table declares its kinds; the 1995
+   * one does not, and there the kind can only be guessed from the `.DAT` group name.
+   *
+   * This exists because a real boot found the outlanes SILENT. `i18n/names.kindOf` reads a prefix, and
+   * `outlane.left` starts with neither `oneway` nor `roll`, so the blind mode announced nothing over
+   * the one hazard a blind player most needs to hear about. Guessing is the fallback, not the rule.
+   */
+  readonly kindOfComponent?: (name: string) => ComponentKind | null;
   /** The resource identifier of the running mission's text — see `i18n/keys`. */
   readonly missionTextId: string;
   readonly missionHave: number;
@@ -114,8 +123,15 @@ export interface BootOptions {
  * than it looks.
  */
 export function createPinballWorld(table: LiveTable, locale: Locale) {
-  const speakName = createNamer(locale);
+  const guessName = createNamer(locale);
+  const names = nameTableOf(locale);
   const t = createTranslator(locale);
+
+  // A DECLARED kind wins over a guessed one, always. See `kindOfComponent` for what the guess costs.
+  const speakName = (componentName: string) => {
+    const declared = table.kindOfComponent?.(componentName);
+    return declared ? names[declared] : guessName(componentName);
+  };
 
   return {
     get playfield() { return { width: table.playfieldWidth, height: table.playfieldHeight }; },

@@ -66,6 +66,13 @@ export type AuthoredShape = AuthoredLine | AuthoredCircle;
 export interface AuthoredComponent {
   /** Unique. See this module's header for what a duplicate costs. */
   readonly name: string;
+  /**
+   * ⚠️ DECLARED, not guessed. `i18n/names.kindOf` infers a kind from a `.DAT` group name because that
+   * is all the 1995 table offers — `bump1` is a bumper because it starts with `bump`. An authored
+   * table says so outright, which is both more honest and strictly better: `outlane.left` is a lane
+   * and no prefix rule would ever work that out. The two mechanisms are separate on purpose; neither
+   * is a fallback for the other.
+   */
   readonly kind: ComponentKind;
   /** What it does TO THE BALL, for the accessibility contract. */
   readonly role: Role;
@@ -189,12 +196,16 @@ export interface TableState {
  */
 export function toLiveTable(table: AuthoredTable, state: () => TableState): LiveTable {
   const components = declaredComponentsOf(table);
+  // The kinds are DECLARED, so nothing downstream has to guess them from a name. A real boot found
+  // the outlanes silent because the guesser could not read `outlane.left`; see `LiveTable`.
+  const kinds = new Map(table.components.map((c) => [c.name, c.kind]));
 
   return {
     playfieldWidth: table.size.width,
     playfieldHeight: table.size.height,
     ballRadius: table.ballRadius,
     components,
+    kindOfComponent: (name) => kinds.get(name) ?? null,
     get balls() { return state().balls; },
     get missionTextId() { return state().missionTextId; },
     get missionHave() { return state().missionHave; },

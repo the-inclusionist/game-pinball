@@ -16,23 +16,32 @@
 // otherwise have made lives in `shell/boot`, which IS checked and IS tested.
 
 import { createGame } from '@the-inclusionist/engine';
-import { bootPinball, type LiveTable, type Phase } from './shell/boot.js';
+import { bootPinball, type Phase } from './shell/boot.js';
+import { CATALOG, DEFAULT_TABLE, tableNamed } from './table/catalog.js';
+import { toLiveTable, validateTable, type TableState } from './table/authored.js';
+import { DEFAULT_CAMERA } from './shell/camera.js';
 
-/**
- * Placeholder table. The real one arrives with the loader in the next step; what matters today is that
- * the shell, the declaration and the engine agree on a shape.
- */
-const table: LiveTable = {
-  playfieldWidth: 183,
-  playfieldHeight: 235,
-  ballRadius: 3,
+// `?table=wide-arc` opens another one of the five. There is no menu yet, and a query parameter is
+// enough to look at all of them without one.
+const requested = new URLSearchParams(location.search).get('table');
+const authored = (requested && tableNamed(requested)) || DEFAULT_TABLE;
+
+// A table that does not validate must not open. The rules are in `table/authored` and every one of
+// them is there because this port hit the failure it prevents.
+const tableProblems = validateTable(authored, { viewHeight: DEFAULT_CAMERA.viewHeight });
+if (tableProblems.length) {
+  throw new Error(`[pinball] table "${authored.name}" cannot open:\n  ${tableProblems.join('\n  ')}`);
+}
+
+let state: TableState = {
   balls: [],
-  components: [],
   missionTextId: 'STRING151',
   missionHave: 0,
   missionNeed: 0,
   missionTargets: [],
 };
+
+const table = toLiveTable(authored, () => state);
 
 let phase: Phase = 'title';
 
@@ -69,6 +78,8 @@ Object.assign(window as unknown as Record<string, unknown>, {
     get camera() { return shell.camera; },
     get problems() { return shell.problems; },
     hud: shell.hud,
+    table: authored.name,
+    tables: CATALOG.map((t) => t.name),
     declaration: shell.declaration,
     setPhase(next: Phase) { phase = next; },
   },
