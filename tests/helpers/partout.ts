@@ -96,3 +96,69 @@ export function texto(s: string): Uint8Array {
   for (let i = 0; i < s.length; i++) b[i] = s.charCodeAt(i);
   return b;
 }
+
+/* ===================== BITMAP 8BPP ===================== */
+
+/** Os bits do byte de flags do cabecalho de bitmap, conforme a spec do upstream. */
+export const FLAG_BITMAP = { alinhadoBruto: 1, dib: 2, spliced: 4 } as const;
+
+export interface BitmapSintetico {
+  readonly resolucao?: number;
+  readonly largura: number;
+  readonly altura: number;
+  readonly x?: number;
+  readonly y?: number;
+  readonly flags?: number;
+  readonly dados: Uint8Array;
+}
+
+/** Monta o payload de uma entrada tipo 1 (bitmap 8bpp): 14 bytes de cabecalho + dados. */
+export function bitmap8(b: BitmapSintetico): Uint8Array {
+  const buf = new Uint8Array(14 + b.dados.length);
+  const dv = new DataView(buf.buffer);
+  dv.setInt8(0, b.resolucao ?? -1);
+  dv.setUint16(1, b.largura, true);
+  dv.setUint16(3, b.altura, true);
+  dv.setUint16(5, b.x ?? 0, true);
+  dv.setUint16(7, b.y ?? 0, true);
+  dv.setUint32(9, b.dados.length, true);
+  dv.setUint8(13, b.flags ?? 0);
+  buf.set(b.dados, 14);
+  return buf;
+}
+
+/**
+ * Uma entrada de TAMANHO FIXO: byte de tipo seguido direto dos dados, sem o DWORD de tamanho.
+ * A tabela `_field_size[]` do `partman.cpp` diz quais tipos sao assim — 0 e 2 com 2 bytes, 13 com nenhum.
+ */
+export function entradaFixa(tipo: number, dados: Uint8Array): Uint8Array {
+  const b = new Uint8Array(1 + dados.length);
+  b[0] = tipo;
+  b.set(dados, 1);
+  return b;
+}
+
+/* ===================== Z-MAP 16BPP ===================== */
+
+export interface ZMapSintetico {
+  readonly largura: number;
+  readonly altura: number;
+  /** Pitch/2, em unidades de 16 bits. Por padrao igual a largura. */
+  readonly stride?: number;
+  /** Profundidades, uma por celula. Por padrao um mapa coerente com stride x altura. */
+  readonly dados?: Uint16Array;
+}
+
+/** Monta o payload de uma entrada tipo 12: 14 bytes de cabecalho + profundidades de 16 bits. */
+export function zmap16(z: ZMapSintetico): Uint8Array {
+  const stride = z.stride ?? z.largura;
+  const dados = z.dados ?? new Uint16Array(stride * z.altura);
+  const buf = new Uint8Array(14 + dados.length * 2);
+  const dv = new DataView(buf.buffer);
+  dv.setUint16(0, z.largura, true);
+  dv.setUint16(2, z.altura, true);
+  dv.setUint16(4, stride, true);
+  dv.setUint16(12, 80, true); // o "Unknown (80)" da spec
+  for (let i = 0; i < dados.length; i++) dv.setUint16(14 + i * 2, dados[i]!, true);
+  return buf;
+}

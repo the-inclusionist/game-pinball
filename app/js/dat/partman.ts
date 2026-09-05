@@ -86,6 +86,23 @@ export interface Grupo {
   readonly entradas: readonly Entrada[];
 }
 
+/**
+ * O TAMANHO FIXO DE CADA TIPO, transcrito de `partman::_field_size[]` do upstream:
+ *   { 2, -1, 2, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0 }
+ * `-1` quer dizer "le um DWORD de tamanho antes dos dados". Os tres que NAO leem sao 0 e 2 (dois bytes
+ * cada) e 13 (nenhum byte).
+ *
+ * A spec em `Doc/.dat file format.txt` so documenta o tipo 0, e e por isso que esta tabela existe em vez
+ * de um `if (tipo === 0)`: um leitor escrito a partir so da spec desincroniza no primeiro tipo 2 ou 13 —
+ * e desincroniza EM SILENCIO, lendo lixo dali ate o fim do arquivo sem estourar.
+ */
+const TAMANHO_FIXO: readonly number[] = [2, -1, 2, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0];
+
+/** `-1` = o tamanho vem num DWORD. Tipo fora da tabela cai no mesmo caso, que e o comportamento do original. */
+function tamanhoFixoDe(tipo: number): number {
+  return TAMANHO_FIXO[tipo] ?? -1;
+}
+
 export function lerGrupos(arquivo: Uint8Array): Grupo[] {
   const cab = lerCabecalho(arquivo);
   const dv = new DataView(arquivo.buffer, arquivo.byteOffset, arquivo.byteLength);
@@ -100,15 +117,22 @@ export function lerGrupos(arquivo: Uint8Array): Grupo[] {
     for (let e = 0; e < quantas; e++) {
       const tipo = dv.getUint8(p); p += 1;
 
-      if (tipo === TipoDeEntrada.Valor16) {
-        entradas.push({ tipo, valor: dv.getUint16(p, true) });
-        p += 2;
-        continue;
+      const fixo = tamanhoFixoDe(tipo);
+      let tamanho: number;
+      if (fixo >= 0) {
+        tamanho = fixo;
+      } else {
+        tamanho = dv.getUint32(p, true); p += 4;
       }
 
-      const tamanho = dv.getUint32(p, true); p += 4;
-      const dados = arquivo.subarray(p, p + tamanho); p += tamanho;
-      entradas.push({ tipo, dados });
+      const inicio = p;
+      const dados = arquivo.subarray(inicio, inicio + tamanho);
+      p += tamanho;
+
+      // O tipo 0 e o unico cujos dois bytes tem leitura conhecida: um WORD. Os outros ficam crus.
+      entradas.push(tipo === TipoDeEntrada.Valor16 && tamanho >= 2
+        ? { tipo, dados, valor: dv.getUint16(inicio, true) }
+        : { tipo, dados });
 
       if (tipo === TipoDeEntrada.NomeDeGrupo) nome = textoFixo(dados, 0, dados.length);
     }
