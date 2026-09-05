@@ -26,10 +26,24 @@ export type FlipperSide = 'left' | 'right';
  * are the classic pinball pair; a player who cannot reach across a keyboard uses whichever half is
  * nearer, and a player using one hand has both sides within it.
  */
-export const DEFAULT_BINDINGS: Readonly<Record<'left' | 'right' | 'plunger', readonly string[]>> = {
+export type PinballAction = 'left' | 'right' | 'plunger' | 'blindMode' | 'sweep';
+
+/**
+ * ⚠️ THE ACCESSIBILITY KEYS ARE KEYS, and that is the point of them. `createGame` reads blind mode
+ * through a callback the game owns, and until this existed `main.ts` supplied none — so the engine's
+ * default `() => false` stood and the audio guide never fired, two commits after the contract's target
+ * list had been filled in for exactly that guide to use. A switch nobody can flip is not a switch.
+ *
+ * A player who needs blind mode is not the player who is going to find it in a settings panel.
+ */
+export const DEFAULT_BINDINGS: Readonly<Record<PinballAction, readonly string[]>> = {
   left: ['ArrowLeft', 'KeyZ'],
   right: ['ArrowRight', 'Period'],
   plunger: ['Space', 'Enter'],
+  blindMode: ['KeyB'],
+  // The guide pings by itself every 0.8s; a sweep is the player ASKING, which is what makes a table
+  // explorable rather than merely announced at.
+  sweep: ['KeyS'],
 };
 
 /**
@@ -49,25 +63,27 @@ export interface ControlOptions {
   readonly region: KeyTarget;
   readonly setFlipper: (side: FlipperSide, extended: boolean) => void;
   readonly launch: () => void;
+  /** Optional, because a table under construction has no engine behind it. */
+  readonly toggleBlindMode?: () => void;
+  readonly sweep?: () => void;
   /**
    * The engine's remapper, when the pinball's scheme is registered with it. Given a key code it returns
    * the action, and `DEFAULT_BINDINGS` is consulted only when it says nothing.
    */
   readonly actionOf?: (code: string) => string | null;
-  readonly bindings?: Readonly<Record<'left' | 'right' | 'plunger', readonly string[]>>;
+  readonly bindings?: Readonly<Record<PinballAction, readonly string[]>>;
 }
 
 /** Binds the keys. Returns the undo, because a game that cannot be unbound cannot be torn down. */
 export function bindPinballControls(o: ControlOptions): () => void {
   const bindings = o.bindings ?? DEFAULT_BINDINGS;
 
-  const actionFor = (code: string): 'left' | 'right' | 'plunger' | null => {
+  const ACTIONS: readonly PinballAction[] = ['left', 'right', 'plunger', 'blindMode', 'sweep'];
+
+  const actionFor = (code: string): PinballAction | null => {
     const mapped = o.actionOf?.(code);
-    if (mapped === 'left' || mapped === 'right' || mapped === 'plunger') return mapped;
-    if (bindings.left.includes(code)) return 'left';
-    if (bindings.right.includes(code)) return 'right';
-    if (bindings.plunger.includes(code)) return 'plunger';
-    return null;
+    if (mapped && (ACTIONS as readonly string[]).includes(mapped)) return mapped as PinballAction;
+    return ACTIONS.find((action) => bindings[action].includes(code)) ?? null;
   };
 
   const onDown = (event: KeyLikeEvent): void => {
@@ -81,12 +97,15 @@ export function bindPinballControls(o: ControlOptions): () => void {
     if (event.repeat) return;
 
     if (action === 'plunger') o.launch();
+    else if (action === 'blindMode') o.toggleBlindMode?.();
+    else if (action === 'sweep') o.sweep?.();
     else o.setFlipper(action, true);
   };
 
   const onUp = (event: KeyLikeEvent): void => {
     const action = actionFor(event.code);
-    if (!action || action === 'plunger') return;
+    // Only the flippers have a release. The rest happen once, on the way down.
+    if (action !== 'left' && action !== 'right') return;
     event.preventDefault();
     o.setFlipper(action, false);
   };

@@ -29,6 +29,7 @@ import { mountHud } from './shell/hud-dom.js';
 import { createSoundBoard, releaseVoice } from './audio/sfx.js';
 import { soundEntriesOf, VOICES } from './audio/voices.js';
 import { createWebAudioOutput } from './audio/web-audio.js';
+import { ensureAC } from '@the-inclusionist/engine/platform/audio.js';
 
 // `?table=wide-arc` opens another one of the five. There is no menu yet, and a query parameter is
 // enough to look at all of them without one.
@@ -115,6 +116,20 @@ const table = toLiveTable(authored, () => state);
 
 let phase: Phase = 'title';
 
+/**
+ * ⚠️ BLIND MODE HAD NO SWITCH. `createGame` reads it through a callback the game owns and `main.ts`
+ * supplied none, so the engine's default `() => false` stood and the audio guide never fired — two
+ * commits after the contract's target list was filled in for that guide to use.
+ */
+let blind = false;
+
+/**
+ * ⚠️ ONE OBJECT, REUSED. `audio-sonar.updateGuide` counts frames on `guideT`, a field it writes onto
+ * this object, and pings when it reaches 48. A fresh object each call resets the counter every frame and
+ * the guide never fires at all.
+ */
+const sonarPlayer = { i: 0, x: 0, y: 0, viz: 'normal' as const, guideT: 0 };
+
 const shell = bootPinball({
   locale: 'pt',
   table,
@@ -123,6 +138,8 @@ const shell = bootPinball({
   // until the game was actually booted.
   host: { doc: document, win: window, cvdHost: document.getElementById('cvd-filters') },
   phase: () => phase,
+  isBlindMode: () => blind,
+  sonarPlayers: () => [sonarPlayer],
 }, createGame);
 
 // What the host document failed to provide. Empty is the good case; the engine does not throw for it,
@@ -179,6 +196,15 @@ let audio: AudioContext | null = null;
 let audioOutput: ((voice: import('./audio/sfx.js').Voice) => void) | null = null;
 
 function ensureAudio(): void {
+  // ⚠️ THE ENGINE HAS ITS OWN AUDIO CONTEXT AND IT ALSO NEEDS THE GESTURE. `audio-sonar.updateGuide`
+  // returns immediately when `getAudioCtx()` is null, and the engine only builds one when something
+  // calls `ensureAC` — so blind mode toggled on, the sweep answered, and the automatic guide stayed
+  // silent through two hundred frames. Nothing errored; it simply never fired.
+  //
+  // `platform/*.js` is a declared export of the package, so this is a published API rather than a reach
+  // past the facade. It is still coupling to a moving target, which the plan lists as a known risk.
+  ensureAC();
+
   if (audio) {
     if (audio.state === 'suspended') void audio.resume();
     return;
@@ -267,6 +293,14 @@ function step(frames: number): void {
     refreshObjective();
   }
 
+  {
+    // The sonar's guide follows the BALL, which is what `focusOf` answers and what a player listening
+    // rather than looking is trying to find their way around.
+    sonarPlayer.x = ball.position.x;
+    sonarPlayer.y = ball.position.y;
+    shell.engine.sonar.updateGuide();
+  }
+
   if (phase === 'playing') {
     // The drain is a POSITION, not a collision — see `drainedBy`. Without this the ball leaves the
     // table and is simulated forever, which is what the first run did.
@@ -325,6 +359,22 @@ const unbindControls = bindPinballControls({
   region,
   setFlipper: (side, extended) => physics.setFlippers(side, extended),
   launch: () => { if (!ball.active) launch(); },
+  toggleBlindMode: () => {
+    blind = !blind;
+    // Announced through the host's own live region, which is where an EVENT belongs — the HUD blocks
+    // are readable on request and deliberately not live. See `shell/hud-dom`.
+    const status = document.getElementById('sr-status');
+    if (status) status.textContent = shell.t(blind ? 'pinball.a11y.blindOn' : 'pinball.a11y.blindOff');
+  },
+  /**
+   * ⚠️ THE SWEEP IS THE PART THAT ANSWERS TODAY, AND THE AUTOMATIC GUIDE IS OFF BY THE ENGINE'S OWN
+   * DECISION. `platform/audio-mixer` lists `guide` in `NASCEM_DESLIGADAS` — born off, "por decisão do
+   * Dev, 2026-08-26", and described there as a deliberate measure. So `updateGuide` returning without
+   * pinging is correct behaviour and not a fault in this wiring; a player turns the beacon on in the
+   * engine's audio mixer. I chased that to zero twice before reading the reason, and it is written here
+   * so nobody chases it a third time.
+   */
+  sweep: () => shell.engine.sonar.sonar(sonarPlayer),
 });
 
 /**
@@ -358,6 +408,10 @@ Object.assign(window as unknown as Record<string, unknown>, {
     get lamps() { return live.litLamps(); },
     get hint() { return hint; },
     /** Exposed so the browser gate can confirm sound rather than assume it. */
+    get blind() { return blind; },
+    get sonar() {
+      return { guideCount: shell.engine.sonar.guideCount, sonarCount: shell.engine.sonar.sonarCount };
+    },
     get sound() {
       return { context: audio?.state ?? 'none', played: voicesPlayed, live: board.voices.length };
     },

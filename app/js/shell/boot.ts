@@ -75,6 +75,22 @@ export interface PinballGameOptions {
   readonly declines: Record<string, boolean>;
   readonly isNavigable: () => boolean;
   readonly isBlindMode?: () => boolean;
+  /**
+   * ⚠️ A STABLE ARRAY, NOT A FRESH ONE. `audio-sonar.updateGuide` counts frames on `guideT`, a field it
+   * writes ONTO the player object, and pings when it reaches 48. Returning a new object each call resets
+   * that counter every frame and the guide never fires — which is the engine's own default behaviour,
+   * since it derives a fresh player from `focusOf` when a game supplies no list.
+   */
+  readonly sonarPlayers?: () => SonarPlayerLike[];
+}
+
+/** The sonar's view of a player. `guideT` is the engine's scratch space and is written by it. */
+export interface SonarPlayerLike {
+  readonly i: number;
+  x: number;
+  y: number;
+  readonly viz: string;
+  guideT?: number;
 }
 
 /** The only part of the engine's `Engine` this module reads. The caller keeps the rest, fully typed. */
@@ -114,6 +130,7 @@ export interface BootOptions {
   readonly host: HostLike;
   readonly phase: () => Phase;
   readonly isBlindMode?: () => boolean;
+  readonly sonarPlayers?: () => SonarPlayerLike[];
   readonly camera?: CameraConfig;
   readonly hud?: HudConfig;
 }
@@ -171,6 +188,7 @@ export function createPinballOptions(o: BootOptions): PinballGameOptions {
     // A ball in play does not wait while somebody walks a menu.
     isNavigable: () => o.phase() === 'paused',
     ...(o.isBlindMode ? { isBlindMode: o.isBlindMode } : {}),
+    ...(o.sonarPlayers ? { sonarPlayers: o.sonarPlayers } : {}),
   };
 }
 

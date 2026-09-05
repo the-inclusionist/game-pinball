@@ -69,6 +69,8 @@ const en: Record<string, string> = {
   'pinball.award.scored': '{points} points',
 
   /* ===================== HUD ===================== */
+  'pinball.a11y.blindOn': 'Blind mode on. Press S to sweep the table.',
+  'pinball.a11y.blindOff': 'Blind mode off.',
   'pinball.hud.score': 'Score: {n}',
   'pinball.objective.authored': 'Targets left to light: {n}',
   'pinball.hud.player': 'Player {n}',

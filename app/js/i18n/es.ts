@@ -66,6 +66,8 @@ const es: Record<string, string> = {
   'pinball.award.scored': '{points} puntos',
 
   /* ===================== HUD ===================== */
+  'pinball.a11y.blindOn': 'Modo ciego activado. Pulsa S para barrer la mesa.',
+  'pinball.a11y.blindOff': 'Modo ciego desactivado.',
   'pinball.hud.score': 'Puntuación: {n}',
   'pinball.objective.authored': 'Objetivos por encender: {n}',
   'pinball.hud.player': 'Jugador {n}',

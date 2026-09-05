@@ -123,8 +123,67 @@ describe('what the keys are', () => {
   });
 
   test('and no key does two things', () => {
-    const all = [...DEFAULT_BINDINGS.left, ...DEFAULT_BINDINGS.right, ...DEFAULT_BINDINGS.plunger];
+    const all = Object.values(DEFAULT_BINDINGS).flat();
 
     expect(new Set(all).size).toBe(all.length);
+  });
+});
+
+/**
+ * ⚠️ BLIND MODE COULD NOT BE TURNED ON, AND THE SONAR HAD JUST BEEN GIVEN TARGETS.
+ *
+ * `createGame` takes `isBlindMode?: () => boolean` and `bootPinball` passes it through — and `main.ts`
+ * never supplied one, so the engine's default `() => false` stood and the audio guide never fired. Two
+ * commits earlier the contract's target list had been filled in for exactly this, which means half the
+ * accessibility work was reaching a switch nobody could flip. Tenth time in this port.
+ *
+ * The toggle is a KEY because the whole point is a player who is not looking at a settings panel.
+ */
+describe('the accessibility keys', () => {
+  function withBlind() {
+    const region = fakeRegion();
+    const toggled: string[] = [];
+    bindPinballControls({
+      region: region as never,
+      setFlipper: () => {},
+      launch: () => {},
+      toggleBlindMode: () => toggled.push('blind'),
+      sweep: () => toggled.push('sweep'),
+    });
+    return { region, toggled };
+  }
+
+  test('one key turns blind mode on and off', () => {
+    const h = withBlind();
+
+    h.region.send('keydown', { code: DEFAULT_BINDINGS.blindMode[0] });
+
+    expect(h.toggled).toEqual(['blind']);
+  });
+
+  test('another asks the sonar where things are', () => {
+    // The guide pings on its own every 0.8 seconds; a sweep is the player ASKING, which is what makes
+    // the table explorable rather than merely announced at.
+    const h = withBlind();
+
+    h.region.send('keydown', { code: DEFAULT_BINDINGS.sweep[0] });
+
+    expect(h.toggled).toEqual(['sweep']);
+  });
+
+  test('⚠️ and holding either does not repeat, because a toggle that repeats never settles', () => {
+    const h = withBlind();
+
+    h.region.send('keydown', { code: DEFAULT_BINDINGS.blindMode[0] });
+    h.region.send('keydown', { code: DEFAULT_BINDINGS.blindMode[0], repeat: true });
+
+    expect(h.toggled).toEqual(['blind']);
+  });
+
+  test('they are optional, because a table under construction has no engine behind it', () => {
+    const region = fakeRegion();
+    bindPinballControls({ region: region as never, setFlipper: () => {}, launch: () => {} });
+
+    expect(() => region.send('keydown', { code: DEFAULT_BINDINGS.blindMode[0] })).not.toThrow();
   });
 });
