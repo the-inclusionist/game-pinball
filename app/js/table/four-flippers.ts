@@ -39,7 +39,7 @@ export const FOUR_FLIPPERS: AuthoredTable = {
       collision: [{ kind: 'line', from: { x: 60, y: 96 }, to: { x: 84, y: 102 } }] },
     { name: 'flipper.upper.right', kind: 'flipper', role: 'structure',
       bounds: { x: 116, y: 96, width: 24, height: 6 },
-      collision: [{ kind: 'line', from: { x: 140, y: 96 }, to: { x: 116, y: 102 } }] },
+      collision: [{ kind: 'line', from: { x: 116, y: 102 }, to: { x: 140, y: 96 } }] },
     { name: 'drain.upper', kind: 'drain', role: 'hazard', bounds: { x: 88, y: 104, width: 24, height: 8 },
       control: 'BallDrainControl', lamps: ['lamp.upper'] },
 
@@ -49,7 +49,7 @@ export const FOUR_FLIPPERS: AuthoredTable = {
       collision: [{ kind: 'line', from: { x: 56, y: 186 }, to: { x: 82, y: 192 } }] },
     { name: 'flipper.lower.right', kind: 'flipper', role: 'structure',
       bounds: { x: 118, y: 186, width: 26, height: 6 },
-      collision: [{ kind: 'line', from: { x: 144, y: 186 }, to: { x: 118, y: 192 } }] },
+      collision: [{ kind: 'line', from: { x: 118, y: 192 }, to: { x: 144, y: 186 } }] },
     { name: 'drain.lower', kind: 'drain', role: 'hazard', bounds: { x: 86, y: 200, width: 28, height: 8 },
       control: 'BallDrainControl', lamps: ['lamp.lower'] },
 

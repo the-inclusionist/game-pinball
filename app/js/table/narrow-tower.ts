@@ -25,9 +25,9 @@ export const NARROW_TOWER: AuthoredTable = {
 
   components: [
     { name: 'wall.left', kind: 'wall', role: 'structure', bounds: { x: 0, y: 0, width: 4, height: 420 },
-      collision: [{ kind: 'line', from: { x: 4, y: 420 }, to: { x: 4, y: 0 } }] },
+      collision: [{ kind: 'line', from: { x: 4, y: 0 }, to: { x: 4, y: 420 } }] },
     { name: 'wall.right', kind: 'wall', role: 'structure', bounds: { x: 116, y: 0, width: 4, height: 420 },
-      collision: [{ kind: 'line', from: { x: 116, y: 0 }, to: { x: 116, y: 420 } }] },
+      collision: [{ kind: 'line', from: { x: 116, y: 420 }, to: { x: 116, y: 0 } }] },
     { name: 'wall.top', kind: 'wall', role: 'structure', bounds: { x: 0, y: 0, width: 120, height: 4 } },
 
     { name: 'plunger', kind: 'plunger', role: 'structure', bounds: { x: 104, y: 384, width: 10, height: 32 } },
@@ -52,7 +52,7 @@ export const NARROW_TOWER: AuthoredTable = {
       collision: [{ kind: 'line', from: { x: 20, y: 390 }, to: { x: 44, y: 397 } }] },
     { name: 'flipper.right', kind: 'flipper', role: 'structure',
       bounds: { x: 66, y: 390, width: 24, height: 7 },
-      collision: [{ kind: 'line', from: { x: 90, y: 390 }, to: { x: 66, y: 397 } }] },
+      collision: [{ kind: 'line', from: { x: 66, y: 397 }, to: { x: 90, y: 390 } }] },
 
     { name: 'drain', kind: 'drain', role: 'hazard', bounds: { x: 46, y: 410, width: 18, height: 8 },
       control: 'BallDrainControl' },

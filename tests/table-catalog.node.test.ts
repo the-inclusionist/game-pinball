@@ -4,7 +4,7 @@ import {
   CATALOG, DEFAULT_TABLE, tableNamed,
   LOW_ORBIT, WIDE_ARC, NARROW_TOWER, FOUR_FLIPPERS, BARE_MINIMUM,
 } from '../app/js/table/catalog.js';
-import { validateTable, toLiveTable, declaredComponentsOf } from '../app/js/table/authored.js';
+import { validateTable, toLiveTable, declaredComponentsOf, normalOf } from '../app/js/table/authored.js';
 import { DEFAULT_CAMERA, createCamera, stepAxis, maxOffsetOf } from '../app/js/shell/camera.js';
 import { layoutHud, DEFAULT_HUD } from '../app/js/shell/hud.js';
 import { createPinballWorld } from '../app/js/shell/boot.js';
@@ -290,5 +290,47 @@ describe('⚠️ every component of every table is announced, not only the lucky
 
     expect(world.speak('drain')?.text).toBe('ralo');
     expect(world.speak('outlane.left')).toBeNull();
+  });
+});
+
+describe('⚠️ a line is one-sided, and its winding decides which side', () => {
+  test('every wall faces INTO the table, not out of it', () => {
+    // `lineInit` makes the normal `(dy, -dx)` and `rayIntersectLine` refuses a ray arriving at the
+    // back, so a wall wound the wrong way is not a wall that feels odd — it is thin air. The first
+    // draft of these tables got three of low-orbit's four walls backwards, and the symptom was a ball
+    // falling straight through to y = 1600 on a table 200 tall.
+    const wrong: string[] = [];
+
+    for (const table of CATALOG) {
+      const centre = { x: table.size.width / 2, y: table.size.height / 2 };
+      for (const component of table.components) {
+        if (component.kind !== 'wall') continue;
+        for (const shape of component.collision ?? []) {
+          if (shape.kind !== 'line') continue;
+          const n = normalOf(shape);
+          const mid = { x: (shape.from.x + shape.to.x) / 2, y: (shape.from.y + shape.to.y) / 2 };
+          const inward = { x: centre.x - mid.x, y: centre.y - mid.y };
+          if (n.x * inward.x + n.y * inward.y <= 0) wrong.push(`${table.name}/${component.name}`);
+        }
+      }
+    }
+
+    expect(wrong).toEqual([]);
+  });
+
+  test('every flipper faces UP, because a ball arrives from above', () => {
+    const wrong: string[] = [];
+
+    for (const table of CATALOG) {
+      for (const component of table.components) {
+        if (component.kind !== 'flipper') continue;
+        for (const shape of component.collision ?? []) {
+          if (shape.kind !== 'line') continue;
+          if (normalOf(shape).y >= 0) wrong.push(`${table.name}/${component.name}`);
+        }
+      }
+    }
+
+    expect(wrong).toEqual([]);
   });
 });

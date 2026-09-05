@@ -27,7 +27,7 @@ export const WIDE_ARC: AuthoredTable = {
 
   components: [
     { name: 'wall.top', kind: 'wall', role: 'structure', bounds: { x: 0, y: 0, width: 360, height: 4 },
-      collision: [{ kind: 'line', from: { x: 0, y: 4 }, to: { x: 360, y: 4 } }] },
+      collision: [{ kind: 'line', from: { x: 360, y: 4 }, to: { x: 0, y: 4 } }] },
     { name: 'wall.left', kind: 'wall', role: 'structure', bounds: { x: 0, y: 0, width: 4, height: 280 } },
     { name: 'wall.right', kind: 'wall', role: 'structure', bounds: { x: 356, y: 0, width: 4, height: 280 } },
 
@@ -57,7 +57,7 @@ export const WIDE_ARC: AuthoredTable = {
       collision: [{ kind: 'line', from: { x: 140, y: 250 }, to: { x: 168, y: 257 } }] },
     { name: 'flipper.right', kind: 'flipper', role: 'structure',
       bounds: { x: 192, y: 250, width: 28, height: 7 },
-      collision: [{ kind: 'line', from: { x: 220, y: 250 }, to: { x: 192, y: 257 } }] },
+      collision: [{ kind: 'line', from: { x: 192, y: 257 }, to: { x: 220, y: 250 } }] },
 
     { name: 'drain', kind: 'drain', role: 'hazard', bounds: { x: 164, y: 270, width: 32, height: 8 },
       control: 'BallDrainControl' },

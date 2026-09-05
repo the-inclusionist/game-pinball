@@ -61,11 +61,11 @@ export const LOW_ORBIT: AuthoredTable = {
     /* ===================== THE WALLS ===================== */
     // The outer shell, and the one that separates the plunger lane from the play.
     { name: 'wall.left', kind: 'wall', role: WALL, bounds: { x: 0, y: 0, width: 4, height: 235 },
-      collision: [{ kind: 'line', from: { x: 4, y: 235 }, to: { x: 4, y: 0 } }] },
+      collision: [{ kind: 'line', from: { x: 4, y: 0 }, to: { x: 4, y: 235 } }] },
     { name: 'wall.right', kind: 'wall', role: WALL, bounds: { x: 179, y: 0, width: 4, height: 235 },
-      collision: [{ kind: 'line', from: { x: 179, y: 0 }, to: { x: 179, y: 235 } }] },
+      collision: [{ kind: 'line', from: { x: 179, y: 235 }, to: { x: 179, y: 0 } }] },
     { name: 'wall.top', kind: 'wall', role: WALL, bounds: { x: 0, y: 0, width: 183, height: 4 },
-      collision: [{ kind: 'line', from: { x: 0, y: 4 }, to: { x: 183, y: 4 } }] },
+      collision: [{ kind: 'line', from: { x: 183, y: 4 }, to: { x: 0, y: 4 } }] },
     // The lane divider stops 30 pixels short of the top: that opening is how a launched ball enters
     // the play, and it is the only way in.
     { name: 'wall.laneDivider', kind: 'wall', role: WALL,
@@ -85,7 +85,7 @@ export const LOW_ORBIT: AuthoredTable = {
       collision: [{ kind: 'line', from: { x: 52, y: 206 }, to: { x: 80, y: 213 } }] },
     { name: 'flipper.right', kind: 'flipper', role: WALL,
       bounds: { x: 102, y: 206, width: 28, height: 7 },
-      collision: [{ kind: 'line', from: { x: 130, y: 206 }, to: { x: 102, y: 213 } }] },
+      collision: [{ kind: 'line', from: { x: 102, y: 213 }, to: { x: 130, y: 206 } }] },
 
     // Each outlane is 12 wide: passable, and punishing.
     { name: 'outlane.left', kind: 'lane', role: 'hazard',

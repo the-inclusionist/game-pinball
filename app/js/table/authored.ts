@@ -48,7 +48,24 @@ import type { Rect } from '../shell/hud.js';
 import type { DeclaredBall, DeclaredComponent } from '../shell/declaration.js';
 import type { LiveTable } from '../shell/boot.js';
 
-/** A straight edge the ball can hit. One-sided, as `maths/rayIntersectLine` is. */
+/**
+ * ⚠️ A LINE IS ONE-SIDED, AND ITS WINDING DECIDES WHICH SIDE.
+ *
+ * `maths/lineInit` computes the normal as `(dy, -dx)`, and `rayIntersectLine` refuses a ray arriving
+ * at the back. So a line is a wall from one side and thin air from the other, and which one depends
+ * entirely on the order the two points are written in:
+ *
+ *     left to right   →  normal points UP     (a floor)
+ *     right to left   →  normal points DOWN   (a ceiling)
+ *     top to bottom   →  normal points RIGHT  (a wall on the left of the play)
+ *     bottom to top   →  normal points LEFT   (a wall on the right of the play)
+ *
+ * THE FIRST DRAFT OF EVERY TABLE HERE GOT THIS WRONG. Three of `low-orbit`'s four walls and the test
+ * floor were wound backwards, and the symptom was not a wall that felt odd — it was a ball that fell
+ * straight through the table and kept going, to y = 1600 on a table 200 tall. `normalOf` and the test
+ * that walks every wall exist because reading the winding off a coordinate pair is something a person
+ * gets wrong and a machine does not.
+ */
 export interface AuthoredLine {
   readonly kind: 'line';
   readonly from: { readonly x: number; readonly y: number };
@@ -174,6 +191,17 @@ function shapeInside(shape: AuthoredShape, table: AuthoredTable): boolean {
     ? within(shape.from.x, shape.from.y) && within(shape.to.x, shape.to.y)
     : within(shape.at.x - shape.radius, shape.at.y - shape.radius)
       && within(shape.at.x + shape.radius, shape.at.y + shape.radius);
+}
+
+/**
+ * Which way a line's collidable side faces. `(dy, -dx)`, normalized — the same maths `lineInit` does,
+ * exposed so a table can be checked rather than read.
+ */
+export function normalOf(line: AuthoredLine): { x: number; y: number } {
+  const dx = line.to.x - line.from.x;
+  const dy = line.to.y - line.from.y;
+  const length = Math.hypot(dx, dy) || 1;
+  return { x: dy / length, y: -dx / length };
 }
 
 /** The components as the accessibility contract sees them: a name, a role and a place. */
