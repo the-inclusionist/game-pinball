@@ -11,6 +11,15 @@
 // camera's thresholds did. This draft is written to be argued with: every position is a number in one
 // file, and moving one is a one-line diff whose effect a test will describe.
 //
+// ⚠️ AND IT IS NOT PLAYABLE YET. Running it says why: a launched ball goes straight up the plunger
+// lane, bounces off the ceiling, comes straight back down the same lane and drains, three times out of
+// three, without ever entering the play. THE LANE HAS NO RETURN CURVE. A real plunger lane ends in a
+// bend that turns the ball left across the top of the table; this one ends at a wall.
+//
+// That is a geometry decision and not a defect in anything ported, which is exactly the sort of thing
+// authoring a table was meant to expose. Fixing it means shaping the top of the lane — several angled
+// segments — and it is left as the next authoring step rather than guessed at here.
+//
 // ========================= HOW IT IS LAID OUT =========================
 // Coordinates are table pixels with y growing DOWNWARD, as everywhere else in this port: y=0 is the
 // top of the table, y=235 the drain end, and "up the table" means toward zero.

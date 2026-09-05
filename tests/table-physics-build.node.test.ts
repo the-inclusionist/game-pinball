@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, test, expect } from 'vitest';
-import { buildPhysics, responseFor, RESPONSES, FRAME_SECONDS } from '../app/js/table/physics-build.js';
+import { buildPhysics, responseFor, RESPONSES, FRAME_SECONDS, drainedBy } from '../app/js/table/physics-build.js';
 import { advanceFrame } from '../app/js/physics/step.js';
 import { CATALOG, LOW_ORBIT } from '../app/js/table/catalog.js';
 import type { AuthoredTable } from '../app/js/table/authored.js';
@@ -198,5 +198,57 @@ describe('a surface answers according to what it IS', () => {
       expect(response.elasticity, name).toBeGreaterThan(0);
       expect(response.elasticity, name).toBeLessThanOrEqual(1);
     }
+  });
+});
+
+describe('⚠️ the drain is the one component that works by NOT being hit', () => {
+  test('a ball inside a drain’s bounds is drained, by name', () => {
+    // Every other piece of a table is an edge that answers when the ball arrives. A drain is a hole:
+    // bounds and no collision, so nothing in the physics can ever report it.
+    const drain = LOW_ORBIT.components.find((c) => c.kind === 'drain')!;
+    const at = { x: drain.bounds.x + 2, y: drain.bounds.y + 2 };
+
+    expect(drainedBy(LOW_ORBIT, { position: at })).toBe('drain');
+  });
+
+  test('a ball on the playfield is not', () => {
+    expect(drainedBy(LOW_ORBIT, { position: { x: 90, y: 100 } })).toBeNull();
+  });
+
+  test('a ball PAST THE BOTTOM is lost even though it touched no drain', () => {
+    // The first run of the wired game did exactly this: launched, bounced off the ceiling, came back
+    // down and kept going to y = 4408 on a table 235 tall, at the speed cap, forever. The physics was
+    // right; there was no rule saying where a table ends.
+    expect(drainedBy(LOW_ORBIT, { position: { x: 90, y: 4408 } })).toBe('outside');
+  });
+
+  test('and so is a ball past any other edge', () => {
+    expect(drainedBy(LOW_ORBIT, { position: { x: -5, y: 100 } })).toBe('outside');
+    expect(drainedBy(LOW_ORBIT, { position: { x: 500, y: 100 } })).toBe('outside');
+    expect(drainedBy(LOW_ORBIT, { position: { x: 90, y: -5 } })).toBe('outside');
+  });
+
+  test('a table with two drains names the one the ball fell into', () => {
+    const four = CATALOG.find((t) => t.name === 'four-flippers')!;
+    const upper = four.components.find((c) => c.name === 'drain.upper')!;
+
+    expect(drainedBy(four, { position: { x: upper.bounds.x + 2, y: upper.bounds.y + 2 } }))
+      .toBe('drain.upper');
+  });
+
+  test('a launched ball is eventually drained rather than simulated forever', () => {
+    // The end-to-end shape of it: launch, climb, fall, gone.
+    const physics = buildPhysics(LOW_ORBIT);
+    const ball = physics.spawnBall();
+    ball.direction = { x: 0, y: -1 };
+    ball.speed = 260;
+
+    let drained: string | null = null;
+    for (let i = 0; i < 900 && !drained; i++) {
+      advanceFrame([ball], physics.context, FRAME_SECONDS);
+      drained = drainedBy(LOW_ORBIT, ball);
+    }
+
+    expect(drained).not.toBeNull();
   });
 });

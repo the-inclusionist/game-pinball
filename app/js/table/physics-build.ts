@@ -57,6 +57,36 @@ export interface Hit {
   readonly reboundSpeed: number;
 }
 
+/**
+ * ⚠️ THE DRAIN IS THE ONE COMPONENT THAT WORKS BY THE BALL NOT HITTING ANYTHING.
+ *
+ * Every other piece of a table is an edge: the ball arrives, the edge answers. A drain is a HOLE, so
+ * it has bounds and no collision at all, and nothing in the physics can report it — the ball simply
+ * carries on into the space below the table.
+ *
+ * Which is exactly what the first run did: launched, bounced off the ceiling, came back down and kept
+ * going to y = 4408 on a table 235 tall, at the speed cap, forever. Nothing was wrong with the
+ * physics. There was no rule saying where a table ENDS.
+ *
+ * So this is a position test rather than a collision, and it also catches a ball that has left the
+ * table entirely — past any edge, not only the bottom. A ball outside the table is lost whether or not
+ * it found a drain on the way out, and treating that as anything else means a ball that is gone but
+ * still being simulated.
+ */
+export function drainedBy(table: AuthoredTable, ball: { position: { x: number; y: number } }): string | null {
+  const { x, y } = ball.position;
+
+  for (const component of table.components) {
+    if (component.kind !== 'drain') continue;
+    const b = component.bounds;
+    if (x >= b.x && x <= b.x + b.width && y >= b.y && y <= b.y + b.height) return component.name;
+  }
+
+  // Gone past an edge. Not a drain by name, but just as lost.
+  if (y > table.size.height || y < 0 || x < 0 || x > table.size.width) return 'outside';
+  return null;
+}
+
 export interface TablePhysics {
   readonly grid: EdgeManager;
   readonly context: StepContext;

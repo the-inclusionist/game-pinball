@@ -1,19 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // main — the entry point, and the ONE file that touches the engine's runtime.
 //
-// ========================= WHY THE BOUNDARY IS HERE AND NOT IN `shell/boot` =========================
-// The engine publishes raw `.ts` through its exports map, so importing it puts its source into this
-// repository's type-check — and this project is stricter than the engine is. It enables
-// `noUncheckedIndexedAccess`; the engine does not, and sixty errors across seven engine files follow.
-// None of them is a defect in the engine: they are the difference between two tsconfigs.
+// ========================= IT ASSEMBLES, AND DECIDES AS LITTLE AS IT CAN =========================
+// This file used to be excluded from `tsc`, because the engine published raw `.ts` and importing it
+// dragged the engine's own source under this project's stricter settings. The engine now ships
+// `dist-pkg/` with declarations, the exclusion is gone, and this file is type-checked like everything
+// else.
 //
-// So this file, and only this file, imports `createGame`, and `tsconfig.json` excludes it from `tsc`
-// with the reason written beside the exclusion. `shell/boot` takes the factory as an argument, stays
-// under the strict check, and keeps every rule about the game testable in node.
-//
-// ⚠️ THE COST, STATED: this file is compiled by Vite and not type-checked here. It is deliberately as
-// small as a file can be for that reason — it assembles and hands over, and every decision it might
-// otherwise have made lives in `shell/boot`, which IS checked and IS tested.
+// It stays small anyway. Every rule about how the game behaves lives in `shell/boot`, `table/*` and
+// `gfx/*`, which are exercised in node; what is left here is wiring, and wiring is the part a browser
+// has to prove.
 
 import { createGame } from '@the-inclusionist/engine';
 import { bootPinball, type Phase } from './shell/boot.js';
@@ -23,6 +19,8 @@ import { DEFAULT_CAMERA } from './shell/camera.js';
 import { DEFAULT_HUD } from './shell/hud.js';
 import { createFramebuffer } from './gfx/framebuffer.js';
 import { drawTable, blitView, drawBall } from './gfx/table-view.js';
+import { buildPhysics, drainedBy, FRAME_SECONDS } from './table/physics-build.js';
+import { advanceFrame } from './physics/step.js';
 
 // `?table=wide-arc` opens another one of the five. There is no menu yet, and a query parameter is
 // enough to look at all of them without one.
@@ -36,13 +34,30 @@ if (tableProblems.length) {
   throw new Error(`[pinball] table "${authored.name}" cannot open:\n  ${tableProblems.join('\n  ')}`);
 }
 
+/* ===================== THE BALL ===================== */
+//
+// The physics is built from the table's declared geometry and stepped here. The ball object the
+// physics owns is handed STRAIGHT to the declaration and the renderer — the same object, not a copy —
+// which is the same "a view, never a snapshot" rule `shell/boot` follows, at one level down.
+
+const physics = buildPhysics(authored);
+const ball = physics.spawnBall();
+
 let state: TableState = {
-  balls: [],
+  balls: [ball],
   missionTextId: 'STRING151',
   missionHave: 0,
   missionNeed: 0,
   missionTargets: [],
 };
+
+/** Launches from the plunger. Up the table, which is toward y = 0. */
+function launch(): void {
+  ball.active = true;
+  ball.direction = { x: 0, y: -1 };
+  ball.speed = 260;
+  phase = 'playing';
+}
 
 const table = toLiveTable(authored, () => state);
 
@@ -85,11 +100,46 @@ let tablePicture = drawTable({ table: authored, missionTargets: state.missionTar
 
 // `update(dt)` counts FRAMES, not seconds — see `shell/boot`. The engine hands the count through and
 // the camera's damping is per frame, so this passes it on untouched.
+/** Everything the ball has touched, in order. This is what a control layer would dispatch. */
+const hits: string[] = [];
+let frameCount = 0;
+let ballsLost = 0;
+let lastFrames = 0;
 let previous = performance.now();
-function frame(now: number): void {
-  const frames = Math.min(4, (now - previous) / (1000 / 60));
-  previous = now;
-  if (phase === 'playing') shell.advance(frames);
+/**
+ * ⚠️ ONE FRAME, CALLABLE. The loop below drives it, and so can a test.
+ *
+ * Splitting it out is not tidiness. A browser pauses `requestAnimationFrame` when its tab is not
+ * compositing — which is exactly what a headless check does — and a game whose only way forward is
+ * that callback cannot be verified at all: the first attempt to watch the ball move reported zero
+ * frames in six hundred milliseconds, and the code was fine. A loop that can be stepped by hand is a
+ * loop that can be proved.
+ */
+function step(frames: number): void {
+  frameCount++;
+  lastFrames = frames;
+
+  if (phase === 'playing') {
+    // ⚠️ The physics wants TIME, not a frame count — see `FRAME_SECONDS`. The camera wants frames.
+    // They are two different units in the same loop and mixing them is silent in both directions.
+    advanceFrame([ball], physics.context, frames * FRAME_SECONDS);
+    for (const hit of physics.takeHits()) hits.push(hit.name);
+
+    // The drain is a POSITION, not a collision — see `drainedBy`. Without this the ball leaves the
+    // table and is simulated forever, which is what the first run did.
+    const drained = drainedBy(authored, ball);
+    if (drained) {
+      hits.push(`drained:${drained}`);
+      ballsLost++;
+      const fresh = physics.spawnBall();
+      ball.position = fresh.position;
+      ball.direction = { x: 0, y: -1 };
+      ball.speed = 0;
+      phase = 'title';
+    }
+
+    shell.advance(frames);
+  }
 
   blitView(screen, tablePicture, shell.hud.playfield, 0, shell.camera.offset);
   for (const ball of state.balls) {
@@ -99,7 +149,11 @@ function frame(now: number): void {
   // same 230 KB, and the copy is what the canvas wants anyway.
   image.data.set(screen.bytes);
   context.putImageData(image, 0, 0);
+}
 
+function frame(now: number): void {
+  step(Math.min(4, (now - previous) / (1000 / 60)));
+  previous = now;
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
@@ -117,6 +171,13 @@ Object.assign(window as unknown as Record<string, unknown>, {
     /** Exposed so the browser gate can look at the pixels rather than at a screenshot. */
     get screen() { return screen; },
     get picture() { return tablePicture; },
+    get ball() { return { x: ball.position.x, y: ball.position.y, speed: ball.speed, active: ball.active }; },
+    /** What the ball has touched. The list a control layer would dispatch. */
+    get hits() { return hits; },
+    launch,
+    /** Steps the game by hand, for a check that cannot rely on the browser compositing. */
+    step,
+    get diag() { return { frameCount, lastFrames, phase, ballsLost, speed: ball.speed, y: ball.position.y }; },
     setState(next: Partial<TableState>) {
       state = { ...state, ...next };
       tablePicture = drawTable({ table: authored, missionTargets: state.missionTargets });
