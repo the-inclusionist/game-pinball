@@ -8,6 +8,25 @@ import { kindOf, COMPONENT_KINDS } from '../app/js/i18n/names.js';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+/**
+ * ⚠️ A SEEDED SOURCE, BECAUSE THE TABLE'S GRAVITY CARRIES A JITTER. `TTableLayer::FieldEffect` puts a
+ * random term on X, so two balls never take the same path — right for a player, wrong for a test that
+ * asks whether the ball reached a bumper in nine hundred frames. Left to `Math.random` those tests ask
+ * about a DIFFERENT path every run and fail when the dice say so; one did, once, and could not be
+ * reproduced in seven runs afterwards.
+ *
+ * Mulberry32, small enough to read and stable across platforms.
+ */
+function seeded(seed = 0x9e3779b9): () => number {
+  let state = seed >>> 0;
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(state ^ (state >>> 15), 1 | state);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 const DAT = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/PINBALL.DAT';
 const archive = (): ArrayBuffer | null => {
   if (!existsSync(DAT)) return null;
@@ -28,7 +47,7 @@ describe('the 1995 table, from an ArrayBuffer', () => {
     const bytes = archive();
     if (!bytes) return expect(existsSync(DAT)).toBe(false);
 
-    const demo = createDemo(bytes);
+    const demo = createDemo(bytes, { random: seeded() });
 
     expect([demo.playfield.width, demo.playfield.height]).toEqual([365, 470]);
     expect(demo.table.wallCount).toBe(143);
@@ -41,7 +60,7 @@ describe('the 1995 table, from an ArrayBuffer', () => {
     const bytes = archive();
     if (!bytes) return expect(existsSync(DAT)).toBe(false);
 
-    const demo = createDemo(bytes);
+    const demo = createDemo(bytes, { random: seeded() });
     const at = demo.ballOnScreen();
 
     expect(at.x).toBeGreaterThan(0);
@@ -54,7 +73,7 @@ describe('the 1995 table, from an ArrayBuffer', () => {
     const bytes = archive();
     if (!bytes) return expect(existsSync(DAT)).toBe(false);
 
-    const demo = createDemo(bytes);
+    const demo = createDemo(bytes, { random: seeded() });
     for (let i = 0; i < 600; i++) {
       demo.step(1);
       const at = demo.ballOnScreen();
@@ -69,7 +88,7 @@ describe('the 1995 table, from an ArrayBuffer', () => {
     const bytes = archive();
     if (!bytes) return expect(existsSync(DAT)).toBe(false);
 
-    const demo = createDemo(bytes);
+    const demo = createDemo(bytes, { random: seeded() });
     demo.step(600);
 
     expect(demo.touched.length).toBeGreaterThan(0);
@@ -81,7 +100,7 @@ describe('the 1995 table, from an ArrayBuffer', () => {
     const bytes = archive();
     if (!bytes) return expect(existsSync(DAT)).toBe(false);
 
-    const demo = createDemo(bytes);
+    const demo = createDemo(bytes, { random: seeded() });
     const before = demo.playfield.pixels.slice();
     const frame = demo.render();
 
@@ -96,7 +115,7 @@ describe('the 1995 table, from an ArrayBuffer', () => {
     const bytes = archive();
     if (!bytes) return expect(existsSync(DAT)).toBe(false);
 
-    const demo = createDemo(bytes);
+    const demo = createDemo(bytes, { random: seeded() });
     demo.step(900);
 
     expect(demo.scored.length).toBeGreaterThan(0);
@@ -109,7 +128,7 @@ describe('the 1995 table, from an ArrayBuffer', () => {
     const bytes = archive();
     if (!bytes) return expect(existsSync(DAT)).toBe(false);
 
-    const demo = createDemo(bytes);
+    const demo = createDemo(bytes, { random: seeded() });
     demo.step(900);
 
     for (const name of demo.scored) {
@@ -124,7 +143,7 @@ describe('the 1995 table, from an ArrayBuffer', () => {
     const bytes = archive();
     if (!bytes) return expect(existsSync(DAT)).toBe(false);
 
-    const demo = createDemo(bytes);
+    const demo = createDemo(bytes, { random: seeded() });
     expect(demo.components.bumpers.size).toBe(7);
 
     demo.step(900);
@@ -137,7 +156,7 @@ describe('the 1995 table, from an ArrayBuffer', () => {
     const bytes = archive();
     if (!bytes) return expect(existsSync(DAT)).toBe(false);
 
-    const demo = createDemo(bytes);
+    const demo = createDemo(bytes, { random: seeded() });
     demo.step(600);
     demo.drop();
 
@@ -151,7 +170,7 @@ describe('⚠️ and the sixty-one wired components run their 1995 control funct
     const bytes = archive();
     if (!bytes) return expect(existsSync(DAT)).toBe(false);
 
-    const demo = createDemo(bytes);
+    const demo = createDemo(bytes, { random: seeded() });
 
     expect(demo.wired.size).toBe(61);
   });
@@ -167,7 +186,7 @@ describe('⚠️ and the sixty-one wired components run their 1995 control funct
     const bytes = archive();
     if (!bytes) return expect(existsSync(DAT)).toBe(false);
 
-    const demo = createDemo(bytes);
+    const demo = createDemo(bytes, { random: seeded() });
     demo.step(1800);
 
     expect(demo.paidFlat.filter((name) => demo.wired.has(name))).toEqual([]);
@@ -184,7 +203,7 @@ describe('⚠️ and the demonstration can be HEARD, which it could not be at al
     if (!bytes) return expect(existsSync(DAT)).toBe(false);
 
     const heard: string[] = [];
-    const demo = createDemo(bytes, { onSound: (name) => heard.push(name) });
+    const demo = createDemo(bytes, { onSound: (name) => heard.push(name), random: seeded() });
     demo.step(900);
 
     expect(heard.length).toBeGreaterThan(0);
@@ -201,7 +220,7 @@ describe('⚠️ and the demonstration can be HEARD, which it could not be at al
     if (!bytes) return expect(existsSync(DAT)).toBe(false);
 
     const heard: string[] = [];
-    const demo = createDemo(bytes, { onSound: (name) => heard.push(name) });
+    const demo = createDemo(bytes, { onSound: (name) => heard.push(name), random: seeded() });
     demo.step(900);
 
     const audible = demo.touched.filter((name) => {
@@ -265,7 +284,7 @@ describe('⚠️ and the player can work the 1995 flippers', () => {
     const bytes = archive();
     if (!bytes) return expect(existsSync(DAT)).toBe(false);
 
-    const demo = createDemo(bytes);
+    const demo = createDemo(bytes, { random: seeded() });
     demo.setFlippers('left', true);
     demo.step(1);
 
@@ -281,7 +300,7 @@ describe('⚠️ and the player can work the 1995 flippers', () => {
     const bytes = archive();
     if (!bytes) return expect(existsSync(DAT)).toBe(false);
 
-    const demo = createDemo(bytes);
+    const demo = createDemo(bytes, { random: seeded() });
     const before = demo.table.flippers[0]!.currentAngle;
     demo.setFlippers('left', true);
     demo.step(3);

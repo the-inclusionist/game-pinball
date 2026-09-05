@@ -114,6 +114,14 @@ export interface DemoOptions {
    * explicitly, which is the loudest kind of silence to miss.
    */
   readonly onSound?: (name: string) => void;
+  /**
+   * ⚠️ `RandFloat` IN THE FIELD EFFECT, AND THE ONLY REASON TWO BALLS TAKE DIFFERENT PATHS. The
+   * table's gravity carries a jitter on X, so a demonstration left to `Math.random` is a different
+   * game every time — which is right for a player and wrong for a test. A test that asks whether the
+   * ball reached a bumper in nine hundred frames is asking about ONE path; without this it asks about
+   * a different one on every run and fails when the dice say so.
+   */
+  readonly random?: () => number;
 }
 
 export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
@@ -187,6 +195,7 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
     // ⚠️ WITHOUT THIS THERE ARE NO FLIPPERS AT ALL. A flipper has no wall record; its shape is three
     // points and two times, and the table builds one only for a group it is told the side of.
     flipperSideFor: (name) => sides.get(name),
+    ...(o.random ? { random: o.random } : {}),
     onFlipperHit: (name) => {
       touched.push(name);
       const kind = kindOf(name);
