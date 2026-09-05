@@ -192,3 +192,36 @@ describe('⚠️ the light GROUPS, which are what the lanes actually watch', () 
     expect(built.periodOf('bmpr_inc_lights')).toBeGreaterThan(0);
   });
 });
+
+describe('⚠️ the bumper GROUPS, which are what a lane raises', () => {
+  test('two of them, holding four bumpers and three', () => {
+    // `attack_bumpers` is a_bump1 to a_bump4 and `launch_bumpers` is a_bump5 to a_bump7. Their group
+    // names are not the control layer's names — `attack_bump` is the variable, `attack_bumpers` is the
+    // archive — which is the same tag mechanism `score-table` carries.
+    const table = manifest();
+    if (!table) return expect(existsSync(DAT)).toBe(false);
+
+    const built = buildOriginalComponents(table);
+
+    expect(built.bumperGroups.get('attack_bumpers')).toHaveLength(4);
+    expect(built.bumperGroups.get('launch_bumpers')).toHaveLength(3);
+  });
+
+  test('⚠️ raising the group raises EVERY bumper in it, not one', () => {
+    // The message goes to the group. Raising a single bumper would leave three of them cheaper than
+    // the table intends, and the score would be quietly wrong rather than visibly broken.
+    const table = manifest();
+    if (!table) return expect(existsSync(DAT)).toBe(false);
+
+    const built = buildOriginalComponents(table);
+    built.raiseGroup('attack_bumpers');
+
+    for (const name of built.bumperGroups.get('attack_bumpers')!) {
+      expect(built.bumpers.get(name)!.level, name).toBe(1);
+    }
+    // And the other group is untouched.
+    for (const name of built.bumperGroups.get('launch_bumpers')!) {
+      expect(built.bumpers.get(name)!.level, name).toBe(0);
+    }
+  });
+});

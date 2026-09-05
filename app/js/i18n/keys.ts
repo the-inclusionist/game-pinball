@@ -24,6 +24,10 @@
 /** The original's identifier, and the key this project reads instead. */
 export const RESOURCE_KEYS: Readonly<Record<string, string>> = {
   // Shared by the practice mission and Alien Menace part two — see this module's header.
+  // ⚠️ SHOWN WHEN THE REENTRY LANES COMPLETE AND THE BUMPERS GO UP A LEVEL. Missing until the binding
+  // for that chain was transcribed and a test asked whether the line it names can be shown — the same
+  // gap that once put `STRING151` on screen.
+  STRING106: 'pinball.event.bumpersRaised',
   STRING208: 'pinball.mission.bumpers.run',
   STRING209: 'pinball.mission.practice.done',
   STRING231: 'pinball.mission.alienMenace2.done',

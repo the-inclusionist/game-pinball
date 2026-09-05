@@ -84,6 +84,15 @@ export interface OriginalComponents {
   fire(name: string): void;
   /** `TBumperIncBmpIndex`: what a bumper LANE sends. See this module's header for why it is separate. */
   raise(name: string): void;
+  /**
+   * ⚠️ THE BUMPER GROUPS, WHICH ARE WHAT A LANE ACTUALLY RAISES. `attack_bumpers` holds a_bump1 to
+   * a_bump4 and `launch_bumpers` holds a_bump5 to a_bump7; a lane sends `TBumperIncBmpIndex` to the
+   * GROUP and it reaches every member. Raising one bumper would make three of them cheaper than the
+   * table intends and nothing would say so.
+   */
+  readonly bumperGroups: ReadonlyMap<string, readonly string[]>;
+  /** Raises every bumper in a group, which is the message a lane sends. */
+  raiseGroup(groupName: string): void;
 }
 
 export interface OriginalComponentOptions {
@@ -118,6 +127,7 @@ export function buildOriginalComponents(
   const lightGroups = new Map<string, LightGroup>();
   const groupMembers = new Map<LightGroup, Light[]>();
   const periods = new Map<string, number>();
+  const bumperGroups = new Map<string, readonly string[]>();
   /** How many frames each bumper has, because `setLevel` takes it on every call and clamps with it. */
   const frameCounts = new Map<string, number>();
 
@@ -182,10 +192,24 @@ export function buildOriginalComponents(
     periods.set(name, period);
   }
 
+  // The bumper groups, in the same second pass and for the same reason as the light groups.
+  for (const object of table.tableObjects) {
+    if (object.type !== ObjectType.BumperList) continue;
+    const group = groups[object.group];
+    const name = group?.name;
+    if (!group || !name) continue;
+
+    const members = (int16Attribute(group, GROUP_MEMBERS_RECORD) ?? [])
+      .map((at) => groups[at]?.name)
+      .filter((memberName): memberName is string => Boolean(memberName) && bumpers.has(memberName!));
+    bumperGroups.set(name, members);
+  }
+
   return {
     bumpers,
     lights,
     lightGroups,
+    bumperGroups,
     membersOf: (group) => groupMembers.get(group) ?? [],
     periodOf: (name) => periods.get(name) ?? 0,
     thresholdOf: (name) => thresholds.get(name) ?? Number.POSITIVE_INFINITY,
@@ -203,6 +227,13 @@ export function buildOriginalComponents(
       const bumper = bumpers.get(name);
       if (!bumper) return;
       bumper.setLevel(bumper.level + 1, frameCounts.get(name) ?? 1);
+    },
+
+    raiseGroup(groupName) {
+      for (const member of bumperGroups.get(groupName) ?? []) {
+        const bumper = bumpers.get(member);
+        if (bumper) bumper.setLevel(bumper.level + 1, frameCounts.get(member) ?? 1);
+      }
     },
 
     fire(name) {

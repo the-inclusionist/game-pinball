@@ -71,6 +71,7 @@ const es: Record<string, string> = {
   'pinball.demo.ask': 'Modo demostración: elige tu PINBALL.DAT. El archivo no sale de esta máquina.',
   'pinball.demo.caveat': 'Muestra la mesa y la física de 1995. Todavía no puntúa, no enciende luces ni ejecuta misiones.',
   'pinball.demo.failed': 'No pude leer ese archivo: {n}',
+  'pinball.event.bumpersRaised': 'Los bumpers valen más.',
   'pinball.hud.score': 'Puntuación: {n}',
   'pinball.objective.authored': 'Objetivos por encender: {n}',
   'pinball.hud.player': 'Jugador {n}',
