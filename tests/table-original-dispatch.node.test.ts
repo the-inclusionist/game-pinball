@@ -920,3 +920,81 @@ describe('⚠️ the mission spot set, whose sound is chosen by a LAMP', () => {
     expect(w.sounds).toEqual(['hit', 'hit', 'hit']);
   });
 });
+
+describe('⚠️ the bumper groups decay, which is what the lanes are working against', () => {
+  test('sixty seconds after a lane raised them, the group takes one level back', () => {
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    // The chain: three lanes complete, the group goes up, and the sixty seconds start.
+    for (const lane of REENTRY_LANES.lanes) w.dispatch.hit(lane.component);
+    const members = w.components.bumperGroups.get(REENTRY_LANES.bumperGroup)!;
+    for (const name of members) expect(w.components.bumpers.get(name)!.level, name).toBe(1);
+
+    w.components.advance(59);
+    for (const name of members) expect(w.components.bumpers.get(name)!.level, name).toBe(1);
+
+    w.components.advance(2);
+
+    for (const name of members) expect(w.components.bumpers.get(name)!.level, name).toBe(0);
+  });
+
+  test('⚠️ and it RESTARTS itself, so the level keeps falling rather than falling once', () => {
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    const members = w.components.bumperGroups.get(REENTRY_LANES.bumperGroup)!;
+    for (const lane of REENTRY_LANES.lanes) w.dispatch.hit(lane.component);
+    // ⚠️ THE COMPLETED SET FLASHES FOR FIVE SECONDS, and `makeBumperLaneControl` skips a lamp that is
+    // flashing entirely — so the chain cannot be refilled until it stops. Filling it twice in the same
+    // instant completes it ONCE, which is the table's own answer to a ball that crosses all three in
+    // one pass.
+    w.components.advance(6);
+    for (const lane of REENTRY_LANES.lanes) w.dispatch.hit(lane.component);
+    for (const name of members) expect(w.components.bumpers.get(name)!.level, name).toBe(2);
+
+    w.components.advance(61);
+    for (const name of members) expect(w.components.bumpers.get(name)!.level, name).toBe(1);
+    w.components.advance(61);
+
+    for (const name of members) expect(w.components.bumpers.get(name)!.level, name).toBe(0);
+  });
+
+  test('⚠️ a group already at the bottom stays there rather than going negative', () => {
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    const members = w.components.bumperGroups.get(REENTRY_LANES.bumperGroup)!;
+    for (const lane of REENTRY_LANES.lanes) w.dispatch.hit(lane.component);
+
+    w.components.advance(400);
+
+    for (const name of members) expect(w.components.bumpers.get(name)!.level, name).toBe(0);
+  });
+
+  test('⚠️ and filling the lanes again puts the sixty seconds back to the start', () => {
+    // This is the whole shape of the mechanic: the level is held by working the lanes, not won once.
+    // Without the restart the decay would arrive on its original schedule no matter what the player
+    // did, and the lanes would be worth exactly one level each for ever.
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    const members = w.components.bumperGroups.get(REENTRY_LANES.bumperGroup)!;
+    for (const lane of REENTRY_LANES.lanes) w.dispatch.hit(lane.component);
+
+    w.components.advance(50); // past the five-second flash, and well short of the sixty
+    for (const lane of REENTRY_LANES.lanes) w.dispatch.hit(lane.component); // level 2, clock restarted
+    w.components.advance(50);
+
+    // Fifty more seconds have passed — a hundred in all — and nothing has decayed yet.
+    for (const name of members) expect(w.components.bumpers.get(name)!.level, name).toBe(2);
+  });
+
+  test('and the OTHER group is untouched by any of it', () => {
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    for (const lane of REENTRY_LANES.lanes) w.dispatch.hit(lane.component);
+
+    w.components.advance(61);
+
+    for (const name of w.components.bumperGroups.get('launch_bumpers')!) {
+      expect(w.components.bumpers.get(name)!.level, name).toBe(0);
+    }
+  });
+});

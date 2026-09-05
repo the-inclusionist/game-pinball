@@ -30,7 +30,7 @@
 // difference is real.
 
 import {
-  makeBumperLaneControl, makeSpaceWarpRolloverControl, makeReturnLaneControl,
+  makeBumperLaneControl, makeBumperGroupControl, makeSpaceWarpRolloverControl, makeReturnLaneControl,
   makeFuelRolloverControl, makeOutLaneControl, makeBonusLaneControl,
   type LaneGroup, type LaneLight,
 } from '../control/lanes.js';
@@ -126,6 +126,7 @@ function groupAdapter(components: OriginalComponents, name: string): LaneGroup |
 
 function bumperAdapter(
   components: OriginalComponents, binding: BumperLaneBinding,
+  restartNotifyTimer: (seconds: number) => void,
 ): { level: number; incLevel(): void; restartNotifyTimer(seconds: number): void } {
   return {
     // ⚠️ THE LEVEL IS READ OFF ONE NAMED BUMPER, as the original does: `bump1->BmpIndex`. They rise
@@ -133,8 +134,10 @@ function bumperAdapter(
     // would be a different rule the day one is raised alone.
     get level() { return components.bumpers.get(binding.guardBumper)?.level ?? 0; },
     incLevel: () => components.raiseGroup(binding.bumperGroup),
-    // The sixty-second decay timer belongs to the group component, which this build does not construct.
-    restartNotifyTimer: () => {},
+    // ⚠️ AND THIS IS THE OTHER HALF OF THE MECHANIC. Filling the lanes restarts the sixty seconds, so
+    // a player who keeps working them holds the level; one who stops watches it fall. It was a no-op
+    // until the group's own control existed to be restarted.
+    restartNotifyTimer,
   };
 }
 
@@ -142,6 +145,29 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
   const byName = new Map<string, ControlledComponent>();
   const controls = new Map<string, (component: ControlledComponent) => void>();
   const scoreRows = new Map(SCORE_COMPONENTS.map((row) => [row.tag, row]));
+
+  // ⚠️ THE BUMPER GROUPS' OWN DECAY, WHICH THE LANES ARE WORKING AGAINST. Every sixty seconds the
+  // group takes one level back and restarts itself, so the level is not a ratchet: a player who stops
+  // filling lanes watches the bumpers get cheaper. No collision reaches this — it is the group's
+  // notify timer talking to its own control function.
+  //
+  // Built before the lane chains because a lane crossing RESTARTS this timer, and the adapter it
+  // hands the lane control has to be able to.
+  const restartGroupNotify = new Map<string, (seconds: number) => void>();
+  for (const name of o.components.bumperGroups.keys()) {
+    const caller: ControlledComponent = { name, scores: [], control: null };
+    let restart: (seconds: number) => void = () => {};
+    const control = makeBumperGroupControl({
+      bumpers: {
+        decLevel: () => o.components.lowerGroup(name),
+        restartNotifyTimer: (seconds) => restart(seconds),
+      },
+    });
+    restart = (seconds) => o.components.restartGroupTimer(
+      name, seconds, () => control('ControlNotifyTimerExpired', caller, o.context),
+    );
+    restartGroupNotify.set(name, restart);
+  }
 
   for (const binding of BUMPER_LANE_BINDINGS) {
     const group = groupAdapter(o.components, binding.lightGroup);
@@ -156,7 +182,9 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
     const control = makeBumperLaneControl({
       lightFor: (caller) => lightOf.get(caller.name),
       group,
-      bumpers: bumperAdapter(o.components, binding),
+      bumpers: bumperAdapter(
+        o.components, binding, restartGroupNotify.get(binding.bumperGroup) ?? (() => {}),
+      ),
       completeText: o.textFor(binding.completeTextId),
       isFullTilt: o.isFullTilt ?? (() => false),
     });

@@ -105,6 +105,17 @@ export interface OriginalComponents {
   readonly bumperGroups: ReadonlyMap<string, readonly string[]>;
   /** Raises every bumper in a group, which is the message a lane sends. */
   raiseGroup(groupName: string): void;
+  /**
+   * ⚠️ `TBumperDecBmpIndex`, WHICH IS WHAT THE LANES ARE WORKING AGAINST. Every sixty seconds the
+   * group takes one level back, so a player who stops filling lanes watches the bumpers get cheaper.
+   * Without it the level only ever rises and the whole mechanic becomes a one-way ratchet.
+   */
+  lowerGroup(groupName: string): void;
+  /**
+   * `TComponentGroupResetNotifyTimer`. The callback is the group's own control function, passed in
+   * each time because the component builder is made before the dispatcher that binds it.
+   */
+  restartGroupTimer(groupName: string, seconds: number, run: () => void): void;
 }
 
 export interface OriginalComponentOptions {
@@ -142,6 +153,7 @@ export function buildOriginalComponents(
   const groupMembers = new Map<LightGroup, Light[]>();
   const periods = new Map<string, number>();
   const bumperGroups = new Map<string, readonly string[]>();
+  const groupTimers = new Map<string, number>();
   /** How many frames each bumper has, because `setLevel` takes it on every call and clamps with it. */
   const frameCounts = new Map<string, number>();
 
@@ -296,6 +308,25 @@ export function buildOriginalComponents(
         const bumper = bumpers.get(member);
         if (bumper) bumper.setLevel(bumper.level + 1, frameCounts.get(member) ?? 1);
       }
+    },
+
+    lowerGroup(groupName) {
+      for (const member of bumperGroups.get(groupName) ?? []) {
+        const bumper = bumpers.get(member);
+        // `setLevel` floors at zero, so a group already at the bottom simply stays there.
+        if (bumper) bumper.setLevel(bumper.level - 1, frameCounts.get(member) ?? 1);
+      }
+    },
+
+    restartGroupTimer(groupName, seconds, run) {
+      const running = groupTimers.get(groupName);
+      if (running) timer.kill(running);
+      groupTimers.delete(groupName);
+      if (seconds <= 0) return;
+      groupTimers.set(groupName, timer.set(seconds, () => {
+        groupTimers.delete(groupName);
+        run();
+      }));
     },
 
     fire(name) {
