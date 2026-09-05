@@ -22,6 +22,8 @@
 
 import { buildOriginalTable, type OriginalTable } from '../table/original.js';
 import { SCORE_COMPONENTS } from '../control/score-table.js';
+import { buildOriginalComponents, type OriginalComponents } from '../table/original-components.js';
+import { loadTable } from '../dat/loader.js';
 import { createScoreState, addScore, type ScoreState } from '../control/score.js';
 import { decodePlayfield, readCamera, type OriginalCamera } from '../gfx/original-view.js';
 import { readGroups, type Group } from '../dat/partman.js';
@@ -47,13 +49,22 @@ export interface Demo {
   readonly touched: string[];
   /** The 1995 score, paid from `control/score-table`'s own arrays. */
   readonly score: ScoreState;
+  /** The table's own bumpers and lights, built from the archive. */
+  readonly components: OriginalComponents;
   /** What the ball has scored on, by the control layer's name for it. */
   readonly scored: string[];
   drop(): void;
 }
 
 export function createDemo(archive: ArrayBuffer): Demo {
-  const groups: readonly Group[] = readGroups(new Uint8Array(archive));
+  const bytes = new Uint8Array(archive);
+  const groups: readonly Group[] = readGroups(bytes);
+  /**
+   * ⚠️ THE REAL BUMPERS AND LIGHTS. Until this, every wall in the table answered with one generic
+   * bounce, so a bumper neither kicked nor debounced nor kept a level — and the score was paid at level
+   * zero because nothing could raise it.
+   */
+  const components = buildOriginalComponents(loadTable(bytes));
   const touched: string[] = [];
   const scored: string[] = [];
   const score = createScoreState();
@@ -66,13 +77,17 @@ export function createDemo(archive: ArrayBuffer): Demo {
   const scoringByTag = new Map(SCORE_COMPONENTS.map((row) => [row.tag, row]));
 
   const table = buildOriginalTable(groups, {
+    componentFor: (name) => components.bumpers.get(name),
     onHit: (hit) => {
       touched.push(hit.group);
       const row = scoringByTag.get(hit.group);
       if (!row?.scores.length) return;
-      // Level zero: what the original pays for a component that has not been worked up yet. The levels
-      // above it live on the components this build does not construct.
-      addScore(score, row.scores[0]!);
+      // ⚠️ THE COMPONENT'S OWN LEVEL, where there is a component. `bumperControl` indexes the score
+      // array by it and never advances it — the LANES do that, which this build does not wire yet, so a
+      // bumper sits at level zero until it does. The indexing is right even while the raising is
+      // missing, and doing it the other way round would have hidden the gap.
+      const level = components.bumpers.get(hit.group)?.level ?? 0;
+      addScore(score, row.scores[Math.min(level, row.scores.length - 1)]!);
       scored.push(row.name);
     },
   });
@@ -105,10 +120,15 @@ export function createDemo(archive: ArrayBuffer): Demo {
     touched,
     score,
     scored,
+    components,
     get ball() { return ball; },
 
     step(frames: number): void {
-      for (let i = 0; i < frames; i++) advanceFrame([ball], table.context, 1 / 60);
+      for (let i = 0; i < frames; i++) {
+        advanceFrame([ball], table.context, 1 / 60);
+        // The components keep their own time: a bumper's lit period is what stops it firing again.
+        components.advance(1 / 60);
+      }
     },
 
     ballOnScreen() {

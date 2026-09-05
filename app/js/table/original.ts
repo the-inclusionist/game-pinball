@@ -26,6 +26,7 @@ import { createEdgeManager, placeLineInGrid, placeCircleInGrid, type EdgeManager
 import { installWall } from '../physics/wall.js';
 import { basicCollision } from '../physics/collision.js';
 import { createBall, type Ball, type StepContext } from '../physics/step.js';
+import type { Component } from '../physics/edges.js';
 import { EntryType, type Group } from '../dat/partman.js';
 import { floatAttribute, groupNamed } from '../dat/attributes.js';
 
@@ -89,6 +90,17 @@ export interface OriginalOptions {
   readonly onHit?: (hit: OriginalHit) => void;
   /** `RandFloat` in the field effect. Injected so a test can make the table repeat. */
   readonly random?: () => number;
+  /**
+   * ⚠️ THE COMPONENT THAT OWNS A GROUP'S WALLS, WHEN THERE IS ONE.
+   *
+   * Without it every wall in the table answers with the same generic bounce — 0.7 elastic, no boost,
+   * no threshold — which is what this module did before `dat/visual` existed. A bumper answered like a
+   * wall, so it neither kicked nor debounced nor lit, and nothing said so.
+   *
+   * Returning `undefined` keeps the generic answer, which is right for the table's own boundary and for
+   * every part whose component this port does not build yet.
+   */
+  readonly componentFor?: (groupName: string) => Component | undefined;
 }
 
 export function buildOriginalTable(groups: readonly Group[], o: OriginalOptions = {}): OriginalTable {
@@ -127,8 +139,16 @@ export function buildOriginalTable(groups: readonly Group[], o: OriginalOptions 
     if (!data?.length) continue;
 
     const name = group.name ?? `group-${wallCount}`;
+    // The real component if this port builds one, and the generic bounce otherwise.
+    const owner = o.componentFor?.(name);
     // The same shape `physics-build` uses: the edge knows who it belongs to and only records.
-    const component = {
+    const component = owner ? {
+      collision(ball: unknown, position: { x: number; y: number }, direction: { x: number; y: number },
+        distance: number, edge: unknown) {
+        owner.collision(ball, position, direction, distance, edge);
+        o.onHit?.({ group: name, reboundSpeed: 0 });
+      },
+    } : {
       collision(ball: unknown, position: { x: number; y: number }, direction: { x: number; y: number }) {
         const rebound = basicCollision(ball as Ball, position, direction, {
           elasticity: 0.7, smoothness: 0.1, threshold: 1e9, boost: 0,

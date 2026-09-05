@@ -113,6 +113,22 @@ describe('the 1995 table, from an ArrayBuffer', () => {
     }
   });
 
+  test('⚠️ the table’s own bumpers answer the ball, not a generic wall', () => {
+    // Before this, every wall in the table bounced the same way — 0.7 elastic, no boost, no threshold —
+    // so a bumper neither kicked nor debounced nor lit, and no test could tell because a bounce is a
+    // bounce. A bumper that LIGHTS has answered as a bumper.
+    const bytes = archive();
+    if (!bytes) return expect(existsSync(DAT)).toBe(false);
+
+    const demo = createDemo(bytes);
+    expect(demo.components.bumpers.size).toBe(7);
+
+    demo.step(900);
+
+    // The ball reaches at least one of them in a ball's life on this table.
+    expect(demo.touched.some((name) => demo.components.bumpers.has(name))).toBe(true);
+  });
+
   test('dropping again puts a fresh ball back and forgets what the last one touched', () => {
     const bytes = archive();
     if (!bytes) return expect(existsSync(DAT)).toBe(false);
