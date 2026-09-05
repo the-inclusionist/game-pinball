@@ -141,3 +141,31 @@ describe('the 1995 table, from an ArrayBuffer', () => {
     expect(demo.scored).toEqual([]);
   });
 });
+
+describe('⚠️ and the seven wired components run their 1995 control function', () => {
+  test('the demo says which they are', () => {
+    const bytes = archive();
+    if (!bytes) return expect(existsSync(DAT)).toBe(false);
+
+    const demo = createDemo(bytes);
+
+    expect(demo.wired.size).toBe(7);
+  });
+
+  test('⚠️ and no wired component is ALSO paid flat, over a whole ball', () => {
+    // The two paths are exclusive on purpose. A component the dispatcher handles scores inside its own
+    // control function, so paying it here as well would double every lane crossing — and doubling looks
+    // like generous scoring rather than a bug.
+    //
+    // ⚠️ MY FIRST VERSION OF THIS TEST ASSERTED THINGS THAT WERE ALREADY TRUE and distinguished nothing.
+    // The invariant needed to be visible, so the demo reports what it paid flat and this compares the
+    // two lists over a real ball rather than trusting an early return nobody can observe.
+    const bytes = archive();
+    if (!bytes) return expect(existsSync(DAT)).toBe(false);
+
+    const demo = createDemo(bytes);
+    demo.step(1800);
+
+    expect(demo.paidFlat.filter((name) => demo.wired.has(name))).toEqual([]);
+  });
+});

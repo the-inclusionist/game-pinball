@@ -23,6 +23,8 @@
 import { buildOriginalTable, type OriginalTable } from '../table/original.js';
 import { SCORE_COMPONENTS } from '../control/score-table.js';
 import { buildOriginalComponents, type OriginalComponents } from '../table/original-components.js';
+import { createOriginalDispatch } from '../table/original-dispatch.js';
+import type { ControlContext } from '../control/dispatch.js';
 import { loadTable } from '../dat/loader.js';
 import { readMidiFile } from '../audio/midi.js';
 import { scheduleMidi, scheduleLength, type ScheduledNote } from '../audio/midi-synth.js';
@@ -63,6 +65,17 @@ export interface Demo {
   readonly score: ScoreState;
   /** The table's own bumpers and lights, built from the archive. */
   readonly components: OriginalComponents;
+  /** The archive names whose 1995 control function actually runs. */
+  readonly wired: ReadonlySet<string>;
+  /**
+   * ⚠️ THE COMPONENTS PAID FLAT, which must never overlap `wired`. A wired component scores inside its
+   * own control function, so paying it here as well would double every lane crossing — and doubling
+   * looks like generous scoring rather than a bug, which is why the two lists are kept apart where a
+   * test can see them rather than trusted to an early return nobody can observe.
+   */
+  readonly paidFlat: readonly string[];
+  /** The last line a completed chain showed. */
+  readonly info: string;
   /**
    * ⚠️ THE MUSIC, WHICH THE PLAYER ALSO BRINGS. `PINBALL.MID` is Microsoft's like everything else in
    * the original, so the demonstration asks for it and never fetches it. Null until it is given one,
@@ -76,7 +89,12 @@ export interface Demo {
   drop(): void;
 }
 
-export function createDemo(archive: ArrayBuffer): Demo {
+export interface DemoOptions {
+  /** Translates a control's completion line. Absent = the resource id itself, which is visible. */
+  readonly textFor?: (resourceId: string) => string;
+}
+
+export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
   const bytes = new Uint8Array(archive);
   const groups: readonly Group[] = readGroups(bytes);
   /**
@@ -88,6 +106,9 @@ export function createDemo(archive: ArrayBuffer): Demo {
   const touched: string[] = [];
   const scored: string[] = [];
   const score = createScoreState();
+  /** The line a completed chain last showed. The demo has no HUD hint of its own yet. */
+  let info = '';
+  const paidFlat: string[] = [];
 
   /**
    * ⚠️ BY TAG, NOT BY NAME. The archive calls a component `a_targ1` and the control layer calls it
@@ -96,12 +117,42 @@ export function createDemo(archive: ArrayBuffer): Demo {
    */
   const scoringByTag = new Map(SCORE_COMPONENTS.map((row) => [row.tag, row]));
 
+  /**
+   * ⚠️ THE REAL CONTROL FUNCTIONS FOR THE SEVEN THAT ARE WIRED, AND THE FLAT PAYMENT FOR THE REST.
+   *
+   * A component the dispatcher handles runs its 1995 control function, which scores ITSELF — so paying
+   * it again here would double every lane crossing. The two paths are exclusive on purpose, and the
+   * `wired` set is what decides, rather than a flag somebody has to remember to set.
+   */
+  const context: ControlContext = {
+    score,
+    table: { extraBalls: 0, multiballCount: 1, ballCount: 1, tiltLocked: false },
+    light: (name) => components.lights.get(name),
+    group: () => undefined,
+    showInfo: (text) => { info = text; },
+    showMission: (text) => { info = text; },
+    playSound: () => {},
+    playMusic: () => {},
+    missionControl: () => {},
+  };
+  const dispatch = createOriginalDispatch({
+    components, context, textFor: (id) => o.textFor?.(id) ?? id,
+  });
+
   const table = buildOriginalTable(groups, {
     componentFor: (name) => components.bumpers.get(name),
     onHit: (hit) => {
       touched.push(hit.group);
+
+      if (dispatch.wired.has(hit.group)) {
+        dispatch.hit(hit.group);
+        scored.push(scoringByTag.get(hit.group)?.name ?? hit.group);
+        return;
+      }
+
       const row = scoringByTag.get(hit.group);
       if (!row?.scores.length) return;
+      paidFlat.push(hit.group);
       // ⚠️ THE COMPONENT'S OWN LEVEL, where there is a component. `bumperControl` indexes the score
       // array by it and never advances it — the LANES do that, which this build does not wire yet, so a
       // bumper sits at level zero until it does. The indexing is right even while the raising is
@@ -142,6 +193,9 @@ export function createDemo(archive: ArrayBuffer): Demo {
     score,
     scored,
     components,
+    wired: dispatch.wired,
+    paidFlat,
+    get info() { return info; },
     get music() { return music; },
 
     loadMusic(bytes: ArrayBuffer): boolean {
@@ -160,7 +214,8 @@ export function createDemo(archive: ArrayBuffer): Demo {
     step(frames: number): void {
       for (let i = 0; i < frames; i++) {
         advanceFrame([ball], table.context, 1 / 60);
-        // The components keep their own time: a bumper's lit period is what stops it firing again.
+        // The components keep their own time: a bumper's lit period is what stops it firing again,
+        // and a lane group's flash is what clears it.
         components.advance(1 / 60);
       }
     },
@@ -180,6 +235,7 @@ export function createDemo(archive: ArrayBuffer): Demo {
       ball = table.spawnBall();
       touched.length = 0;
       scored.length = 0;
+      paidFlat.length = 0;
     },
   };
 }

@@ -11,6 +11,7 @@
 // from the archive yet. The screen says so before the player asks, in their own language.
 
 import { createDemo, type Demo } from './demo.js';
+import { keyOf } from '../i18n/keys.js';
 import { blitView } from '../gfx/table-view.js';
 import type { Framebuffer } from '../gfx/framebuffer.js';
 import type { Translate } from '../i18n/index.js';
@@ -103,7 +104,9 @@ export function mountDemoPage(o: DemoPageOptions): DemoPage {
     if (!file) return;
     void file.arrayBuffer().then((bytes) => {
       try {
-        const demo = createDemo(bytes);
+        // The completion lines are the game's own resources, so the demo is given the translator
+        // rather than left to show a `STRING106` at the player.
+        const demo = createDemo(bytes, { textFor: (id) => o.t(keyOf(id)) });
         panel.remove();
         if (o.onMusic) o.host.appendChild(musicPanel);
         o.onReady(demo);

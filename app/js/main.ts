@@ -30,6 +30,7 @@ import { mountDemoPage } from './shell/demo-page.js';
 import { MUSIC_WINDOW, MUSIC_LOOKAHEAD } from './shell/demo.js';
 import { playSchedule } from './audio/midi-player.js';
 import { createDemo, type Demo } from './shell/demo.js';
+import { keyOf } from './i18n/keys.js';
 import { createSoundBoard, releaseVoice } from './audio/sfx.js';
 import { soundEntriesOf, VOICES } from './audio/voices.js';
 import { createWebAudioOutput } from './audio/web-audio.js';
@@ -518,7 +519,9 @@ Object.assign(window as unknown as Record<string, unknown>, {
     /** The demonstration, so a check can drive it without a file dialog it cannot open. */
     get demo() { return demo; },
     loadOriginal(bytes: ArrayBuffer) {
-      demo = createDemo(bytes);
+      // The SAME options the page passes. A check that took a different path would be checking a
+      // different program, which is how a discrepancy hides.
+      demo = createDemo(bytes, { textFor: (id) => shell.t(keyOf(id)) });
       demoPage?.destroy();
       return { walls: demo.table.wallCount, picture: [demo.playfield.width, demo.playfield.height] };
     },
