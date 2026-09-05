@@ -434,6 +434,31 @@ export const BOOSTER_BANK: BoosterBankBinding = {
 };
 
 /**
+ * `LeftKickerControl` and `RightKickerControl`: what SHUTS the chute again.
+ *
+ * ⚠️ THE KICKBACK IS THE CLOCK. Neither control answers a collision — they answer the kickback's own
+ * `ControlTimerExpired`, which arrives a tenth of a second after it has thrown the ball back out. So
+ * the chute stays open exactly as long as it takes the saver to do its work, and nothing counts down
+ * anywhere.
+ *
+ * ⚠️ AND IN EASY MODE IT NEVER SHUTS. `if (!easyMode)` is the whole difference: the outlane stays open
+ * for the rest of the ball. That is the option making the table forgiving without touching a single
+ * piece of geometry.
+ */
+export interface KickerBinding {
+  readonly control: string;
+  /** The kickback whose timer runs the control, by the archive's name. */
+  readonly component: string;
+  /** The gate it puts back. */
+  readonly gate: string;
+}
+
+export const KICKERS: readonly KickerBinding[] = [
+  { control: 'LeftKickerControl', component: 'a_kick1', gate: 'v_gate1' },
+  { control: 'RightKickerControl', component: 'a_kick2', gate: 'v_gate2' },
+];
+
+/**
  * `LeftKickerGateControl` and `RightKickerGateControl`: the lamps a gate lights when it opens.
  *
  * ⚠️ THESE ANSWER A GATE MESSAGE, NOT A COLLISION. `TGate::Message` ends with

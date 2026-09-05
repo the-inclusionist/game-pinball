@@ -161,7 +161,10 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
   let dispatch: OriginalDispatch | null = null;
 
   const table = buildOriginalTable(groups, {
-    componentFor: (name) => components.bumpers.get(name),
+    // ⚠️ EVERY COLLISION COMPONENT THIS PORT BUILDS, not only the bumpers. A kickback that the walls
+    // never receive is a saver the ball goes straight past — it would arm nothing, because nothing
+    // would ever touch it.
+    componentFor: (name) => components.bumpers.get(name) ?? components.kickbacks.get(name),
     onHit: (hit) => {
       touched.push(hit.group);
       // ⚠️ BY KIND, NOT PER COLLISION. A ball resting against a wall collides many times a second, and

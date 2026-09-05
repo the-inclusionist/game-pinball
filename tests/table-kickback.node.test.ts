@@ -44,8 +44,8 @@ function build(o: { tiltLocked?: boolean } = {}) {
     sound: { play: (id) => played.push(id) },
     timer: t.timer,
     setSprite: (index) => sprites.push(index),
-    onTimerExpired: () => expired.push(1),
   });
+  kickback.control = () => expired.push(1);
   return { kickback, t, played, sprites, expired };
 }
 

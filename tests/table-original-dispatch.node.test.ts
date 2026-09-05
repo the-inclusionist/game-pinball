@@ -7,7 +7,7 @@ import { buildOriginalTable } from '../app/js/table/original.js';
 import { buildOriginalGates } from '../app/js/table/original-gates.js';
 import {
   REENTRY_LANES, LAMP_BINDINGS, FUEL_ROLLOVERS, OUT_LANES, BONUS_LANE, SPOT_TARGET_SETS,
-  MEDAL_BANK, MULTIPLIER_BANK, BOOSTER_BANK, TABLE_ACTIONS, GATE_LAMPS,
+  MEDAL_BANK, MULTIPLIER_BANK, BOOSTER_BANK, TABLE_ACTIONS, GATE_LAMPS, KICKERS,
 } from '../app/js/control/bindings.js';
 import { createScoreState } from '../app/js/control/score.js';
 import { SCORE_COMPONENTS } from '../app/js/control/score-table.js';
@@ -29,7 +29,7 @@ const manifest = () => {
   return loadTable(new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength));
 };
 
-function wired(o: { gates?: boolean } = {}) {
+function wired(o: { gates?: boolean; easy?: boolean } = {}) {
   const table = manifest();
   if (!table) return null;
   const components = buildOriginalComponents(table);
@@ -52,6 +52,7 @@ function wired(o: { gates?: boolean } = {}) {
   };
   const dispatch = createOriginalDispatch({
     components, context, ...(gates ? { gates } : {}),
+    ...(o.easy ? { isEasyMode: () => true } : {}),
     textFor: (id, params) => (params ? `text:${id}:${JSON.stringify(params)}` : `text:${id}`),
   });
   return { components, score, shown, sounds, dispatch, context, geometry, gates };
@@ -706,5 +707,61 @@ describe('⚠️ the gate lamps, which no collision reaches', () => {
     if (!w) return expect(existsSync(DAT)).toBe(false);
 
     expect(w.dispatch.wired.has('v_gate1')).toBe(false);
+  });
+});
+
+describe('⚠️ the kickback shuts the chute again, which is the other half of the reward', () => {
+  const openLeftChute = (w: NonNullable<ReturnType<typeof wired>>) => {
+    const set = SPOT_TARGET_SETS.find((s2) => s2.control === 'LeftHazardSpotTargetControl')!;
+    for (const target of set.targets) w.dispatch.hit(target);
+  };
+  /** A ball rolling gently into a surface whose normal points up. */
+  const ball = () => ({ position: { x: 0, y: 0 }, direction: { x: 0, y: -1 }, speed: 1 });
+
+  test('both kickbacks are built from the archive', () => {
+    const w = wired({ gates: true });
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+
+    for (const binding of KICKERS) {
+      expect(w.components.kickbacks.get(binding.component), binding.component).toBeDefined();
+    }
+  });
+
+  test('⚠️ the saver fires, the ball goes, and the chute closes behind it', () => {
+    // The whole loop, end to end: three targets open the gate and light the lamps; the ball reaches
+    // the kickback; seven tenths of a second later the threshold drops and the next touch throws it
+    // out; a tenth of a second after THAT the expiry reaches `LeftKickerControl` and the wall is back.
+    const w = wired({ gates: true });
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    const kickback = w.components.kickbacks.get('a_kick1')!;
+    openLeftChute(w);
+    expect(w.gates!.get('v_gate1')!.open).toBe(true);
+
+    kickback.collision(ball(), { x: 0, y: 0 }, { x: 0, y: 1 }, 0, null);
+    w.components.advance(0.8); // the saver fires
+    const thrown = ball();
+    kickback.collision(thrown, { x: 0, y: 0 }, { x: 0, y: 1 }, 0, null);
+    expect(thrown.speed, 'the ball is thrown out, not bounced').toBeGreaterThan(50);
+    w.components.advance(0.2); // and the expiry reaches the control
+
+    expect(w.gates!.get('v_gate1')!.open).toBe(false);
+    expect(w.components.lights.get('lite30')!.lit, 'and the lamps go with it').toBe(false);
+    expect(w.components.lights.get('lite196')!.lit).toBe(false);
+  });
+
+  test('⚠️ and in EASY MODE the chute stays open, which is the option doing its work', () => {
+    // `if (!easyMode)` is the whole difference. The outlane stays survivable for the rest of the ball
+    // without one piece of geometry moving.
+    const w = wired({ gates: true, easy: true });
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    const kickback = w.components.kickbacks.get('a_kick1')!;
+    openLeftChute(w);
+
+    kickback.collision(ball(), { x: 0, y: 0 }, { x: 0, y: 1 }, 0, null);
+    w.components.advance(0.8);
+    kickback.collision(ball(), { x: 0, y: 0 }, { x: 0, y: 1 }, 0, null);
+    w.components.advance(0.2);
+
+    expect(w.gates!.get('v_gate1')!.open).toBe(true);
   });
 });

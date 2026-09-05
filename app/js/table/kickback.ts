@@ -42,12 +42,17 @@ export interface KickbackOptions {
   readonly timer: TimerService;
   /** 1 while it is kicking, 0 when it stops, -1 on reset. */
   readonly setSprite?: (index: number) => void;
-  /** `control::handler(ControlTimerExpired, this)` — what puts the chute's gate back. */
-  readonly onTimerExpired?: () => void;
+
 }
 
 export interface Kickback {
   collision(ball: unknown, position: Vector2, direction: Vector2, distance: number, edge: unknown): void;
+  /**
+   * ⚠️ `control::handler(ControlTimerExpired, this)`, WHICH IS THE ONLY WAY THE CHUTE SHUTS AGAIN.
+   * A field rather than an option for the reason `Gate.control` is one: the component is built from
+   * the archive and its control is bound later, by the dispatcher.
+   */
+  control: (() => void) | null;
   /** `KickActiveFlag`. Armed means a timer is running and the ball has not been kicked yet. */
   readonly armed: boolean;
   /** Exposed because it is the whole mechanism, and a test can watch it move. */
@@ -83,10 +88,11 @@ export function createKickback(o: KickbackOptions): Kickback {
     }
     o.setSprite?.(0);
     timerId = 0;
-    o.onTimerExpired?.();
+    kickback.control?.();
   }
 
   const kickback: Kickback = {
+    control: null,
     get armed() { return armed; },
     get threshold() { return threshold; },
 

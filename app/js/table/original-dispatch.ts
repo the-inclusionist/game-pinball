@@ -35,13 +35,14 @@ import {
   type LaneGroup, type LaneLight,
 } from '../control/lanes.js';
 import {
-  makeSpotTargetControl, makeMultiplierBankControl, makeGateLightControl, type FieldComponent,
+  makeSpotTargetControl, makeMultiplierBankControl, makeGateLightControl, makeKickerControl,
+  type FieldComponent,
 } from '../control/controls.js';
 import { makeMedalTargetControl, makeBoosterTargetControl, type AwardChainStep } from '../control/banks.js';
 import {
   BUMPER_LANE_BINDINGS, LAMP_BINDINGS, RETURN_LANES, FUEL_ROLLOVERS, FUEL_BARGRAPH,
   FUEL_REFUEL_TEXT_ID, OUT_LANES, BONUS_LANE, SPOT_TARGET_SETS, MEDAL_BANK, MULTIPLIER_BANK,
-  BOOSTER_BANK, TABLE_ACTIONS, FLIPPER_REBOUNDERS, GATE_LAMPS, type BumperLaneBinding,
+  BOOSTER_BANK, TABLE_ACTIONS, FLIPPER_REBOUNDERS, GATE_LAMPS, KICKERS, type BumperLaneBinding,
 } from '../control/bindings.js';
 import { addExtraBall, createTableActions } from '../control/table-actions.js';
 import {
@@ -63,6 +64,8 @@ export interface OriginalDispatchOptions {
   readonly context: ControlContext;
   /** `pb::FullTiltMode`. False for Space Cadet, which is the only table this port targets. */
   readonly isFullTilt?: () => boolean;
+  /** The option that leaves an outlane open for the rest of the ball. False unless a game says so. */
+  readonly isEasyMode?: () => boolean;
   /**
    * The line a control shows, already translated. `params` is for the ones that carry a number —
    * `STRING104` names the bonus it just paid, and a translator is the only thing that can put it in.
@@ -514,6 +517,20 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
       if (code === 'TGateDisable') setLights(true);
       else if (code === 'TGateEnable') setLights(false);
     };
+  }
+
+  // ⚠️ AND WHAT SHUTS THE CHUTE AGAIN, which no collision reaches either. The kickback's timer is the
+  // clock: a tenth of a second after it has thrown the ball back out, `ControlTimerExpired` arrives
+  // here and the gate goes back. Without this the hazard set's reward is permanent, which is a
+  // different game — and in EASY MODE it deliberately is, because the control declines to shut it.
+  for (const binding of KICKERS) {
+    const kickback = o.components.kickbacks.get(binding.component);
+    const gate = o.gates?.get(binding.gate);
+    if (!kickback || !gate) continue;
+
+    const control = makeKickerControl({ gate, isEasyMode: o.isEasyMode ?? (() => false) });
+    const caller: ControlledComponent = { name: binding.component, scores: [], control: null };
+    kickback.control = () => control('ControlTimerExpired', caller, o.context);
   }
 
   return {

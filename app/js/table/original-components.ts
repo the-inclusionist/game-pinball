@@ -34,6 +34,7 @@ import { createBumper, type Bumper, type TimerService } from './bumper.js';
 import { createLight, type Light } from './light.js';
 import { createLightGroup, type LightGroup } from './light-group.js';
 import { createLightBargraph, type LightBargraph } from './light-bargraph.js';
+import { createKickback, type Kickback } from './kickback.js';
 import { readVisual } from '../dat/visual.js';
 import { floatAttribute, int16Attribute } from '../dat/attributes.js';
 import { EntryType, type Group } from '../dat/partman.js';
@@ -77,6 +78,12 @@ export interface OriginalComponents {
   readonly lightGroups: ReadonlyMap<string, LightGroup>;
   /** The fuel tank, kept apart from the light groups — see `table/light-bargraph`. */
   readonly bargraphs: ReadonlyMap<string, LightBargraph>;
+  /**
+   * ⚠️ THE TWO OUTLANE SAVERS, WHICH THE BALL HAS TO REACH. A kickback is a collision component, so
+   * unlike a lamp it means nothing until `table/original` hands its group's walls to it — see
+   * `componentFor`. Built here because everything it needs is records; wired to the geometry there.
+   */
+  readonly kickbacks: ReadonlyMap<string, Kickback>;
   /** The lights a group holds, so a caller can check identity rather than assume it. */
   membersOf(group: LightGroup): readonly Light[];
   /** `Timer1TimeDefault`, from record 903. */
@@ -131,6 +138,7 @@ export function buildOriginalComponents(
   const thresholds = new Map<string, number>();
   const lightGroups = new Map<string, LightGroup>();
   const bargraphs = new Map<string, LightBargraph>();
+  const kickbacks = new Map<string, Kickback>();
   const groupMembers = new Map<LightGroup, Light[]>();
   const periods = new Map<string, number>();
   const bumperGroups = new Map<string, readonly string[]>();
@@ -162,6 +170,22 @@ export function buildOriginalComponents(
       bumpers.set(name, bumper);
       frameCounts.set(name, states);
       thresholds.set(name, visual.kicker.threshold);
+      continue;
+    }
+
+    if (object.type === ObjectType.Kicker) {
+      // ⚠️ THE THRESHOLD IS NOT THE ARCHIVE'S. `TKickback`'s constructor writes a billion over
+      // whatever record 401 said, and then moves it — see `table/kickback`. So the visual is read for
+      // the bounce and the boost, and the threshold is the component's own.
+      const visual = readVisual(groups, object.group);
+      kickbacks.set(name, createKickback({
+        table: tableState,
+        elasticity: visual.elasticity,
+        smoothness: visual.smoothness,
+        boost: visual.kicker.boost,
+        hardHitSoundId: visual.kicker.hardHitSoundId,
+        timer,
+      }));
       continue;
     }
 
@@ -246,6 +270,7 @@ export function buildOriginalComponents(
     lights,
     lightGroups,
     bargraphs,
+    kickbacks,
     bumperGroups,
     membersOf: (group) => groupMembers.get(group) ?? [],
     periodOf: (name) => periods.get(name) ?? 0,
