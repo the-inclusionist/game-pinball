@@ -20,7 +20,8 @@ context-and-problem-statement: |
   `table/live-controls.ts` counts balls in eight lines. `control/score-table.ts` names a hundred and
   forty-five components with their 1995 control functions, and `control/registry.ts` offers seven.
   Roughly forty modules — every `dat/`, most of `control/`, ten `table/T*` ports, `gfx/render`,
-  `gfx/gdrv`, `maths/proj` — are imported by no other module and are reached only by tests.
+  `gfx/gdrv`, `maths/proj`, and the archive-reading half of `audio/` — are imported by no other module
+  and are reached only by tests.
 
   Read without context, that is a project that reimplemented itself and left the corpse. It is not, and
   the reason is in the plan and in the licence.
@@ -44,13 +45,29 @@ decision-outcome: |
   Two implementations, and the line between them is WHAT DATA A TABLE CAN DECLARE.
 
   The TRANSCRIPTION runs on the original archive. It is `dat/`, the 1995 half of `control/`, the
-  `table/T*` component ports, and the 1995 render path. Its job is to be compared against the original,
-  and its gates are conformance tests against the real files and against AdrienTD's independent dump. It
-  is not dead code; it is the measuring instrument.
+  `table/T*` component ports, the 1995 render path, and the archive-reading half of `audio/` —
+  `sound-table` (a group is a sound because its value field is 202), `sound-links` (a `TSound` points at
+  a group through an Int16 record `[1100, G]`) and `midi` (the two .MID files, which are Microsoft's like
+  every other original asset). Its job is to be compared against the original, and its gates are
+  conformance tests against the real files and against AdrienTD's independent dump. It is not dead code;
+  it is the measuring instrument.
+
+  ERRATUM 2026-09-05, the same day: the paragraph above first named four groups and left the audio one
+  out, which made the record wrong about its own subject in the way that matters most — a reader
+  checking `audio/midi` against this list would have found it absent and concluded it was the twelfth
+  unwired defect. Corrected in place under ADR-0057 (engine), which allows an erratum and nothing else.
 
   The AUTHORED RUNTIME runs on `table/*.ts` declarations. It reuses everything that needs no 1995 data —
   the physics entire, the collision response, the flipper, the stuck detector, the mixer, the edge grid —
-  and supplies its own only where the 1995 version needs 1995 structures.
+  and supplies its own only where the 1995 version needs 1995 structures. `audio/voices` is that on the
+  sound side: the WAV files cannot be distributed, so an authored table's sounds are GENERATED, which
+  makes them code rather than assets.
+
+  MUSIC IS THE ONE PLACE WITH NEITHER. The two .MID files are Microsoft's, and no generated equivalent
+  exists because nobody has written one — an authored table has no score. The plan anticipated this
+  exactly ("pode terminar sem música, e eu direi isso em vez de fingir"), so `audio/midi` sits on the
+  transcription side and the shipping game is silent of music until somebody composes one. That is a
+  gap, named, rather than a defect.
 
   THE TEST FOR WHICH SIDE SOMETHING GOES ON IS NOT TASTE. `TRollover` works by installing two wall sets
   from float attributes 600 and 603 and toggling which one the collision search can see, so that "there

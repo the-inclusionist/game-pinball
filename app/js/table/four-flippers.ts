@@ -78,9 +78,19 @@ export const FOUR_FLIPPERS: AuthoredTable = {
     { name: 'bumper.left', kind: 'bumper', role: 'structure', bounds: { x: 40, y: 40, width: 18, height: 18 },
       scores: [500, 1000, 1500, 2000], control: 'BumperControl', lamps: ['lamp.left'],
       collision: [{ kind: 'circle', at: { x: 49, y: 49 }, radius: 9 }] },
-    { name: 'bumper.right', kind: 'bumper', role: 'structure', bounds: { x: 142, y: 40, width: 18, height: 18 },
+    // ⚠️ IT WAS AT x = 142 AND THE BALL PASSED FOURTEEN PIXELS TO ITS RIGHT, EVERY TIME.
+    // The launch is deterministic, so "every time" is literal: the ball came off the return bend and
+    // fell in a straight diagonal from (184, 32) to the lower right flipper, meeting nothing worth
+    // anything on the way. The table had three scoring components and the ball reached none of them —
+    // a corridor with paddles in it, which the playability gate called playable until it learned to ask
+    // for a SCORE rather than for anything that is not a wall.
+    //
+    // Moved to sit where the ball actually is at y = 49. The asymmetry against `bumper.left` is not a
+    // mistake: a plunger lane is on one side, so what comes off it arrives on one side, and every real
+    // table is lopsided for the same reason.
+    { name: 'bumper.right', kind: 'bumper', role: 'structure', bounds: { x: 163, y: 40, width: 18, height: 18 },
       scores: [500, 1000, 1500, 2000], control: 'BumperControl', lamps: ['lamp.right'],
-      collision: [{ kind: 'circle', at: { x: 151, y: 49 }, radius: 9 }] },
+      collision: [{ kind: 'circle', at: { x: 172, y: 49 }, radius: 9 }] },
 
     // Between the two bumpers, struck from below: bottom edge, right to left.
     { name: 'target.centre', kind: 'target', role: 'goal', bounds: { x: 92, y: 40, width: 16, height: 14 },

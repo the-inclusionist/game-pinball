@@ -4,7 +4,13 @@ import {
   CATALOG, DEFAULT_TABLE, tableNamed,
   LOW_ORBIT, WIDE_ARC, NARROW_TOWER, FOUR_FLIPPERS, BARE_MINIMUM,
 } from '../app/js/table/catalog.js';
-import { validateTable, toLiveTable, declaredComponentsOf, normalOf } from '../app/js/table/authored.js';
+import {
+  validateTable, toLiveTable, declaredComponentsOf, normalOf, type AuthoredTable,
+} from '../app/js/table/authored.js';
+import {
+  buildPhysics, drainedBy, launchSpeedFor, FRAME_SECONDS,
+} from '../app/js/table/physics-build.js';
+import { advanceFrame } from '../app/js/physics/step.js';
 import { DEFAULT_CAMERA, createCamera, stepAxis, maxOffsetOf } from '../app/js/shell/camera.js';
 import { layoutHud, DEFAULT_HUD } from '../app/js/shell/hud.js';
 import { createPinballWorld } from '../app/js/shell/boot.js';
@@ -213,6 +219,21 @@ describe('four-flippers — the table that contradicts an inherited assumption',
   });
 });
 
+/** Launches a ball and reports whether it left through a hole rather than through a drain. */
+function leavesThroughAHole(table: AuthoredTable): boolean {
+  const physics = buildPhysics(table);
+  const ball = physics.spawnBall();
+  ball.direction = { x: 0, y: -1 };
+  ball.speed = launchSpeedFor(table);
+
+  for (let i = 0; i < 4000; i++) {
+    advanceFrame([ball], physics.context, FRAME_SECONDS);
+    const drained = drainedBy(table, ball);
+    if (drained) return drained === 'outside';
+  }
+  return false;
+}
+
 describe('bare-minimum — the floor of the format', () => {
   test('it has exactly what the rules demand and nothing else', () => {
     // ⚠️ THE FLOOR GREW, TWICE, AND BOTH TIMES BECAUSE A RULE FOUND SOMETHING THE FORMAT REALLY DEMANDS.
@@ -221,7 +242,15 @@ describe('bare-minimum — the floor of the format', () => {
     // the contract's fifth field is what the sonar reads and a table with an empty one cannot be
     // described to a player who cannot see it. A rule does not get to exempt the example that
     // documents it.
-    expect(BARE_MINIMUM.components).toHaveLength(4);
+    // ⚠️ THIRD TIME: it now has a CEILING, because a launch here ended with `drainedBy` answering
+    // `outside` — a hole in the geometry rather than a way to lose, which is a distinction
+    // `physics-build` makes on purpose. Holding the ball is not a question of whether a table is fun;
+    // it is whether it is a table.
+    //
+    // One wall and not three. I added three and then measured: removing either SIDE changes nothing,
+    // because the ball never travels sideways here. The floor carries what it needs and not what a
+    // different table would need.
+    expect(BARE_MINIMUM.components).toHaveLength(5);
     expect(BARE_MINIMUM.lamps).toHaveLength(1);
     expect(BARE_MINIMUM.size.height).toBe(DEFAULT_CAMERA.viewHeight + 1);
   });
@@ -236,15 +265,39 @@ describe('bare-minimum — the floor of the format', () => {
     expect(BARE_MINIMUM.components.filter((c) => c.scores)).toHaveLength(1);
   });
 
-  test('removing any one of its three components breaks it', () => {
-    // Which is what makes it the floor rather than merely a small table.
-    for (const dropped of BARE_MINIMUM.components) {
+  test('⚠️ removing any one of its NON-WALL components breaks the validator', () => {
+    // ⚠️ THIS USED TO SAY "any one of its three", AND THE FLOOR IS NOW DEFINED BY TWO DIFFERENT CHECKS.
+    //
+    // The validator reads a table's SHAPE, and no rule there demands a wall — a table could be closed
+    // some other way, and inventing "must have three walls" would be inventing a rule to fit an example.
+    // What actually holds the walls is the SIMULATION: `tests/table-playable` launches a ball and
+    // refuses `outside`. Splitting the claim is the honest reading, and pretending one check covers both
+    // would have quietly weakened the other.
+    const structural = BARE_MINIMUM.components.filter((c) => c.kind !== 'wall');
+
+    for (const dropped of structural) {
       const without = {
         ...BARE_MINIMUM,
         components: BARE_MINIMUM.components.filter((c) => c !== dropped),
       };
       expect(validateTable(without, VIEW).length, `without ${dropped.name}`).toBeGreaterThan(0);
     }
+  });
+
+  test('⚠️ and removing the CEILING breaks it the other way — the ball goes out of the top', () => {
+    // The half the validator cannot see, and it is worth stating here because "the floor" is this
+    // table's whole job and half a floor is a misleading example.
+    //
+    // My first version of this removed `wall.left` and asserted the ball escaped SIDEWAYS. It does not:
+    // it goes straight up the lane and out of the top, and the side walls are never touched at all.
+    // The test failed, which is the only reason I measured instead of assuming.
+    const without = {
+      ...BARE_MINIMUM,
+      components: BARE_MINIMUM.components.filter((c) => c.kind !== 'wall'),
+    };
+
+    expect(validateTable(without, VIEW)).toEqual([]);
+    expect(leavesThroughAHole(without)).toBe(true);
   });
 
   test('and one pixel shorter breaks it too', () => {

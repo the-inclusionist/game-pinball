@@ -7,6 +7,7 @@ import { buildPhysics, drainedBy, launchSpeedFor, FRAME_SECONDS } from '../app/j
 import { advanceFrame } from '../app/js/physics/step.js';
 import { CATALOG, BARE_MINIMUM } from '../app/js/table/catalog.js';
 import type { AuthoredTable } from '../app/js/table/authored.js';
+import { createRolloverWatch } from '../app/js/table/rollovers.js';
 
 /**
  * ⚠️ THE GATE `validateTable` CANNOT BE.
@@ -25,6 +26,9 @@ import type { AuthoredTable } from '../app/js/table/authored.js';
 /** Launches up the lane and steps until the ball is lost or the budget runs out. */
 function launchAndWatch(table: AuthoredTable, frames = 4000) {
   const physics = buildPhysics(table);
+  // ⚠️ CROSSINGS COUNT TOO. Half of what an authored table offers is regions the ball rolls OVER, and a
+  // gate that watched only collisions would call a table a corridor while the ball crossed three lanes.
+  const rollovers = createRolloverWatch(table);
   const ball = physics.spawnBall();
   const from = { x: ball.position.x, y: ball.position.y };
   ball.direction = { x: 0, y: -1 };
@@ -37,6 +41,7 @@ function launchAndWatch(table: AuthoredTable, frames = 4000) {
   for (let i = 0; i < frames && !drained; i++) {
     advanceFrame([ball], physics.context, FRAME_SECONDS);
     for (const hit of physics.takeHits()) touched.push(hit.name);
+    for (const name of rollovers.poll(ball)) touched.push(name);
     furthestFromLane = Math.max(furthestFromLane, Math.abs(ball.position.x - from.x));
     drained = drainedBy(table, ball);
   }
@@ -61,14 +66,22 @@ describe('a launched ball reaches the play', () => {
   );
 
   test.each(PLAYABLE.map((t) => [t.name, t] as const))(
-    '%s: the ball touches something that is not a wall',
+    '⚠️ %s: the ball touches something that SCORES',
     (_name, table) => {
-      // Reaching the play is not enough: it has to arrive somewhere that does something. A table
-      // where the ball only ever meets walls is a corridor.
+      // ⚠️ THIS USED TO SAY "something that is not a wall", AND A FLIPPER SATISFIED IT.
+      //
+      // Under the weaker claim `four-flippers` passed while touching a wall, a flipper and the drain:
+      // nought of its three scoring components, on every launch, deterministically. The gate said the
+      // table was playable and the table was a corridor with paddles in it.
+      //
+      // "Scores" means a component with a score table AND a control, which since `validateTable` learned
+      // to refuse an unpaid score is the same thing as "worth something".
       const { touched } = launchAndWatch(table);
-      const walls = new Set(table.components.filter((c) => c.kind === 'wall').map((c) => c.name));
+      const scoring = new Set(
+        table.components.filter((c) => c.scores?.length && c.control).map((c) => c.name),
+      );
 
-      expect(touched.filter((name) => !walls.has(name)).length).toBeGreaterThan(0);
+      expect(touched.filter((name) => scoring.has(name))).not.toEqual([]);
     },
   );
 
@@ -85,7 +98,16 @@ describe('a launched ball reaches the play', () => {
   );
 });
 
-describe('the floor of the format is exempt, and says so', () => {
+describe('the floor of the format is exempt from PLAYING, not from holding its ball', () => {
+  test('⚠️ bare-minimum does not lose its ball through a hole either', () => {
+    // It was losing it to `outside`, which by this project's own definition is a hole in the geometry
+    // rather than a way to lose — `drainedBy` splits the two for exactly this reason and says so.
+    // Containing the ball is not a question of whether a table is FUN; it is whether it is a table.
+    const { drained } = launchAndWatch(BARE_MINIMUM);
+
+    expect(drained).not.toBe('outside');
+  });
+
   test('bare-minimum is not expected to be playable', () => {
     // It is in the catalogue to show what the validator actually demands. One flipper cannot cover a
     // drain and there is nothing to score, and pretending otherwise here would be inventing a rule to
