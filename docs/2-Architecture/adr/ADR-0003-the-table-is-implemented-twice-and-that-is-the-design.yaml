@@ -94,6 +94,42 @@ consequences:
     - "A behaviour fixed on one side does not reach the other. That is the price of the transcription
        staying a transcription, and it is paid knowingly."
 
+amendment-2026-09-05-evening: |
+  THE NUMBER IN THIS RECORD WAS "ROUGHLY FORTY" AND IT IS NOW TWENTY-THREE, out of a hundred and twelve
+  modules. That is not a correction of the decision; it is the decision working, and the count is
+  written down because the record's own worth depends on it being checkable.
+
+  ⚠️ AND THE REASON THE COUNT MOVED CHANGES WHAT THIS RECORD SAYS. When it was written, the
+  transcription was "reached only by tests". It is not any more: the 1995 table has a RUNTIME — the
+  demonstration reads the player's own archive, builds the components from it, runs sixty-one of the
+  eighty-eight scoring components through their 1995 control functions, and is playable with both
+  flippers and the plunger. So the transcription is no longer only a measuring instrument; part of it is
+  a game, and the part that is not is smaller and nameable.
+
+  The twenty-three fall into TWO groups, and only one of them is what this record is about.
+
+  COVERED BY THIS DECISION — no runtime caller because a 1995 mechanism is not expressible from authored
+  data, or because the data itself may not ship:
+    · `audio/sound-table`, `audio/sound-links` — a group is a sound because its value field says 202,
+      and a `TSound` points at one through an Int16 record. Authored tables have generated sounds.
+    · `dat/spliced`, `dat/zmap` — decoders for two formats only the original file uses.
+    · `gfx/render`, `gfx/gdrv`, `gfx/scale` — the 1995 composition path. The demonstration draws through
+      `gfx/original-view`, which is the same archive read for a different screen.
+
+  NOT COVERED — work that is simply not finished, and which this record must not be read as excusing:
+    · `table/sink`, `table/ramp`, `table/rollover`, `table/solo-target`, `table/popup-target`,
+      `table/oneway`, `table/blocker` — `T*` ports whose components the archive builder does not build
+      yet. Four others that were in this list — the gate, the kickback, the kickout and the plunger —
+      have been built since, which is the shape of the remaining work.
+    · `control/drain`, `control/hyperspace`, `control/mission-runner`, `control/mission-specials`,
+      `control/mission-table`, `control/rank`, `control/cheats`, `control/links`,
+      `control/simple-components` — the mission machine and the end of a ball. Transcribed, tested, and
+      reaching nothing: the demonstration's `missionControl` is still empty and a drained ball is still
+      not lost.
+
+  Whoever reads this next: the second list is the todo, and it is allowed to shrink only by wiring, never
+  by moving a name into the first list.
+
 verification: |
   Every module in the list above is exercised by tests, and the transcription's tests run against the
   real archive rather than against fixtures. `npm run validate` covers both sides; neither is allowed to
