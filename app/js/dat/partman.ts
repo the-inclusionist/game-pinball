@@ -1,144 +1,145 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// dat/partman — leitor do arquivo PARTOUT (.DAT). Port de partman.cpp do upstream.
+// dat/partman — the PARTOUT (.DAT) reader. Port of `partman.cpp`.
 //
-// Formato conforme `Doc/.dat file format.txt` (AdrienTD). Os tres campos de texto do cabecalho tem
-// tamanho FIXO e sao preenchidos com zeros — o texto util e o que vem antes do primeiro NUL.
+// Format per `Doc/.dat file format.txt` (AdrienTD). The header's three text fields are FIXED WIDTH and
+// zero padded — the useful text is whatever comes before the first NUL.
 
-/** Deslocamentos do cabecalho, em bytes. Nomeados porque `0x47` sozinho nao diz o que e. */
 const OFF = {
-  assinatura: 0x00, nomeDoApp: 0x15, descricao: 0x47,
-  tamanhoDoArquivo: 0xab, numeroDeGrupos: 0xaf, tamanhoDoCorpo: 0xb1,
+  signature: 0x00, appName: 0x15, description: 0x47,
+  fileSize: 0xab, groupCount: 0xaf, bodySize: 0xb1,
 } as const;
-const TAM = { assinatura: 21, nomeDoApp: 50, descricao: 100 } as const;
+const LEN = { signature: 21, appName: 50, description: 100 } as const;
 
-/** Onde o corpo comeca. Nao e deduzido: e o fim do cabecalho de tamanho fixo, e o dump do upstream
- *  confirma listando o grupo 0 em `location: 0xB7`. */
-export const INICIO_DO_CORPO = 0xb7;
+/**
+ * Where the body starts. Not deduced: it is the end of the fixed-size header, and the upstream dump
+ * confirms it by listing group 0 at `location: 0xB7`.
+ */
+export const BODY_START = 0xb7;
 
-/** A unica assinatura que este leitor aceita. Um arquivo com outra nao e um erro de leitura — e outro formato. */
-export const ASSINATURA_ESPERADA = 'PARTOUT(4.0)RESOURCE';
+/** The only signature this reader accepts. A file with another is not a read error — it is another format. */
+export const EXPECTED_SIGNATURE = 'PARTOUT(4.0)RESOURCE';
 
-/** Texto de um campo de tamanho fixo: para no primeiro NUL, e nao arrasta o preenchimento. */
-function textoFixo(a: Uint8Array, inicio: number, tamanho: number): string {
-  const campo = a.subarray(inicio, inicio + tamanho);
-  const fim = campo.indexOf(0);
-  return new TextDecoder('latin1').decode(fim === -1 ? campo : campo.subarray(0, fim));
+/** Text of a fixed-width field: stops at the first NUL, and does not drag the padding along. */
+function fixedText(a: Uint8Array, start: number, length: number): string {
+  const field = a.subarray(start, start + length);
+  const end = field.indexOf(0);
+  return new TextDecoder('latin1').decode(end === -1 ? field : field.subarray(0, end));
 }
 
-export interface Cabecalho {
-  readonly assinatura: string;
-  readonly nomeDoApp: string;
-  readonly descricao: string;
-  readonly numeroDeGrupos: number;
-  readonly tamanhoDoCorpo: number;
-  readonly inicioDoCorpo: number;
+export interface Header {
+  readonly signature: string;
+  readonly appName: string;
+  readonly description: string;
+  readonly groupCount: number;
+  readonly bodySize: number;
+  readonly bodyStart: number;
 }
 
-export function lerCabecalho(arquivo: Uint8Array): Cabecalho {
-  const assinatura = textoFixo(arquivo, OFF.assinatura, TAM.assinatura);
-  // FALHA ALTO, e nao em silencio: seguir lendo offsets de um formato que nao e este daria numeros
-  // plausiveis e um erro trinta funcoes adiante, longe da causa.
-  if (assinatura !== ASSINATURA_ESPERADA) {
-    throw new Error(`partman: assinatura inesperada ${JSON.stringify(assinatura)} — esperava ${JSON.stringify(ASSINATURA_ESPERADA)}`);
+export function readHeader(file: Uint8Array): Header {
+  const signature = fixedText(file, OFF.signature, LEN.signature);
+  // FAILS LOUDLY rather than in silence: carrying on reading the offsets of a format that is not this
+  // one would produce plausible numbers and an error thirty functions later, far from the cause.
+  if (signature !== EXPECTED_SIGNATURE) {
+    throw new Error(`partman: unexpected signature ${JSON.stringify(signature)} — expected ${JSON.stringify(EXPECTED_SIGNATURE)}`);
   }
-  const dv = new DataView(arquivo.buffer, arquivo.byteOffset, arquivo.byteLength);
+  const dv = new DataView(file.buffer, file.byteOffset, file.byteLength);
   return {
-    assinatura,
-    nomeDoApp: textoFixo(arquivo, OFF.nomeDoApp, TAM.nomeDoApp),
-    descricao: textoFixo(arquivo, OFF.descricao, TAM.descricao),
-    numeroDeGrupos: dv.getUint16(OFF.numeroDeGrupos, true),
-    tamanhoDoCorpo: dv.getUint32(OFF.tamanhoDoCorpo, true),
-    inicioDoCorpo: INICIO_DO_CORPO,
+    signature,
+    appName: fixedText(file, OFF.appName, LEN.appName),
+    description: fixedText(file, OFF.description, LEN.description),
+    groupCount: dv.getUint16(OFF.groupCount, true),
+    bodySize: dv.getUint32(OFF.bodySize, true),
+    bodyStart: BODY_START,
   };
 }
 
-/* ===================== CORPO: GRUPOS E ENTRADAS ===================== */
+/* ===================== THE BODY: GROUPS AND ENTRIES ===================== */
 
 /**
- * Os tipos de entrada, conforme `Doc/.dat file format.txt`. Os numeros nao sao sequenciais porque
- * o formato original nao os fez sequenciais — 2, 4, 6, 7 e 8 simplesmente nao existem.
+ * The entry types, per `Doc/.dat file format.txt`. The numbers are not sequential because the original
+ * format did not make them so — 2, 4, 6, 7 and 8 simply do not exist.
  */
-export const TipoDeEntrada = {
-  /** A ARMADILHA: nao tem DWORD de tamanho, tem WORD de valor. */
-  Valor16: 0,
+export const EntryType = {
+  /** THE TRAP: carries no size DWORD, it carries a 16-bit value. */
+  Value16: 0,
   Bitmap8: 1,
-  NomeDeGrupo: 3,
-  Paleta: 5,
+  GroupName: 3,
+  Palette: 5,
   String: 9,
   Int16s: 10,
-  /** Arrays de float: e aqui que mora a geometria de colisao. */
+  /** Float arrays: this is where the collision geometry lives. */
   Float32s: 11,
   ZMap: 12,
 } as const;
-export type TipoDeEntrada = (typeof TipoDeEntrada)[keyof typeof TipoDeEntrada];
+export type EntryType = (typeof EntryType)[keyof typeof EntryType];
 
-export interface Entrada {
-  readonly tipo: number;
-  /** Os bytes crus da entrada. Ausente no tipo 0, que carrega `valor` em vez de dados. */
-  readonly dados?: Uint8Array;
-  /** So no tipo 0. */
-  readonly valor?: number;
+export interface Entry {
+  readonly type: number;
+  /** The entry's raw bytes. */
+  readonly data?: Uint8Array;
+  /** Only on type 0. */
+  readonly value?: number;
 }
 
-export interface Grupo {
-  /** O texto da entrada tipo 3, quando o grupo tem uma. Nem todo grupo tem nome. */
-  readonly nome: string | null;
-  readonly entradas: readonly Entrada[];
+export interface Group {
+  /** The text of the type 3 entry, when the group has one. Not every group has a name. */
+  readonly name: string | null;
+  readonly entries: readonly Entry[];
 }
 
 /**
- * O TAMANHO FIXO DE CADA TIPO, transcrito de `partman::_field_size[]` do upstream:
+ * EACH TYPE'S FIXED SIZE, transcribed from the upstream's `partman::_field_size[]`:
  *   { 2, -1, 2, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0 }
- * `-1` quer dizer "le um DWORD de tamanho antes dos dados". Os tres que NAO leem sao 0 e 2 (dois bytes
- * cada) e 13 (nenhum byte).
+ * `-1` means "read a size DWORD before the data". The three that do NOT read one are 0 and 2 (two bytes
+ * each) and 13 (no bytes at all).
  *
- * A spec em `Doc/.dat file format.txt` so documenta o tipo 0, e e por isso que esta tabela existe em vez
- * de um `if (tipo === 0)`: um leitor escrito a partir so da spec desincroniza no primeiro tipo 2 ou 13 —
- * e desincroniza EM SILENCIO, lendo lixo dali ate o fim do arquivo sem estourar.
+ * The spec in `Doc/.dat file format.txt` only documents type 0, and that is why this table exists
+ * instead of an `if (type === 0)`: a reader written from the spec alone loses sync at the first type 2
+ * or 13 — and loses it IN SILENCE, reading garbage from there to the end of the file.
  */
-const TAMANHO_FIXO: readonly number[] = [2, -1, 2, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0];
+const FIXED_SIZE: readonly number[] = [2, -1, 2, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0];
 
-/** `-1` = o tamanho vem num DWORD. Tipo fora da tabela cai no mesmo caso, que e o comportamento do original. */
-function tamanhoFixoDe(tipo: number): number {
-  return TAMANHO_FIXO[tipo] ?? -1;
+/** `-1` = the size comes in a DWORD. A type outside the table falls in the same case, as the original does. */
+function fixedSizeOf(type: number): number {
+  return FIXED_SIZE[type] ?? -1;
 }
 
-export function lerGrupos(arquivo: Uint8Array): Grupo[] {
-  const cab = lerCabecalho(arquivo);
-  const dv = new DataView(arquivo.buffer, arquivo.byteOffset, arquivo.byteLength);
-  const grupos: Grupo[] = [];
-  let p = cab.inicioDoCorpo;
+export function readGroups(file: Uint8Array): Group[] {
+  const header = readHeader(file);
+  const dv = new DataView(file.buffer, file.byteOffset, file.byteLength);
+  const groups: Group[] = [];
+  let p = header.bodyStart;
 
-  for (let g = 0; g < cab.numeroDeGrupos; g++) {
-    const quantas = dv.getUint8(p); p += 1;
-    const entradas: Entrada[] = [];
-    let nome: string | null = null;
+  for (let g = 0; g < header.groupCount; g++) {
+    const howMany = dv.getUint8(p); p += 1;
+    const entries: Entry[] = [];
+    let name: string | null = null;
 
-    for (let e = 0; e < quantas; e++) {
-      const tipo = dv.getUint8(p); p += 1;
+    for (let e = 0; e < howMany; e++) {
+      const type = dv.getUint8(p); p += 1;
 
-      const fixo = tamanhoFixoDe(tipo);
-      let tamanho: number;
-      if (fixo >= 0) {
-        tamanho = fixo;
+      const fixed = fixedSizeOf(type);
+      let size: number;
+      if (fixed >= 0) {
+        size = fixed;
       } else {
-        tamanho = dv.getUint32(p, true); p += 4;
+        size = dv.getUint32(p, true); p += 4;
       }
 
-      const inicio = p;
-      const dados = arquivo.subarray(inicio, inicio + tamanho);
-      p += tamanho;
+      const start = p;
+      const data = file.subarray(start, start + size);
+      p += size;
 
-      // O tipo 0 e o unico cujos dois bytes tem leitura conhecida: um WORD. Os outros ficam crus.
-      entradas.push(tipo === TipoDeEntrada.Valor16 && tamanho >= 2
-        ? { tipo, dados, valor: dv.getUint16(inicio, true) }
-        : { tipo, dados });
+      // Type 0 is the only one whose two bytes have a known reading: a WORD. The others stay raw.
+      entries.push(type === EntryType.Value16 && size >= 2
+        ? { type, data, value: dv.getUint16(start, true) }
+        : { type, data });
 
-      if (tipo === TipoDeEntrada.NomeDeGrupo) nome = textoFixo(dados, 0, dados.length);
+      if (type === EntryType.GroupName) name = fixedText(data, 0, data.length);
     }
 
-    grupos.push({ nome, entradas });
+    groups.push({ name, entries });
   }
 
-  return grupos;
+  return groups;
 }

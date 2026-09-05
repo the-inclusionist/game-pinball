@@ -1,200 +1,196 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// tests/helpers/partout — construtor de arquivos PARTOUT sinteticos.
+// tests/helpers/partout — a builder for synthetic PARTOUT files.
 //
-// POR QUE UM CONSTRUTOR E NAO UM ARQUIVO DE FIXTURE: o PINBALL.DAT e obra de terceiro e nao pode ser
-// versionado (ver .gitignore). Um teste que dependesse dele so rodaria na maquina de quem tem o jogo.
-// Este construtor produz arquivos MINIMOS no mesmo formato, entao a logica do parser e testavel sozinha;
-// o arquivo real entra depois, no gate de conformidade, comparado contra o dump do AdrienTD.
+// WHY A BUILDER AND NOT A FIXTURE FILE: PINBALL.DAT is third-party work and cannot be committed (see
+// .gitignore). A test depending on it would only run on a machine that owns the game. This builder
+// produces MINIMAL files in the same format, so the parser's logic is testable on its own; the real
+// file arrives later, at the conformance gate, checked against AdrienTD's dump.
 //
-// Formato conforme `Doc/.dat file format.txt` do upstream (AdrienTD).
+// Format per the upstream's `Doc/.dat file format.txt`.
 
-export const ASSINATURA = 'PARTOUT(4.0)RESOURCE';
+export const SIGNATURE = 'PARTOUT(4.0)RESOURCE';
 
-/** Um campo de texto de tamanho FIXO, preenchido com zeros — e assim que o formato guarda os tres do cabecalho. */
-function textoFixo(texto: string, tamanho: number): Uint8Array {
-  const b = new Uint8Array(tamanho);
-  for (let i = 0; i < texto.length && i < tamanho; i++) b[i] = texto.charCodeAt(i);
+/** A FIXED-width text field, zero padded — that is how the format stores the header's three. */
+function fixedText(text: string, length: number): Uint8Array {
+  const b = new Uint8Array(length);
+  for (let i = 0; i < text.length && i < length; i++) b[i] = text.charCodeAt(i);
   return b;
 }
 
-export interface CabecalhoSintetico {
-  readonly assinatura?: string;
-  readonly nomeDoApp?: string;
-  readonly descricao?: string;
-  readonly numeroDeGrupos?: number;
-  /** Corpo cru. Vazio por padrao: o cabecalho e testavel sem nenhum grupo. */
-  readonly corpo?: Uint8Array;
+export interface SyntheticHeader {
+  readonly signature?: string;
+  readonly appName?: string;
+  readonly description?: string;
+  readonly groupCount?: number;
+  /** Raw body. Empty by default: the header is testable with no groups at all. */
+  readonly body?: Uint8Array;
 }
 
-/** Monta um arquivo PARTOUT completo. O corpo comeca em 0xB7, que e o que o dump do upstream confirma. */
-export function montarPartout(c: CabecalhoSintetico = {}): Uint8Array {
-  const corpo = c.corpo ?? new Uint8Array(0);
-  const TAMANHO_CABECALHO = 0xb7;
-  const arquivo = new Uint8Array(TAMANHO_CABECALHO + corpo.length);
-  const dv = new DataView(arquivo.buffer);
+/** Assembles a complete PARTOUT file. The body starts at 0xB7, which the upstream dump confirms. */
+export function buildPartout(c: SyntheticHeader = {}): Uint8Array {
+  const body = c.body ?? new Uint8Array(0);
+  const HEADER_SIZE = 0xb7;
+  const file = new Uint8Array(HEADER_SIZE + body.length);
+  const dv = new DataView(file.buffer);
 
-  arquivo.set(textoFixo(c.assinatura ?? ASSINATURA, 21), 0x00);
-  arquivo.set(textoFixo(c.nomeDoApp ?? '3D-Pinball', 50), 0x15);
-  arquivo.set(textoFixo(c.descricao ?? 'Space Cadet Table', 100), 0x47);
-  dv.setUint32(0xab, arquivo.length, true);
-  dv.setUint16(0xaf, c.numeroDeGrupos ?? 0, true);
-  dv.setUint32(0xb1, corpo.length, true);
+  file.set(fixedText(c.signature ?? SIGNATURE, 21), 0x00);
+  file.set(fixedText(c.appName ?? '3D-Pinball', 50), 0x15);
+  file.set(fixedText(c.description ?? 'Space Cadet Table', 100), 0x47);
+  dv.setUint32(0xab, file.length, true);
+  dv.setUint16(0xaf, c.groupCount ?? 0, true);
+  dv.setUint32(0xb1, body.length, true);
   dv.setUint16(0xb5, 0, true);
-  arquivo.set(corpo, TAMANHO_CABECALHO);
+  file.set(body, HEADER_SIZE);
 
-  return arquivo;
+  return file;
 }
 
-/* ===================== CORPO: GRUPOS E ENTRADAS ===================== */
+/* ===================== BODY: GROUPS AND ENTRIES ===================== */
 
-/**
- * Uma entrada comum: byte de tipo, DWORD de tamanho, dados.
- * (O tipo 0 NAO segue esta forma — ver `entradaTipo0`.)
- */
-export function entrada(tipo: number, dados: Uint8Array): Uint8Array {
-  const b = new Uint8Array(1 + 4 + dados.length);
-  b[0] = tipo;
-  new DataView(b.buffer).setUint32(1, dados.length, true);
-  b.set(dados, 5);
+/** An ordinary entry: type byte, size DWORD, data. (Type 0 does NOT follow this shape.) */
+export function entry(type: number, data: Uint8Array): Uint8Array {
+  const b = new Uint8Array(1 + 4 + data.length);
+  b[0] = type;
+  new DataView(b.buffer).setUint32(1, data.length, true);
+  b.set(data, 5);
   return b;
 }
 
 /**
- * A ENTRADA TIPO 0, que e a armadilha do formato: o byte de tipo e seguido de um WORD de valor,
- * e nao do DWORD de tamanho. Um leitor que trate todos os tipos igual sai de sincronia aqui e le
- * lixo por todo o resto do arquivo — sem estourar, o que e o pior modo de falhar.
+ * THE TYPE 0 ENTRY, the format's trap: the type byte is followed by a WORD of value, not by the size
+ * DWORD. A reader that treats every type alike loses sync here and reads garbage through the rest of
+ * the file — without throwing, which is the worst way to fail.
  */
-export function entradaTipo0(valor: number): Uint8Array {
+export function value16Entry(value: number): Uint8Array {
   const b = new Uint8Array(3);
   b[0] = 0;
-  new DataView(b.buffer).setUint16(1, valor, true);
+  new DataView(b.buffer).setUint16(1, value, true);
   return b;
 }
 
-/** Um grupo: um byte com a contagem de entradas, seguido das entradas. */
-export function grupo(...entradas: Uint8Array[]): Uint8Array {
-  const total = entradas.reduce((n, e) => n + e.length, 0);
+/**
+ * A FIXED-SIZE entry: type byte followed straight by the data, with no size DWORD. The upstream's
+ * `_field_size[]` table says which types are like this — 0 and 2 with two bytes, 13 with none.
+ */
+export function fixedSizeEntry(type: number, data: Uint8Array): Uint8Array {
+  const b = new Uint8Array(1 + data.length);
+  b[0] = type;
+  b.set(data, 1);
+  return b;
+}
+
+/** A group: one byte with the entry count, followed by the entries. */
+export function group(...entries: Uint8Array[]): Uint8Array {
+  const total = entries.reduce((n, e) => n + e.length, 0);
   const b = new Uint8Array(1 + total);
-  b[0] = entradas.length;
+  b[0] = entries.length;
   let p = 1;
-  for (const e of entradas) { b.set(e, p); p += e.length; }
+  for (const e of entries) { b.set(e, p); p += e.length; }
   return b;
 }
 
-/** Concatena grupos num corpo. */
-export function corpoCom(...grupos: Uint8Array[]): Uint8Array {
-  const total = grupos.reduce((n, g) => n + g.length, 0);
+/** Concatenates groups into a body. */
+export function bodyOf(...groups: Uint8Array[]): Uint8Array {
+  const total = groups.reduce((n, g) => n + g.length, 0);
   const b = new Uint8Array(total);
   let p = 0;
-  for (const g of grupos) { b.set(g, p); p += g.length; }
+  for (const g of groups) { b.set(g, p); p += g.length; }
   return b;
 }
 
-/** Bytes de um texto latin1 — o que as entradas de tipo 3 (nome de grupo) e 9 (string) carregam. */
-export function texto(s: string): Uint8Array {
+/** Bytes of a latin1 string — what type 3 (group name) and type 9 (string) entries carry. */
+export function text(s: string): Uint8Array {
   const b = new Uint8Array(s.length);
   for (let i = 0; i < s.length; i++) b[i] = s.charCodeAt(i);
   return b;
 }
 
-/* ===================== BITMAP 8BPP ===================== */
+/** Bytes of a little-endian int16 array — the payload of a type 10 entry. */
+export function int16s(...values: number[]): Uint8Array {
+  const b = new Uint8Array(values.length * 2);
+  const dv = new DataView(b.buffer);
+  values.forEach((v, i) => dv.setInt16(i * 2, v, true));
+  return b;
+}
 
-/** Os bits do byte de flags do cabecalho de bitmap, conforme a spec do upstream. */
-export const FLAG_BITMAP = { brutoDesalinhado: 1, dib: 2, spliced: 4 } as const;
+/* ===================== 8BPP BITMAP ===================== */
 
-export interface BitmapSintetico {
-  readonly resolucao?: number;
-  readonly largura: number;
-  readonly altura: number;
+/** The bits of the bitmap header's flags byte, per the upstream spec. */
+export const BITMAP_FLAG = { rawUnaligned: 1, dib: 2, spliced: 4 } as const;
+
+export interface SyntheticBitmap {
+  readonly resolution?: number;
+  readonly width: number;
+  readonly height: number;
   readonly x?: number;
   readonly y?: number;
   readonly flags?: number;
-  readonly dados: Uint8Array;
+  readonly data: Uint8Array;
 }
 
-/** Monta o payload de uma entrada tipo 1 (bitmap 8bpp): 14 bytes de cabecalho + dados. */
-export function bitmap8(b: BitmapSintetico): Uint8Array {
-  const buf = new Uint8Array(14 + b.dados.length);
+/** Builds the payload of a type 1 entry (8bpp bitmap): 14 header bytes plus data. */
+export function bitmap8(b: SyntheticBitmap): Uint8Array {
+  const buf = new Uint8Array(14 + b.data.length);
   const dv = new DataView(buf.buffer);
-  dv.setInt8(0, b.resolucao ?? -1);
-  dv.setUint16(1, b.largura, true);
-  dv.setUint16(3, b.altura, true);
+  dv.setInt8(0, b.resolution ?? -1);
+  dv.setUint16(1, b.width, true);
+  dv.setUint16(3, b.height, true);
   dv.setUint16(5, b.x ?? 0, true);
   dv.setUint16(7, b.y ?? 0, true);
-  dv.setUint32(9, b.dados.length, true);
+  dv.setUint32(9, b.data.length, true);
   dv.setUint8(13, b.flags ?? 0);
-  buf.set(b.dados, 14);
+  buf.set(b.data, 14);
   return buf;
 }
 
-/**
- * Uma entrada de TAMANHO FIXO: byte de tipo seguido direto dos dados, sem o DWORD de tamanho.
- * A tabela `_field_size[]` do `partman.cpp` diz quais tipos sao assim — 0 e 2 com 2 bytes, 13 com nenhum.
- */
-export function entradaFixa(tipo: number, dados: Uint8Array): Uint8Array {
-  const b = new Uint8Array(1 + dados.length);
-  b[0] = tipo;
-  b.set(dados, 1);
-  return b;
-}
+/* ===================== 16BPP Z-MAP ===================== */
 
-/* ===================== Z-MAP 16BPP ===================== */
-
-export interface ZMapSintetico {
-  readonly largura: number;
-  readonly altura: number;
-  /** Pitch/2, em unidades de 16 bits. Por padrao igual a largura. */
+export interface SyntheticZMap {
+  readonly width: number;
+  readonly height: number;
+  /** Pitch/2, in 16-bit cells. Equal to the width by default. */
   readonly stride?: number;
-  /** Profundidades, uma por celula. Por padrao um mapa coerente com stride x altura. */
-  readonly dados?: Uint16Array;
+  /** Depths, one per cell. By default a map consistent with stride x height. */
+  readonly depths?: Uint16Array;
 }
 
-/** Monta o payload de uma entrada tipo 12: 14 bytes de cabecalho + profundidades de 16 bits. */
-export function zmap16(z: ZMapSintetico): Uint8Array {
-  const stride = z.stride ?? z.largura;
-  const dados = z.dados ?? new Uint16Array(stride * z.altura);
-  const buf = new Uint8Array(14 + dados.length * 2);
+/** Builds the payload of a type 12 entry: 14 header bytes plus 16-bit depths. */
+export function zmap16(z: SyntheticZMap): Uint8Array {
+  const stride = z.stride ?? z.width;
+  const depths = z.depths ?? new Uint16Array(stride * z.height);
+  const buf = new Uint8Array(14 + depths.length * 2);
   const dv = new DataView(buf.buffer);
-  dv.setUint16(0, z.largura, true);
-  dv.setUint16(2, z.altura, true);
+  dv.setUint16(0, z.width, true);
+  dv.setUint16(2, z.height, true);
   dv.setUint16(4, stride, true);
-  dv.setUint16(12, 80, true); // o "Unknown (80)" da spec
-  for (let i = 0; i < dados.length; i++) dv.setUint16(14 + i * 2, dados[i]!, true);
+  dv.setUint16(12, 80, true); // the spec's "Unknown (80)"
+  for (let i = 0; i < depths.length; i++) dv.setUint16(14 + i * 2, depths[i]!, true);
   return buf;
 }
 
-/* ===================== FLUXO SPLICED ===================== */
+/* ===================== SPLICED STREAM ===================== */
 
-export interface CorridaSpliced {
-  /** Quantos pixels de destino pular antes desta corrida. */
-  readonly salto: number;
-  readonly pixels: readonly { readonly profundidade: number; readonly indice: number }[];
+export interface SplicedRun {
+  /** How many destination pixels to skip before this run. */
+  readonly skip: number;
+  readonly pixels: readonly { readonly depth: number; readonly index: number }[];
 }
 
 /**
- * Monta o fluxo spliced do upstream. Cada corrida e [salto:int16][quantos:uint16] seguida de
- * `quantos` pixels de TRES bytes: [profundidade:uint16][indice:uint8]. Um salto negativo encerra.
+ * Builds the upstream's spliced stream. Each run is [skip:int16][count:uint16] followed by `count`
+ * pixels of THREE bytes: [depth:uint16][index:uint8]. A negative skip ends it.
  *
- * Os tres bytes por pixel sao o ponto: uma corrida de tamanho impar deixa o fluxo em posicao IMPAR,
- * e a proxima corrida le seu int16 desalinhado. Um leitor indexado em palavras de 16 bits nao tem como
- * expressar isso.
+ * The three bytes per pixel are the point: a run of odd length leaves the stream on an ODD position,
+ * and the next run reads its int16 unaligned. A reader indexed in 16-bit words cannot express that.
  */
-export function fluxoSpliced(corridas: readonly CorridaSpliced[]): Uint8Array {
+export function splicedStream(runs: readonly SplicedRun[]): Uint8Array {
   const bytes: number[] = [];
   const push16 = (v: number) => { bytes.push(v & 0xff, (v >> 8) & 0xff); };
-  for (const c of corridas) {
-    push16(c.salto);
-    push16(c.pixels.length);
-    for (const p of c.pixels) { push16(p.profundidade); bytes.push(p.indice & 0xff); }
+  for (const r of runs) {
+    push16(r.skip);
+    push16(r.pixels.length);
+    for (const p of r.pixels) { push16(p.depth); bytes.push(p.index & 0xff); }
   }
-  push16(0xffff); // salto -1: encerra
+  push16(0xffff); // skip -1: ends the stream
   return new Uint8Array(bytes);
-}
-
-/** Bytes de um array de int16 little-endian — a carga da entrada tipo 10. */
-export function int16s(...valores: number[]): Uint8Array {
-  const b = new Uint8Array(valores.length * 2);
-  const dv = new DataView(b.buffer);
-  valores.forEach((v, i) => dv.setInt16(i * 2, v, true));
-  return b;
 }

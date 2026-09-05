@@ -1,139 +1,140 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// maths — a geometria de colisao. Port de `maths.cpp`.
+// maths — the collision geometry. Port of `maths.cpp`.
 //
-// Nao ha motor de fisica no Space Cadet: ha um raio, um circulo e um segmento de reta, e tudo o que a
-// bola faz sai destas tres coisas. Por isso este arquivo e transcricao literal, e nao "equivalente".
+// There is no physics engine in Space Cadet. There is a ray, a circle and a line segment, and
+// everything the ball does comes out of those three. So this file is a transcription, not an
+// equivalent.
 
-/** O "nao houve colisao" do original: 1e9, e nao Infinity nem null. Comparacoes o tratam como longe. */
-export const SEM_COLISAO = 1000000000;
+/** The original's "no collision": 1e9, not Infinity and not null. Comparisons treat it as far away. */
+export const NO_COLLISION = 1000000000;
 
-export interface Vetor2 { x: number; y: number }
+export interface Vector2 { x: number; y: number }
 
-export interface Circulo {
-  readonly centro: Vetor2;
-  /** Ao QUADRADO: o original nunca guarda o raio, so o quadrado, para nao tirar raiz a toa. */
-  readonly raioAoQuadrado: number;
+export interface Circle {
+  readonly center: Vector2;
+  /** SQUARED. The original never stores the radius, only its square, to avoid needless square roots. */
+  readonly radiusSq: number;
 }
 
-export interface Raio {
-  readonly origem: Vetor2;
-  readonly direcao: Vetor2;
-  readonly distanciaMaxima: number;
-  /** Tolerancia de penetracao: aceita acerto ate `-distanciaMinima`. */
-  readonly distanciaMinima: number;
-  readonly mascaraDeColisao: number;
+export interface Ray {
+  readonly origin: Vector2;
+  readonly direction: Vector2;
+  readonly maxDistance: number;
+  /** Penetration tolerance: a hit as far back as `-minDistance` still counts. */
+  readonly minDistance: number;
+  readonly collisionMask: number;
 }
 
-export interface Linha {
-  direcao: Vetor2;
-  /** Perpendicular HORARIA da direcao: (dir.y, -dir.x). E a normal da face que colide. */
-  perpendicular: Vetor2;
-  origem: Vetor2;
-  fim: Vetor2;
-  coordMin: number;
-  coordMax: number;
-  /** Onde o ultimo raio cruzou. Escrito por `raioIntersectaLinha`, como no original. */
-  interseccao: Vetor2;
+export interface Line {
+  direction: Vector2;
+  /** Clockwise perpendicular of the direction: (dir.y, -dir.x). It is the normal of the facing side. */
+  perpendicular: Vector2;
+  origin: Vector2;
+  end: Vector2;
+  minCoord: number;
+  maxCoord: number;
+  /** Where the last ray crossed. Written by `rayIntersectLine`, exactly as the original does. */
+  rayIntersect: Vector2;
 }
 
-export function produtoVetorial(a: Vetor2, b: Vetor2): number {
+export function cross(a: Vector2, b: Vector2): number {
   return a.x * b.y - a.y * b.x;
 }
 
-export function produtoEscalar(a: Vetor2, b: Vetor2): number {
+export function dot(a: Vector2, b: Vector2): number {
   return a.x * b.x + a.y * b.y;
 }
 
-/** Normaliza NO LUGAR e devolve a magnitude ANTERIOR — o original usa esse retorno como velocidade. */
-export function normalizar2d(v: Vetor2): number {
-  const mag = Math.sqrt(v.x * v.x + v.y * v.y);
-  if (mag !== 0) { v.x /= mag; v.y /= mag; }
-  return mag;
+/** Normalises IN PLACE and returns the PREVIOUS magnitude — the original uses that return as a speed. */
+export function normalize2d(v: Vector2): number {
+  const magnitude = Math.sqrt(v.x * v.x + v.y * v.y);
+  if (magnitude !== 0) { v.x /= magnitude; v.y /= magnitude; }
+  return magnitude;
 }
 
 /**
- * Distancia da origem do raio ate a primeira interseccao com o circulo.
+ * Distance from the ray's origin to its first intersection with the circle.
  *
- * DUAS SAIDAS QUE PARECEM DEFEITO E NAO SAO:
+ * TWO RETURNS THAT LOOK LIKE BUGS AND ARE NOT:
  *
- * · `Tca < 0` corta ANTES do teste de "esta dentro". Quem ja esta dentro do circulo e se afastando do
- *   centro nao e empurrado de novo — sem isso a bola ficaria vibrando presa a borda.
+ * · `tca < 0` cuts out BEFORE the inside-the-circle test. A ball already inside and moving away from
+ *   the centre is not pushed again — without it the ball would buzz against the edge.
  *
- * · quem esta DENTRO recebe distancia NEGATIVA, e sem passar pelo teste de distancia maxima. O sinal e
- *   a instrucao de recuar: a interseccao positiva mais proxima esta atras da bola, e devolve-la faria a
- *   bola atravessar o circulo em vez de sair dele.
+ * · a ray whose origin is INSIDE returns a NEGATIVE distance, and skips the max-distance check. The
+ *   sign is the instruction to back out: the nearest positive intersection is behind the ball, and
+ *   returning it would send the ball through the circle instead of out of it.
  */
-export function raioIntersectaCirculo(raio: Raio, circulo: Circulo): number {
-  const lx = circulo.centro.x - raio.origem.x;
-  const ly = circulo.centro.y - raio.origem.y;
+export function rayIntersectCircle(ray: Ray, circle: Circle): number {
+  const lx = circle.center.x - ray.origin.x;
+  const ly = circle.center.y - ray.origin.y;
 
-  const tca = lx * raio.direcao.x + ly * raio.direcao.y;
-  if (tca < 0) return SEM_COLISAO;
+  const tca = lx * ray.direction.x + ly * ray.direction.y;
+  if (tca < 0) return NO_COLLISION;
 
-  const magAoQuadrado = lx * lx + ly * ly;
-  const thcAoQuadrado = circulo.raioAoQuadrado - magAoQuadrado + tca * tca;
+  const magSq = lx * lx + ly * ly;
+  const thcSq = circle.radiusSq - magSq + tca * tca;
 
-  if (magAoQuadrado < circulo.raioAoQuadrado) return tca - Math.sqrt(thcAoQuadrado);
+  if (magSq < circle.radiusSq) return tca - Math.sqrt(thcSq);
 
-  if (thcAoQuadrado < 0) return SEM_COLISAO;
+  if (thcSq < 0) return NO_COLLISION;
 
-  const t0 = tca - Math.sqrt(thcAoQuadrado);
-  if (t0 < 0 || t0 > raio.distanciaMaxima) return SEM_COLISAO;
+  const t0 = tca - Math.sqrt(thcSq);
+  if (t0 < 0 || t0 > ray.maxDistance) return NO_COLLISION;
   return t0;
 }
 
-/** O epsilon do original para decidir que uma linha e vertical. */
-const QUASE_ZERO = 0.000000001;
+/** The original's epsilon for deciding a line is vertical. */
+const NEARLY_ZERO = 0.000000001;
 
-export function iniciarLinha(x0: number, y0: number, x1: number, y1: number): Linha {
-  const direcao = { x: x1 - x0, y: y1 - y0 };
-  normalizar2d(direcao);
+export function lineInit(x0: number, y0: number, x1: number, y1: number): Line {
+  const direction = { x: x1 - x0, y: y1 - y0 };
+  normalize2d(direction);
 
-  // POR QUE A DIRECAO E ENCAIXADA NO ZERO: `raioIntersectaLinha` decide em que eixo medir o segmento
-  // testando `direcao.x !== 0`. Numa linha vertical, o X e o mesmo em todo ponto — medir o segmento por
-  // ele transformaria o segmento inteiro num ponto e a colisao passaria a valer em qualquer altura.
-  // Um resto de arredondamento em X e a diferenca entre uma parede e uma parede infinita.
-  let inicio = x0, fim = x1;
-  if (Math.abs(direcao.x) < QUASE_ZERO) {
-    direcao.x = 0;
-    inicio = y0;
-    fim = y1;
+  // WHY THE DIRECTION IS SNAPPED TO ZERO: `rayIntersectLine` picks the axis it measures the segment
+  // along by testing `direction.x !== 0`. On a vertical line every point shares the same X, so
+  // measuring the segment along it would collapse the segment to a point and the wall would collide at
+  // any height. A rounding remainder in X is the difference between a wall and an infinite one.
+  let start = x0, finish = x1;
+  if (Math.abs(direction.x) < NEARLY_ZERO) {
+    direction.x = 0;
+    start = y0;
+    finish = y1;
   }
 
   return {
-    direcao,
-    perpendicular: { x: direcao.y, y: -direcao.x },
-    origem: { x: x0, y: y0 },
-    fim: { x: x1, y: y1 },
-    coordMin: Math.min(inicio, fim),
-    coordMax: Math.max(inicio, fim),
-    interseccao: { x: 0, y: 0 },
+    direction,
+    perpendicular: { x: direction.y, y: -direction.x },
+    origin: { x: x0, y: y0 },
+    end: { x: x1, y: y1 },
+    minCoord: Math.min(start, finish),
+    maxCoord: Math.max(start, finish),
+    rayIntersect: { x: 0, y: 0 },
   };
 }
 
 /**
- * Distancia ate o cruzamento com o SEGMENTO, e escreve o ponto em `linha.interseccao`.
+ * Distance to the crossing with the SEGMENT, writing the point into `line.rayIntersect`.
  *
- * A LINHA E DE UM LADO SO. `v2 . v3 >= 0` devolve "sem colisao": um raio que chega pela face de tras
- * atravessa. Nao e omissao — e o que deixa o original usar segmentos como portoes de mao unica, e o
- * que impede a bola de ficar presa quando penetra uma parede entre dois quadros.
+ * THE LINE IS ONE-SIDED. `v2 . v3 >= 0` returns no-collision, so a ray arriving at the back face
+ * passes through. That is not an omission — it is what lets the original use segments as one-way
+ * gates, and what stops the ball being trapped when it penetrates a wall between two frames.
  */
-export function raioIntersectaLinha(raio: Raio, linha: Linha): number {
-  const v1 = { x: raio.origem.x - linha.origem.x, y: raio.origem.y - linha.origem.y };
-  const v2 = linha.direcao;
-  const v3 = { x: -raio.direcao.y, y: raio.direcao.x };
+export function rayIntersectLine(ray: Ray, line: Line): number {
+  const v1 = { x: ray.origin.x - line.origin.x, y: ray.origin.y - line.origin.y };
+  const v2 = line.direction;
+  const v3 = { x: -ray.direction.y, y: ray.direction.x };
 
-  const v2PontoV3 = produtoEscalar(v2, v3);
-  if (v2PontoV3 >= 0) return SEM_COLISAO;
+  const v2DotV3 = dot(v2, v3);
+  if (v2DotV3 >= 0) return NO_COLLISION;
 
-  const distancia = produtoVetorial(v2, v1) / v2PontoV3;
-  if (distancia < -raio.distanciaMinima || distancia > raio.distanciaMaxima) return SEM_COLISAO;
+  const distance = cross(v2, v1) / v2DotV3;
+  if (distance < -ray.minDistance || distance > ray.maxDistance) return NO_COLLISION;
 
-  linha.interseccao.x = distancia * raio.direcao.x + raio.origem.x;
-  linha.interseccao.y = distancia * raio.direcao.y + raio.origem.y;
+  line.rayIntersect.x = distance * ray.direction.x + ray.origin.x;
+  line.rayIntersect.y = distance * ray.direction.y + ray.origin.y;
 
-  const pontoDeTeste = linha.direcao.x !== 0 ? linha.interseccao.x : linha.interseccao.y;
-  if (pontoDeTeste < linha.coordMin || pontoDeTeste > linha.coordMax) return SEM_COLISAO;
+  const testPoint = line.direction.x !== 0 ? line.rayIntersect.x : line.rayIntersect.y;
+  if (testPoint < line.minCoord || testPoint > line.maxCoord) return NO_COLLISION;
 
-  return distancia;
+  return distance;
 }

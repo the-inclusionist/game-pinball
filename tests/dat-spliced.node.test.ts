@@ -1,95 +1,96 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, test, expect } from 'vitest';
-import { fluxoSpliced } from './helpers/partout.js';
-import { dividirSpliced, INDICE_DE_PREENCHIMENTO, PROFUNDIDADE_DE_PREENCHIMENTO } from '../app/js/dat/spliced.js';
+import { splicedStream } from './helpers/partout.js';
+import { splitSpliced, FILL_INDEX, FILL_DEPTH } from '../app/js/dat/spliced.js';
 
-const px = (profundidade: number, indice: number) => ({ profundidade, indice });
+const px = (depth: number, index: number) => ({ depth, index });
 
-describe('spliced — divisao em bitmap indexado + z-map', () => {
-  test('escreve indice e profundidade nas posicoes que o salto aponta', () => {
-    const dados = fluxoSpliced([{ salto: 1, pixels: [px(0x1111, 7), px(0x2222, 8)] }]);
+describe('spliced — splitting into an indexed bitmap and a z-map', () => {
+  test('writes index and depth at the positions the skip points to', () => {
+    const data = splicedStream([{ skip: 1, pixels: [px(0x1111, 7), px(0x2222, 8)] }]);
 
-    const r = dividirSpliced(dados, { largura: 4, altura: 1, larguraDaMesa: 4 });
+    const r = splitSpliced(data, { width: 4, height: 1, tableWidth: 4 });
 
     expect(r.indices[1]).toBe(7);
     expect(r.indices[2]).toBe(8);
-    expect(r.profundidades[1]).toBe(0x1111);
-    expect(r.profundidades[2]).toBe(0x2222);
+    expect(r.depths[1]).toBe(0x1111);
+    expect(r.depths[2]).toBe(0x2222);
   });
 
-  test('o que a corrida nao toca fica no preenchimento, nao em zero', () => {
-    // O original preenche o bitmap com 0xFF (indice 255, que a paleta define como branco) e o z-map
-    // com 0xFFFF (o mais longe possivel). Preencher com zero poria tudo na frente de tudo.
-    const dados = fluxoSpliced([{ salto: 2, pixels: [px(0x1234, 9)] }]);
+  test('whatever the run does not touch stays at the fill, not at zero', () => {
+    // The original fills the bitmap with 0xFF (index 255, which the palette defines as white) and the
+    // z-map with 0xFFFF (as far as possible). Filling with zero would put everything in front of
+    // everything else.
+    const data = splicedStream([{ skip: 2, pixels: [px(0x1234, 9)] }]);
 
-    const r = dividirSpliced(dados, { largura: 4, altura: 1, larguraDaMesa: 4 });
+    const r = splitSpliced(data, { width: 4, height: 1, tableWidth: 4 });
 
-    expect(r.indices[0]).toBe(INDICE_DE_PREENCHIMENTO);
-    expect(r.profundidades[0]).toBe(PROFUNDIDADE_DE_PREENCHIMENTO);
+    expect(r.indices[0]).toBe(FILL_INDEX);
+    expect(r.depths[0]).toBe(FILL_DEPTH);
   });
 
-  test('uma corrida IMPAR desalinha o fluxo e a corrida seguinte ainda le certo', () => {
-    // TRES bytes por pixel: uma corrida de 1 pixel deixa o cursor em posicao impar. Um leitor que
-    // percorresse o fluxo em palavras de 16 bits leria o salto seguinte com um byte de defasagem, e o
-    // sintoma seria a imagem se desfazendo a partir do primeiro sprite de contagem impar — nunca no
-    // primeiro pixel, que e onde alguem procuraria.
-    const dados = fluxoSpliced([
-      { salto: 0, pixels: [px(0x0101, 1)] },
-      { salto: 1, pixels: [px(0x0202, 2)] },
+  test('an ODD run knocks the stream off alignment and the next run still reads right', () => {
+    // THREE bytes per pixel: a run of one pixel leaves the cursor on an odd position. A reader walking
+    // the stream in 16-bit words would read the next skip one byte out, and the symptom would be the
+    // image falling apart from the first sprite with an odd count — never at the first pixel, which is
+    // where anyone would look.
+    const data = splicedStream([
+      { skip: 0, pixels: [px(0x0101, 1)] },
+      { skip: 1, pixels: [px(0x0202, 2)] },
     ]);
 
-    const r = dividirSpliced(dados, { largura: 4, altura: 1, larguraDaMesa: 4 });
+    const r = splitSpliced(data, { width: 4, height: 1, tableWidth: 4 });
 
     expect(r.indices[0]).toBe(1);
     expect(r.indices[2]).toBe(2);
-    expect(r.profundidades[2]).toBe(0x0202);
+    expect(r.depths[2]).toBe(0x0202);
   });
 
-  test('salto negativo encerra o fluxo', () => {
-    const dados = fluxoSpliced([{ salto: 0, pixels: [px(0x0303, 3)] }]);
+  test('a negative skip ends the stream', () => {
+    const data = splicedStream([{ skip: 0, pixels: [px(0x0303, 3)] }]);
 
-    const r = dividirSpliced(dados, { largura: 4, altura: 1, larguraDaMesa: 4 });
+    const r = splitSpliced(data, { width: 4, height: 1, tableWidth: 4 });
 
-    expect(r.indices[1]).toBe(INDICE_DE_PREENCHIMENTO);
+    expect(r.indices[1]).toBe(FILL_INDEX);
   });
 
-  test('salto maior que a largura e corrigido pela largura da mesa', () => {
-    // `stride += bmp.Width - tableWidth`: o salto foi gravado em termos da largura da MESA na
-    // resolucao original, e precisa ser reexpresso na largura deste bitmap.
-    const dados = fluxoSpliced([{ salto: 10, pixels: [px(0x0404, 4)] }]);
+  test('a skip larger than the width is corrected by the table width', () => {
+    // `stride += bmp.Width - tableWidth`: the skip was recorded in terms of the TABLE's width at the
+    // original resolution, and has to be re-expressed in this bitmap's width.
+    const data = splicedStream([{ skip: 10, pixels: [px(0x0404, 4)] }]);
 
-    // Duas linhas de 8: o destino tem 16 celulas, e a 8 e o inicio da segunda linha.
-    const r = dividirSpliced(dados, { largura: 8, altura: 2, larguraDaMesa: 10 });
+    // Two rows of 8: the destination has 16 cells, and 8 is the start of the second row.
+    const r = splitSpliced(data, { width: 8, height: 2, tableWidth: 10 });
 
     expect(r.indices[8]).toBe(4); // 10 + 8 - 10 = 8
   });
 });
 
-describe('spliced — diagnostico', () => {
-  test('conta os pixels escritos e diz que terminou no encerrador', () => {
-    const dados = fluxoSpliced([{ salto: 0, pixels: [px(1, 1), px(2, 2)] }]);
+describe('spliced — diagnostics', () => {
+  test('counts the pixels written and says it ended on the terminator', () => {
+    const data = splicedStream([{ skip: 0, pixels: [px(1, 1), px(2, 2)] }]);
 
-    const r = dividirSpliced(dados, { largura: 4, altura: 1, larguraDaMesa: 4 });
+    const r = splitSpliced(data, { width: 4, height: 1, tableWidth: 4 });
 
-    expect(r.pixelsEscritos).toBe(2);
-    expect(r.terminouLimpo).toBe(true);
-    expect(r.foraDosLimites).toBe(0);
+    expect(r.pixelsWritten).toBe(2);
+    expect(r.endedCleanly).toBe(true);
+    expect(r.outOfBounds).toBe(0);
   });
 
-  test('CONTA o que cai fora dos limites em vez de engolir', () => {
-    // Escrever fora e clampado para nao estourar, mas silenciar isso transformaria um erro de decodificacao
-    // num sprite com pedacos faltando — visivel, inexplicavel e sem nada apontando para a causa.
-    const dados = fluxoSpliced([{ salto: 3, pixels: [px(1, 1), px(2, 2), px(3, 3)] }]);
+  test('COUNTS what falls outside instead of swallowing it', () => {
+    // Writing outside is clamped so nothing overflows, but silencing it would turn a decoding error
+    // into a sprite with pieces missing — visible, unexplainable, and with nothing pointing at the cause.
+    const data = splicedStream([{ skip: 3, pixels: [px(1, 1), px(2, 2), px(3, 3)] }]);
 
-    const r = dividirSpliced(dados, { largura: 4, altura: 1, larguraDaMesa: 4 });
+    const r = splitSpliced(data, { width: 4, height: 1, tableWidth: 4 });
 
-    expect(r.foraDosLimites).toBe(2); // destinos 4 e 5
+    expect(r.outOfBounds).toBe(2); // destinations 4 and 5
   });
 
-  test('um fluxo cortado no meio nao terminou limpo', () => {
-    const completo = fluxoSpliced([{ salto: 0, pixels: [px(1, 1), px(2, 2)] }]);
-    const cortado = completo.subarray(0, completo.length - 4);
+  test('a stream cut short did not end cleanly', () => {
+    const complete = splicedStream([{ skip: 0, pixels: [px(1, 1), px(2, 2)] }]);
+    const truncated = complete.subarray(0, complete.length - 4);
 
-    expect(dividirSpliced(cortado, { largura: 4, altura: 1, larguraDaMesa: 4 }).terminouLimpo).toBe(false);
+    expect(splitSpliced(truncated, { width: 4, height: 1, tableWidth: 4 }).endedCleanly).toBe(false);
   });
 });

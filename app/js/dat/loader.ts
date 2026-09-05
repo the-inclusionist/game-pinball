@@ -1,97 +1,97 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// dat/loader — transforma os grupos crus do PARTOUT no modelo da mesa.
+// dat/loader — turns the PARTOUT's raw groups into the table model.
 //
-// Port da parte de `loader.cpp` que responde as tres perguntas de que tudo o mais depende: onde esta
-// cada grupo, que tamanho tem a mesa, e quais objetos a compoem.
+// Port of the part of `loader.cpp` that answers the three questions everything else depends on: where
+// each group is, how big the table is, and which objects compose it.
 
-import { lerGrupos, TipoDeEntrada, type Grupo } from './partman.js';
+import { readGroups, EntryType, type Group } from './partman.js';
 
 /**
- * Os tipos de objeto da mesa do Space Cadet, conforme `Doc/.dat file format.txt`.
- * Os buracos na numeracao (1008, 1009, 1025, 1027, 1032) sao do formato, nao omissao aqui.
+ * The Space Cadet table's object types, per `Doc/.dat file format.txt`.
+ * The holes in the numbering (1008, 1009, 1025, 1027, 1032) belong to the format, not to this list.
  */
-export const TipoDeObjeto = {
+export const ObjectType = {
   Plunger: 1001,
-  Luz: 1002,
-  FlipperEsquerdo: 1003,
-  FlipperDireito: 1004,
+  Light: 1002,
+  LeftFlipper: 1003,
+  RightFlipper: 1004,
   Bumper: 1005,
-  AlvoAmarelo: 1006,
-  Dreno: 1007,
-  Bloco: 1011,
-  Kout: 1012,
-  Portao: 1013,
+  YellowTarget: 1006,
+  Drain: 1007,
+  Blocker: 1011,
+  Kickout: 1012,
+  Gate: 1013,
   Kicker: 1014,
-  Rolagem: 1015,
-  MaoUnica: 1016,
+  Rollover: 1015,
+  OneWay: 1016,
   Sink: 1017,
-  Bandeira: 1018,
-  AlvoVermelho: 1019,
-  RolagemVerde: 1020,
-  Rampa: 1021,
-  BuracoDeRampa: 1022,
+  Flag: 1018,
+  RedTarget: 1019,
+  GreenRollover: 1020,
+  Ramp: 1021,
+  RampHole: 1022,
   Demo: 1023,
-  Trip: 1024,
-  Luzes: 1026,
-  ListaDeBumpers: 1028,
-  Kout2: 1029,
-  BarraDeCombustivel: 1030,
-  Som: 1031,
-  CaixaDeTexto: 1033,
+  Tripwire: 1024,
+  Lights: 1026,
+  BumperList: 1028,
+  Kickout2: 1029,
+  FuelBargraph: 1030,
+  Sound: 1031,
+  TextBox: 1033,
 } as const;
 
-export interface ObjetoDaMesa {
-  readonly tipo: number;
-  /** Indice do grupo que carrega os dados deste objeto. */
-  readonly grupo: number;
+export interface TableObject {
+  readonly type: number;
+  /** Index of the group carrying this object's data. */
+  readonly group: number;
 }
 
-export interface Mesa {
-  readonly grupos: readonly Grupo[];
-  /** `null`, e nao -1: um -1 usado sem conferir e um indice valido em JS e le `undefined` calado. */
-  indiceDoGrupo(nome: string): number | null;
-  readonly tamanhoDaMesa: { readonly largura: number; readonly altura: number } | null;
-  readonly objetosDaMesa: readonly ObjetoDaMesa[];
+export interface Table {
+  readonly groups: readonly Group[];
+  /** `null`, not -1: a -1 used without checking is a valid JS index and reads `undefined` in silence. */
+  groupIndex(name: string): number | null;
+  readonly tableSize: { readonly width: number; readonly height: number } | null;
+  readonly tableObjects: readonly TableObject[];
 }
 
-/** Le a carga de uma entrada tipo 10 como int16 com sinal. */
-function int16s(dados: Uint8Array): number[] {
-  const dv = new DataView(dados.buffer, dados.byteOffset, dados.byteLength);
-  const n = Math.floor(dados.byteLength / 2);
-  const saida: number[] = [];
-  for (let i = 0; i < n; i++) saida.push(dv.getInt16(i * 2, true));
-  return saida;
+/** Reads a type 10 entry's payload as signed int16s. */
+function int16s(data: Uint8Array): number[] {
+  const dv = new DataView(data.buffer, data.byteOffset, data.byteLength);
+  const n = Math.floor(data.byteLength / 2);
+  const out: number[] = [];
+  for (let i = 0; i < n; i++) out.push(dv.getInt16(i * 2, true));
+  return out;
 }
 
-function inteirosDoGrupo(grupos: readonly Grupo[], indice: number | null): number[] | null {
-  if (indice === null) return null;
-  const g = grupos[indice];
+function intsOfGroup(groups: readonly Group[], index: number | null): number[] | null {
+  if (index === null) return null;
+  const g = groups[index];
   if (!g) return null;
-  const e = g.entradas.find((x) => x.tipo === TipoDeEntrada.Int16s);
-  return e?.dados ? int16s(e.dados) : null;
+  const e = g.entries.find((x) => x.type === EntryType.Int16s);
+  return e?.data ? int16s(e.data) : null;
 }
 
-export function carregarMesa(arquivo: Uint8Array): Mesa {
-  const grupos = lerGrupos(arquivo);
+export function loadTable(file: Uint8Array): Table {
+  const groups = readGroups(file);
 
-  // Um mapa e nao uma varredura: `loader.cpp` procura grupo por nome o tempo todo, e uma varredura
-  // linear por 541 grupos a cada consulta e o tipo de custo que so aparece quando a mesa ja esta grande.
-  const porNome = new Map<string, number>();
-  grupos.forEach((g, i) => { if (g.nome !== null && !porNome.has(g.nome)) porNome.set(g.nome, i); });
-  const indiceDoGrupo = (nome: string): number | null => porNome.get(nome) ?? null;
+  // A map rather than a scan: `loader.cpp` looks groups up by name constantly, and a linear scan over
+  // 541 groups per lookup is the kind of cost that only shows up once the table is already large.
+  const byName = new Map<string, number>();
+  groups.forEach((g, i) => { if (g.name !== null && !byName.has(g.name)) byName.set(g.name, i); });
+  const groupIndex = (name: string): number | null => byName.get(name) ?? null;
 
-  const medidas = inteirosDoGrupo(grupos, indiceDoGrupo('table_size'));
-  const tamanhoDaMesa = medidas && medidas.length >= 2
-    ? { largura: medidas[0]!, altura: medidas[1]! }
+  const measures = intsOfGroup(groups, groupIndex('table_size'));
+  const tableSize = measures && measures.length >= 2
+    ? { width: measures[0]!, height: measures[1]! }
     : null;
 
-  // O PRIMEIRO INTEIRO NAO E UM OBJETO. A spec o marca como desconhecido, e os pares vem depois dele;
-  // comecar do zero desloca a lista inteira e cada objeto recebe o grupo do vizinho.
-  const brutos = inteirosDoGrupo(grupos, indiceDoGrupo('table_objects')) ?? [];
-  const objetosDaMesa: ObjetoDaMesa[] = [];
-  for (let i = 1; i + 1 < brutos.length; i += 2) {
-    objetosDaMesa.push({ tipo: brutos[i]!, grupo: brutos[i + 1]! });
+  // THE FIRST INTEGER IS NOT AN OBJECT. The spec marks it unknown and the pairs follow it; starting at
+  // zero shifts the whole list and every object gets its neighbour's group.
+  const raw = intsOfGroup(groups, groupIndex('table_objects')) ?? [];
+  const tableObjects: TableObject[] = [];
+  for (let i = 1; i + 1 < raw.length; i += 2) {
+    tableObjects.push({ type: raw[i]!, group: raw[i + 1]! });
   }
 
-  return { grupos, indiceDoGrupo, tamanhoDaMesa, objetosDaMesa };
+  return { groups, groupIndex, tableSize, tableObjects };
 }

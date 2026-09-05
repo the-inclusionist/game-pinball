@@ -1,125 +1,125 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// O GATE VISUAL DA FASE 2: a mesa de verdade, decodificada do PINBALL.DAT e escrita em PNG.
+// THE VISUAL GATE OF PHASE 2: the real table, decoded from PINBALL.DAT and written out as a PNG.
 //
-// As assercoes aqui sao objetivas (dimensao, opacidade, variedade de cor), mas o artefato existe para
-// ser OLHADO: numeros sobre um buffer nao distinguem uma mesa correta de uma mesa espelhada, invertida
-// ou com vermelho e azul trocados — e sao exatamente esses tres os erros que este caminho convida.
+// The assertions here are objective (dimensions, opacity, colour variety), but the artefact exists to
+// be LOOKED AT: numbers over a buffer cannot tell a correct table from a mirrored one, an upside-down
+// one, or one with red and blue swapped — and those three are exactly what this path invites.
 import { describe, test, expect } from 'vitest';
 import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { carregarMesa } from '../app/js/dat/loader.js';
-import { lerCabecalhoDeBitmap, TAMANHO_DO_CABECALHO } from '../app/js/dat/bitmap8.js';
-import { TipoDeEntrada } from '../app/js/dat/partman.js';
-import { lerPaleta } from '../app/js/dat/palette.js';
-import { desempacotarIndexado } from '../app/js/dat/indexado.js';
-import { montarPaletaDeExibicao, aplicarPaleta } from '../app/js/gfx/gdrv.js';
-import { reduzirPelaMetade, reduzirPelaMetadeVizinho } from '../app/js/gfx/escala.js';
-import { lerZMap } from '../app/js/dat/zmap.js';
-import { criarFramebuffer, empacotar } from '../app/js/gfx/framebuffer.js';
-import { montarPng } from './helpers/png.js';
+import { loadTable } from '../app/js/dat/loader.js';
+import { readBitmapHeader, HEADER_SIZE } from '../app/js/dat/bitmap8.js';
+import { EntryType } from '../app/js/dat/partman.js';
+import { readPalette } from '../app/js/dat/palette.js';
+import { unpackIndexed } from '../app/js/dat/indexed.js';
+import { readZMap } from '../app/js/dat/zmap.js';
+import { buildDisplayPalette, applyPalette } from '../app/js/gfx/gdrv.js';
+import { halve, halveNearest } from '../app/js/gfx/scale.js';
+import { createFramebuffer, pack } from '../app/js/gfx/framebuffer.js';
+import { buildPng } from './helpers/png.js';
 
-const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
-const CAMINHO = join(RAIZ, 'game_resources', 'PINBALL.DAT');
-const SAIDA = join(RAIZ, 'shots');
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const DAT_PATH = join(ROOT, 'game_resources', 'PINBALL.DAT');
+const OUT_DIR = join(ROOT, 'shots');
 
-describe.skipIf(!existsSync(CAMINHO))('render — a mesa real em PNG', () => {
-  test('o grupo "table" decodifica em 365x470, do lado certo e com as cores certas', () => {
-    const arquivo = new Uint8Array(readFileSync(CAMINHO));
-    const mesa = carregarMesa(arquivo);
+describe.skipIf(!existsSync(DAT_PATH))('render — the real table as a PNG', () => {
+  test('the "table" group decodes at 365x470, the right way up and in the right colours', () => {
+    const file = new Uint8Array(readFileSync(DAT_PATH));
+    const table = loadTable(file);
 
-    const entradaDePaleta = mesa.grupos.flatMap((g) => g.entradas)
-      .find((e) => e.tipo === TipoDeEntrada.Paleta && e.dados);
-    expect(entradaDePaleta).toBeDefined();
-    const paleta = montarPaletaDeExibicao(lerPaleta(entradaDePaleta!.dados!));
+    const paletteEntry = table.groups.flatMap((g) => g.entries)
+      .find((e) => e.type === EntryType.Palette && e.data);
+    expect(paletteEntry).toBeDefined();
+    const palette = buildDisplayPalette(readPalette(paletteEntry!.data!));
 
-    // Pelo NOME e nao pelo tamanho: "o maior bitmap" acerta hoje por acidente e deixaria de acertar no
-    // dia em que um sprite crescesse. O grupo se chama `table`, e e isso que ele e.
-    const indiceDoFundo = mesa.indiceDoGrupo('table');
-    expect(indiceDoFundo).not.toBeNull();
-    const entradaDoFundo = mesa.grupos[indiceDoFundo!]!.entradas
-      .find((e) => e.tipo === TipoDeEntrada.Bitmap8 && e.dados)!;
-    const cab = lerCabecalhoDeBitmap(entradaDoFundo.dados!);
+    // BY NAME rather than by size: "the largest bitmap" is right today by accident and would stop being
+    // right the day a sprite grew. The group is called `table`, and that is what it is.
+    const backgroundIndex = table.groupIndex('table');
+    expect(backgroundIndex).not.toBeNull();
+    const backgroundEntry = table.groups[backgroundIndex!]!.entries
+      .find((e) => e.type === EntryType.Bitmap8 && e.data)!;
+    const header = readBitmapHeader(backgroundEntry.data!);
 
-    const indices = desempacotarIndexado(entradaDoFundo.dados!.subarray(TAMANHO_DO_CABECALHO), {
-      largura: cab.largura, altura: cab.altura, strideIndexado: cab.strideIndexado!,
+    const indices = unpackIndexed(backgroundEntry.data!.subarray(HEADER_SIZE), {
+      width: header.width, height: header.height, indexedStride: header.indexedStride!,
     });
-    const fb = aplicarPaleta(indices, paleta, cab.largura, cab.altura);
+    const fb = applyPalette(indices, palette, header.width, header.height);
 
-    mkdirSync(SAIDA, { recursive: true });
-    writeFileSync(join(SAIDA, 'mesa-fundo.png'), montarPng(fb.bytes, fb.largura, fb.altura));
+    mkdirSync(OUT_DIR, { recursive: true });
+    writeFileSync(join(OUT_DIR, 'table-background.png'), buildPng(fb.bytes, fb.width, fb.height));
 
-    expect([cab.largura, cab.altura]).toEqual([365, 470]);
+    expect([header.width, header.height]).toEqual([365, 470]);
 
-    const opacosNaFaixa = (y0: number, y1: number): number => {
+    const opaqueInBand = (y0: number, y1: number): number => {
       let n = 0;
       for (let y = y0; y < y1; y++) {
-        for (let x = 0; x < fb.largura; x++) if (fb.bytes[(y * fb.largura + x) * 4 + 3]! > 0) n++;
+        for (let x = 0; x < fb.width; x++) if (fb.bytes[(y * fb.width + x) * 4 + 3]! > 0) n++;
       }
       return n;
     };
 
-    // NAO ESTA DE CABECA PARA BAIXO. A mesa e larga no topo e afina ate o pedestal embaixo, entao a
-    // faixa de cima tem MUITO mais pixel opaco que a de baixo. Medido: 4494 contra 3084. Inverter as
-    // linhas troca os dois e nada mais no jogo reclama — a bola apenas cai para cima.
-    expect(opacosNaFaixa(0, 20)).toBeGreaterThan(opacosNaFaixa(fb.altura - 20, fb.altura) * 1.2);
+    // IT IS NOT UPSIDE DOWN. The table is wide at the top and narrows to the pedestal at the bottom, so
+    // the top band carries far more opaque pixels than the bottom one. Measured: 4494 against 3084.
+    // Flipping the rows swaps the two, and nothing else in the game complains — the ball just falls up.
+    expect(opaqueInBand(0, 20)).toBeGreaterThan(opaqueInBand(fb.height - 20, fb.height) * 1.2);
 
-    // VERMELHO E AZUL NAO ESTAO TROCADOS. O disco central e azul-esverdeado: medido r=58, g=78, b=92.
-    // Trocar os canais poria o vermelho em 92 e o azul em 58, e a mesa continuaria "plausivel" —
-    // roxo trocado continua roxo. E o disco que denuncia.
+    // RED AND BLUE ARE NOT SWAPPED. The central disc is blue-green: measured r=58, g=78, b=92. Swapping
+    // the channels would put red at 92 and blue at 58, and the table would still look "plausible" —
+    // purple swapped is still purple. It is the disc that tells.
     let r = 0, b = 0, n = 0;
     for (let y = 230; y < 290; y++) {
       for (let x = 150; x < 215; x++) {
-        const i = (y * fb.largura + x) * 4;
+        const i = (y * fb.width + x) * 4;
         r += fb.bytes[i]!; b += fb.bytes[i + 2]!; n++;
       }
     }
     expect(b / n).toBeGreaterThan((r / n) * 1.3);
 
-    // E e colorida: um defeito de indice que colapsasse tudo numa cor so passaria em todo o resto.
+    // And it is colourful: an index defect collapsing everything into one colour would pass all the rest.
     expect(new Set(Array.from(fb.pixels)).size).toBeGreaterThan(100);
 
-    // AS DUAS REDUCOES, lado a lado, para a escolha estetica ser feita olhando e nao imaginando.
-    const media = reduzirPelaMetade(fb);
-    const vizinho = reduzirPelaMetadeVizinho(fb);
-    writeFileSync(join(SAIDA, 'mesa-183-media.png'), montarPng(media.bytes, media.largura, media.altura));
-    writeFileSync(join(SAIDA, 'mesa-183-vizinho.png'), montarPng(vizinho.bytes, vizinho.largura, vizinho.altura));
+    // BOTH REDUCTIONS, side by side, so the aesthetic choice is made by looking rather than imagining.
+    const boxed = halve(fb);
+    const nearest = halveNearest(fb);
+    writeFileSync(join(OUT_DIR, 'table-183-box.png'), buildPng(boxed.bytes, boxed.width, boxed.height));
+    writeFileSync(join(OUT_DIR, 'table-183-nearest.png'), buildPng(nearest.bytes, nearest.width, nearest.height));
 
-    // 183x235 e o alvo do plano, e vem de arredondar PARA CIMA: 365/2 e 182,5.
-    expect([media.largura, media.altura]).toEqual([183, 235]);
-    expect([vizinho.largura, vizinho.altura]).toEqual([183, 235]);
+    // 183x235 is the plan's target, and it comes from rounding UP: 365/2 is 182.5.
+    expect([boxed.width, boxed.height]).toEqual([183, 235]);
+    expect([nearest.width, nearest.height]).toEqual([183, 235]);
 
-    // A media preserva mais informacao que a amostragem — e o que justifica ela ser o padrao proposto.
-    expect(new Set(Array.from(media.pixels)).size)
-      .toBeGreaterThan(new Set(Array.from(vizinho.pixels)).size);
+    // The box average keeps more information than sampling — which is what makes it the proposed default.
+    expect(new Set(Array.from(boxed.pixels)).size)
+      .toBeGreaterThan(new Set(Array.from(nearest.pixels)).size);
   });
 
-  test('o z-map da mesa cobre a mesma area e tem relevo de verdade', () => {
-    const arquivo = new Uint8Array(readFileSync(CAMINHO));
-    const mesa = carregarMesa(arquivo);
-    const grupo = mesa.grupos[mesa.indiceDoGrupo('table')!]!;
+  test('the table z-map covers the same area and has real relief', () => {
+    const file = new Uint8Array(readFileSync(DAT_PATH));
+    const table = loadTable(file);
+    const group = table.groups[table.groupIndex('table')!]!;
 
-    const entradaZ = grupo.entradas.find((e) => e.tipo === TipoDeEntrada.ZMap && e.dados);
-    expect(entradaZ).toBeDefined();
-    const z = lerZMap(entradaZ!.dados!);
+    const zEntry = group.entries.find((e) => e.type === EntryType.ZMap && e.data);
+    expect(zEntry).toBeDefined();
+    const z = readZMap(zEntry!.data!);
 
-    expect(z.vazio).toBe(false);
-    expect([z.largura, z.altura]).toEqual([365, 470]);
+    expect(z.empty).toBe(false);
+    expect([z.width, z.height]).toEqual([365, 470]);
 
-    // Visualizacao em cinza, como o `zdrv::CreatePreview`: perto = claro, longe = escuro.
-    const fb = criarFramebuffer(z.largura, z.altura);
-    for (let y = 0; y < z.altura; y++) {
-      for (let x = 0; x < z.largura; x++) {
-        const t = Math.floor((0xffff - z.profundidadeEm(x, y)) / 0xff);
-        fb.pixels[y * fb.largura + x] = empacotar(t, t, t, 255);
+    // A greyscale view, like `zdrv::CreatePreview`: near is light, far is dark.
+    const fb = createFramebuffer(z.width, z.height);
+    for (let y = 0; y < z.height; y++) {
+      for (let x = 0; x < z.width; x++) {
+        const t = Math.floor((0xffff - z.depthAt(x, y)) / 0xff);
+        fb.pixels[y * fb.width + x] = pack(t, t, t, 255);
       }
     }
-    mkdirSync(SAIDA, { recursive: true });
-    writeFileSync(join(SAIDA, 'mesa-zmap.png'), montarPng(fb.bytes, fb.largura, fb.altura));
+    mkdirSync(OUT_DIR, { recursive: true });
+    writeFileSync(join(OUT_DIR, 'table-zmap.png'), buildPng(fb.bytes, fb.width, fb.height));
 
-    // RELEVO DE VERDADE, e nao um plano: se o z-map viesse todo no mesmo valor a bola nunca sumiria
-    // atras de nada, e todos os testes de profundidade continuariam passando.
-    const distintas = new Set(Array.from(z.profundidades));
-    expect(distintas.size).toBeGreaterThan(10);
+    // REAL RELIEF rather than a plane: if the z-map came back all one value, the ball would never
+    // disappear behind anything and every depth test would still pass.
+    const distinct = new Set(Array.from(z.depths));
+    expect(distinct.size).toBeGreaterThan(10);
   });
 });

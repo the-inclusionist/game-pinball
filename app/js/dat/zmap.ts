@@ -1,59 +1,59 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// dat/zmap — o mapa de profundidade de 16 bits do PARTOUT (entrada tipo 12).
+// dat/zmap — the PARTOUT's 16-bit depth map (entry type 12).
 //
-// Cabecalho de 14 bytes, conforme `Doc/.dat file format.txt`:
-//   +0  largura  WORD
-//   +2  altura   WORD
-//   +4  stride   WORD   (pitch/2 — em celulas de 16 bits, nao em bytes)
-//   +6  ?        DWORD  (0)
-//   +10 ?        WORD   (0)
-//   +12 ?        WORD   (80)
-//   +14 profundidades
+// A 14-byte header, per `Doc/.dat file format.txt`:
+//   +0  width   WORD
+//   +2  height  WORD
+//   +4  stride  WORD   (pitch/2 — in 16-bit cells, not in bytes)
+//   +6  ?       DWORD  (0)
+//   +10 ?       WORD   (0)
+//   +12 ?       WORD   (80)
+//   +14 depths
 //
-// O STRIDE E EM CELULAS, NAO EM BYTES, e pode ser maior que a largura: o excedente e preenchimento no
-// fim de cada linha. Ler linha por linha com passo `largura` em vez de `stride` produz uma imagem que
-// escorrega para o lado — o defeito classico de quem confunde os dois.
+// THE STRIDE IS IN CELLS, NOT BYTES, and may exceed the width: the surplus is padding at the end of
+// each row. Reading row by row with a step of `width` instead of `stride` produces an image that slides
+// sideways — the classic mistake of confusing the two.
 
-const OFF = { largura: 0, altura: 2, stride: 4 } as const;
-export const TAMANHO_DO_CABECALHO = 14;
+const OFF = { width: 0, height: 2, stride: 4 } as const;
+export const HEADER_SIZE = 14;
 
 export interface ZMap {
-  readonly largura: number;
-  readonly altura: number;
+  readonly width: number;
+  readonly height: number;
   readonly stride: number;
-  readonly profundidades: Uint16Array;
-  /** Verdadeiro quando o cabecalho nao descreve os dados que vieram atras dele. Ver abaixo. */
-  readonly vazio: boolean;
-  profundidadeEm(x: number, y: number): number;
+  readonly depths: Uint16Array;
+  /** True when the header does not describe the data that followed it. See below. */
+  readonly empty: boolean;
+  depthAt(x: number, y: number): number;
 }
 
-function montar(largura: number, altura: number, stride: number, profundidades: Uint16Array, vazio: boolean): ZMap {
+function build(width: number, height: number, stride: number, depths: Uint16Array, empty: boolean): ZMap {
   return {
-    largura, altura, stride, profundidades, vazio,
-    profundidadeEm: (x, y) => profundidades[y * stride + x] ?? 0,
+    width, height, stride, depths, empty,
+    depthAt: (x, y) => depths[y * stride + x] ?? 0,
   };
 }
 
-/** Um z-map que nao descreve nada. Nao e erro — ver o comentario em `lerZMap`. */
-const VAZIO = montar(0, 0, 0, new Uint16Array(0), true);
+/** A z-map that describes nothing. Not an error — see the comment in `readZMap`. */
+const EMPTY = build(0, 0, 0, new Uint16Array(0), true);
 
-export function lerZMap(payload: Uint8Array): ZMap {
+export function readZMap(payload: Uint8Array): ZMap {
   const dv = new DataView(payload.buffer, payload.byteOffset, payload.byteLength);
-  const largura = dv.getUint16(OFF.largura, true);
-  const altura = dv.getUint16(OFF.altura, true);
+  const width = dv.getUint16(OFF.width, true);
+  const height = dv.getUint16(OFF.height, true);
   const stride = dv.getUint16(OFF.stride, true);
-  const bytesDeCarga = payload.byteLength - TAMANHO_DO_CABECALHO;
+  const payloadBytes = payload.byteLength - HEADER_SIZE;
 
-  // O CABECALHO TEM DE EXPLICAR A CARGA, E QUANDO NAO EXPLICA A RESPOSTA E VAZIO — NAO EXCECAO.
-  // Os grupos 497 e 498 do PINBALL.DAT tem o cabecalho de z-map zerado com carga atras; o original
-  // (partman.cpp) confere `stride * altura * 2 == comprimento` e, quando falha, salta a carga e poe um
-  // z-map 0x0 no lugar. Transcrito literalmente: sao dados reais do arquivo de 1995, e um port que
-  // estourasse ali nao carregaria a mesa.
-  if (stride * altura * 2 !== bytesDeCarga) return VAZIO;
+  // THE HEADER MUST EXPLAIN THE PAYLOAD, AND WHEN IT DOES NOT THE ANSWER IS EMPTY — NOT AN EXCEPTION.
+  // Groups 497 and 498 of PINBALL.DAT carry a zeroed z-map header with payload behind it; the original
+  // (partman.cpp) checks `stride * height * 2 == length` and, when that fails, skips the payload and
+  // substitutes a 0x0 z-map. Transcribed literally: that is real 1995 data, and a port that threw there
+  // would not load the table at all.
+  if (stride * height * 2 !== payloadBytes) return EMPTY;
 
-  const profundidades = new Uint16Array(stride * altura);
-  for (let i = 0; i < profundidades.length; i++) {
-    profundidades[i] = dv.getUint16(TAMANHO_DO_CABECALHO + i * 2, true);
+  const depths = new Uint16Array(stride * height);
+  for (let i = 0; i < depths.length; i++) {
+    depths[i] = dv.getUint16(HEADER_SIZE + i * 2, true);
   }
-  return montar(largura, altura, stride, profundidades, false);
+  return build(width, height, stride, depths, false);
 }

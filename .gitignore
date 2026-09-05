@@ -1,23 +1,23 @@
 # ============================================================================
-# DADOS ORIGINAIS DA MICROSOFT — NUNCA VERSIONADOS.
-# PINBALL.DAT, os ~60 WAVs e os 2 MIDIs sao obra de terceiro e nao entram na
-# historia deste repositorio em nenhuma hipotese. Sao obtidos localmente por
-# `npm run data:extract` e ficam so na maquina de quem roda.
+# THE ORIGINAL MICROSOFT DATA — NEVER COMMITTED.
+# PINBALL.DAT, the ~60 WAVs and the 2 MIDIs are third-party work and do not
+# enter this repository's history under any circumstances. They are obtained
+# locally with `npm run data:extract` and stay only on the machine that ran it.
 # ============================================================================
 game_resources/
 
-# Dependencias / build
+# Dependencies / build
 node_modules/
 dist/
 .vite/
 *.tsbuildinfo
 
-# Artefatos de verificacao
+# Verification artefacts
 .vitest-attachments/
 tests/__screenshots__/
 shots/
 *.log
 
-# Sistema operacional
+# Operating system
 .DS_Store
 Thumbs.db

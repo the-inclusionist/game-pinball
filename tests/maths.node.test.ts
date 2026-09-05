@@ -1,126 +1,126 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, test, expect } from 'vitest';
 import {
-  SEM_COLISAO, produtoVetorial, produtoEscalar, normalizar2d,
-  raioIntersectaCirculo, iniciarLinha, raioIntersectaLinha,
+  NO_COLLISION, cross, dot, normalize2d,
+  rayIntersectCircle, lineInit, rayIntersectLine,
 } from '../app/js/maths/maths.js';
 
-const raio = (ox: number, oy: number, dx: number, dy: number, max = 100, min = 0) =>
-  ({ origem: { x: ox, y: oy }, direcao: { x: dx, y: dy }, distanciaMaxima: max, distanciaMinima: min, mascaraDeColisao: 0 });
+const ray = (ox: number, oy: number, dx: number, dy: number, max = 100, min = 0) =>
+  ({ origin: { x: ox, y: oy }, direction: { x: dx, y: dy }, maxDistance: max, minDistance: min, collisionMask: 0 });
 
-describe('maths — vetores', () => {
-  test('o produto vetorial 2D e X1*Y2 - Y1*X2, e o sinal e o que diz de que lado', () => {
-    expect(produtoVetorial({ x: 1, y: 0 }, { x: 0, y: 1 })).toBe(1);
-    expect(produtoVetorial({ x: 0, y: 1 }, { x: 1, y: 0 })).toBe(-1);
+describe('maths — vectors', () => {
+  test('the 2D cross product is X1*Y2 - Y1*X2, and its sign is what says which side', () => {
+    expect(cross({ x: 1, y: 0 }, { x: 0, y: 1 })).toBe(1);
+    expect(cross({ x: 0, y: 1 }, { x: 1, y: 0 })).toBe(-1);
   });
 
-  test('normalizar devolve a magnitude ANTERIOR e deixa o vetor unitario', () => {
+  test('normalising returns the PREVIOUS magnitude and leaves the vector unit length', () => {
     const v = { x: 3, y: 4 };
 
-    expect(normalizar2d(v)).toBe(5);
+    expect(normalize2d(v)).toBe(5);
     expect(v).toEqual({ x: 0.6, y: 0.8 });
   });
 
-  test('normalizar um vetor nulo nao divide por zero', () => {
+  test('normalising a zero vector does not divide by zero', () => {
     const v = { x: 0, y: 0 };
 
-    expect(normalizar2d(v)).toBe(0);
+    expect(normalize2d(v)).toBe(0);
     expect(v).toEqual({ x: 0, y: 0 });
   });
 
-  test('produto escalar', () => {
-    expect(produtoEscalar({ x: 2, y: 3 }, { x: 4, y: 5 })).toBe(23);
+  test('dot product', () => {
+    expect(dot({ x: 2, y: 3 }, { x: 4, y: 5 })).toBe(23);
   });
 });
 
-describe('maths — raio contra circulo', () => {
-  const circulo = (cx: number, cy: number, r: number) => ({ centro: { x: cx, y: cy }, raioAoQuadrado: r * r });
+describe('maths — ray against circle', () => {
+  const circle = (cx: number, cy: number, r: number) => ({ center: { x: cx, y: cy }, radiusSq: r * r });
 
-  test('acerta na PRIMEIRA interseccao, nao na segunda', () => {
-    // Circulo de raio 2 em (5,0), raio partindo da origem: entra em x=3 e sai em x=7.
-    expect(raioIntersectaCirculo(raio(0, 0, 1, 0), circulo(5, 0, 2))).toBeCloseTo(3);
+  test('hits the FIRST intersection, not the second', () => {
+    // Radius 2 at (5,0), ray from the origin: enters at x=3 and leaves at x=7.
+    expect(rayIntersectCircle(ray(0, 0, 1, 0), circle(5, 0, 2))).toBeCloseTo(3);
   });
 
-  test('apontando para o lado contrario, nao acerta', () => {
-    expect(raioIntersectaCirculo(raio(0, 0, -1, 0), circulo(5, 0, 2))).toBe(SEM_COLISAO);
+  test('pointing the other way, no hit', () => {
+    expect(rayIntersectCircle(ray(0, 0, -1, 0), circle(5, 0, 2))).toBe(NO_COLLISION);
   });
 
-  test('passando ao lado, nao acerta', () => {
-    expect(raioIntersectaCirculo(raio(0, 0, 1, 0), circulo(5, 5, 1))).toBe(SEM_COLISAO);
+  test('passing alongside, no hit', () => {
+    expect(rayIntersectCircle(ray(0, 0, 1, 0), circle(5, 5, 1))).toBe(NO_COLLISION);
   });
 
-  test('origem DENTRO do circulo devolve distancia NEGATIVA — e como a bola e empurrada para fora', () => {
-    // Sem isto, uma bola que ja penetrou o circulo nunca sairia: a distancia positiva mais proxima
-    // esta atras dela. O sinal negativo e a instrucao de recuar.
-    expect(raioIntersectaCirculo(raio(0, 0, 1, 0), circulo(0, 0, 2))).toBeCloseTo(-2);
+  test('an origin INSIDE the circle returns a NEGATIVE distance — that is how the ball is pushed out', () => {
+    // Without it a ball that already penetrated would never leave: the nearest positive intersection is
+    // behind it. The negative sign is the instruction to back out.
+    expect(rayIntersectCircle(ray(0, 0, 1, 0), circle(0, 0, 2))).toBeCloseTo(-2);
   });
 
-  test('dentro do circulo mas AFASTANDO-SE do centro, nao acerta', () => {
-    // O `Tca < 0` corta antes do teste de "esta dentro". E deliberado no original: quem ja esta saindo
-    // nao e empurrado de novo.
-    expect(raioIntersectaCirculo(raio(1, 0, 1, 0), circulo(0, 0, 2))).toBe(SEM_COLISAO);
+  test('inside the circle but MOVING AWAY from the centre, no hit', () => {
+    // `tca < 0` cuts out before the inside test. Deliberate in the original: whatever is already
+    // leaving does not get pushed again.
+    expect(rayIntersectCircle(ray(1, 0, 1, 0), circle(0, 0, 2))).toBe(NO_COLLISION);
   });
 
-  test('acerto alem da distancia maxima nao conta', () => {
-    expect(raioIntersectaCirculo(raio(0, 0, 1, 0), circulo(5, 0, 2), )).toBeCloseTo(3);
-    expect(raioIntersectaCirculo(raio(0, 0, 1, 0, 2), circulo(5, 0, 2))).toBe(SEM_COLISAO);
+  test('a hit beyond the maximum distance does not count', () => {
+    expect(rayIntersectCircle(ray(0, 0, 1, 0), circle(5, 0, 2))).toBeCloseTo(3);
+    expect(rayIntersectCircle(ray(0, 0, 1, 0, 2), circle(5, 0, 2))).toBe(NO_COLLISION);
   });
 });
 
-describe('maths — iniciar linha', () => {
-  test('a perpendicular e a HORARIA da direcao', () => {
-    const l = iniciarLinha(0, 0, 10, 0);
+describe('maths — line init', () => {
+  test('the perpendicular is the CLOCKWISE one', () => {
+    const l = lineInit(0, 0, 10, 0);
 
-    expect(l.direcao).toEqual({ x: 1, y: 0 });
+    expect(l.direction).toEqual({ x: 1, y: 0 });
     expect(l.perpendicular).toEqual({ x: 0, y: -1 });
   });
 
-  test('linha quase vertical zera a direcao em X e passa a medir o segmento em Y', () => {
-    // Sem esse encaixe no zero, o teste `direcao.x !== 0` la em `raioIntersectaLinha` usaria a
-    // coordenada X de uma linha vertical — em que todo ponto tem o mesmo X — e o segmento inteiro
-    // viraria um ponto. A colisao passaria a valer em qualquer altura.
-    const l = iniciarLinha(3, 0, 3, 10);
+  test('a near-vertical line zeroes the X direction and measures the segment along Y', () => {
+    // Without that snap to zero, the `direction.x !== 0` test in `rayIntersectLine` would use the X
+    // coordinate of a vertical line — where every point shares the same X — and the whole segment
+    // would collapse to a point. The wall would then collide at any height.
+    const l = lineInit(3, 0, 3, 10);
 
-    expect(l.direcao.x).toBe(0);
-    expect([l.coordMin, l.coordMax]).toEqual([0, 10]);
+    expect(l.direction.x).toBe(0);
+    expect([l.minCoord, l.maxCoord]).toEqual([0, 10]);
   });
 
-  test('linha horizontal mede o segmento em X', () => {
-    const l = iniciarLinha(10, 0, 0, 0);
+  test('a horizontal line measures the segment along X', () => {
+    const l = lineInit(10, 0, 0, 0);
 
-    expect([l.coordMin, l.coordMax]).toEqual([0, 10]);
+    expect([l.minCoord, l.maxCoord]).toEqual([0, 10]);
   });
 });
 
-describe('maths — raio contra linha', () => {
-  // Linha de (10,0) a (0,0): direcao (-1,0). O sentido em que ela foi DECLARADA decide qual face colide.
-  const parede = () => iniciarLinha(10, 0, 0, 0);
+describe('maths — ray against line', () => {
+  // A line from (10,0) to (0,0): direction (-1,0). The order it was DECLARED in decides which face collides.
+  const wall = () => lineInit(10, 0, 0, 0);
 
-  test('acerta vindo da face de colisao', () => {
-    const l = parede();
+  test('hits when arriving at the facing side', () => {
+    const l = wall();
 
-    expect(raioIntersectaLinha(raio(5, 5, 0, -1), l)).toBeCloseTo(5);
-    expect(l.interseccao.x).toBeCloseTo(5);
-    expect(l.interseccao.y).toBeCloseTo(0);
+    expect(rayIntersectLine(ray(5, 5, 0, -1), l)).toBeCloseTo(5);
+    expect(l.rayIntersect.x).toBeCloseTo(5);
+    expect(l.rayIntersect.y).toBeCloseTo(0);
   });
 
-  test('vindo da face de TRAS, atravessa — a linha e de um lado so', () => {
-    // Nao e defeito: e o que permite ao original usar linhas como portoes de mao unica, e o que
-    // impede a bola de ficar presa quando penetra uma parede por um quadro.
-    expect(raioIntersectaLinha(raio(5, -5, 0, 1), parede())).toBe(SEM_COLISAO);
+  test('arriving at the BACK face it passes through — the line is one-sided', () => {
+    // Not a defect: it is what lets the original use segments as one-way gates, and what stops the
+    // ball being trapped when it penetrates a wall by a frame.
+    expect(rayIntersectLine(ray(5, -5, 0, 1), wall())).toBe(NO_COLLISION);
   });
 
-  test('a interseccao fora do SEGMENTO nao conta', () => {
-    // Passa pela reta infinita em x=15, mas o segmento vai so de 0 a 10.
-    expect(raioIntersectaLinha(raio(15, 5, 0, -1), parede())).toBe(SEM_COLISAO);
+  test('an intersection outside the SEGMENT does not count', () => {
+    // It crosses the infinite line at x=15, but the segment only runs from 0 to 10.
+    expect(rayIntersectLine(ray(15, 5, 0, -1), wall())).toBe(NO_COLLISION);
   });
 
-  test('acerto alem da distancia maxima nao conta', () => {
-    expect(raioIntersectaLinha(raio(5, 5, 0, -1, 2), parede())).toBe(SEM_COLISAO);
+  test('a hit beyond the maximum distance does not count', () => {
+    expect(rayIntersectLine(ray(5, 5, 0, -1, 2), wall())).toBe(NO_COLLISION);
   });
 
-  test('a distancia minima permite acerto ligeiramente NEGATIVO — a tolerancia de penetracao', () => {
-    // Bola meio pixel abaixo da parede: sem a tolerancia ela cairia atraves.
-    expect(raioIntersectaLinha(raio(5, -0.1, 0, -1, 100, 1), parede())).toBeCloseTo(-0.1);
+  test('the minimum distance allows a slightly NEGATIVE hit — the penetration tolerance', () => {
+    // Ball half a pixel below the wall: without the tolerance it would fall straight through.
+    expect(rayIntersectLine(ray(5, -0.1, 0, -1, 100, 1), wall())).toBeCloseTo(-0.1);
   });
 });

@@ -1,63 +1,64 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, test, expect } from 'vitest';
-import { montarPartout, corpoCom, grupo, entrada, texto, int16s } from './helpers/partout.js';
-import { TipoDeEntrada } from '../app/js/dat/partman.js';
-import { carregarMesa, TipoDeObjeto } from '../app/js/dat/loader.js';
+import { buildPartout, bodyOf, group, entry, text, int16s } from './helpers/partout.js';
+import { EntryType } from '../app/js/dat/partman.js';
+import { loadTable, ObjectType } from '../app/js/dat/loader.js';
 
-const grupoNomeado = (nome: string, ...extras: Uint8Array[]) =>
-  grupo(entrada(TipoDeEntrada.NomeDeGrupo, texto(nome)), ...extras);
+const namedGroup = (name: string, ...extras: Uint8Array[]) =>
+  group(entry(EntryType.GroupName, text(name)), ...extras);
 
-describe('loader — indice de grupos', () => {
-  test('acha um grupo pelo nome', () => {
-    const arquivo = montarPartout({
-      numeroDeGrupos: 2,
-      corpo: corpoCom(grupoNomeado('table_size'), grupoNomeado('s_ramp9')),
+describe('loader — group index', () => {
+  test('finds a group by name', () => {
+    const file = buildPartout({
+      groupCount: 2,
+      body: bodyOf(namedGroup('table_size'), namedGroup('s_ramp9')),
     });
 
-    const mesa = carregarMesa(arquivo);
+    const table = loadTable(file);
 
-    expect(mesa.indiceDoGrupo('s_ramp9')).toBe(1);
+    expect(table.groupIndex('s_ramp9')).toBe(1);
   });
 
-  test('grupo inexistente devolve null em vez de -1', () => {
-    // -1 e um indice valido em JavaScript quando usado sem conferir, e le `undefined` calado.
-    const arquivo = montarPartout({ numeroDeGrupos: 1, corpo: corpoCom(grupoNomeado('so_esse')) });
+  test('a missing group returns null rather than -1', () => {
+    // -1 is a valid index in JavaScript when used without checking, and reads `undefined` in silence.
+    const file = buildPartout({ groupCount: 1, body: bodyOf(namedGroup('only_this')) });
 
-    expect(carregarMesa(arquivo).indiceDoGrupo('nao_existe')).toBeNull();
+    expect(loadTable(file).groupIndex('does_not_exist')).toBeNull();
   });
 });
 
 describe('loader — table_size', () => {
-  test('le largura e altura do par de int16', () => {
-    const arquivo = montarPartout({
-      numeroDeGrupos: 1,
-      corpo: corpoCom(grupoNomeado('table_size', entrada(TipoDeEntrada.Int16s, int16s(600, 416)))),
+  test('reads width and height from the int16 pair', () => {
+    const file = buildPartout({
+      groupCount: 1,
+      body: bodyOf(namedGroup('table_size', entry(EntryType.Int16s, int16s(600, 416)))),
     });
 
-    expect(carregarMesa(arquivo).tamanhoDaMesa).toEqual({ largura: 600, altura: 416 });
+    expect(loadTable(file).tableSize).toEqual({ width: 600, height: 416 });
   });
 });
 
 describe('loader — table_objects', () => {
-  test('le pares tipo/grupo, descartando o primeiro inteiro', () => {
-    // A spec: "o primeiro inteiro e desconhecido, e entao vem uma serie de pares de 16 bits".
-    const arquivo = montarPartout({
-      numeroDeGrupos: 1,
-      corpo: corpoCom(grupoNomeado('table_objects',
-        entrada(TipoDeEntrada.Int16s, int16s(0, TipoDeObjeto.Plunger, 42, TipoDeObjeto.Bumper, 43)))),
+  test('reads type/group pairs, discarding the first integer', () => {
+    // The spec: "the first integer is unknown, and then comes a series of 16-bit pairs". Starting at
+    // zero shifts the whole list and every object gets its neighbour's group.
+    const file = buildPartout({
+      groupCount: 1,
+      body: bodyOf(namedGroup('table_objects',
+        entry(EntryType.Int16s, int16s(0, ObjectType.Plunger, 42, ObjectType.Bumper, 43)))),
     });
 
-    const objetos = carregarMesa(arquivo).objetosDaMesa;
+    const objects = loadTable(file).tableObjects;
 
-    expect(objetos).toEqual([
-      { tipo: TipoDeObjeto.Plunger, grupo: 42 },
-      { tipo: TipoDeObjeto.Bumper, grupo: 43 },
+    expect(objects).toEqual([
+      { type: ObjectType.Plunger, group: 42 },
+      { type: ObjectType.Bumper, group: 43 },
     ]);
   });
 
-  test('sem o grupo table_objects, a lista e vazia e nao um estouro', () => {
-    const arquivo = montarPartout({ numeroDeGrupos: 1, corpo: corpoCom(grupoNomeado('outra_coisa')) });
+  test('with no table_objects group the list is empty, not an exception', () => {
+    const file = buildPartout({ groupCount: 1, body: bodyOf(namedGroup('something_else')) });
 
-    expect(carregarMesa(arquivo).objetosDaMesa).toEqual([]);
+    expect(loadTable(file).tableObjects).toEqual([]);
   });
 });

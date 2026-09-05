@@ -1,100 +1,102 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// dat/spliced — desfaz o bitmap "spliced", que guarda cor E profundidade entrelacadas num so fluxo.
+// dat/spliced — unpicks the "spliced" bitmap, which stores colour AND depth interleaved in one stream.
 //
-// Port de `GroupData::SplitSplicedBitmap`. O upstream faz isto NO CARREGAMENTO e diz por que, no
-// comentario dele: "Get rid of spliced bitmap early on, to simplify render pipeline". O `zdrv` chega a
-// afirmar que nunca ve um bitmap spliced. Entao este modulo mora na fase de dados, e nao na de render.
+// Port of `GroupData::SplitSplicedBitmap`. The upstream does this AT LOAD TIME and says why in its own
+// comment: "Get rid of spliced bitmap early on, to simplify render pipeline". zdrv even asserts that it
+// never sees a spliced bitmap. So this module belongs to the data phase, not the render phase.
 //
-// ========================= O FLUXO =========================
-// Uma sequencia de corridas, cada uma:
+// ========================= THE STREAM =========================
+// A sequence of runs, each:
 //
-//     [salto: int16] [quantos: uint16] depois `quantos` pixels de [profundidade: uint16] [indice: uint8]
+//     [skip: int16] [count: uint16] then `count` pixels of [depth: uint16] [index: uint8]
 //
-// e um `salto` NEGATIVO encerra.
+// and a NEGATIVE skip ends it.
 //
-// ========================= A ARMADILHA: TRES BYTES POR PIXEL =========================
-// A profundidade tem 2 bytes e o indice tem 1. O original expressa isso com um `char**` que aliasa o
-// mesmo ponteiro que le as palavras de 16 bits, e avanca UM byte por pixel. O efeito e que uma corrida
-// de tamanho IMPAR deixa o cursor em posicao impar, e o `int16` da corrida seguinte e lido desalinhado.
+// ========================= THE TRAP: THREE BYTES PER PIXEL =========================
+// Depth is 2 bytes and index is 1. The original expresses that with a `char**` aliasing the same
+// pointer that reads the 16-bit words, advancing ONE byte per pixel. The effect is that a run of ODD
+// length leaves the cursor on an odd address, and the next run's `int16` is read unaligned.
 //
-// Percorrer o fluxo em unidades de 16 bits nao consegue nem representar esse estado. Por isso aqui o
-// cursor e em BYTES, sempre. O sintoma de errar isto seria a imagem se desfazendo a partir do primeiro
-// sprite de contagem impar — nunca no primeiro pixel, que e onde alguem procuraria.
+// Walking the stream in 16-bit units cannot even represent that state. So the cursor here is in BYTES,
+// always. Getting it wrong would show up as the image falling apart from the first sprite with an odd
+// count — never at the first pixel, which is where anyone would look.
 
-/** Indice 255. A paleta o define como branco (`current_palette[255] = White()`). */
-export const INDICE_DE_PREENCHIMENTO = 0xff;
-/** O mais longe possivel. Preencher com zero poria o fundo na frente de tudo. */
-export const PROFUNDIDADE_DE_PREENCHIMENTO = 0xffff;
+/** Index 255. The palette defines it as white (`current_palette[255] = White()`). */
+export const FILL_INDEX = 0xff;
+/** As far as possible. Filling with zero would put the background in front of everything. */
+export const FILL_DEPTH = 0xffff;
 
-export interface Dimensoes {
-  readonly largura: number;
-  readonly altura: number;
+export interface Dimensions {
+  readonly width: number;
+  readonly height: number;
   /**
-   * A largura da MESA na resolucao em que o fluxo foi gravado (`resolution_array[].TableWidth`).
-   * Entra por parametro em vez de ser lida de uma tabela global porque e a unica dependencia externa
-   * deste algoritmo, e injetada ela fica testavel sem montar o sistema de resolucoes inteiro.
+   * The width of the TABLE at the resolution the stream was recorded in
+   * (`resolution_array[].TableWidth`). It comes in as a parameter rather than being read from a global
+   * table because it is this algorithm's only external dependency, and injected it makes the whole
+   * thing testable without standing up the resolution system.
    */
-  readonly larguraDaMesa: number;
+  readonly tableWidth: number;
 }
 
-export interface Dividido {
+export interface SplitResult {
   readonly indices: Uint8Array;
-  readonly profundidades: Uint16Array;
-  /** Quantos pixels o fluxo pediu para escrever. */
-  readonly pixelsEscritos: number;
+  readonly depths: Uint16Array;
+  /** How many pixels the stream asked to write. */
+  readonly pixelsWritten: number;
   /**
-   * Quantos cairiam fora do destino. Sao descartados para nao estourar, mas CONTADOS: silenciar isto
-   * transformaria um erro de decodificacao num sprite com pedacos faltando — visivel, inexplicavel, e
-   * sem nada apontando para a causa. Zero em todo o PINBALL.DAT; qualquer outro numero e defeito.
+   * How many would land outside the destination. They are dropped so nothing overflows, but COUNTED:
+   * silencing this would turn a decoding error into a sprite with pieces missing — visible,
+   * unexplainable, and with nothing pointing at the cause. Zero throughout PINBALL.DAT; any other
+   * number is a defect.
    */
-  readonly foraDosLimites: number;
-  /** Verdadeiro quando o fluxo terminou no salto negativo, e nao por acabarem os bytes. */
-  readonly terminouLimpo: boolean;
+  readonly outOfBounds: number;
+  /** True when the stream ended on the negative skip rather than by running out of bytes. */
+  readonly endedCleanly: boolean;
 }
 
-export function dividirSpliced(dados: Uint8Array, d: Dimensoes): Dividido {
-  const celulas = d.largura * d.altura;
-  const indices = new Uint8Array(celulas).fill(INDICE_DE_PREENCHIMENTO);
-  const profundidades = new Uint16Array(celulas).fill(PROFUNDIDADE_DE_PREENCHIMENTO);
+export function splitSpliced(data: Uint8Array, d: Dimensions): SplitResult {
+  const cells = d.width * d.height;
+  const indices = new Uint8Array(cells).fill(FILL_INDEX);
+  const depths = new Uint16Array(cells).fill(FILL_DEPTH);
 
-  const dv = new DataView(dados.buffer, dados.byteOffset, dados.byteLength);
-  let cursor = 0; // EM BYTES — ver o cabecalho deste modulo.
-  let destino = 0;
-  let pixelsEscritos = 0;
-  let foraDosLimites = 0;
-  let terminouLimpo = false;
+  const dv = new DataView(data.buffer, data.byteOffset, data.byteLength);
+  let cursor = 0; // IN BYTES — see this module's header.
+  let destination = 0;
+  let pixelsWritten = 0;
+  let outOfBounds = 0;
+  let endedCleanly = false;
 
   for (;;) {
-    if (cursor + 2 > dados.byteLength) break;
-    let salto = dv.getInt16(cursor, true); cursor += 2;
-    if (salto < 0) { terminouLimpo = true; break; }
+    if (cursor + 2 > data.byteLength) break;
+    let skip = dv.getInt16(cursor, true); cursor += 2;
+    if (skip < 0) { endedCleanly = true; break; }
 
-    // O salto foi gravado em termos da largura da MESA; num bitmap mais estreito ele precisa ser
-    // reexpresso. So se aplica quando o salto excede a largura deste bitmap, que e como o original o faz.
-    if (salto > d.largura) salto += d.largura - d.larguraDaMesa;
+    // The skip was recorded in terms of the TABLE's width; on a narrower bitmap it has to be
+    // re-expressed. It only applies when the skip exceeds this bitmap's width, as the original does.
+    if (skip > d.width) skip += d.width - d.tableWidth;
 
-    destino += salto;
+    destination += skip;
 
-    if (cursor + 2 > dados.byteLength) break;
-    const quantos = dv.getUint16(cursor, true); cursor += 2;
+    if (cursor + 2 > data.byteLength) break;
+    const count = dv.getUint16(cursor, true); cursor += 2;
 
-    for (let i = 0; i < quantos; i++) {
-      if (cursor + 3 > dados.byteLength) {
-        return { indices, profundidades, pixelsEscritos, foraDosLimites, terminouLimpo };
+    for (let i = 0; i < count; i++) {
+      if (cursor + 3 > data.byteLength) {
+        return { indices, depths, pixelsWritten, outOfBounds, endedCleanly };
       }
-      const profundidade = dv.getUint16(cursor, true); cursor += 2;
-      const indice = dv.getUint8(cursor); cursor += 1;
+      const depth = dv.getUint16(cursor, true); cursor += 2;
+      const index = dv.getUint8(cursor); cursor += 1;
 
-      if (destino >= 0 && destino < celulas) {
-        indices[destino] = indice;
-        profundidades[destino] = profundidade;
-        pixelsEscritos++;
+      if (destination >= 0 && destination < cells) {
+        indices[destination] = index;
+        depths[destination] = depth;
+        pixelsWritten++;
       } else {
-        foraDosLimites++;
+        outOfBounds++;
       }
-      destino++;
+      destination++;
     }
   }
 
-  return { indices, profundidades, pixelsEscritos, foraDosLimites, terminouLimpo };
+  return { indices, depths, pixelsWritten, outOfBounds, endedCleanly };
 }

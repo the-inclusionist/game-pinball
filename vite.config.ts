@@ -1,20 +1,20 @@
-import { defineConfig } from 'vitest/config'; // nao de 'vite': e o vitest/config que tipa o campo `test`
+import { defineConfig } from 'vitest/config'; // not from 'vite': it is vitest/config that types the `test` field
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const RAIZ = dirname(fileURLToPath(import.meta.url));
 
 // ============================================================================
-// POR QUE A RAIZ DO VITE E `app/` E NAO O REPOSITORIO
-// Mesma razao do tracer: o que e PUBLICAVEL fica dentro de `app/`, e tudo o mais
-// (scripts, testes, docs) fica fora do alcance do servidor por CONSTRUCAO, e nao
-// por uma regra de exclusao que alguem precisa lembrar de manter.
+// WHY THE VITE ROOT IS `app/` AND NOT THE REPOSITORY
+// The same reason as the tracer's: what is PUBLISHABLE lives inside `app/`, and everything else
+// (scripts, tests, docs) is out of the server's reach BY CONSTRUCTION rather than by an exclusion
+// rule someone has to remember to maintain.
 //
-// POR QUE SO O PROJETO `node` POR ENQUANTO
-// As fases 1 a 5 do plano sao logica pura — parser do .DAT, matematica, colisao,
-// maquina de missoes. Nada disso toca DOM. O projeto `browser` (Playwright) entra
-// na fase 2, junto com o primeiro pixel desenhado, porque um projeto de browser
-// configurado antes de existir o que ele testa e um gate que nunca ficou vermelho.
+// WHY ONLY THE `node` PROJECT FOR NOW
+// Phases 1 to 5 of the plan are pure logic — the .DAT parser, maths, collision, the mission state
+// machine. None of it touches the DOM. The `browser` project (Playwright) arrives in phase 2, along
+// with the first pixel drawn, because a browser project configured before the thing it tests exists
+// is a gate that never went red.
 // ============================================================================
 export default defineConfig({
   root: join(RAIZ, 'app'),
@@ -25,7 +25,7 @@ export default defineConfig({
         test: {
           name: 'node',
           environment: 'node',
-          include: ['../tests/**/*.node.test.ts'], // relativo a `root` (app/): o glob do tinyglobby quer barra normal, e join() devolve barra invertida no Windows
+          include: ['../tests/**/*.node.test.ts'], // relative to `root` (app/): tinyglobby's glob wants forward slashes, and join() returns backslashes on Windows
         },
       },
     ],

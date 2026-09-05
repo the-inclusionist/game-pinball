@@ -1,7 +1,7 @@
 {
-  "//": "ESTRITO DESDE O PRIMEIRO COMMIT, ao contrario do tracer — la o rigor foi chegando por estagio porque",
-  "//2": "havia 273 erros herdados de um game.js de catorze anos. Aqui nao ha heranca: todo arquivo nasce .ts,",
-  "//3": "entao nao existe divida a tolerar e allowJs nao faz falta. noEmit: o Vite emite, o tsc so confere.",
+  "//": "STRICT FROM THE FIRST COMMIT, unlike the tracer — there the rigour arrived stage by stage because",
+  "//2": "it inherited 273 errors from a fourteen-year-old game.js. Here there is no inheritance: every file is born .ts,",
+  "//3": "so there is no debt to tolerate and allowJs is not needed. noEmit: Vite emits, tsc only checks.",
   "compilerOptions": {
     "target": "ES2022",
     "module": "ESNext",

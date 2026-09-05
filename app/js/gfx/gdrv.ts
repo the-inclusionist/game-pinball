@@ -1,63 +1,64 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// gfx/gdrv — a paleta de exibicao e a conversao de indices em cores. Port de `gdrv::display_palette`
-// e `gdrv::ApplyPalette`.
+// gfx/gdrv — the display palette and turning indices into colours. Port of `gdrv::display_palette`
+// and `gdrv::ApplyPalette`.
 //
-// ========================= O UNICO PONTO EM QUE TRANSCREVER SERIA ERRADO =========================
-// O original faz, nas cores 10 a 245 vindas do arquivo:
+// ========================= THE ONE PLACE WHERE TRANSCRIBING WOULD BE WRONG =========================
+// For the file's colours (10 to 245) the original does:
 //
 //     srcClr.SetAlpha(0xff);  current_palette[index] = srcClr;  current_palette[index].SetAlpha(2);
 //
-// Alfa DOIS. Nao e opacidade: o SDL ignora o alfa naquele caminho de textura, e o 2 so precisa ser
-// NAO-ZERO para o teste de transparencia (`if ((*srcPtr).Color)`) classificar o pixel como desenhavel.
-// E um sentinela vestido de canal alfa.
+// Alpha TWO. That is not opacity: SDL ignores alpha on that texture path, and the 2 only has to be
+// NON-ZERO so the transparency test (`if ((*srcPtr).Color)`) counts the pixel as drawable. It is a
+// sentinel wearing a colour channel.
 //
-// O canvas NAO ignora o alfa. Copiar o 2 literalmente pintaria a mesa inteira a 0,8% de opacidade — o
-// port estaria "fiel" e a tela, vazia. Traduzir o sentinela para 255 preserva a semantica exata (zero
-// continua sendo o unico valor transparente) e corrige o meio. Fica escrito aqui porque e a especie de
-// decisao que, sem registro, alguem "conserta" de volta para 2 achando que esta sendo fiel.
+// Canvas does NOT ignore alpha. Copying the 2 literally would paint the whole table at 0.8% opacity —
+// the port would be "faithful" and the screen empty. Translating the sentinel to 255 preserves the
+// exact semantics (zero stays the only transparent value) and fixes the medium. Written down here
+// because this is the kind of decision someone later "corrects" back to 2, believing they are being
+// faithful.
 //
-// ========================= O MAPA DOS 256 INDICES =========================
-//   0        transparente (o proprio upstream comenta "Color 0: transparent")
-//   1 a 9    paleta de sistema do Windows, fixa no codigo
-//   10 a 245 do arquivo, opacas
-//   246 a 254 nunca atribuidas — ficam no zero do memset, isto e, transparentes
-//   255      branco opaco
+// ========================= THE MAP OF THE 256 INDICES =========================
+//   0         transparent (upstream comments it itself: "Color 0: transparent")
+//   1 to 9    the Windows system palette, hardcoded
+//   10 to 245 from the file, opaque
+//   246 to 254 never assigned — they stay at the memset's zero, that is, transparent
+//   255       opaque white
 
-import { criarFramebuffer, empacotar, type Framebuffer } from './framebuffer.js';
+import { createFramebuffer, pack, type Framebuffer } from './framebuffer.js';
 
-/** O que este modulo precisa de uma paleta lida do .DAT. */
-export interface PaletaDeArquivo {
-  vermelho(i: number): number;
-  verde(i: number): number;
-  azul(i: number): number;
+/** What this module needs from a palette read out of the .DAT. */
+export interface FilePalette {
+  red(i: number): number;
+  green(i: number): number;
+  blue(i: number): number;
 }
 
-/** Os nove primeiros da paleta de sistema do Windows, depois do indice 0 transparente. */
-const SISTEMA: readonly (readonly [number, number, number])[] = [
+/** The first nine of the Windows system palette, after the transparent index 0. */
+const SYSTEM: readonly (readonly [number, number, number])[] = [
   [0x80, 0, 0], [0, 0x80, 0], [0x80, 0x80, 0], [0, 0, 0x80],
   [0x80, 0, 0x80], [0, 0x80, 0x80], [0xc0, 0xc0, 0xc0], [0xc0, 0xdc, 0xc0], [0xa6, 0xca, 0xf0],
 ];
 
-const PRIMEIRA_DO_ARQUIVO = 10;
-const DEPOIS_DA_ULTIMA_DO_ARQUIVO = 246;
+const FIRST_FROM_FILE = 10;
+const PAST_LAST_FROM_FILE = 246;
 
-export function montarPaletaDeExibicao(paleta: PaletaDeArquivo): Uint32Array {
-  const saida = new Uint32Array(256); // zero = transparente, que ja e o certo para 0 e para 246..254
+export function buildDisplayPalette(palette: FilePalette): Uint32Array {
+  const out = new Uint32Array(256); // zero is transparent, which is already right for 0 and 246..254
 
-  SISTEMA.forEach(([r, g, b], i) => { saida[i + 1] = empacotar(r, g, b, 0xff); });
+  SYSTEM.forEach(([r, g, b], i) => { out[i + 1] = pack(r, g, b, 0xff); });
 
-  for (let i = PRIMEIRA_DO_ARQUIVO; i < DEPOIS_DA_ULTIMA_DO_ARQUIVO; i++) {
-    saida[i] = empacotar(paleta.vermelho(i), paleta.verde(i), paleta.azul(i), 0xff);
+  for (let i = FIRST_FROM_FILE; i < PAST_LAST_FROM_FILE; i++) {
+    out[i] = pack(palette.red(i), palette.green(i), palette.blue(i), 0xff);
   }
 
-  saida[255] = empacotar(255, 255, 255, 255);
-  return saida;
+  out[255] = pack(255, 255, 255, 255);
+  return out;
 }
 
-/** `gdrv::ApplyPalette`, sem a inversao vertical: essa ja aconteceu em `dat/indexado`. */
-export function aplicarPaleta(indices: Uint8Array, paleta: Uint32Array, largura: number, altura: number): Framebuffer {
-  const fb = criarFramebuffer(largura, altura);
+/** `gdrv::ApplyPalette`, without the vertical flip: that already happened in `dat/indexed`. */
+export function applyPalette(indices: Uint8Array, palette: Uint32Array, width: number, height: number): Framebuffer {
+  const fb = createFramebuffer(width, height);
   const n = Math.min(indices.length, fb.pixels.length);
-  for (let i = 0; i < n; i++) fb.pixels[i] = paleta[indices[i]!]!;
+  for (let i = 0; i < n; i++) fb.pixels[i] = palette[indices[i]!]!;
   return fb;
 }

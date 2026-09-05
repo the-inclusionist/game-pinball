@@ -1,91 +1,91 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, test, expect } from 'vitest';
-import { criarProjecao, MATRIZ_DO_JOGO } from '../app/js/maths/proj.js';
+import { createProjection, GAME_MATRIX } from '../app/js/maths/proj.js';
 
-/** Valores plausiveis de uma resolucao: distancia focal e centro da tela. */
-const proj = () => criarProjecao({ matriz: MATRIZ_DO_JOGO, d: 350, centroX: 300, centroY: 208, zMin: 0, zEscala: 100 });
+/** Plausible values for one resolution: focal distance and screen centre. */
+const proj = () => createProjection({ matrix: GAME_MATRIX, d: 350, centerX: 300, centerY: 208, zMin: 0, zScaler: 100 });
 
-describe('proj — a matriz do jogo', () => {
-  test('e uma rotacao de 24 graus, e nao uma matriz arbitraria', () => {
-    // -0,913545 e 0,406737 sao -cos(24) e sen(24). Todo o "3D" do jogo e a mesa plana inclinada 24
-    // graus mais a divisao perspectiva; nao ha malha nem profundidade real em lugar nenhum.
+describe('proj — the game matrix', () => {
+  test('is a 24-degree rotation, not an arbitrary matrix', () => {
+    // -0.913545 and 0.406737 are -cos(24) and sin(24). All of the game's "3D" is the flat table tilted
+    // 24 degrees plus the perspective divide; there is no mesh and no real depth anywhere.
     const rad = (24 * Math.PI) / 180;
 
-    expect(MATRIZ_DO_JOGO.linha1.y).toBeCloseTo(-Math.cos(rad), 5);
-    expect(MATRIZ_DO_JOGO.linha1.z).toBeCloseTo(Math.sin(rad), 5);
-    expect(MATRIZ_DO_JOGO.linha2.y).toBeCloseTo(-Math.sin(rad), 5);
-    expect(MATRIZ_DO_JOGO.linha2.z).toBeCloseTo(-Math.cos(rad), 5);
+    expect(GAME_MATRIX.row1.y).toBeCloseTo(-Math.cos(rad), 5);
+    expect(GAME_MATRIX.row1.z).toBeCloseTo(Math.sin(rad), 5);
+    expect(GAME_MATRIX.row2.y).toBeCloseTo(-Math.sin(rad), 5);
+    expect(GAME_MATRIX.row2.z).toBeCloseTo(-Math.cos(rad), 5);
   });
 });
 
-describe('proj — mesa para tela', () => {
-  test('a origem da mesa cai perto do centro da tela', () => {
-    const p = proj().paraTela({ x: 0, y: 0, z: 0 });
+describe('proj — table to screen', () => {
+  test('the table origin lands on the screen centre', () => {
+    const p = proj().toScreen({ x: 0, y: 0, z: 0 });
 
-    expect(p.x).toBe(300); // x0 = 0 projeta exatamente no centro
+    expect(p.x).toBe(300); // x0 = 0 projects exactly onto the centre
     expect(typeof p.y).toBe('number');
   });
 
-  test('mover em X move na tela, e o centro desloca tudo', () => {
-    const a = proj().paraTela({ x: 0, y: 0, z: 0 });
-    const b = proj().paraTela({ x: 5, y: 0, z: 0 });
+  test('moving in X moves on screen', () => {
+    const a = proj().toScreen({ x: 0, y: 0, z: 0 });
+    const b = proj().toScreen({ x: 5, y: 0, z: 0 });
 
     expect(b.x).toBeGreaterThan(a.x);
   });
 
-  test('o resultado e inteiro e TRUNCADO na direcao do zero, nao arredondado', () => {
-    // O original faz `static_cast<int>`, que corta para o zero. Arredondar mudaria a posicao de meio
-    // pixel em metade dos sprites — pouco, e o suficiente para uma comparacao pixel a pixel nunca fechar.
-    const p = criarProjecao({ matriz: MATRIZ_DO_JOGO, d: 350, centroX: 0.9, centroY: -0.9, zMin: 0, zEscala: 100 });
+  test('the result is an integer TRUNCATED toward zero, not rounded', () => {
+    // The original uses `static_cast<int>`, which cuts toward zero. Rounding would move half the
+    // sprites by half a pixel — little, and enough that a pixel-for-pixel comparison never closes.
+    const p = createProjection({ matrix: GAME_MATRIX, d: 350, centerX: 0.9, centerY: -0.9, zMin: 0, zScaler: 100 });
 
-    const r = p.paraTela({ x: 0, y: 0, z: 0 });
+    const r = p.toScreen({ x: 0, y: 0, z: 0 });
 
-    expect(r.x).toBe(0);   // 0,9 truncado = 0
+    expect(r.x).toBe(0); // 0.9 truncated is 0
     expect(Number.isInteger(r.y)).toBe(true);
   });
 });
 
-describe('proj — tela para mesa', () => {
-  test('desprojetar e projetar de volta devolve o mesmo pixel', () => {
-    // O teste mais forte que existe para uma projecao: o caminho de ida e volta. Um sinal trocado em
-    // qualquer termo quebra isto, e nao quebra quase mais nada.
+describe('proj — screen to table', () => {
+  test('unprojecting and projecting back returns the same pixel', () => {
+    // The strongest test a projection admits: the round trip. A flipped sign in any term breaks this
+    // and breaks almost nothing else.
     const p = proj();
 
-    for (const alvo of [{ x: 300, y: 208 }, { x: 120, y: 60 }, { x: 480, y: 390 }]) {
-      const naMesa = p.paraMesa(alvo);
-      const devolta = p.paraTela(naMesa);
+    for (const target of [{ x: 300, y: 208 }, { x: 120, y: 60 }, { x: 480, y: 390 }]) {
+      const onTable = p.toTable(target);
+      const back = p.toScreen(onTable);
 
-      expect(Math.abs(devolta.x - alvo.x)).toBeLessThanOrEqual(1);
-      expect(Math.abs(devolta.y - alvo.y)).toBeLessThanOrEqual(1);
+      expect(Math.abs(back.x - target.x)).toBeLessThanOrEqual(1);
+      expect(Math.abs(back.y - target.y)).toBeLessThanOrEqual(1);
     }
   });
 
-  test('desprojeta sempre no plano da mesa, z = 0', () => {
-    expect(proj().paraMesa({ x: 200, y: 100 }).z).toBe(0);
+  test('always unprojects onto the table plane, z = 0', () => {
+    expect(proj().toTable({ x: 200, y: 100 }).z).toBe(0);
   });
 });
 
-describe('proj — normalizacao de profundidade', () => {
-  test('profundidade abaixo do minimo vira ZERO, que e o mais perto', () => {
-    const p = criarProjecao({ matriz: MATRIZ_DO_JOGO, d: 350, centroX: 0, centroY: 0, zMin: 10, zEscala: 100 });
+describe('proj — depth normalisation', () => {
+  test('depth below the minimum becomes ZERO, which is nearest', () => {
+    const p = createProjection({ matrix: GAME_MATRIX, d: 350, centerX: 0, centerY: 0, zMin: 10, zScaler: 100 });
 
-    expect(p.normalizarProfundidade(5)).toBe(0);
+    expect(p.normalizeDepth(5)).toBe(0);
   });
 
-  test('profundidade dentro da faixa escala linearmente', () => {
-    const p = criarProjecao({ matriz: MATRIZ_DO_JOGO, d: 350, centroX: 0, centroY: 0, zMin: 10, zEscala: 100 });
+  test('depth inside the range scales linearly', () => {
+    const p = createProjection({ matrix: GAME_MATRIX, d: 350, centerX: 0, centerY: 0, zMin: 10, zScaler: 100 });
 
-    expect(p.normalizarProfundidade(20)).toBe(1000); // (20 - 10) * 100
+    expect(p.normalizeDepth(20)).toBe(1000); // (20 - 10) * 100
   });
 
-  test('acima de 65535 o valor DA A VOLTA, e nao satura', () => {
-    // A guarda do original compara `depthScaled <= zmax`, mas `zmax` foi calculado em unidades NAO
-    // escaladas — sao grandezas diferentes, entao a guarda quase nunca dispara e o cast para uint16
-    // envolve. E defeito latente do original, nao deste port: fica transcrito e apontado aqui, porque
-    // as profundidades reais da mesa nunca chegam la e "consertar" mudaria o comportamento.
-    const p = criarProjecao({ matriz: MATRIZ_DO_JOGO, d: 350, centroX: 0, centroY: 0, zMin: 0, zEscala: 1 });
+  test('above 65535 the value WRAPS rather than saturating', () => {
+    // The original's guard compares `depthScaled <= zmax`, but `zmax` was computed in UNSCALED units —
+    // different quantities, so the guard almost never fires and the cast to uint16 wraps. A latent
+    // defect of the original, not of this port: transcribed and pointed at here, because real table
+    // depths never get there and "fixing" it would change behaviour.
+    const p = createProjection({ matrix: GAME_MATRIX, d: 350, centerX: 0, centerY: 0, zMin: 0, zScaler: 1 });
 
-    expect(p.normalizarProfundidade(65536)).toBe(0);
-    expect(p.normalizarProfundidade(65537)).toBe(1);
+    expect(p.normalizeDepth(65536)).toBe(0);
+    expect(p.normalizeDepth(65537)).toBe(1);
   });
 });

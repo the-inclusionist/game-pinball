@@ -1,94 +1,94 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// gfx/zbuffer — a profundidade da cena, e as duas formas de pintar contra ela. Port de `zdrv.cpp`.
+// gfx/zbuffer — the scene's depth, and the two ways to paint against it. Port of `zdrv.cpp`.
 //
-// ========================= AS DUAS PINTURAS DIFEREM DE PROPOSITO =========================
-// O original tem duas funcoes que parecem a mesma coisa e nao sao, e uniformiza-las quebra o jogo de
-// dois jeitos diferentes:
+// ========================= THE TWO PAINTS DIFFER ON PURPOSE =========================
+// The original has two functions that look like the same thing and are not, and merging them breaks
+// the game in two different ways:
 //
-//   `pintar` (zdrv::paint) — para sprite que TEM profundidade propria (uma rampa, uma parede).
-//       Compara `destino >= origem` e escreve COR E PROFUNDIDADE. O sprite carva o relevo da cena.
-//       O `=` decide o desempate: no empate a origem vence, entao o ultimo desenhado fica por cima.
+//   `paint` (zdrv::paint) — for a sprite that HAS its own depth (a ramp, a wall).
+//       Compares `destination >= source` and writes BOTH COLOUR AND DEPTH. The sprite carves the
+//       scene's relief. The `=` settles ties: on a tie the source wins, so the last drawn is on top.
 //
-//   `pintarPlano` (zdrv::paint_flat) — para sprite a uma profundidade so (a bola).
-//       Compara `destino > profundidade`, ESTRITO, escreve so a COR, e pula pixel transparente.
-//       Nao escrever profundidade e o que faz a bola passar sem deixar rastro no relevo; o `>` estrito
-//       e o que a impede de piscar na borda das rampas, onde as profundidades se igualam.
+//   `paintFlat` (zdrv::paint_flat) — for a sprite at a single depth (the ball).
+//       Compares `destination > depth`, STRICTLY, writes only the COLOUR, and skips transparent pixels.
+//       Not writing depth is what lets the ball pass without leaving a trace in the relief; the strict
+//       `>` is what stops it flickering along ramp edges, where the depths meet.
 //
-// ========================= E OS STRIDES SAO DOIS =========================
-// O framebuffer anda de `largura` em `largura`; o z-buffer anda de `stride`, que sobe ao proximo
-// multiplo de 4 (o `pad()` do original). Usar um no lugar do outro inclina a profundidade em relacao a
-// imagem, e o sintoma e a bola sumindo no lugar errado — perto do certo, e por isso dificil de ver.
+// ========================= AND THERE ARE TWO STRIDES =========================
+// The framebuffer steps by `width`; the z-buffer steps by `stride`, which rounds up to a multiple of 4
+// (the original's `pad()`). Using one for the other skews depth against image, and the symptom is the
+// ball disappearing in the wrong place — near the right one, and therefore hard to see.
 
 import type { Framebuffer } from './framebuffer.js';
 
-/** O mais longe possivel. Nascer em zero poria o fundo na frente de tudo e nada seria desenhado. */
-export const LONGE = 0xffff;
+/** As far as possible. Starting at zero would put the background in front of everything. */
+export const FAR = 0xffff;
 
-/** `zmap_header_type::pad`: sobe ao proximo multiplo de 4. */
-function pad(largura: number): number {
-  return largura & 3 ? largura - (largura & 3) + 4 : largura;
+/** `zmap_header_type::pad`: rounds up to a multiple of 4. */
+function pad(width: number): number {
+  return width & 3 ? width - (width & 3) + 4 : width;
 }
 
 export interface ZBuffer {
-  readonly largura: number;
-  readonly altura: number;
-  /** Passo entre linhas. NAO e a largura — ver o cabecalho deste modulo. */
+  readonly width: number;
+  readonly height: number;
+  /** Step between rows. NOT the width — see this module's header. */
   readonly stride: number;
-  readonly profundidades: Uint16Array;
+  readonly depths: Uint16Array;
 }
 
-export interface Area {
-  readonly largura: number;
-  readonly altura: number;
-  readonly destX?: number;
-  readonly destY?: number;
-  readonly origX?: number;
-  readonly origY?: number;
+export interface Region {
+  readonly width: number;
+  readonly height: number;
+  readonly dstX?: number;
+  readonly dstY?: number;
+  readonly srcX?: number;
+  readonly srcY?: number;
 }
 
-export function criarZBuffer(largura: number, altura: number): ZBuffer {
-  const stride = pad(largura);
-  return { largura, altura, stride, profundidades: new Uint16Array(stride * altura).fill(LONGE) };
+export function createZBuffer(width: number, height: number): ZBuffer {
+  const stride = pad(width);
+  return { width, height, stride, depths: new Uint16Array(stride * height).fill(FAR) };
 }
 
-export function preencherZ(z: ZBuffer, valor: number): void {
-  z.profundidades.fill(valor);
+export function fillZ(z: ZBuffer, value: number): void {
+  z.depths.fill(value);
 }
 
-/** `zdrv::paint`: o sprite traz a propria profundidade e a imprime na cena. */
-export function pintar(destino: Framebuffer, zDestino: ZBuffer, origem: Framebuffer, zOrigem: ZBuffer, a: Area): void {
-  const dx = a.destX ?? 0, dy = a.destY ?? 0, ox = a.origX ?? 0, oy = a.origY ?? 0;
+/** `zdrv::paint`: the sprite brings its own depth and prints it into the scene. */
+export function paint(dst: Framebuffer, dstZ: ZBuffer, src: Framebuffer, srcZ: ZBuffer, a: Region): void {
+  const dx = a.dstX ?? 0, dy = a.dstY ?? 0, ox = a.srcX ?? 0, oy = a.srcY ?? 0;
 
-  for (let y = 0; y < a.altura; y++) {
-    for (let x = 0; x < a.largura; x++) {
-      const iDest = (dy + y) * destino.largura + (dx + x);
-      const iDestZ = (dy + y) * zDestino.stride + (dx + x);
-      const iOrig = (oy + y) * origem.largura + (ox + x);
-      const iOrigZ = (oy + y) * zOrigem.stride + (ox + x);
+  for (let y = 0; y < a.height; y++) {
+    for (let x = 0; x < a.width; x++) {
+      const iDst = (dy + y) * dst.width + (dx + x);
+      const iDstZ = (dy + y) * dstZ.stride + (dx + x);
+      const iSrc = (oy + y) * src.width + (ox + x);
+      const iSrcZ = (oy + y) * srcZ.stride + (ox + x);
 
-      const profundidadeDaOrigem = zOrigem.profundidades[iOrigZ]!;
-      if (zDestino.profundidades[iDestZ]! >= profundidadeDaOrigem) {
-        destino.pixels[iDest] = origem.pixels[iOrig]!;
-        zDestino.profundidades[iDestZ] = profundidadeDaOrigem;
+      const sourceDepth = srcZ.depths[iSrcZ]!;
+      if (dstZ.depths[iDstZ]! >= sourceDepth) {
+        dst.pixels[iDst] = src.pixels[iSrc]!;
+        dstZ.depths[iDstZ] = sourceDepth;
       }
     }
   }
 }
 
-/** `zdrv::paint_flat`: o sprite esta todo a uma profundidade e nao imprime relevo nenhum. */
-export function pintarPlano(destino: Framebuffer, zDestino: ZBuffer, origem: Framebuffer, profundidade: number, a: Area): void {
-  const dx = a.destX ?? 0, dy = a.destY ?? 0, ox = a.origX ?? 0, oy = a.origY ?? 0;
+/** `zdrv::paint_flat`: the sprite lies all at one depth and prints no relief at all. */
+export function paintFlat(dst: Framebuffer, dstZ: ZBuffer, src: Framebuffer, depth: number, a: Region): void {
+  const dx = a.dstX ?? 0, dy = a.dstY ?? 0, ox = a.srcX ?? 0, oy = a.srcY ?? 0;
 
-  for (let y = 0; y < a.altura; y++) {
-    for (let x = 0; x < a.largura; x++) {
-      const iDest = (dy + y) * destino.largura + (dx + x);
-      const iDestZ = (dy + y) * zDestino.stride + (dx + x);
-      const iOrig = (oy + y) * origem.largura + (ox + x);
+  for (let y = 0; y < a.height; y++) {
+    for (let x = 0; x < a.width; x++) {
+      const iDst = (dy + y) * dst.width + (dx + x);
+      const iDstZ = (dy + y) * dstZ.stride + (dx + x);
+      const iSrc = (oy + y) * src.width + (ox + x);
 
-      const cor = origem.pixels[iOrig]!;
-      // `Color` nao-zero no original: pixel todo zero e transparente e nao e desenhado.
-      if (cor !== 0 && zDestino.profundidades[iDestZ]! > profundidade) {
-        destino.pixels[iDest] = cor;
+      const colour = src.pixels[iSrc]!;
+      // Non-zero `Color` in the original: an all-zero pixel is transparent and is not drawn.
+      if (colour !== 0 && dstZ.depths[iDstZ]! > depth) {
+        dst.pixels[iDst] = colour;
       }
     }
   }
