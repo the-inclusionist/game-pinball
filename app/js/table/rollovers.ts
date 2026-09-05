@@ -19,6 +19,15 @@
 // on. Reporting presence rather than ENTRY would score a lane sixty times a second while the ball sat
 // on it, which would make one lane worth more than every bumper on the table put together.
 //
+// ========================= THERE IS ALREADY A `TRollover`, AND IT IS NOT THIS =========================
+// `table/rollover.ts` is the faithful port, and it works a completely different way: it installs TWO
+// wall sets from float attributes 600 and 603 and toggles which one the collision search can see, so
+// that "there is no inside/outside test anywhere". That mechanism needs two polylines per lane, which
+// the 1995 archive supplies and an authored table has no way to declare.
+//
+// So this is not a replacement and the port is not dead. See ADR-0003: the table is implemented twice
+// on purpose, and the line between the two is what data a table can declare.
+//
 // ========================= THE TWO LISTS PARTITION THE TABLE =========================
 // `STRUCK_KINDS` is what the ball bounces off. This is what it passes over or into. A kind in both
 // would be a wall that also scores for being crossed, so a test holds that they do not overlap.

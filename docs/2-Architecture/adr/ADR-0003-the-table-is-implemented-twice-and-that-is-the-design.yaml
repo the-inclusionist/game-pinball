@@ -1,0 +1,89 @@
+---
+metadata:
+  status: "accepted"
+  date: 2026-09-05
+  decision-makers: [Dev]
+  consulted:
+    - "The plan (phases 1-5 versus phase 8) — the two configurations it names, whose consequence this
+       record makes explicit"
+    - "ADR-0068 (engine) — one repository per game, which is why this record lives here"
+    - "docs/LICENSES.md section 3 — the original data is never distributed, which is what forces the split"
+  informed: []
+
+title: The table is implemented twice on purpose, and a reader who finds both is not looking at a duplicate
+
+context-and-problem-statement: |
+  Anyone reading this repository finds two of several things and no explanation of why.
+
+  `table/rollover.ts` is a faithful port of `TRollover`, and `table/rollovers.ts` is a position test that
+  reports the same event. `control/drain.ts` is the transcribed four-question save cascade, and
+  `table/live-controls.ts` counts balls in eight lines. `control/score-table.ts` names a hundred and
+  forty-five components with their 1995 control functions, and `control/registry.ts` offers seven.
+  Roughly forty modules — every `dat/`, most of `control/`, ten `table/T*` ports, `gfx/render`,
+  `gfx/gdrv`, `maths/proj` — are imported by no other module and are reached only by tests.
+
+  Read without context, that is a project that reimplemented itself and left the corpse. It is not, and
+  the reason is in the plan and in the licence.
+
+decision-drivers:
+  - "The plan names two configurations: VALIDATION (the original PINBALL.DAT, to prove the physics
+     matches 1995) and SHIPPING (a table authored for 320x180). Both were always going to exist."
+  - "The original data is never distributed. Whatever ships must run without it."
+  - "A transcription is evidence. Rewriting it to fit authored data would destroy the thing it is for."
+
+considered-options:
+  - "ONE implementation, driven by authored data, with the transcription deleted once it had been read.
+     Cheapest to read, and it throws away the only independent check the project has: the 1995 numbers
+     are a calibration nobody can re-derive, and a port that no longer runs them cannot be compared."
+  - "ONE implementation, driven by the 1995 data, with the authored table expressed in that format.
+     This means authoring a `.DAT`, and it means every authored table inheriting structures — target
+     banks, award chains, lamps called lite55 — that exist because of one 1995 machine."
+  - "TWO, with the boundary stated. Chosen."
+
+decision-outcome: |
+  Two implementations, and the line between them is WHAT DATA A TABLE CAN DECLARE.
+
+  The TRANSCRIPTION runs on the original archive. It is `dat/`, the 1995 half of `control/`, the
+  `table/T*` component ports, and the 1995 render path. Its job is to be compared against the original,
+  and its gates are conformance tests against the real files and against AdrienTD's independent dump. It
+  is not dead code; it is the measuring instrument.
+
+  The AUTHORED RUNTIME runs on `table/*.ts` declarations. It reuses everything that needs no 1995 data —
+  the physics entire, the collision response, the flipper, the stuck detector, the mixer, the edge grid —
+  and supplies its own only where the 1995 version needs 1995 structures.
+
+  THE TEST FOR WHICH SIDE SOMETHING GOES ON IS NOT TASTE. `TRollover` works by installing two wall sets
+  from float attributes 600 and 603 and toggling which one the collision search can see, so that "there
+  is no inside/outside test anywhere". An authored table declares bounds and no polylines, so that
+  mechanism is not expressible from what it has. `table/rollovers.ts` reaches the same observable
+  behaviour from the data that exists. Neither is a better version of the other.
+
+  Where the authored side had to write its own it says so in place, and names what it is not doing:
+  `control/registry.ts` lists the seven behaviours an authored table can supply arguments for and makes
+  `validateTable` refuse the rest BY NAME; `table/live-controls.ts` says why `control/drain`'s cascade is
+  not used; `table/rollovers.ts` points at `TRollover`.
+
+consequences:
+  good:
+    - "The 1995 calibration stays runnable and comparable, which is the only external check the project
+       has of its own physics."
+    - "The shipping game carries no dependency on data it may not distribute."
+    - "A rule that cannot be expressed from authored data becomes a REFUSAL rather than silence — which
+       is how six control names that could never have been wired were found."
+  bad:
+    - "Two things to read, and a reader who meets the second one first will think it is the mistake."
+    - "About forty modules have no runtime caller. Any tool that measures dead code will be wrong about
+       this repository, and this record is the answer to it."
+    - "A behaviour fixed on one side does not reach the other. That is the price of the transcription
+       staying a transcription, and it is paid knowingly."
+
+verification: |
+  Every module in the list above is exercised by tests, and the transcription's tests run against the
+  real archive rather than against fixtures. `npm run validate` covers both sides; neither is allowed to
+  rot quietly.
+
+  AND THIS RECORD IS NOT A LICENCE TO LEAVE THINGS UNWIRED. Eleven times in this port something was
+  declared and inert — a target with no collision, a flipper the player could not move, the whole control
+  layer, the HUD's four blocks, the sonar's targets, the stuck detector. Each was a defect and none of
+  them was covered by this decision. The distinction is whether the thing has a REASON it cannot run on
+  authored data, written down where a reader will find it.
