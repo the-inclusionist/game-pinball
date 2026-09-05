@@ -29,8 +29,10 @@
 // still means every member off, because the day something calls it without a flash in front, the
 // difference is real.
 
-import { makeBumperLaneControl, type LaneGroup, type LaneLight } from '../control/lanes.js';
-import { BUMPER_LANE_BINDINGS, type BumperLaneBinding } from '../control/bindings.js';
+import {
+  makeBumperLaneControl, makeSpaceWarpRolloverControl, type LaneGroup, type LaneLight,
+} from '../control/lanes.js';
+import { BUMPER_LANE_BINDINGS, LAMP_BINDINGS, type BumperLaneBinding } from '../control/bindings.js';
 import { handler, type ControlContext, type ControlledComponent } from '../control/dispatch.js';
 import { SCORE_COMPONENTS } from '../control/score-table.js';
 import type { OriginalComponents } from './original-components.js';
@@ -116,6 +118,35 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
       });
       controls.set(lane.component, (component) => control('ControlCollision', component, o.context));
     }
+  }
+
+  // ⚠️ TWO GUARDS THAT SAY DIFFERENT THINGS AND TODAY DECIDE THE SAME.
+  //
+  // The FIRST is the rule: only controls a collision can reach are wired, because
+  // `ExtraBallLightControl` answers a light's timer and `LaunchRampHoleControl` answers a released
+  // ball, and this build produces neither event. Wiring them would make objects nothing can drive.
+  //
+  // The SECOND is the inventory: which factory has been written here. With one written, the two
+  // guards exclude exactly the same bindings — so removing the first changes nothing and a mutation
+  // that removes it SURVIVES. Recorded rather than contrived around: the rule keeps its place because
+  // it is the rule, and the second factory is what will separate them.
+  for (const binding of LAMP_BINDINGS) {
+    if (binding.onMessage !== 'ControlCollision') continue;
+    if (binding.control !== 'SpaceWarpRolloverControl') continue;
+
+    const lamps = binding.lamps
+      .map((name) => o.components.lights.get(name))
+      .filter((light): light is NonNullable<typeof light> => Boolean(light));
+    if (lamps.length !== binding.lamps.length) continue;
+
+    const control = makeSpaceWarpRolloverControl({ lamps: lamps as unknown as LaneLight[] });
+    const row = scoreRows.get(binding.component);
+    byName.set(binding.component, {
+      name: binding.component,
+      scores: row?.scores ?? [],
+      control: null,
+    });
+    controls.set(binding.component, (component) => control('ControlCollision', component, o.context));
   }
 
   return {

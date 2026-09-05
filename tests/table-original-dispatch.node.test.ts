@@ -3,7 +3,7 @@ import { describe, test, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
 import { createOriginalDispatch } from '../app/js/table/original-dispatch.js';
 import { buildOriginalComponents } from '../app/js/table/original-components.js';
-import { REENTRY_LANES } from '../app/js/control/bindings.js';
+import { REENTRY_LANES, LAMP_BINDINGS } from '../app/js/control/bindings.js';
 import { createScoreState } from '../app/js/control/score.js';
 import { loadTable } from '../app/js/dat/loader.js';
 import type { ControlContext } from '../app/js/control/dispatch.js';
@@ -47,13 +47,48 @@ function wired() {
 }
 
 describe('a lane crossing reaches the 1995 control function', () => {
-  test('the six lanes of the two chains are wired, and nothing else is', () => {
+  test('the six lanes of the two chains are wired, plus the space warp, and nothing else', () => {
     const w = wired();
     if (!w) return expect(existsSync(DAT)).toBe(false);
 
-    expect(w.dispatch.wired.size).toBe(6);
+    expect(w.dispatch.wired.size).toBe(7);
     expect(w.dispatch.wired.has('a_roll3')).toBe(true);
+    expect(w.dispatch.wired.has('a_roll9')).toBe(true);
     expect(w.dispatch.wired.has('a_bump1')).toBe(false);
+  });
+
+  test('⚠️ and the two lamp controls with NO EVENT SOURCE are declined, not faked', () => {
+    // `ExtraBallLightControl` answers a light's timer expiring and `LaunchRampHoleControl` answers a
+    // released ball. This build produces neither, so wiring them would make objects nothing can drive
+    // — the exact defect this port has spent its history removing. Their bindings are transcribed and
+    // the dispatcher declines them, which is the difference between a gap and a lie.
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+
+    expect(w.dispatch.wired.has('lite17')).toBe(false);
+    expect(w.dispatch.wired.has('ramp_hole')).toBe(false);
+  });
+
+  test('⚠️ the space warp lights the RETURN lanes and scores nothing of its own', () => {
+    // One rule spread across two components: the shot is worth something only when the ball later comes
+    // down a return lane, and the lamp is the only thing joining them. A control that scored here would
+    // pay twice for one shot.
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+
+    w.dispatch.hit('a_roll9');
+
+    expect(w.components.lights.get('lite27')!.on).toBe(true);
+    expect(w.components.lights.get('lite28')!.on).toBe(true);
+  });
+
+  test('⚠️ and its lamps are given IN ORDER, which a set of names cannot carry', () => {
+    // `CONTROL_REACHES` is a set: it says lite27 and lite28 are reached and cannot say which is first.
+    // `makeSpaceWarpRolloverControl` would accept them reversed without complaint, so the order lives
+    // in `LAMP_BINDINGS` and this is what holds it.
+    const binding = LAMP_BINDINGS.find((b) => b.control === 'SpaceWarpRolloverControl')!;
+
+    expect(binding.lamps).toEqual(['lite27', 'lite28']);
   });
 
   test('⚠️ crossing a lane LIGHTS ITS OWN LAMP, which is the binding doing its job', () => {

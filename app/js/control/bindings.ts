@@ -100,6 +100,39 @@ export const LAUNCH_LANES: BumperLaneBinding = {
 export const BUMPER_LANE_BINDINGS: readonly BumperLaneBinding[] = [REENTRY_LANES, LAUNCH_LANES];
 
 /**
+ * ⚠️ A CONTROL WHOSE WHOLE BINDING IS A LIST OF LAMPS, IN ORDER.
+ *
+ * Some control functions reach for nothing but lights, and their factories take exactly that. Those
+ * need no shape of their own beyond the ORDER, which `CONTROL_REACHES` cannot carry because it is a
+ * set of names rather than a sequence — `makeSpaceWarpRolloverControl` wants `[lite27, lite28]` and
+ * would take `[lite28, lite27]` without complaint.
+ *
+ * ⚠️ AND ONLY ONE OF THEM IS WIRED, BECAUSE ONLY ONE ANSWERS A COLLISION. `ExtraBallLightControl`
+ * responds to `TLightResetAndTurnOn` and to a light's timer expiring; `LaunchRampHoleControl` responds
+ * to `ControlBallReleased`. The demonstration produces neither event, so wiring them would create
+ * objects nothing can drive — the exact defect this port has spent its history removing. They are
+ * listed here because the transcription is done and correct; the dispatcher says which it runs.
+ */
+export interface LampBinding {
+  readonly control: string;
+  /** The component that runs it, by the archive's name. */
+  readonly component: string;
+  /** The lamps, IN THE ORDER the control function expects them. */
+  readonly lamps: readonly string[];
+  /** Which message the control answers. Only `ControlCollision` has a source in this build. */
+  readonly onMessage: 'ControlCollision' | 'ControlBallReleased' | 'TLightResetAndTurnOn';
+}
+
+export const LAMP_BINDINGS: readonly LampBinding[] = [
+  { control: 'SpaceWarpRolloverControl', component: 'a_roll9', lamps: ['lite27', 'lite28'],
+    onMessage: 'ControlCollision' },
+  { control: 'ExtraBallLightControl', component: 'lite17', lamps: ['lite17', 'lite18'],
+    onMessage: 'TLightResetAndTurnOn' },
+  { control: 'LaunchRampHoleControl', component: 'ramp_hole', lamps: ['lite54'],
+    onMessage: 'ControlBallReleased' },
+];
+
+/**
  * ⚠️ WHICH COMPONENTS EACH CONTROL REACHES FOR, and nothing about what it does with them.
  *
  * That division is the whole reason this table can exist at all. `control/lanes` and its neighbours
