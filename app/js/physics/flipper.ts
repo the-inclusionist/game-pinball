@@ -87,6 +87,93 @@ export interface FlipperOptions {
 
 const copy = (v: Vector2): Vector2 => ({ x: v.x, y: v.y });
 
+/**
+ * ⚠️ HOW A FLIPPER IS ACTUALLY AUTHORED, WHICH IS NOT AS FOURTEEN NUMBERS.
+ *
+ * `createFlipper` takes the DERIVED geometry, and for a long time nothing derived it — which is why the
+ * ported flipper appeared in no table and in nothing but its own test. In the original a flipper is
+ * three vectors and two times: the pivot, the tip at rest, the tip fully extended, and how long the
+ * swing takes each way. `TFlipperEdge::TFlipperEdge` turns those into the rest, and this is that
+ * constructor.
+ *
+ * Two of its lines are easy to leave out and change the behaviour completely:
+ *
+ *   · `if (angleMax < 0) swap(A, B)`. A is always the face that SWEEPS — `flipperCollision` reads
+ *     `lineA.perpendicular` while extending — so without the swap a right-hand flipper kicks with its
+ *     back.
+ *   · exactly one of the two speeds is negated, and which one depends on the sign of `angleMax`. The
+ *     sign IS the direction of travel; get it wrong and the flipper extends the way it should retract.
+ */
+export interface FlipperGeometry {
+  readonly pivot: Vector2;
+  /** Where the tip sits with the flipper down. */
+  readonly tipAtRest: Vector2;
+  /** Where the tip sits fully extended. The angle between the two is the whole swing. */
+  readonly tipExtended: Vector2;
+  readonly baseRadius: number;
+  readonly tipRadius: number;
+  /**
+   * SECONDS for the whole swing, not radians per second. The original supports both and this is the
+   * 3DPB form, which is the one the Space Cadet data uses: "Time it takes for flipper to go from
+   * source to destination, in sec."
+   */
+  readonly extendTime: number;
+  readonly retractTime: number;
+  readonly collisionMult: number;
+  readonly elasticity: number;
+  readonly smoothness: number;
+  /** The ball's radius. Both faces are pushed out by it so the ball can be treated as a point. */
+  readonly collisionOffset: number;
+}
+
+export function deriveFlipper(o: FlipperGeometry): FlipperOptions {
+  const baseRadius = o.baseRadius + o.collisionOffset;
+  const tipRadius = o.tipRadius + o.collisionOffset;
+
+  const toRest = { x: o.tipAtRest.x - o.pivot.x, y: o.tipAtRest.y - o.pivot.y };
+  const toExtended = { x: o.tipExtended.x - o.pivot.x, y: o.tipExtended.y - o.pivot.y };
+  const reach = Math.hypot(toRest.x, toRest.y);
+  normalize2d(toRest);
+  normalize2d(toExtended);
+
+  // The signed sweep. `acos` of the dot gives the size; the cross gives the direction.
+  let angleMax = Math.acos(Math.max(-1, Math.min(1, dot(toRest, toExtended))));
+  if (cross(toRest, toExtended) < 0) angleMax = -angleMax;
+
+  const sweep = Math.abs(angleMax);
+  let extendSpeed = sweep / o.extendTime;
+  let retractSpeed = sweep / o.retractTime;
+
+  // Counter-clockwise perpendicular gives the A face; clockwise gives B.
+  const perpA = { x: -toRest.y, y: toRest.x };
+  const perpB = { x: toRest.y, y: -toRest.x };
+
+  let a2Src = { x: perpA.x * baseRadius + o.pivot.x, y: perpA.y * baseRadius + o.pivot.y };
+  let a1Src = { x: perpA.x * tipRadius + o.tipAtRest.x, y: perpA.y * tipRadius + o.tipAtRest.y };
+  let b1Src = { x: perpB.x * baseRadius + o.pivot.x, y: perpB.y * baseRadius + o.pivot.y };
+  let b2Src = { x: perpB.x * tipRadius + o.tipAtRest.x, y: perpB.y * tipRadius + o.tipAtRest.y };
+
+  if (angleMax < 0) {
+    [a1Src, b1Src] = [b1Src, a1Src];
+    [a2Src, b2Src] = [b2Src, a2Src];
+  }
+
+  if (angleMax <= 0) extendSpeed = -extendSpeed;
+  else retractSpeed = -retractSpeed;
+
+  return {
+    rotOrigin: copy(o.pivot),
+    a1Src, a2Src, b1Src, b2Src,
+    t1Src: copy(o.tipAtRest),
+    baseRadius, tipRadius,
+    angleMax, extendSpeed, retractSpeed,
+    collisionMult: o.collisionMult, elasticity: o.elasticity, smoothness: o.smoothness,
+    // The reach out to the tip's SURFACE, which is where the kick is measured from.
+    distanceDiv: reach + tipRadius,
+  };
+}
+
+
 export function createFlipper(o: FlipperOptions): Flipper {
   return {
     motion: 'still',
