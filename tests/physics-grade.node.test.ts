@@ -10,6 +10,7 @@ function arestaFalsa(distancia: number, opcoes: Partial<Aresta> = {}) {
     ativa: true,
     grupoDeColisao: 0xffff,
     distanciaDeColisao: () => { consultas++; return distancia; },
+    aoColidir: () => {},
     ...opcoes,
   };
   return { a, consultas: () => consultas };

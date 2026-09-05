@@ -4,7 +4,7 @@ import { criarMemoriaDeColisoes, LIMITE_DE_COLISOES } from '../app/js/physics/bo
 import type { Aresta } from '../app/js/physics/grade.js';
 
 const aresta = (n: number): Aresta =>
-  ({ ativa: true, grupoDeColisao: 0xffff, distanciaDeColisao: () => n });
+  ({ ativa: true, grupoDeColisao: 0xffff, distanciaDeColisao: () => n, aoColidir: () => {} });
 
 describe('bola — memoria de arestas ja atingidas no quadro', () => {
   test('lembra o que atingiu', () => {

@@ -18,6 +18,8 @@ export interface Aresta {
   ativa: boolean;
   grupoDeColisao: number;
   distanciaDeColisao(raio: Raio): number;
+  /** O que a aresta FAZ quando a bola a atinge. `TEdgeSegment::EdgeCollision` no original. */
+  aoColidir(bola: unknown, distancia: number): void;
 }
 
 export interface Resultado {
