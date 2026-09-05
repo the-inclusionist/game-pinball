@@ -9,6 +9,14 @@ import { MISSION_TABLE, MISSION_CONTROLLERS, MISSION_TEXT_IDS } from '../app/js/
 /** ADR-0002 gives the mission text a 63-pixel column: about fifteen characters over four lines. */
 const COLUMN_CHARACTERS = 15 * 4;
 
+/**
+ * The key prefixes whose text lands in ADR-0002's 63-pixel column: the mission line, the four HUD
+ * blocks, and the objective the same blocks show. Everything else is shown somewhere with room.
+ */
+const SHOWN_IN_THE_HUD: readonly string[] = [
+  'pinball.mission.', 'pinball.hud.', 'pinball.objective.',
+];
+
 describe('every resource identifier the mission table names has a key of ours', () => {
   test('nothing in the table falls through unmapped', () => {
     // The join between a faithful transcription and words this project owns. A gap here would put a
@@ -84,15 +92,30 @@ describe('the three locales stay in step', () => {
     }
   });
 
-  test('nothing is longer than the column it has to fit in', () => {
+  test('⚠️ nothing SHOWN IN THE HUD is longer than the column it has to fit in', () => {
     // ADR-0002 traded the width of the screen for never covering the flippers. This is that decision
     // arriving as a writing constraint rather than as a truncation bug.
+    //
+    // ⚠️ AND IT APPLIES TO THE HUD, NOT TO EVERY STRING, which is what it used to say. The
+    // demonstration mode's panel is full width and carries two sentences of prose that no player could
+    // read in fifteen characters a line; holding those to the column would have meant writing worse
+    // text to satisfy a rule about a different part of the screen. Scoping it is the correction —
+    // widening the limit would have quietly let a mission line grow too long for the corner it goes in.
     for (const locale of AVAILABLE_LOCALES) {
       const dictionary = dictionaryOf(locale);
       for (const [key, text] of Object.entries(dictionary)) {
+        if (!SHOWN_IN_THE_HUD.some((prefix) => key.startsWith(prefix))) continue;
         expect(text.length, `${locale} ${key}`).toBeLessThanOrEqual(COLUMN_CHARACTERS);
       }
     }
+  });
+
+  test('and the scoped-out keys are named, so the exemption cannot spread by accident', () => {
+    // A prefix list rather than a blanket: a new key defaults INTO the constraint, and getting out of
+    // it means saying which part of the screen it belongs to.
+    expect(SHOWN_IN_THE_HUD).toContain('pinball.mission.');
+    expect(SHOWN_IN_THE_HUD).toContain('pinball.hud.');
+    expect(SHOWN_IN_THE_HUD.some((p) => 'pinball.demo.ask'.startsWith(p))).toBe(false);
   });
 
   test('no locale is empty, and none is a copy of another', () => {

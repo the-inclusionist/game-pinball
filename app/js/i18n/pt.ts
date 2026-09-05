@@ -76,6 +76,9 @@ const pt: Record<string, string> = {
   /* ===================== HUD ===================== */
   'pinball.a11y.blindOn': 'Modo cego ligado. Use S para varrer a mesa.',
   'pinball.a11y.blindOff': 'Modo cego desligado.',
+  'pinball.demo.ask': 'Modo demonstração: escolha o seu PINBALL.DAT. O ficheiro não sai desta máquina.',
+  'pinball.demo.caveat': 'Mostra a mesa e a física de 1995. Ainda não pontua, não acende luzes nem corre missões.',
+  'pinball.demo.failed': 'Não consegui ler esse ficheiro: {n}',
   'pinball.hud.score': 'Pontuação: {n}',
   'pinball.objective.authored': 'Alvos por acender: {n}',
   'pinball.hud.player': 'Jogador {n}',

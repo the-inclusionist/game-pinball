@@ -26,6 +26,8 @@ import { createLiveControls } from './table/live-controls.js';
 import { createRolloverWatch } from './table/rollovers.js';
 import { objectiveOf, AUTHORED_OBJECTIVE_ID } from './table/objective.js';
 import { mountHud } from './shell/hud-dom.js';
+import { mountDemoPage } from './shell/demo-page.js';
+import { createDemo, type Demo } from './shell/demo.js';
 import { createSoundBoard, releaseVoice } from './audio/sfx.js';
 import { soundEntriesOf, VOICES } from './audio/voices.js';
 import { createWebAudioOutput } from './audio/web-audio.js';
@@ -270,6 +272,18 @@ function step(frames: number): void {
   frameCount++;
   lastFrames = frames;
 
+  // The demonstration has its own table, its own physics context and its own picture. It shares the
+  // canvas and nothing else, which is why it is an early return rather than a branch through the whole
+  // frame: an authored table's HUD, objective and controls mean nothing here.
+  if (demoRequested) {
+    if (demo) {
+      demo.step(frames);
+      demoPage!.blit(demo);
+      paint();
+    }
+    return;
+  }
+
   // ⚠️ THE FLIPPERS MOVE WHETHER OR NOT A BALL IS IN PLAY, and this used to run only while playing.
   // A player pressing the button on the title screen got nothing back — no movement, no sound, no way
   // to find out what the controls are before committing a ball to them. Found by pressing a real key
@@ -343,8 +357,17 @@ function step(frames: number): void {
   for (const ball of state.balls) {
     drawBall(screen, ball, authored.ballRadius, shell.hud.playfield, 0, shell.camera.offset);
   }
-  // One `ImageData`, reused. Allocating one per frame would be sixty allocations a second of the
-  // same 230 KB, and the copy is what the canvas wants anyway.
+  paint();
+}
+
+/**
+ * The screen onto the canvas. Split out because the demonstration mode composes its own picture and
+ * still needs this last step.
+ *
+ * One `ImageData`, reused. Allocating one per frame would be sixty allocations a second of the same
+ * 230 KB, and the copy is what the canvas wants anyway.
+ */
+function paint(): void {
   image.data.set(screen.bytes);
   context.putImageData(image, 0, 0);
 }
@@ -388,6 +411,30 @@ const unbindControls = bindPinballControls({
  * ⚠️ ADR-0002'S FOUR BLOCKS, ON SCREEN FOR THE FIRST TIME. `layoutHud` computed them from phase 6 and
  * nothing drew them. Words rather than pixels: see `shell/hud-dom` for the engine rule that decides it.
  */
+/**
+ * ⚠️ THE DEMONSTRATION MODE, WHICH SHOWS THE 1995 TABLE AND ASKS THE PLAYER FOR IT.
+ *
+ * `?demo=original` replaces the authored table with the real one, read from a file the player chooses.
+ * It is never fetched and never bundled — `tests/build-carries-no-original-data` holds the second half
+ * of that — because any arrangement where Microsoft's archive arrives over HTTP is a redistribution
+ * with extra steps.
+ */
+let demo: Demo | null = null;
+const demoRequested = new URLSearchParams(location.search).get('demo') === 'original';
+const demoPage = demoRequested
+  ? mountDemoPage({
+    doc: document,
+    host: region,
+    screen,
+    t: shell.t,
+    onReady: (ready) => { demo = ready; },
+    onError: (message) => {
+      const alert = document.getElementById('sr-alert');
+      if (alert) alert.textContent = shell.t('pinball.demo.failed', { n: message });
+    },
+  })
+  : null;
+
 refreshObjective(true);
 
 const hud = mountHud({
@@ -418,6 +465,13 @@ Object.assign(window as unknown as Record<string, unknown>, {
     get blind() { return blind; },
     get sonar() {
       return { guideCount: shell.engine.sonar.guideCount, sonarCount: shell.engine.sonar.sonarCount };
+    },
+    /** The demonstration, so a check can drive it without a file dialog it cannot open. */
+    get demo() { return demo; },
+    loadOriginal(bytes: ArrayBuffer) {
+      demo = createDemo(bytes);
+      demoPage?.destroy();
+      return { walls: demo.table.wallCount, picture: [demo.playfield.width, demo.playfield.height] };
     },
     get sound() {
       return { context: audio?.state ?? 'none', played: voicesPlayed, live: board.voices.length };
