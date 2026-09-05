@@ -100,7 +100,7 @@ export function texto(s: string): Uint8Array {
 /* ===================== BITMAP 8BPP ===================== */
 
 /** Os bits do byte de flags do cabecalho de bitmap, conforme a spec do upstream. */
-export const FLAG_BITMAP = { alinhadoBruto: 1, dib: 2, spliced: 4 } as const;
+export const FLAG_BITMAP = { brutoDesalinhado: 1, dib: 2, spliced: 4 } as const;
 
 export interface BitmapSintetico {
   readonly resolucao?: number;
