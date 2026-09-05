@@ -347,3 +347,22 @@ describe('⚠️ and a ball can be lost, which the demonstration counts', () => 
     expect(demo.touched.length - before).toBeLessThan(600);
   });
 });
+
+describe('⚠️ a bumper scores when it FIRES, not when it is grazed', () => {
+  test('the ball touches bumpers more often than it is paid for them', () => {
+    // `TBumper::Collision` calls `control::handler` only when `DefaultCollision` says the hit was hard
+    // — a graze bounces and pays nothing. The table's wall wrapper reported EVERY collision to the
+    // dispatcher, so a ball rolling along a bumper was paid for each frame of the roll.
+    const bytes = archive();
+    if (!bytes) return expect(existsSync(DAT)).toBe(false);
+
+    const demo = createDemo(bytes, { random: seeded() });
+    demo.step(1800);
+
+    const bumperTouches = demo.touched.filter((name) => demo.components.bumpers.has(name)).length;
+    const bumperScores = demo.scored.filter((name) => /^bump/.test(name)).length;
+
+    expect(bumperTouches, 'the ball did reach a bumper').toBeGreaterThan(0);
+    expect(bumperScores).toBeLessThan(bumperTouches);
+  });
+});

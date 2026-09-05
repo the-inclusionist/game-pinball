@@ -157,7 +157,11 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
   const manifest = loadTable(bytes);
   const sides = flipperSides(manifest);
   const blockers = blockerNames(manifest);
-  const components = buildOriginalComponents(manifest);
+  const components = buildOriginalComponents(manifest, {
+    // ⚠️ THE BUMPER SAYS WHEN IT FIRED, and that is when it is paid — see `payFor` and the wrapper it
+    // is called from. A bumper reached through the wall wrapper alone is paid for every graze.
+    onBumperFired: (name) => payFor(name),
+  });
   const touched: string[] = [];
   const scored: string[] = [];
   const score = createScoreState();
@@ -281,30 +285,42 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
       const voice = kind ? soundForKind(kind) : undefined;
       if (voice) o.onSound?.(voice);
 
-      if (dispatch?.wired.has(hit.group)) {
-        dispatch.hit(hit.group);
-        scored.push(scoringByTag.get(hit.group)?.name ?? hit.group);
-        return;
-      }
+      // ⚠️ A COMPONENT THAT DECIDES FOR ITSELF IS PAID BY ITSELF. `TBumper::Collision` calls
+      // `control::handler` only when the hit was HARD; a graze bounces and pays nothing. This wrapper
+      // reports every collision, so routing the payment through it paid a ball rolling along a bumper
+      // once per frame of the roll — six touches, six payments, and a score that reads as luck.
+      if (components.bumpers.has(hit.group)) return;
 
-      const row = scoringByTag.get(hit.group);
-      if (!row?.scores.length) return;
-      paidFlat.push(hit.group);
-      // ⚠️ THE FIRST SCORE, FLAT, because nothing here knows what else a component's table means.
-      //
-      // This branch used to read the bumper's level and index the table with it — a copy of
-      // `BumperControl`, written before the dispatcher could run the real one. The bumpers are wired
-      // now, so no bumper reaches this line any more, and the copy is gone. What is left is the
-      // honest thing to do for a component whose control function this port has not wired: pay the
-      // first entry and record that it was paid this way, where `paidFlat` can be compared against
-      // `wired` and the two required not to overlap.
-      //
-      // ⚠️ AND IT DIFFERS FROM `getScoring` ON PURPOSE-LESS INPUT: `get_scoring` answers ZERO for an
-      // index past the end, while this clamped to the last entry. That divergence went with the copy.
-      addScore(score, row.scores[0]!);
-      scored.push(row.name);
+      payFor(hit.group);
     },
   });
+
+  /** What a hit is worth: its own 1995 control function, or the first entry of its score row. */
+  function payFor(name: string): void {
+    if (dispatch?.wired.has(name)) {
+      dispatch.hit(name);
+      scored.push(scoringByTag.get(name)?.name ?? name);
+      return;
+    }
+
+    const row = scoringByTag.get(name);
+    if (!row?.scores.length) return;
+    paidFlat.push(name);
+    // ⚠️ THE FIRST SCORE, FLAT, because nothing here knows what else a component's table means.
+    //
+    // This branch used to read the bumper's level and index the table with it — a copy of
+    // `BumperControl`, written before the dispatcher could run the real one. The bumpers are wired
+    // now, so no bumper reaches this line any more, and the copy is gone. What is left is the honest
+    // thing to do for a component whose control function this port has not wired: pay the first entry
+    // and record that it was paid this way, where `paidFlat` can be compared against `wired` and the
+    // two required not to overlap.
+    //
+    // ⚠️ AND IT DIFFERS FROM `getScoring` ON PURPOSE-LESS INPUT: `get_scoring` answers ZERO for an
+    // index past the end, while this clamped to the last entry. That divergence went with the copy.
+    addScore(score, row.scores[0]!);
+    scored.push(row.name);
+  }
+
   const gates = buildOriginalGates(manifest, table);
   for (const [name, kickout] of buildOriginalKickouts(manifest, table, {
     table: { tiltLocked: false }, timer: components.timer,
