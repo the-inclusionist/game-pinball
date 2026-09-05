@@ -43,6 +43,7 @@ export type MessageCode =
   | 'PlungerStartFeedTimer'
   | 'TBlockerEnable'
   | 'ControlSpinnerLoopReset'
+  | 'TLightTurnOn'
   | 'Reset'
   | 'SetTiltLock'
   | 'GameOver'

@@ -153,10 +153,12 @@ describe('table actions — flag, lamp, message', () => {
       text: {
         extraBall: 'EXTRA BALL', bonusHeld: 'BONUS HELD', bonusSet: 'BONUS',
         jackpotSet: 'JACKPOT', multiball: 'MULTIBALL', replay: 'REPLAY',
+        flagLightsSet: 'FLAGS',
       },
       lamps: {
         bonusHold: 'lite58', bonus: 'lite59', jackpot: 'lite60', replay: 'lite199',
         multiball: ['lite38', 'lite39', 'lite40'],
+        flagLights: ['lite20', 'lite19', 'lite61'],
       },
       resetSinkTimers: (s) => built.sounds.push(`sinks:${s}`),
     });
@@ -181,6 +183,20 @@ describe('table actions — flag, lamp, message', () => {
 
     expect(ctx.score.bonusScoreFlag).toBe(true);
     expect(lights.get('lite59')!.calls).toEqual(['turnOnTimed:60']);
+  });
+
+  test('the flag lights are three lamps and NO flag at all', () => {
+    // The odd one out among the `table_set_*` helpers: it sets nothing on the table. Whatever the
+    // flag lights mean is read off the lamps by whoever cares — `FlagControl` uses one of them as a
+    // score index. And `lite61` being one of the three is what walks the booster bank's award chain
+    // on; see `control/banks`.
+    const { a, lights } = actions();
+
+    a.setFlagLights();
+
+    expect(lights.get('lite20')!.calls).toEqual(['turnOnTimed:60']);
+    expect(lights.get('lite19')!.calls).toEqual(['turnOnTimed:60']);
+    expect(lights.get('lite61')!.calls).toEqual(['turnOnTimed:60']);
   });
 
   test('the jackpot is the same three moves with a different flag and lamp', () => {

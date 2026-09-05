@@ -22,6 +22,7 @@ export interface TableActionText {
   bonusSet: string;
   jackpotSet: string;
   multiball: string;
+  flagLightsSet: string;
   replay: string;
 }
 
@@ -35,6 +36,8 @@ export interface TableActionOptions {
     jackpot: string;
     replay: string;
     multiball: readonly string[];
+    /** `lite20`, `lite19` and `lite61`, all three timed together. */
+    flagLights: readonly string[];
   };
   /** The sinks that hold the extra balls during multiball. */
   readonly resetSinkTimers?: (seconds: number) => void;
@@ -63,6 +66,17 @@ export function createTableActions(o: TableActionOptions) {
       ctx.score.bonusScoreFlag = true;
       ctx.light(o.lamps.bonus)?.turnOnTimed(AWARD_SECONDS);
       ctx.showInfo(o.text.bonusSet, 2);
+    },
+
+    /**
+     * The odd one out: `table_set_flag_lights` sets NO flag on the table at all. Three lamps go on for
+     * sixty seconds and whatever that means is read back off them by whoever cares — `FlagControl`
+     * uses one of them straight as a score index. And `lite61` being among them is what walks the
+     * booster bank's award chain on by one; see `control/banks`.
+     */
+    setFlagLights(): void {
+      for (const lamp of o.lamps.flagLights) ctx.light(lamp)?.turnOnTimed(AWARD_SECONDS);
+      ctx.showInfo(o.text.flagLightsSet, 2);
     },
 
     setJackpot(): void {
