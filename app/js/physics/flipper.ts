@@ -70,6 +70,13 @@ export interface Flipper {
   lineA: Line; lineB: Line;
   baseCircle: Circle; tipCircle: Circle;
 
+  /** Where this swing is heading, and how much of it is left. `AngleDst` / `AngleRemainder`. */
+  angleDst: number;
+  angleRemainder: number;
+  /** `DistanceDiv` and `InvT1Radius`: how a swing is cut into substeps. */
+  distanceDiv: number;
+  invTipRadius: number;
+
   /** Result of the last query, kept as in the original (`NextBallPosition`/`CollisionDirection`). */
   nextBallPosition: Vector2;
   collisionDirection: Vector2;
@@ -197,9 +204,143 @@ export function createFlipper(o: FlipperOptions): Flipper {
     lineB: lineInit(o.b1Src.x, o.b1Src.y, o.b2Src.x, o.b2Src.y),
     baseCircle: { center: copy(o.rotOrigin), radiusSq: o.baseRadius * o.baseRadius },
     tipCircle: { center: copy(o.t1Src), radiusSq: o.tipRadius * o.tipRadius },
+    angleDst: 0,
+    angleRemainder: 0,
+    distanceDiv: o.distanceDiv,
+    // `InvT1Radius = 1.0f / CircleT1Radius * 1.5f`. The 1.5 is the original's and is not derived from
+    // anything; it is what makes a fast swing take three substeps instead of two.
+    invTipRadius: (1 / o.tipRadius) * 1.5,
     nextBallPosition: { x: 0, y: 0 },
     collisionDirection: { x: 0, y: 0 },
   };
+}
+
+/**
+ * `TFlipperEdge::SetMotion`. Records the destination and the distance to it, and picks the speed.
+ *
+ * ⚠️ THE LAST LINE IS THE ONE THAT MATTERS: a motion with nothing left to travel becomes STILL rather
+ * than a motion of zero. `flipperCollision` reads that flag to choose between a kick and a plain
+ * bounce, so without it a held button would leave a fully extended flipper kicking for ever.
+ */
+export function setFlipperMotion(f: Flipper, motion: 'extending' | 'retracting' | 'reset'): FlipperMotion {
+  if (motion === 'extending') {
+    f.angleRemainder = Math.abs(f.angleMax - f.currentAngle);
+    f.angleDst = f.angleMax;
+    f.moveSpeed = f.extendSpeed;
+  } else if (motion === 'retracting') {
+    f.angleRemainder = Math.abs(f.currentAngle);
+    f.angleDst = 0;
+    f.moveSpeed = f.retractSpeed;
+  } else {
+    f.angleRemainder = 0;
+    f.angleDst = 0;
+  }
+
+  f.motion = f.angleRemainder === 0 || motion === 'reset' ? 'still' : motion;
+  return f.motion;
+}
+
+/**
+ * `TFlipperEdge::flipper_angle_delta`. How far it turns this frame.
+ *
+ * ⚠️ THE LAST STEP IS NOT `min(delta, remainder)`. The original returns `angleDst - currentAngle`, which
+ * reads the destination rather than a running counter.
+ *
+ * EQUIVALENT MUTANT, RECORDED RATHER THAN PAPERED OVER: replacing this with `sign(delta) * remainder`
+ * survives every test here, and it survives honestly. `angleRemainder` is maintained as the distance
+ * to `angleDst` — set from it, decremented by each turn, increased again by whatever a ball takes back
+ * — so the two expressions agree, and `flipperSweep` snaps to `angleDst` at the end anyway, which
+ * hides any drift that might accumulate between them. I could force a difference only by writing a
+ * test that corrupts `angleRemainder` first, and a test of an impossible state proves nothing. The
+ * original's form is kept because it cannot drift, not because a test can tell.
+ */
+export function flipperAngleDelta(f: Flipper, timeDelta: number): number {
+  if (f.motion === 'still') return 0;
+
+  const delta = f.moveSpeed * timeDelta;
+  if (Math.abs(delta) > f.angleRemainder) return f.angleDst - f.currentAngle;
+  return delta;
+}
+
+/**
+ * `TFlipper::GetFlipperStepAngle`. A fast swing is cut into substeps for the same reason a fast ball
+ * is: a tip that crossed several pixels in one go would step over a ball rather than hit it.
+ *
+ * Three is the original's cap, and it is a cap rather than a formula — beyond three the cost is not
+ * worth the accuracy, and that judgement was made in 1995 and is transcribed rather than revisited.
+ */
+export function flipperStepAngle(f: Flipper, timeDelta: number): { steps: number; delta: number } {
+  if (f.motion === 'still') return { steps: 0, delta: 0 };
+
+  const delta = flipperAngleDelta(f, timeDelta);
+  let step = Math.abs(Math.ceil(f.distanceDiv * delta * f.invTipRadius));
+  if (step > 3) step = 3;
+  if (step >= 2) return { steps: step, delta: delta / step };
+  return { steps: 1, delta };
+}
+
+/**
+ * `TFlipper::FlipperCollision`. One substep of the swing: look for balls the sweep would catch, answer
+ * them, then move the angle.
+ *
+ * ⚠️ THE RAY IS CAST FROM THE BALL, BACKWARDS. The flipper turns by `delta`; in the flipper's own frame
+ * the ball turns by `-delta`. So the ball's position is rotated the other way and the ray runs between
+ * the two, which asks "would the face pass through this ball" without moving anything first.
+ *
+ * ⚠️ AND A BALL IN THE WAY PUSHES THE FLIPPER BACK, rather than being swept through. That is the one
+ * place in this file where the ball moves the table instead of the other way round, and it is what
+ * makes a trapped ball rest on a raised flipper.
+ */
+export function advanceFlipper(
+  f: Flipper, timeDelta: number, balls: readonly BallState[], onHit?: (ball: BallState) => void,
+): void {
+  const { steps, delta } = flipperStepAngle(f, timeDelta);
+  for (let i = 0; i < steps; i++) flipperSweep(f, balls, delta, onHit);
+}
+
+/** One substep, with the turn already decided. Split out because the frame loop interleaves them. */
+export function flipperSweep(
+  f: Flipper, balls: readonly BallState[], delta: number, onHit?: (ball: BallState) => void,
+): void {
+  if (f.motion === 'still') return;
+
+  setControlPoints(f, f.currentAngle);
+  let struck = false;
+
+  const sin = Math.sin(-delta), cos = Math.cos(-delta);
+  for (const ball of balls) {
+    const rotated = copy(ball.position);
+    rotatePoint(rotated, sin, cos, f.rotOrigin);
+    const direction = { x: rotated.x - ball.position.x, y: rotated.y - ball.position.y };
+    const maxDistance = normalize2d(direction);
+
+    const hit = distanceToFlipper(f, {
+      origin: copy(ball.position), direction, maxDistance, minDistance: 0.002, collisionMask: 0xffff,
+    });
+    if (hit.distance >= NO_COLLISION) continue;
+
+    // The original replaces the collision point with the ball's own position here: the ball is not
+    // moved by the sweep, it is answered where it stands.
+    f.nextBallPosition = copy(ball.position);
+    f.collisionDirection = copy(hit.direction);
+    flipperCollision(f, ball);
+    onHit?.(ball);
+    struck = true;
+  }
+
+  if (struck) {
+    const given = delta / (Math.abs(f.moveSpeed) * 5);
+    f.currentAngle -= given;
+    f.angleRemainder += Math.abs(given);
+  } else {
+    f.currentAngle += delta;
+    f.angleRemainder -= Math.abs(delta);
+  }
+
+  if (f.angleRemainder <= 0.0001) {
+    f.currentAngle = f.angleDst;
+    f.motion = 'still';
+  }
 }
 
 /** `set_control_points`: rotates the five points and rebuilds the two lines and two circles. */
