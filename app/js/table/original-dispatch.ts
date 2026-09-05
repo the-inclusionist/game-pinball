@@ -52,10 +52,12 @@ import {
   BUMPER_LANE_BINDINGS, LAMP_BINDINGS, RETURN_LANES, FUEL_ROLLOVERS, FUEL_BARGRAPH,
   FUEL_REFUEL_TEXT_ID, OUT_LANES, BONUS_LANE, SPOT_TARGET_SETS, MEDAL_BANK, MULTIPLIER_BANK,
   BOOSTER_BANK, TABLE_ACTIONS, FLIPPER_REBOUNDERS, GATE_LAMPS, KICKERS, SKILL_SHOT,
-  LAUNCH_RAMP, FLAGS, type BumperLaneBinding,
+  LAUNCH_RAMP, FLAGS, KICKOUTS, type BumperLaneBinding,
 } from '../control/bindings.js';
 import { addExtraBall, createTableActions } from '../control/table-actions.js';
-import { makeFlagControl } from '../control/wormhole.js';
+import {
+  makeFlagControl, makeBlackHoleKickoutControl, makeGravityWellKickoutControl,
+} from '../control/wormhole.js';
 import { NEW_BALL_REFLEX_SCORE } from '../control/feed.js';
 import {
   handler, bumperControl, rebounderControl, makeFlipperRebounderControl,
@@ -64,9 +66,16 @@ import {
 import { SCORE_COMPONENTS } from '../control/score-table.js';
 import type { OriginalComponents } from './original-components.js';
 import type { Gate } from './gate.js';
+import type { Kickout } from './kickout.js';
 
 export interface OriginalDispatchOptions {
   readonly components: OriginalComponents;
+  /**
+   * ⚠️ THE HOLES, WHICH DO NOT RELEASE THEMSELVES. A kickout captures the ball and waits for its
+   * control to call `restartTimer`; a hole whose control is not bound here keeps the ball for the rest
+   * of the game. Absent means the caller must not let them own their collisions either.
+   */
+  readonly kickouts?: ReadonlyMap<string, Kickout>;
   /**
    * ⚠️ THE GATES, WHICH ARE NOT COMPONENTS OF THE COMPONENT BUILDER. A gate is the table's geometry
    * plus a switch, so it can only exist once the geometry does — see `table/original-gates`. Absent
@@ -84,6 +93,9 @@ export interface OriginalDispatchOptions {
    */
   readonly textFor: (resourceId: string, params?: Record<string, string | number>) => string;
 }
+
+/** `soundwave7`'s length, which is how long the gravity well holds the ball. */
+export const GRAVITY_WELL_HOLD_SECONDS = 0.3;
 
 export interface OriginalDispatch {
   /** A collision on the component with this archive name. Silent for anything not wired. */
@@ -816,6 +828,46 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
         controls.set(name, (component) => control('ControlCollision', component, o.context));
       }
     }
+  }
+
+  // ⚠️ THE TWO HOLES THAT CAN LET GO. Each scores, says what it paid, and schedules its own release —
+  // the black hole with the component's default hold, the gravity well with the length of the sound
+  // that plays over it. Binding the control is what makes the hole safe to stand in.
+  //
+  // The gravity well also SWITCHES ITSELF OFF as it takes the ball, which is why it is a `Kickout2`:
+  // it is dormant until a mission arms it and goes back to dormant the moment it pays.
+  for (const binding of KICKOUTS) {
+    const kickout = o.kickouts?.get(binding.component);
+    if (!kickout) continue;
+
+    const row = scoreRows.get(binding.component);
+    const caller: ControlledComponent = {
+      name: binding.component, scores: row?.scores ?? [], control: null,
+    };
+
+    let control: ReturnType<typeof makeBlackHoleKickoutControl>;
+    if (binding.lamp && binding.armedTextId && binding.unknownTextId) {
+      const lamp = o.components.lights.get(binding.lamp);
+      if (!lamp) continue;
+      control = makeGravityWellKickoutControl({
+        lamp: lamp as unknown as LaneLight,
+        kickout,
+        // ⚠️ THE HOLD IS THE SOUND'S OWN LENGTH — `soundwave7->Play` returns it upstream. This port's
+        // effects are its own, so the length is the one `audio/voices` gives that role. Nothing plays
+        // it yet: the control asks for the duration and not for the sound.
+        soundDuration: () => GRAVITY_WELL_HOLD_SECONDS,
+        scoreText: (points) => o.textFor(binding.textId, { points }),
+        armedText: (points) => o.textFor(binding.armedTextId!, { points }),
+        unknownText: o.textFor(binding.unknownTextId),
+      });
+    } else {
+      control = makeBlackHoleKickoutControl({
+        kickout,
+        scoreText: (points) => o.textFor(binding.textId, { points }),
+      });
+    }
+
+    kickout.control = () => control('ControlCollision', caller, o.context);
   }
 
   return {

@@ -101,6 +101,10 @@ export function buildOriginalKickouts(
 
     kickouts.set(name, createKickout({
       table: o.table,
+      // ⚠️ `Kickout2` IS THE DORMANT ONE. `TPinballTable` builds type 1029 with the flag false and the
+      // constructor clears `ActiveFlag` — that is the gravity well, a hole that is not in the table
+      // until a mission arms it. Building it active puts a hole where the original has none.
+      startsActive: object.type !== ObjectType.Kickout2,
       timer: o.timer,
       edges,
       center: { x: drawn[1]!, y: drawn[2]! },

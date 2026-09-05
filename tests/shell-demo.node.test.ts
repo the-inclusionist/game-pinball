@@ -241,3 +241,21 @@ describe('⚠️ and a control that names its own sound reaches the same output'
   });
 });
 
+
+describe('⚠️ and a hole that cannot let go is never given the ball', () => {
+  test('the demonstration installs only the kickouts whose control is bound', () => {
+    // ⚠️ READ FROM THE SOURCE, and the reason is the same one that made the sound gate a source gate:
+    // the ball has to FIND the hole for the difference to show, and which hole a ball finds in nine
+    // hundred frames is up to the gravity jitter. A mutation handing every kickout to `componentFor`
+    // passed four runs of a behavioural test before this replaced it.
+    //
+    // The regression it forbids is exact: a kickout does not release itself, so an unbound hole keeps
+    // the ball for the rest of the game — no drain, no score, no stuck-ball, the ball simply stops
+    // existing.
+    const source = readFileSync(
+      resolve(dirname(fileURLToPath(import.meta.url)), '../app/js/shell/demo.ts'), 'utf8',
+    );
+
+    expect(source).toMatch(/kickouts\.get\(name\)\?\.control \? kickouts\.get\(name\) : undefined/);
+  });
+});

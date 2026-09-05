@@ -66,6 +66,10 @@ const en: Record<string, string> = {
   'pinball.mission.timeWarp2.promoted': 'Promoted to {rank}.',
   'pinball.mission.timeWarp2.demoted': 'Demoted to {rank}.',
 
+  'pinball.award.blackHole': 'Black hole: {points}',
+  'pinball.award.gravityWell': 'Gravity well: {points}',
+  'pinball.award.gravityWellArmed': 'Gravity well armed: {points}',
+  'pinball.award.gravityWellUnknown': 'Gravity well armed.',
   'pinball.award.reflexShot': 'Reflex shot: {points}',
   'pinball.award.skillShot': 'Skill shot: {points}',
   'pinball.award.medal1': 'Bronze medal.',

@@ -440,6 +440,36 @@ export const BOOSTER_BANK: BoosterBankBinding = {
 };
 
 /**
+ * The two holes whose control this build can run.
+ *
+ * ⚠️ AND THE THIRD IS DELIBERATELY ABSENT. `a_kout2` runs `HyperspaceKickOutControl`, which needs the
+ * hyperspace ladder, the blocker and the gravity well's arming — none of them wired. A kickout with no
+ * control never releases the ball, so an unwired hole must not own its collisions at all: it stays the
+ * small circle its mouth describes and the ball bounces off it.
+ */
+export interface KickoutBinding {
+  readonly control: string;
+  readonly component: string;
+  readonly textId: string;
+  /** The gravity well's lamp, and the two lines its arming shows. Absent for the black hole. */
+  readonly lamp?: string;
+  readonly armedTextId?: string;
+  readonly unknownTextId?: string;
+}
+
+export const KICKOUTS: readonly KickoutBinding[] = [
+  { control: 'BlackHoleKickoutControl', component: 'a_kout3', textId: 'STRING181' },
+  {
+    control: 'GravityWellKickoutControl',
+    component: 'a_kout1',
+    textId: 'STRING182',
+    lamp: 'lite62',
+    armedTextId: 'STRING183',
+    unknownTextId: 'STRING146',
+  },
+];
+
+/**
  * `LaunchRampControl`: the four ways the ramp can pay, chosen by three lamps read as bits.
  *
  * ⚠️ THE ORDINARY SCORE LIVES IN THE `else`. Any lit lamp REPLACES it — the ramp's five thousand is

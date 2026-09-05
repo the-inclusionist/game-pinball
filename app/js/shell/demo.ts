@@ -166,15 +166,12 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
    * draws — see `table/original-kickouts`. That much is right whoever owns the collision, so the
    * geometry goes in either way.
    *
-   * ⚠️ BUT THEY DO NOT OWN THEIR COLLISIONS YET, AND THE REASON IS THAT A KICKOUT DOES NOT RELEASE
-   * ITSELF. It swallows the ball and waits for its control function to call `restartTimer`; with no
-   * control bound, the hole keeps the ball for the rest of the game. The ball does not drain, does not
-   * score and does not count as lost — it stops existing, and the game goes on without it.
-   *
-   * Two of the three controls are not wired (`GravityWellKickoutControl` needs a settable active flag,
-   * `HyperspaceKickOutControl` needs the hyperspace ladder), so the holes bounce like the small circles
-   * they are until all three can let go. Half-wiring them would be worse than not wiring them: it
-   * would eat the ball.
+   * ⚠️ AND ONLY THE HOLES WHOSE CONTROL IS BOUND OWN THEIR COLLISIONS. A kickout does not release
+   * itself: it swallows the ball and waits for its control to call `restartTimer`, so an unbound hole
+   * keeps the ball for the rest of the game — it does not drain, does not score and does not count as
+   * lost, it stops existing. `a_kout2` runs `HyperspaceKickOutControl`, which needs the hyperspace
+   * ladder and is not wired, so it stays the small circle its mouth describes and the ball bounces
+   * off it.
    */
   const kickouts: ReturnType<typeof buildOriginalKickouts> = new Map();
 
@@ -187,7 +184,8 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
     // never receive is a saver the ball goes straight past — it would arm nothing, because nothing
     // would ever touch it.
     componentFor: (name) => components.bumpers.get(name) ?? components.kickbacks.get(name)
-      ?? kickouts.get(name),
+      // Only the bound ones: an unbound hole must not be given a ball it cannot give back.
+      ?? (kickouts.get(name)?.control ? kickouts.get(name) : undefined),
     onHit: (hit) => {
       touched.push(hit.group);
       // ⚠️ BY KIND, NOT PER COLLISION. A ball resting against a wall collides many times a second, and
@@ -222,8 +220,12 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
     },
   });
   const gates = buildOriginalGates(manifest, table);
+  for (const [name, kickout] of buildOriginalKickouts(manifest, table, {
+    table: { tiltLocked: false }, timer: components.timer,
+  })) kickouts.set(name, kickout);
+
   dispatch = createOriginalDispatch({
-    components, context, gates,
+    components, context, gates, kickouts,
     textFor: (id, params) => o.textFor?.(id, params) ?? id,
   });
 

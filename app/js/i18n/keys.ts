@@ -46,6 +46,12 @@ export const RESOURCE_KEYS: Readonly<Record<string, string>> = {
   // is worth a TENTH of stopping at three. The line names the amount, which is the only way a player
   // finds that out.
   // The reflex shot, which is the ONLY one of the ramp's four payouts worth any points.
+  /* The two holes that pay. The gravity well's other two lines belong to the arming, which no
+     message in this build sends. */
+  STRING181: 'pinball.award.blackHole',
+  STRING182: 'pinball.award.gravityWell',
+  STRING183: 'pinball.award.gravityWellArmed',
+  STRING146: 'pinball.award.gravityWellUnknown',
   STRING111: 'pinball.award.reflexShot',
   STRING122: 'pinball.award.skillShot',
   STRING154: 'pinball.award.medal1',

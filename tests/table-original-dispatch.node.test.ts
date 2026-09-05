@@ -5,6 +5,7 @@ import { createOriginalDispatch } from '../app/js/table/original-dispatch.js';
 import { buildOriginalComponents } from '../app/js/table/original-components.js';
 import { buildOriginalTable } from '../app/js/table/original.js';
 import { buildOriginalGates } from '../app/js/table/original-gates.js';
+import { buildOriginalKickouts, kickoutGeometry } from '../app/js/table/original-kickouts.js';
 import {
   REENTRY_LANES, LAMP_BINDINGS, FUEL_ROLLOVERS, OUT_LANES, BONUS_LANE, SPOT_TARGET_SETS,
   MEDAL_BANK, MULTIPLIER_BANK, BOOSTER_BANK, TABLE_ACTIONS, GATE_LAMPS, KICKERS, SKILL_SHOT,
@@ -35,8 +36,11 @@ function wired(o: { gates?: boolean; easy?: boolean } = {}) {
   if (!table) return null;
   const components = buildOriginalComponents(table);
   // The gates need the GEOMETRY, which is a different build — see `table/original-gates`.
-  const geometry = o.gates ? buildOriginalTable(table.groups) : null;
+  const geometry = o.gates ? buildOriginalTable(table.groups, { geometryFor: kickoutGeometry(table) }) : null;
   const gates = geometry ? buildOriginalGates(table, geometry) : undefined;
+  const kickouts = geometry
+    ? buildOriginalKickouts(table, geometry, { table: { tiltLocked: false }, timer: components.timer })
+    : undefined;
   const score = createScoreState();
   const shown: string[] = [];
   const sounds: string[] = [];
@@ -52,11 +56,11 @@ function wired(o: { gates?: boolean; easy?: boolean } = {}) {
     missionControl: () => {},
   };
   const dispatch = createOriginalDispatch({
-    components, context, ...(gates ? { gates } : {}),
+    components, context, ...(gates ? { gates } : {}), ...(kickouts ? { kickouts } : {}),
     ...(o.easy ? { isEasyMode: () => true } : {}),
     textFor: (id, params) => (params ? `text:${id}:${JSON.stringify(params)}` : `text:${id}`),
   });
-  return { components, score, shown, sounds, dispatch, context, geometry, gates };
+  return { components, score, shown, sounds, dispatch, context, geometry, gates, kickouts };
 }
 
 describe('a lane crossing reaches the 1995 control function', () => {
@@ -1219,5 +1223,64 @@ describe('⚠️ the flags, whose score index IS a lamp', () => {
     w.dispatch.hit(FLAGS.components[0]!);
 
     expect(w.score.curScore - afterBank).toBe(500);
+  });
+});
+
+describe('⚠️ the holes that can let go, and the one that cannot', () => {
+  /** A ball object shaped the way a kickout uses one. */
+  const heldBall = (thrown: number[]) => ({
+    position: { x: 0, y: 0, z: 0 }, direction: { x: 0, y: 1 }, speed: 10,
+    collisionDisabled: false, component: null as unknown,
+    memory: { record: () => {} },
+    throwBall: (_d: unknown, _a: number, speed: number) => thrown.push(speed),
+  });
+
+  test('the black hole scores, says what it paid, and schedules its own release', () => {
+    // Binding the control is what makes a hole safe to stand in: without it the ball never comes back.
+    const w = wired({ gates: true });
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    const kickout = w.kickouts!.get('a_kout3')!;
+    const thrown: number[] = [];
+
+    kickout.collision(heldBall(thrown), { x: 0, y: 0 }, { x: 0, y: 1 }, 0, null);
+
+    expect(w.score.curScore).toBeGreaterThan(0);
+    expect(w.shown.some((line) => line.startsWith('text:STRING181'))).toBe(true);
+
+    w.components.advance(2);
+
+    expect(kickout.captured, 'and the ball came back').toBe(false);
+    expect(thrown).toHaveLength(1);
+  });
+
+  test('⚠️ the gravity well switches ITSELF off as it pays, and starts off anyway', () => {
+    // It is a `Kickout2`: dormant until a mission arms it, and dormant again the moment it pays. So a
+    // ball can only ever fall in during the window a mission opened.
+    const w = wired({ gates: true });
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    const kickout = w.kickouts!.get('a_kout1')!;
+    expect(kickout.active, 'dormant to begin with').toBe(false);
+    kickout.active = true;
+    const thrown: number[] = [];
+
+    kickout.collision(heldBall(thrown), { x: 0, y: 0 }, { x: 0, y: 1 }, 0, null);
+
+    expect(kickout.active, 'and off again as it takes the ball').toBe(false);
+    expect(w.components.lights.get('lite62')!.lit).toBe(false);
+    expect(w.shown.some((line) => line.startsWith('text:STRING182'))).toBe(true);
+
+    w.components.advance(1);
+    expect(thrown).toHaveLength(1);
+  });
+
+  test('⚠️ and the hyperspace hole has no control, so it must never be given the ball', () => {
+    // `HyperspaceKickOutControl` needs the hyperspace ladder, the blocker and the gravity well's
+    // arming. Until then the hole keeps whatever it swallows, so the demonstration does not let it own
+    // its collisions — and this is the check that the dispatcher left it unbound.
+    const w = wired({ gates: true });
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+
+    expect(w.kickouts!.get('a_kout2')!.control).toBe(null);
+    expect(w.kickouts!.get('a_kout3')!.control).not.toBe(null);
   });
 });

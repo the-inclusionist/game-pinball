@@ -62,6 +62,12 @@ export interface KickoutOptions {
   readonly throwAngleMult: number;
   readonly throwSpeedMult1: number;
   readonly throwSpeedMult2: number;
+  /**
+   * ⚠️ A `Kickout2` STARTS SWITCHED OFF. `TKickout`'s constructor takes a flag and clears `ActiveFlag`
+   * when it is false — which is the gravity well, dormant until a mission arms it. Building it active
+   * would put a hole in the table that the original does not have until it is earned.
+   */
+  readonly startsActive?: boolean;
   readonly captureSoundId?: number;
   readonly releaseSoundId?: number;
   readonly sound?: SoundPlayer;
@@ -70,6 +76,11 @@ export interface KickoutOptions {
 
 export interface Kickout {
   collision(ball: unknown, position: Vector2, direction: Vector2, distance: number, edge: unknown): void;
+  /**
+   * `ActiveFlag`. Switching it off makes the hole stop existing for the collision search — the same
+   * mechanism a gate uses, and the same one the hole itself uses while it is holding a ball.
+   */
+  active: boolean;
   /**
    * ⚠️ `control::handler(ControlCollision, this)` ON CAPTURE, AND THE ONLY THING THAT LETS THE BALL
    * OUT. A kickout does not schedule its own release: it swallows the ball and waits for its control
@@ -91,7 +102,9 @@ export function createKickout(o: KickoutOptions): Kickout {
   let heldBall: KickoutBall | null = null;
   let originalZ = 0;
 
+  let active = o.startsActive ?? true;
   const setActive = (value: boolean): void => {
+    active = value;
     for (const edge of o.edges) edge.active = value;
   };
 
@@ -113,6 +126,8 @@ export function createKickout(o: KickoutOptions): Kickout {
 
   const kickout: Kickout = {
     control: null,
+    get active() { return active; },
+    set active(value: boolean) { setActive(value); },
     get captured() { return captured; },
 
     collision(ball, position, _direction, _distance, edge): void {
@@ -165,6 +180,10 @@ export function createKickout(o: KickoutOptions): Kickout {
       o.timer.set(delay, release);
     },
   };
+
+  // The edges start as the flag says, not as the grid left them: a `Kickout2` is a hole that is not
+  // there yet.
+  setActive(active);
 
   return kickout;
 }

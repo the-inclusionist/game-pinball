@@ -252,3 +252,36 @@ describe('⚠️ a kickout with no control bound never lets the ball go', () => 
     expect(thrown).toHaveLength(1);
   });
 });
+
+describe('⚠️ the dormant one, which is a hole that is not there yet', () => {
+  test('`a_kout1` is a Kickout2 and starts switched OFF', () => {
+    // `TPinballTable` builds type 1029 with the flag false and `TKickout`'s constructor clears
+    // `ActiveFlag`. That is the gravity well: dormant until a mission arms it. Building it active puts
+    // a hole in the table the original does not have until it is earned.
+    const b = build();
+    if (!b) return expect(existsSync(DAT)).toBe(false);
+
+    expect(b.kickouts.get('a_kout1')!.active).toBe(false);
+    expect(b.geometry.edgesOf('a_kout1').some((edge) => edge.active)).toBe(false);
+  });
+
+  test('and the other two are there from the first frame', () => {
+    const b = build();
+    if (!b) return expect(existsSync(DAT)).toBe(false);
+
+    for (const name of ['a_kout2', 'a_kout3']) {
+      expect(b.kickouts.get(name)!.active, name).toBe(true);
+      expect(b.geometry.edgesOf(name).every((edge) => edge.active), name).toBe(true);
+    }
+  });
+
+  test('⚠️ and arming it puts its edges back into the collision search', () => {
+    const b = build();
+    if (!b) return expect(existsSync(DAT)).toBe(false);
+    const kickout = b.kickouts.get('a_kout1')!;
+
+    kickout.active = true;
+
+    expect(b.geometry.edgesOf('a_kout1').every((edge) => edge.active)).toBe(true);
+  });
+});
