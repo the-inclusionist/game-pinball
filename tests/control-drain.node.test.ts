@@ -136,7 +136,7 @@ describe('the drain asks four questions, in order', () => {
   });
 });
 
-describe('the bonus pays out here and nowhere else', () => {
+describe('the bonus is cashed in when the ball dies', () => {
   test('the accumulated bonus becomes score when the ball dies', () => {
     const b = build();
     b.o.score.bonusScore = 175000;

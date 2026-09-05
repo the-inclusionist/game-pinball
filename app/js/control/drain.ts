@@ -10,10 +10,15 @@
 //   3. Are other balls still in play? Then just switch off one multiball lamp. Nothing else happened.
 //   4. Otherwise the ball is genuinely gone.
 //
-// ========================= AND THIS IS WHERE THE BONUS PAYS OUT =========================
+// ========================= AND THIS IS WHERE THE BONUS IS CASHED IN =========================
 // `SpecialAddScore(TableG->BonusScore)` — the accumulator that has been shadowing every point scored
-// all ball long is cashed in HERE, once, unmultiplied. That is the whole reason the bonus flag exists:
-// playing well raises a number that only becomes score when the ball dies.
+// all ball long becomes score here, unmultiplied. That is the whole reason the bonus flag exists:
+// playing well raises a number that only pays when the ball dies.
+//
+// It is not the only payout. `BonusLaneRolloverControl` pays the same accumulator whenever `lite16` is
+// lit, costs no ball, and does NOT clear it — so a lit bonus lamp is worth the bonus twice, once
+// through the lane and again at the drain. See `control/lanes`. What is unique here is the reset that
+// follows.
 //
 // ========================= THE RESET LIST IS THE DEFINITION OF "PER BALL" =========================
 // The end of a ball switches off about fifty named lamps and groups, one at a time. There is no

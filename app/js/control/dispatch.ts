@@ -32,6 +32,7 @@ export type MessageCode =
   | 'ControlCollision'
   | 'ControlTimerExpired'
   | 'ControlNotifyTimerExpired'
+  | 'TLightResetAndTurnOn'
   | 'Reset'
   | 'SetTiltLock'
   | 'GameOver'
