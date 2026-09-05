@@ -14,6 +14,9 @@ import { TipoDeEntrada } from '../app/js/dat/partman.js';
 import { lerPaleta } from '../app/js/dat/palette.js';
 import { desempacotarIndexado } from '../app/js/dat/indexado.js';
 import { montarPaletaDeExibicao, aplicarPaleta } from '../app/js/gfx/gdrv.js';
+import { reduzirPelaMetade, reduzirPelaMetadeVizinho } from '../app/js/gfx/escala.js';
+import { lerZMap } from '../app/js/dat/zmap.js';
+import { criarFramebuffer, empacotar } from '../app/js/gfx/framebuffer.js';
 import { montarPng } from './helpers/png.js';
 
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -75,5 +78,48 @@ describe.skipIf(!existsSync(CAMINHO))('render — a mesa real em PNG', () => {
 
     // E e colorida: um defeito de indice que colapsasse tudo numa cor so passaria em todo o resto.
     expect(new Set(Array.from(fb.pixels)).size).toBeGreaterThan(100);
+
+    // AS DUAS REDUCOES, lado a lado, para a escolha estetica ser feita olhando e nao imaginando.
+    const media = reduzirPelaMetade(fb);
+    const vizinho = reduzirPelaMetadeVizinho(fb);
+    writeFileSync(join(SAIDA, 'mesa-183-media.png'), montarPng(media.bytes, media.largura, media.altura));
+    writeFileSync(join(SAIDA, 'mesa-183-vizinho.png'), montarPng(vizinho.bytes, vizinho.largura, vizinho.altura));
+
+    // 183x235 e o alvo do plano, e vem de arredondar PARA CIMA: 365/2 e 182,5.
+    expect([media.largura, media.altura]).toEqual([183, 235]);
+    expect([vizinho.largura, vizinho.altura]).toEqual([183, 235]);
+
+    // A media preserva mais informacao que a amostragem — e o que justifica ela ser o padrao proposto.
+    expect(new Set(Array.from(media.pixels)).size)
+      .toBeGreaterThan(new Set(Array.from(vizinho.pixels)).size);
+  });
+
+  test('o z-map da mesa cobre a mesma area e tem relevo de verdade', () => {
+    const arquivo = new Uint8Array(readFileSync(CAMINHO));
+    const mesa = carregarMesa(arquivo);
+    const grupo = mesa.grupos[mesa.indiceDoGrupo('table')!]!;
+
+    const entradaZ = grupo.entradas.find((e) => e.tipo === TipoDeEntrada.ZMap && e.dados);
+    expect(entradaZ).toBeDefined();
+    const z = lerZMap(entradaZ!.dados!);
+
+    expect(z.vazio).toBe(false);
+    expect([z.largura, z.altura]).toEqual([365, 470]);
+
+    // Visualizacao em cinza, como o `zdrv::CreatePreview`: perto = claro, longe = escuro.
+    const fb = criarFramebuffer(z.largura, z.altura);
+    for (let y = 0; y < z.altura; y++) {
+      for (let x = 0; x < z.largura; x++) {
+        const t = Math.floor((0xffff - z.profundidadeEm(x, y)) / 0xff);
+        fb.pixels[y * fb.largura + x] = empacotar(t, t, t, 255);
+      }
+    }
+    mkdirSync(SAIDA, { recursive: true });
+    writeFileSync(join(SAIDA, 'mesa-zmap.png'), montarPng(fb.bytes, fb.largura, fb.altura));
+
+    // RELEVO DE VERDADE, e nao um plano: se o z-map viesse todo no mesmo valor a bola nunca sumiria
+    // atras de nada, e todos os testes de profundidade continuariam passando.
+    const distintas = new Set(Array.from(z.profundidades));
+    expect(distintas.size).toBeGreaterThan(10);
   });
 });
