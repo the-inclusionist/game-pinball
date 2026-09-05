@@ -230,8 +230,101 @@ export const BONUS_LANE: BonusLaneBinding = {
   bonusTextId: 'STRING104',
   missTextId: FUEL_REFUEL_TEXT_ID,
   collectSound: 'collect',
-  missSound: 'miss',
+  // ⚠️ NOT A MISS. The unlit branch plays `soundwave25`, and the original plays that emitter in exactly
+  // two places — here and where the fuel spot set completes — both of which fill the tank to the top.
+  // It is the refuel sound. Read in isolation this branch looks like a failure, because the lamp was
+  // dark, and it was wired with a falling tone for what is actually the consolation being paid.
+  missSound: 'refuel',
 };
+
+/**
+ * The four SPOT TARGET sets: `FuelSpotTargetControl` and its three siblings.
+ *
+ * ⚠️ THE MEMORY IS IN THE LAMPS, NOT IN THE TARGETS. Each target owns one lamp; hitting it lights that
+ * lamp and scores on its own, and the SET completing is judged by the group's lit count. So hitting one
+ * target three times is worth three hits and no set — which is the difference between a skill shot and
+ * a tap, and it falls out of reading the group rather than counting.
+ *
+ * ⚠️ AND THREE OF THE FOUR ARE TRANSCRIBED BUT NOT RUN. The two hazard sets disable a gate when they
+ * complete, and this build constructs no `TGate` — a gate needs the table's edges, which live in
+ * `table/original` and not in `table/original-components`. The mission set chooses its sound from
+ * whether `lite198` is lit, BEFORE it knows whether the set completed, and plays none at all on the
+ * completion — a different rule that `makeSpotTargetControl` cannot express and should not be bent to.
+ * The transcription is done and correct either way; the dispatcher says which it runs.
+ */
+export type SpotCompletion =
+  | { readonly kind: 'fillTank'; readonly splitIndex: number; readonly textId: string }
+  | { readonly kind: 'disableGate'; readonly gate: string }
+  /** The mission set's completion flashes the group off and does nothing else. */
+  | { readonly kind: 'none' };
+
+export interface SpotTargetBinding {
+  readonly control: string;
+  /** The three targets, in the order the original's `if` chain tests them. */
+  readonly targets: readonly string[];
+  /** One lamp per target, same order. */
+  readonly lamps: readonly string[];
+  /** Completion is judged by this group's lit count. All four hold exactly three lamps. */
+  readonly lightGroup: string;
+  /**
+   * ⚠️ THE SECOND MEMORY OF THE SAME HIT. `lite104->MessageField |= 1u` records which of the three
+   * were struck as BITS in the first lamp, and nothing in the control ever clears it — the missions
+   * read that mask. The fuel set is the only one without it.
+   */
+  readonly maskLamp?: string;
+  readonly hitSound: string;
+  readonly completeSound: string;
+  readonly completion: SpotCompletion;
+  /**
+   * The mission set alone picks its sound from a LAMP rather than from the outcome. Present here means
+   * the shared factory does not fit, and the dispatcher declines rather than approximating.
+   */
+  readonly soundFromLamp?: string;
+}
+
+export const SPOT_TARGET_SETS: readonly SpotTargetBinding[] = [
+  {
+    control: 'FuelSpotTargetControl',
+    targets: ['a_targ10', 'a_targ11', 'a_targ12'],
+    lamps: ['lite70', 'lite71', 'lite72'],
+    lightGroup: 'top_circle_tgt_lights',
+    hitSound: 'hit',
+    // `soundwave25`, which the original plays in exactly two places and both fill the tank.
+    completeSound: 'refuel',
+    completion: { kind: 'fillTank', splitIndex: 11, textId: FUEL_REFUEL_TEXT_ID },
+  },
+  {
+    control: 'MissionSpotTargetControl',
+    targets: ['a_targ13', 'a_targ14', 'a_targ15'],
+    lamps: ['lite101', 'lite102', 'lite103'],
+    lightGroup: 'ramp_tgt_lights',
+    maskLamp: 'lite101',
+    hitSound: 'hit',
+    completeSound: 'complete',
+    completion: { kind: 'none' },
+    soundFromLamp: 'lite198',
+  },
+  {
+    control: 'LeftHazardSpotTargetControl',
+    targets: ['a_targ16', 'a_targ17', 'a_targ18'],
+    lamps: ['lite104', 'lite105', 'lite106'],
+    lightGroup: 'lchute_tgt_lights',
+    maskLamp: 'lite104',
+    hitSound: 'hit',
+    completeSound: 'complete',
+    completion: { kind: 'disableGate', gate: 'v_gate1' },
+  },
+  {
+    control: 'RightHazardSpotTargetControl',
+    targets: ['a_targ19', 'a_targ20', 'a_targ21'],
+    lamps: ['lite107', 'lite108', 'lite109'],
+    lightGroup: 'bpr_solotgt_lights',
+    maskLamp: 'lite107',
+    hitSound: 'hit',
+    completeSound: 'complete',
+    completion: { kind: 'disableGate', gate: 'v_gate2' },
+  },
+];
 
 /**
  * ⚠️ A CONTROL WHOSE WHOLE BINDING IS A LIST OF LAMPS, IN ORDER.

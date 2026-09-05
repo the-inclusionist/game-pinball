@@ -4,7 +4,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { createOriginalDispatch } from '../app/js/table/original-dispatch.js';
 import { buildOriginalComponents } from '../app/js/table/original-components.js';
 import {
-  REENTRY_LANES, LAMP_BINDINGS, FUEL_ROLLOVERS, OUT_LANES, BONUS_LANE,
+  REENTRY_LANES, LAMP_BINDINGS, FUEL_ROLLOVERS, OUT_LANES, BONUS_LANE, SPOT_TARGET_SETS,
 } from '../app/js/control/bindings.js';
 import { createScoreState } from '../app/js/control/score.js';
 import { loadTable } from '../app/js/dat/loader.js';
@@ -55,7 +55,7 @@ describe('a lane crossing reaches the 1995 control function', () => {
     const w = wired();
     if (!w) return expect(existsSync(DAT)).toBe(false);
 
-    expect(w.dispatch.wired.size).toBe(18);
+    expect(w.dispatch.wired.size).toBe(21);
     expect(w.dispatch.wired.has('a_roll3')).toBe(true);
     expect(w.dispatch.wired.has('a_roll9')).toBe(true);
     expect(w.dispatch.wired.has('a_bump1')).toBe(false);
@@ -338,5 +338,69 @@ describe('⚠️ the bonus lane, which fills the tank whether it pays or not', (
     expect(tank.onCount).toBe(11);
     expect(w.sounds).toContain('collect');
     expect(w.shown.some((line) => line.startsWith('text:STRING104'))).toBe(true);
+  });
+});
+
+describe('⚠️ the spot targets: three lamps, and the set is what pays', () => {
+  const fuel = SPOT_TARGET_SETS.find((set) => set.control === 'FuelSpotTargetControl')!;
+
+  test('each target lights its OWN lamp and scores on its own', () => {
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+
+    w.dispatch.hit(fuel.targets[0]!);
+
+    expect(w.components.lights.get(fuel.lamps[0]!)!.on).toBe(true);
+    expect(w.components.lights.get(fuel.lamps[1]!)!.on).toBe(false);
+    expect(w.score.curScore).toBeGreaterThan(0);
+    expect(w.sounds).toContain('hit');
+  });
+
+  test('⚠️ and the THIRD one fills the tank, which is what the set is worth', () => {
+    // Two of three is worth its own score and nothing else. The set completing is a separate event and
+    // the only one that pays: a transcription that filled the tank on every hit would make the other
+    // two targets pointless and the tank permanently full.
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    const tank = w.components.bargraphs.get('fuel_bargraph')!;
+
+    w.dispatch.hit(fuel.targets[0]!);
+    w.dispatch.hit(fuel.targets[1]!);
+    expect(tank.onCount, 'two of three is not a set').toBe(0);
+
+    w.dispatch.hit(fuel.targets[2]!);
+
+    expect(tank.onCount).toBe(11);
+    expect(w.sounds).toContain('refuel');
+    expect(w.shown).toContain('text:STRING145');
+  });
+
+  test('⚠️ hitting the SAME target three times does not complete the set', () => {
+    // The set is judged by the GROUP'S lit count, not by a counter of hits. Counting hits would let one
+    // target pay for all three, which is the difference between a skill shot and a tap.
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    const tank = w.components.bargraphs.get('fuel_bargraph')!;
+
+    w.dispatch.hit(fuel.targets[0]!);
+    w.dispatch.hit(fuel.targets[0]!);
+    w.dispatch.hit(fuel.targets[0]!);
+
+    expect(tank.onCount).toBe(0);
+  });
+
+  test('⚠️ and the other three sets are DECLINED, each for its own stated reason', () => {
+    // Two of them disable a gate on completion and this build constructs no gates; the third chooses
+    // its sound from a lamp rather than from whether the set completed, which the shared factory
+    // cannot express. Their bindings are transcribed and correct — the dispatcher says which it runs.
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+
+    for (const set of SPOT_TARGET_SETS) {
+      const runs = set.completion.kind === 'fillTank' && !set.soundFromLamp;
+      for (const target of set.targets) {
+        expect(w.dispatch.wired.has(target), `${set.control}/${target}`).toBe(runs);
+      }
+    }
   });
 });

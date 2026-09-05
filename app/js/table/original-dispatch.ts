@@ -34,9 +34,10 @@ import {
   makeFuelRolloverControl, makeOutLaneControl, makeBonusLaneControl,
   type LaneGroup, type LaneLight,
 } from '../control/lanes.js';
+import { makeSpotTargetControl } from '../control/controls.js';
 import {
   BUMPER_LANE_BINDINGS, LAMP_BINDINGS, RETURN_LANES, FUEL_ROLLOVERS, FUEL_BARGRAPH,
-  FUEL_REFUEL_TEXT_ID, OUT_LANES, BONUS_LANE, type BumperLaneBinding,
+  FUEL_REFUEL_TEXT_ID, OUT_LANES, BONUS_LANE, SPOT_TARGET_SETS, type BumperLaneBinding,
 } from '../control/bindings.js';
 import { addExtraBall } from '../control/table-actions.js';
 import { handler, type ControlContext, type ControlledComponent } from '../control/dispatch.js';
@@ -272,6 +273,55 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
       });
       controls.set(BONUS_LANE.component,
         (component) => control('ControlCollision', component, o.context));
+    }
+  }
+
+  // ⚠️ THE SPOT TARGET SETS, OF WHICH ONE RUNS. `makeSpotTargetControl` matches its caller by IDENTITY
+  // against the components it was given — the same rule as the return lanes — so the objects put in
+  // `byName` have to be the ones handed to the factory.
+  //
+  // The other three are declined and the binding says why: two disable a gate on completion and this
+  // build constructs no `TGate`, and the mission set chooses its sound from a lamp before it knows
+  // whether the set completed. Approximating either would be a table that plays differently.
+  //
+  // ⚠️ AND THE TWO HALVES OF THAT GUARD DECIDE THE SAME THING TODAY. The mission set is excluded by its
+  // completion being `none` before `soundFromLamp` is ever read, so dropping the second half changes
+  // nothing and a mutation that drops it SURVIVES. Recorded rather than contrived around: they are two
+  // different reasons a set cannot run, and the day a gate exists the first half stops covering the
+  // second. This is the same shape as the pair of guards over `LAMP_BINDINGS` above.
+  for (const set of SPOT_TARGET_SETS) {
+    if (set.completion.kind !== 'fillTank' || set.soundFromLamp) continue;
+
+    const group = o.components.lightGroups.get(set.lightGroup);
+    const tank = o.components.bargraphs.get(FUEL_BARGRAPH);
+    const lamps = set.lamps
+      .map((name) => o.components.lights.get(name))
+      .filter((light): light is NonNullable<typeof light> => Boolean(light));
+    if (!group || !tank || lamps.length !== set.lamps.length) continue;
+
+    const targets: ControlledComponent[] = set.targets.map((name) => {
+      const row = scoreRows.get(name);
+      return { name, scores: row?.scores ?? [], control: null };
+    });
+
+    const completion = set.completion;
+    const completionText = o.textFor(completion.textId);
+    const control = makeSpotTargetControl({
+      targets,
+      lamps,
+      group,
+      onComplete: (ctx) => {
+        tank.toggleSplitIndex(completion.splitIndex);
+        ctx.showInfo(completionText, 2);
+      },
+      hitSound: set.hitSound,
+      completeSound: set.completeSound,
+      ...(set.maskLamp ? { maskLamp: o.components.lights.get(set.maskLamp)! } : {}),
+    });
+
+    for (const target of targets) {
+      byName.set(target.name, target);
+      controls.set(target.name, (component) => control('ControlCollision', component, o.context));
     }
   }
 
