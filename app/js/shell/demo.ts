@@ -24,12 +24,24 @@ import { buildOriginalTable, type OriginalTable } from '../table/original.js';
 import { SCORE_COMPONENTS } from '../control/score-table.js';
 import { buildOriginalComponents, type OriginalComponents } from '../table/original-components.js';
 import { loadTable } from '../dat/loader.js';
+import { readMidiFile } from '../audio/midi.js';
+import { scheduleMidi, scheduleLength, type ScheduledNote } from '../audio/midi-synth.js';
 import { createScoreState, addScore, type ScoreState } from '../control/score.js';
 import { decodePlayfield, readCamera, type OriginalCamera } from '../gfx/original-view.js';
 import { readGroups, type Group } from '../dat/partman.js';
 import { advanceFrame, type Ball } from '../physics/step.js';
 import { fillCircle } from '../gfx/table-view.js';
 import { pack, type Framebuffer } from '../gfx/framebuffer.js';
+
+/**
+ * ⚠️ HOW MUCH MUSIC IS HANDED TO THE AUDIO THREAD AT ONCE, and how far ahead of the playhead the
+ * handing happens. The window is bounded because `PINBALL.MID` is fourteen thousand notes; the
+ * look-ahead is LARGER than the window so the audio thread never reaches the end of what it has before
+ * the next slice arrives. Equal would open a gap every time it tops up — a click every few seconds
+ * that sounds like a bad file rather than a bad player.
+ */
+export const MUSIC_WINDOW = 2;
+export const MUSIC_LOOKAHEAD = 4;
 
 /** The ball, which the archive draws as a sprite this build does not composite. */
 export const DEMO_BALL_COLOR = pack(240, 240, 250, 255);
@@ -51,6 +63,14 @@ export interface Demo {
   readonly score: ScoreState;
   /** The table's own bumpers and lights, built from the archive. */
   readonly components: OriginalComponents;
+  /**
+   * ⚠️ THE MUSIC, WHICH THE PLAYER ALSO BRINGS. `PINBALL.MID` is Microsoft's like everything else in
+   * the original, so the demonstration asks for it and never fetches it. Null until it is given one,
+   * because a table with no music is still a table.
+   */
+  readonly music: { readonly notes: readonly ScheduledNote[]; readonly length: number } | null;
+  /** Returns false for a file that is not standard MIDI, rather than half-playing it. */
+  loadMusic(bytes: ArrayBuffer): boolean;
   /** What the ball has scored on, by the control layer's name for it. */
   readonly scored: string[];
   drop(): void;
@@ -104,6 +124,7 @@ export function createDemo(archive: ArrayBuffer): Demo {
   };
 
   let ball = table.spawnBall();
+  let music: { notes: readonly ScheduledNote[]; length: number } | null = null;
 
   /**
    * ⚠️ THE BALL'S RADIUS IS IN TABLE UNITS AND THE SCREEN IS IN PIXELS. 0.3 units on a table sixteen
@@ -121,6 +142,19 @@ export function createDemo(archive: ArrayBuffer): Demo {
     score,
     scored,
     components,
+    get music() { return music; },
+
+    loadMusic(bytes: ArrayBuffer): boolean {
+      // ⚠️ REFUSED RATHER THAN GUESSED. `PINBALL2.MID` is the other format the original ships and
+      // `isStandardMidi` says so; a parser that pressed on would schedule noise from a file it did not
+      // understand, which is worse than silence because it sounds like the synthesizer's fault.
+      const file = readMidiFile(new Uint8Array(bytes));
+      if (!file) return false;
+
+      const notes = scheduleMidi(file);
+      music = { notes, length: scheduleLength(notes) };
+      return true;
+    },
     get ball() { return ball; },
 
     step(frames: number): void {

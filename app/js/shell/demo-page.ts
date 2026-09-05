@@ -23,6 +23,8 @@ export interface DemoPageOptions {
   /** Called once the archive has been read, so the caller can start driving frames. */
   readonly onReady: (demo: Demo) => void;
   readonly onError: (message: string) => void;
+  /** The player's own `PINBALL.MID`, offered after the table has opened. Optional, like the music. */
+  readonly onMusic?: (bytes: ArrayBuffer) => boolean;
 }
 
 export interface DemoPage {
@@ -69,6 +71,33 @@ export function mountDemoPage(o: DemoPageOptions): DemoPage {
   input.accept = '.dat,.DAT';
   input.setAttribute('aria-label', o.t('pinball.demo.ask'));
 
+  /**
+   * ⚠️ A SECOND INPUT, OFFERED AFTER THE TABLE OPENS. The music is a different file — `PINBALL.MID`,
+   * Microsoft's like everything else — and asking for both at once would make the music look required.
+   * A table with no music is still a table, and the demonstration says so by working without it.
+   */
+  const musicPanel = o.doc.createElement('div');
+  Object.assign(musicPanel.style, {
+    position: 'absolute', left: '0', bottom: '0', width: '100%',
+    color: '#ffffff', font: '12px/1.3 system-ui, sans-serif',
+    background: 'rgba(26, 30, 38, 0.85)', padding: '4px', boxSizing: 'border-box',
+  });
+  const musicLabel = o.doc.createElement('label');
+  musicLabel.textContent = o.t('pinball.demo.music');
+  const musicInput = o.doc.createElement('input');
+  musicInput.type = 'file';
+  musicInput.accept = '.mid,.MID,.midi';
+  musicInput.setAttribute('aria-label', o.t('pinball.demo.music'));
+  musicInput.addEventListener('change', () => {
+    const file = musicInput.files?.[0];
+    if (!file || !o.onMusic) return;
+    void file.arrayBuffer().then((bytes) => {
+      if (o.onMusic!(bytes)) musicPanel.remove();
+      else musicLabel.textContent = o.t('pinball.demo.notMidi');
+    });
+  });
+  musicPanel.append(musicLabel, musicInput);
+
   input.addEventListener('change', () => {
     const file = input.files?.[0];
     if (!file) return;
@@ -76,6 +105,7 @@ export function mountDemoPage(o: DemoPageOptions): DemoPage {
       try {
         const demo = createDemo(bytes);
         panel.remove();
+        if (o.onMusic) o.host.appendChild(musicPanel);
         o.onReady(demo);
       } catch (error) {
         o.onError(error instanceof Error ? error.message : String(error));
@@ -99,6 +129,7 @@ export function mountDemoPage(o: DemoPageOptions): DemoPage {
     },
     destroy() {
       panel.remove();
+      musicPanel.remove();
     },
   };
 }

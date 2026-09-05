@@ -27,6 +27,8 @@ import { createRolloverWatch } from './table/rollovers.js';
 import { objectiveOf, AUTHORED_OBJECTIVE_ID } from './table/objective.js';
 import { mountHud } from './shell/hud-dom.js';
 import { mountDemoPage } from './shell/demo-page.js';
+import { MUSIC_WINDOW, MUSIC_LOOKAHEAD } from './shell/demo.js';
+import { playSchedule } from './audio/midi-player.js';
 import { createDemo, type Demo } from './shell/demo.js';
 import { createSoundBoard, releaseVoice } from './audio/sfx.js';
 import { soundEntriesOf, VOICES } from './audio/voices.js';
@@ -278,6 +280,7 @@ function step(frames: number): void {
   if (demoRequested) {
     if (demo) {
       demo.step(frames);
+      topUpMusic();
       demoPage!.blit(demo);
       paint();
       // The 1995 score in ADR-0002's corner. The other three blocks carry what the demo can honestly
@@ -363,6 +366,28 @@ function step(frames: number): void {
   paint();
 }
 
+/** Hands the audio thread the next slice of music, while there is any left to hand. */
+function topUpMusic(): void {
+  if (!demo?.music) return;
+  // The context may not exist yet: a browser refuses one until the player has touched something, and
+  // the music is often chosen before that has happened.
+  ensureAudio();
+  if (!audio || audio.state !== 'running') return;
+
+  musicStartedAt ??= audio.currentTime;
+  const playhead = audio.currentTime - musicStartedAt;
+  if (musicScheduledTo - playhead > MUSIC_LOOKAHEAD) return;
+  if (musicScheduledTo >= demo.music.length) return;
+
+  const until = musicScheduledTo + MUSIC_WINDOW;
+  playSchedule(audio, demo.music.notes, {
+    from: musicScheduledTo,
+    until,
+    startAt: musicStartedAt,
+  });
+  musicScheduledTo = until;
+}
+
 /**
  * The screen onto the canvas. Split out because the demonstration mode composes its own picture and
  * still needs this last step.
@@ -423,6 +448,20 @@ const unbindControls = bindPinballControls({
  * with extra steps.
  */
 let demo: Demo | null = null;
+/**
+ * ⚠️ THE MUSIC IS SCHEDULED IN SLICES, AND THIS IS HOW FAR IT HAS GOT. `PINBALL.MID` is fourteen
+ * thousand notes; handing them all to the audio thread at once stops the page. Each frame tops the
+ * schedule up while the playhead is closer than the look-ahead, and every note still gets its own
+ * `start(at)` on the audio clock — so the timing is the audio thread's and only the SCHEDULING is the
+ * frame loop's.
+ *
+ * ⚠️ AND THE PIECE'S CLOCK STARTS AT ITS FIRST SLICE, NOT WHEN THE FILE ARRIVED. I set it at load time
+ * first, and that is wrong whenever the audio context is not running yet — which is the normal case,
+ * because a browser will not start one without a gesture. The playhead would advance while nothing
+ * played, and the music would begin somewhere in its own middle.
+ */
+let musicScheduledTo = 0;
+let musicStartedAt: number | null = null;
 const demoRequested = new URLSearchParams(location.search).get('demo') === 'original';
 const demoPage = demoRequested
   ? mountDemoPage({
@@ -431,6 +470,13 @@ const demoPage = demoRequested
     screen,
     t: shell.t,
     onReady: (ready) => { demo = ready; },
+    onMusic: (bytes) => {
+      ensureAudio();
+      if (!demo?.loadMusic(bytes)) return false;
+      musicScheduledTo = 0;
+      musicStartedAt = null;
+      return true;
+    },
     onError: (message) => {
       const alert = document.getElementById('sr-alert');
       if (alert) alert.textContent = shell.t('pinball.demo.failed', { n: message });
@@ -475,6 +521,12 @@ Object.assign(window as unknown as Record<string, unknown>, {
       demo = createDemo(bytes);
       demoPage?.destroy();
       return { walls: demo.table.wallCount, picture: [demo.playfield.width, demo.playfield.height] };
+    },
+    /** Exposed so a check can see the music advance rather than assume it. */
+    get music() {
+      return demo?.music
+        ? { notes: demo.music.notes.length, length: demo.music.length, scheduledTo: musicScheduledTo }
+        : null;
     },
     get sound() {
       return { context: audio?.state ?? 'none', played: voicesPlayed, live: board.voices.length };
