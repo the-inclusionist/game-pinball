@@ -20,5 +20,12 @@
     "isolatedModules": true,
     "resolveJsonModule": true
   },
-  "include": ["app/js", "tests", "vite.config.ts"]
+  "//6": "app/js/main.ts is the ONE file that imports the engine's runtime. The engine ships raw .ts,",
+  "//7": "so importing it type-checks the engine's SOURCE here — and this project enables",
+  "//8": "noUncheckedIndexedAccess while the engine does not, which yields 60 errors across 7 engine",
+  "//9": "files that are not defects, only the difference between two tsconfigs. The boundary moves",
+  "//10": "instead of the strictness: shell/boot takes createGame as an argument and IS checked, main.ts",
+  "//11": "only assembles and is compiled by Vite. Delete this exclusion when the engine ships types.",
+  "include": ["app/js", "tests", "vite.config.ts"],
+  "exclude": ["app/js/main.ts"]
 }
