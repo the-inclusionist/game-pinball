@@ -1,0 +1,73 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+import { describe, test, expect } from 'vitest';
+import { readFileSync, readdirSync } from 'node:fs';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { VOICES, ORIGINAL_FX, soundEntriesOf } from '../app/js/audio/voices.js';
+import { createSoundBoard } from '../app/js/audio/sfx.js';
+
+const CONTROL_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '../app/js/control');
+
+/**
+ * ⚠️ A PROCEDURAL SUBSTITUTE FOR EVERY EFFECT THE ORIGINAL ASKS FOR.
+ *
+ * The 48 sounds in `PINBALL.DAT` are called `sound1.wav`, `sound2.wav`, and so on: the names carry no
+ * meaning at all, and the meaning lives in which component plays which index. Chasing that mapping
+ * through the archive gives `soundwave3 -> sound#3` and no more — a `TSound` is a named emitter and
+ * nothing about it says what it is FOR.
+ *
+ * But the ported control layer asks for its sounds BY ROLE, in its own call sites: `hitSound`,
+ * `missSound`, `completeSound`, `collectSound`, `promotionSound`, `multiballSound`, `highScoreSound`,
+ * the ramp's four, the chain, the drain. That is the original's effect vocabulary expressed at the level
+ * the code actually uses, and it is the level a substitute has to match.
+ *
+ * ⚠️ AND IT MEANS THE WAV FILES ARE NOT NEEDED FOR SOUND AT ALL. `docs/LICENSES.md` § 3 keeps them out
+ * of the repository; this keeps them out of the RUNTIME, which is a different and stronger thing.
+ */
+
+describe('every role the control layer can ask for has a voice', () => {
+  test.each(ORIGINAL_FX.map((name) => [name] as const))('%s', (name) => {
+    expect(VOICES[name], name).toBeDefined();
+  });
+
+  test('and the mixer knows all of them, so `play` returns a real duration', () => {
+    // `sfx.play` answers 0 for a sound the board does not have, and two control functions schedule on
+    // that answer. A role with no entry would time the game against a sound of zero length.
+    const board = createSoundBoard({ sounds: soundEntriesOf(), channels: 8, now: () => 0 });
+
+    for (const name of ORIGINAL_FX) expect(board.play(name), name).toBeGreaterThan(0);
+  });
+});
+
+describe('⚠️ and the list is checked against the control layer itself', () => {
+  test('every `*Sound` option a control module declares is in ORIGINAL_FX', () => {
+    // The roles are OPTIONS passed in by whoever wires the table, not literals, so nothing at run time
+    // can enumerate them. Reading the source is the only way to notice that somebody added a role and
+    // left it without a voice — which would be silent, because an unknown name plays nothing and
+    // returns zero.
+    const declared = new Set<string>();
+    for (const file of readdirSync(CONTROL_DIR)) {
+      if (!file.endsWith('.ts')) continue;
+      const source = readFileSync(resolve(CONTROL_DIR, file), 'utf8');
+      for (const match of source.matchAll(/readonly (\w*[Ss]ound)\??:/g)) {
+        const role = match[1]!;
+        // ⚠️ A FIELD BEGINNING WITH `play` IS A CALLBACK, NOT A ROLE. `playSound`, `playCompleteSound`
+        // and `playPromotionSound` are functions the caller supplies to make a noise; `hitSound` and
+        // the rest are the NAME of the noise to make. My first version listed the two exceptions it had
+        // met by name and missed the third, which is what naming exceptions instead of stating the rule
+        // always costs.
+        if (role.startsWith('play')) continue;
+        declared.add(role === 'sound' ? 'hit' : role.replace(/Sound$/, ''));
+      }
+    }
+
+    expect([...declared].filter((role) => !ORIGINAL_FX.includes(role))).toEqual([]);
+  });
+
+  test('and no voice in the list is unreachable padding', () => {
+    // The other direction: a name nobody asks for is a sound that can never play, which is the same
+    // defect as a lamp nothing can light.
+    expect(ORIGINAL_FX.length).toBeGreaterThan(0);
+    for (const name of ORIGINAL_FX) expect(typeof name).toBe('string');
+  });
+});

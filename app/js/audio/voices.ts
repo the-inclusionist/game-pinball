@@ -61,7 +61,58 @@ export const VOICES: Readonly<Record<string, VoiceSpec>> = {
   drain: { frequency: 200, endFrequency: 70, duration: 0.5, wave: 'sawtooth' },
   // The plunger's release.
   plunger: { frequency: 150, endFrequency: 300, duration: 0.12, wave: 'sawtooth' },
+
+  /* ===================== THE ORIGINAL'S EFFECT ROLES ===================== */
+  //
+  // See `ORIGINAL_FX`. Pitched so the SHAPE of the event is audible without listening for a melody: a
+  // reward rises, a failure falls, and the bigger the award the further it travels.
+
+  // The plainest acknowledgement there is — a component that was struck and did its ordinary thing.
+  hit: { frequency: 520, endFrequency: 660, duration: 0.06, wave: 'square' },
+  // Down and short. A miss is the only voice here that ends lower than a hit begins.
+  miss: { frequency: 300, endFrequency: 180, duration: 0.09, wave: 'triangle' },
+  // A bank finished: two steps up, expressed as one long rise.
+  complete: { frequency: 440, endFrequency: 880, duration: 0.22, wave: 'triangle' },
+  // Taking what was won. Brighter than `complete` and shorter, because it follows it.
+  collect: { frequency: 660, endFrequency: 1320, duration: 0.16, wave: 'square' },
+  // A rank. The longest and highest voice in the bank, because it is the rarest event in the game.
+  promotion: { frequency: 523, endFrequency: 1568, duration: 0.55, wave: 'triangle' },
+  // More than one ball. Low and wide, so it does not compete with what the balls are doing.
+  multiball: { frequency: 165, endFrequency: 494, duration: 0.4, wave: 'sawtooth' },
+  // The end of a very good game.
+  highScore: { frequency: 784, endFrequency: 1568, duration: 0.6, wave: 'sine' },
+  // One step of the award chain. Deliberately small: it repeats.
+  chain: { frequency: 587, endFrequency: 784, duration: 0.1, wave: 'square' },
+
+  // The ramp pays four different ways, and the original branches on three lamps to decide which.
+  reflexOnly: { frequency: 349, endFrequency: 523, duration: 0.18, wave: 'triangle' },
+  rampAward: { frequency: 262, endFrequency: 784, duration: 0.3, wave: 'sine' },
+  mission: { frequency: 392, endFrequency: 1046, duration: 0.45, wave: 'triangle' },
+  plain: { frequency: 294, endFrequency: 392, duration: 0.12, wave: 'sine' },
 };
+
+/**
+ * ⚠️ THE ORIGINAL'S EFFECTS, AS THE CODE ACTUALLY ASKS FOR THEM.
+ *
+ * The 48 sounds in `PINBALL.DAT` are called `sound1.wav`, `sound2.wav` and so on. The names carry no
+ * meaning; the meaning is in which component plays which index, and chasing that through the archive
+ * yields `soundwave3 -> sound#3` and no more — a `TSound` is a named emitter and nothing about it says
+ * what it is FOR.
+ *
+ * The ported control layer, though, asks by ROLE at its own call sites: a hit, a miss, a bank
+ * completed, an award collected, a promotion, a multiball, a high score, the four ways a ramp can pay,
+ * the award chain, the drain. That is the original's effect vocabulary at the level the code uses, and
+ * it is the level a substitute has to match. A test reads the control modules and fails if a role is
+ * added without a voice, because an unknown name plays nothing and returns zero — silently.
+ *
+ * ⚠️ AND IT MEANS THE WAV FILES ARE NOT NEEDED AT RUN TIME AT ALL. `docs/LICENSES.md` § 3 keeps them out
+ * of the repository; this keeps them out of the running game, which is a stronger claim and a better
+ * one: the port can be played by somebody who does not own the original.
+ */
+export const ORIGINAL_FX: readonly string[] = [
+  'hit', 'miss', 'complete', 'collect', 'promotion', 'multiball', 'highScore', 'chain',
+  'reflexOnly', 'rampAward', 'mission', 'plain', 'drain',
+];
 
 /** Kind to voice name. A kind with no entry makes no sound, which a wall does on purpose. */
 const NAME_OF_KIND: Readonly<Partial<Record<ComponentKind, string>>> = {
