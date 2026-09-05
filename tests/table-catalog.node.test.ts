@@ -102,14 +102,21 @@ describe('low-orbit — the conventional table', () => {
     expect(divider.bounds.y).toBeGreaterThan(0);
   });
 
-  test('it has the three wormhole wells the control layer expects', () => {
+  test('it has three wormhole wells, which is a shape borrowed from the 1995 table', () => {
+    // ⚠️ THIS USED TO SAY "the control layer expects". It did not: `WormHoleControl` was never wired to
+    // an authored table and could not be — it wants three wells that know about each other, and the
+    // authored format has no way to say that. Three is a deliberate LAYOUT choice, echoing the table
+    // this port descends from, and calling it a requirement claimed a dependency that was not there.
     const wells = LOW_ORBIT.components.filter((c) => c.kind === 'well');
 
     expect(wells).toHaveLength(3);
   });
 
   test('and a bank of exactly three targets', () => {
-    const bank = LOW_ORBIT.components.filter((c) => c.control === 'BoosterTargetControl');
+    // Counted by KIND, not by control name. Counting `control === 'BoosterTargetControl'` was counting
+    // the wrong thing twice over: the name has been replaced by one an authored table can actually be
+    // wired to, and the flag now shares it — so the old count would have said four and meant nothing.
+    const bank = LOW_ORBIT.components.filter((c) => c.kind === 'target');
 
     expect(bank).toHaveLength(3);
   });

@@ -74,7 +74,7 @@ export const WIDE_ARC: AuthoredTable = {
     // At that angle gravity's pull along the surface is as large as the pull into it, and a ball cannot
     // settle — it is thrown back across the table towards the far bumper, which is what a ramp is for.
     { name: 'ramp.long', kind: 'ramp', role: 'goal', bounds: { x: 248, y: 88, width: 84, height: 84 },
-      scores: [10000], control: 'LaunchRampControl',
+      scores: [10000], control: 'RampControl',
       collision: [{ kind: 'line', from: { x: 250, y: 170 }, to: { x: 330, y: 90 } }] },
 
     { name: 'flipper.left', kind: 'flipper', role: 'structure',
@@ -91,6 +91,6 @@ export const WIDE_ARC: AuthoredTable = {
       } },
 
     { name: 'drain', kind: 'drain', role: 'hazard', bounds: { x: 164, y: 270, width: 32, height: 8 },
-      control: 'BallDrainControl' },
+      control: 'DrainControl' },
   ],
 };

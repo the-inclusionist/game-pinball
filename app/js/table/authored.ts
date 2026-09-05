@@ -47,6 +47,7 @@ import type { ComponentKind } from '../i18n/names.js';
 import type { Rect } from '../shell/hud.js';
 import type { DeclaredBall, DeclaredComponent } from '../shell/declaration.js';
 import type { LiveTable } from '../shell/boot.js';
+import { controlNamed, AUTHORED_CONTROL_NAMES } from '../control/registry.js';
 
 /**
  * ⚠️ A LINE IS ONE-SIDED, AND ITS WINDING DECIDES WHICH SIDE.
@@ -195,6 +196,13 @@ export function validateTable(table: AuthoredTable, o: ValidationOptions): strin
 
     if (!inside(component.bounds, table)) {
       problems.push(`${component.name}: outside the table, so it can never be hit`);
+    }
+    // ⚠️ A CONTROL NAME THE REGISTRY DOES NOT KNOW IS REFUSED, rather than accepted and ignored. Six of
+    // the eight names the catalogue used were 1995 controls that need 1995 structures an authored table
+    // cannot declare, and one existed nowhere at all. All eight validated, drew, and did nothing.
+    if (component.control && !controlNamed(component.control)) {
+      problems.push(`${component.name}: names control "${component.control}", which an authored table`
+        + ` cannot supply. The ones it can: ${AUTHORED_CONTROL_NAMES.join(', ')}`);
     }
     for (const lamp of component.lamps ?? []) {
       if (!table.lamps.includes(lamp)) {

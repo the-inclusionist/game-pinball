@@ -123,7 +123,7 @@ export const LOW_ORBIT: AuthoredTable = {
       bounds: { x: 150, y: 196, width: 12, height: 30 }, scores: [2000], lamps: ['lamp.outlaneRight'] },
 
     { name: 'drain', kind: 'drain', role: 'hazard', bounds: { x: 76, y: 226, width: 30, height: 8 },
-      control: 'BallDrainControl' },
+      control: 'DrainControl' },
 
     /* ===================== THE BUMPERS ===================== */
     { name: 'bumper1', kind: 'bumper', role: WALL, bounds: { x: 48, y: 58, width: 18, height: 18 },
@@ -143,45 +143,45 @@ export const LOW_ORBIT: AuthoredTable = {
     // `BoosterTargetControl` could never fire. They stand against the left wall, so the face is the
     // RIGHT edge, written top to bottom to put the normal on the side the ball arrives from.
     { name: 'target1', kind: 'target', role: 'key', bounds: { x: 12, y: 104, width: 10, height: 12 },
-      scores: [500, 5000], control: 'BoosterTargetControl', lamps: ['lamp.target1'],
+      scores: [500, 5000], control: 'TargetControl', lamps: ['lamp.target1'],
       collision: [{ kind: 'line', from: { x: 22, y: 104 }, to: { x: 22, y: 116 } }] },
     { name: 'target2', kind: 'target', role: 'key', bounds: { x: 12, y: 122, width: 10, height: 12 },
-      scores: [500, 5000], control: 'BoosterTargetControl', lamps: ['lamp.target2'],
+      scores: [500, 5000], control: 'TargetControl', lamps: ['lamp.target2'],
       collision: [{ kind: 'line', from: { x: 22, y: 122 }, to: { x: 22, y: 134 } }] },
     { name: 'target3', kind: 'target', role: 'key', bounds: { x: 12, y: 140, width: 10, height: 12 },
-      scores: [500, 5000], control: 'BoosterTargetControl', lamps: ['lamp.target3'],
+      scores: [500, 5000], control: 'TargetControl', lamps: ['lamp.target3'],
       collision: [{ kind: 'line', from: { x: 22, y: 140 }, to: { x: 22, y: 152 } }] },
 
     /* ===================== THE REENTRY LANES ===================== */
     { name: 'lane1', kind: 'lane', role: 'free', bounds: { x: 40, y: 16, width: 12, height: 14 },
-      scores: [1000], control: 'ReentryLanesRolloverControl', lamps: ['lamp.lane1'] },
+      scores: [1000], control: 'LaneControl', lamps: ['lamp.lane1'] },
     { name: 'lane2', kind: 'lane', role: 'free', bounds: { x: 62, y: 16, width: 12, height: 14 },
-      scores: [1000], control: 'ReentryLanesRolloverControl', lamps: ['lamp.lane2'] },
+      scores: [1000], control: 'LaneControl', lamps: ['lamp.lane2'] },
     { name: 'lane3', kind: 'lane', role: 'free', bounds: { x: 84, y: 16, width: 12, height: 14 },
-      scores: [1000], control: 'ReentryLanesRolloverControl', lamps: ['lamp.lane3'] },
+      scores: [1000], control: 'LaneControl', lamps: ['lamp.lane3'] },
 
     /* ===================== THE RAMP ===================== */
     { name: 'ramp', kind: 'ramp', role: 'goal', bounds: { x: 112, y: 90, width: 40, height: 60 },
-      scores: [7500], control: 'LaunchRampControl', lamps: ['lamp.ramp'],
+      scores: [7500], control: 'RampControl', lamps: ['lamp.ramp'],
       collision: [{ kind: 'line', from: { x: 112, y: 150 }, to: { x: 152, y: 90 } }] },
 
     /* ===================== THE WORMHOLE ===================== */
     // Three wells, which is what `control/wormhole` expects: the teleport is a choice among three.
     { name: 'well1', kind: 'well', role: 'gate', bounds: { x: 36, y: 168, width: 14, height: 14 },
-      scores: [1000, 20000, 5000], control: 'WormHoleControl', lamps: ['lamp.well1'] },
+      scores: [1000, 20000, 5000], control: 'LaneControl', lamps: ['lamp.well1'] },
     { name: 'well2', kind: 'well', role: 'gate', bounds: { x: 84, y: 168, width: 14, height: 14 },
-      scores: [1000, 20000, 5000], control: 'WormHoleControl', lamps: ['lamp.well2'] },
+      scores: [1000, 20000, 5000], control: 'LaneControl', lamps: ['lamp.well2'] },
     { name: 'well3', kind: 'well', role: 'gate', bounds: { x: 132, y: 168, width: 14, height: 14 },
-      scores: [1000, 20000, 5000], control: 'WormHoleControl', lamps: ['lamp.well3'] },
+      scores: [1000, 20000, 5000], control: 'LaneControl', lamps: ['lamp.well3'] },
 
     /* ===================== THE KICKER ===================== */
     { name: 'kicker', kind: 'kicker', role: 'gate', bounds: { x: 60, y: 128, width: 16, height: 16 },
-      scores: [15000], control: 'BlackHoleKickoutControl', lamps: ['lamp.jackpot'] },
+      scores: [15000], control: 'LaneControl', lamps: ['lamp.jackpot'] },
 
     /* ===================== THE FLAG ===================== */
     // Struck from the middle of the table, so the face is its LEFT edge, written bottom to top.
     { name: 'flag', kind: 'flag', role: 'key', bounds: { x: 136, y: 40, width: 12, height: 20 },
-      scores: [750, 7500], control: 'FlagControl', lamps: ['lamp.mission'],
+      scores: [750, 7500], control: 'TargetControl', lamps: ['lamp.mission'],
       collision: [{ kind: 'line', from: { x: 136, y: 60 }, to: { x: 136, y: 40 } }] },
   ],
 };

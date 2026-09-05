@@ -34,6 +34,6 @@ export const BARE_MINIMUM: AuthoredTable = {
         baseRadius: 3, tipRadius: 2, extendTime: 0.08, retractTime: 0.16,
       } },
     { name: 'drain', kind: 'drain', role: 'hazard', bounds: { x: 40, y: 172, width: 20, height: 8 },
-      control: 'BallDrainControl' },
+      control: 'DrainControl' },
   ],
 };

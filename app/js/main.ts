@@ -22,6 +22,7 @@ import { drawTable, blitView, drawBall } from './gfx/table-view.js';
 import { buildPhysics, drainedBy, launchSpeedFor, FRAME_SECONDS } from './table/physics-build.js';
 import { advanceFrame } from './physics/step.js';
 import { bindPinballControls } from './shell/controls.js';
+import { createLiveControls } from './table/live-controls.js';
 
 // `?table=wide-arc` opens another one of the five. There is no menu yet, and a query parameter is
 // enough to look at all of them without one.
@@ -109,8 +110,21 @@ let tablePicture = drawTable({ table: authored, missionTargets: state.missionTar
 
 // `update(dt)` counts FRAMES, not seconds — see `shell/boot`. The engine hands the count through and
 // the camera's damping is per frame, so this passes it on untouched.
-/** Everything the ball has touched, in order. This is what a control layer would dispatch. */
+/**
+ * ⚠️ THIS COMMENT USED TO SAY "what a control layer WOULD dispatch", and that was the whole defect.
+ *
+ * The control layer was ported in full in phases 4 and 5 and reached from nothing: the hits went into
+ * this array and stopped there. No score, no lamp, in a game that had been playable for commits. The
+ * list stays because a check needs to see what was touched; the dispatch below is the part that was
+ * missing, and it is two lines.
+ */
 const hits: string[] = [];
+
+const live = createLiveControls(authored, {
+  showInfo: (text) => { hint = text; },
+  showMission: (text) => { hint = text; },
+});
+let hint = '';
 let frameCount = 0;
 let ballsLost = 0;
 let lastFrames = 0;
@@ -139,7 +153,11 @@ function step(frames: number): void {
     // ⚠️ The physics wants TIME, not a frame count — see `FRAME_SECONDS`. The camera wants frames.
     // They are two different units in the same loop and mixing them is silent in both directions.
     advanceFrame(phase === 'playing' ? [ball] : [], physics.context, frames * FRAME_SECONDS);
-    for (const hit of physics.takeHits()) hits.push(hit.name);
+    for (const hit of physics.takeHits()) {
+      hits.push(hit.name);
+      live.hit(hit.name);
+    }
+    live.advance(frames * FRAME_SECONDS);
   }
 
   if (phase === 'playing') {
@@ -202,8 +220,11 @@ Object.assign(window as unknown as Record<string, unknown>, {
     get screen() { return screen; },
     get picture() { return tablePicture; },
     get ball() { return { x: ball.position.x, y: ball.position.y, speed: ball.speed, active: ball.active }; },
-    /** What the ball has touched. The list a control layer would dispatch. */
+    /** What the ball has touched, and what the control layer made of it. */
     get hits() { return hits; },
+    get score() { return live.score.curScore; },
+    get lamps() { return live.litLamps(); },
+    get hint() { return hint; },
     launch,
     /** Steps the game by hand, for a check that cannot rely on the browser compositing. */
     step,

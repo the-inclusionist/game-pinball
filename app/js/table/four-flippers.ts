@@ -57,7 +57,7 @@ export const FOUR_FLIPPERS: AuthoredTable = {
         baseRadius: 3, tipRadius: 2, extendTime: 0.08, retractTime: 0.16,
       } },
     { name: 'drain.upper', kind: 'drain', role: 'hazard', bounds: { x: 88, y: 104, width: 24, height: 8 },
-      control: 'BallDrainControl', lamps: ['lamp.upper'] },
+      control: 'DrainControl', lamps: ['lamp.upper'] },
 
     // The LOWER pair, guarding the ordinary drain.
     { name: 'flipper.lower.left', kind: 'flipper', role: 'structure',
@@ -73,7 +73,7 @@ export const FOUR_FLIPPERS: AuthoredTable = {
         baseRadius: 3, tipRadius: 2, extendTime: 0.08, retractTime: 0.16,
       } },
     { name: 'drain.lower', kind: 'drain', role: 'hazard', bounds: { x: 86, y: 200, width: 28, height: 8 },
-      control: 'BallDrainControl', lamps: ['lamp.lower'] },
+      control: 'DrainControl', lamps: ['lamp.lower'] },
 
     { name: 'bumper.left', kind: 'bumper', role: 'structure', bounds: { x: 40, y: 40, width: 18, height: 18 },
       scores: [500, 1000, 1500, 2000], control: 'BumperControl', lamps: ['lamp.left'],
@@ -84,7 +84,7 @@ export const FOUR_FLIPPERS: AuthoredTable = {
 
     // Between the two bumpers, struck from below: bottom edge, right to left.
     { name: 'target.centre', kind: 'target', role: 'goal', bounds: { x: 92, y: 40, width: 16, height: 14 },
-      scores: [1000, 12000], control: 'BoosterTargetControl',
+      scores: [1000, 12000], control: 'TargetControl',
       collision: [{ kind: 'line', from: { x: 108, y: 54 }, to: { x: 92, y: 54 } }] },
   ],
 };
