@@ -462,6 +462,29 @@ export const BOOSTER_BANK: BoosterBankBinding = {
  * and `BonusLaneRolloverControl` pays the accumulated bonus when it is lit — so earning rank progress
  * arms the bonus lane. One lamp, two mechanics, and neither function mentions the other.
  */
+/**
+ * `WormHoleDestinationControl`, and the cycle it forces on.
+ *
+ * ⚠️ THE DESTINATION IS A LAMP'S MESSAGE FIELD, AND THE LAMP IS ITS OWN GROUP'S MEMBER. `lite4` holds
+ * the current destination; advancing writes the NEXT one to every arrow lamp through a group message,
+ * and `lite4` is one of them — so the cycle reads and writes the same number through two different
+ * doors. One, two, three, one: zero means "no destination", so the cycle has to skip it.
+ *
+ * ⚠️ AND THE ARROW'S FRAME IS THE SAME FACT DRAWN. `3 - destination` is the sprite index, so the
+ * arrow points where the number says without anything mapping between them.
+ */
+export const WORM_HOLE = {
+  control: 'WormHoleDestinationControl',
+  component: 'a_targ22',
+  /** `lite110`, the target's own lamp: lit once, and only announced once. */
+  targetLamp: 'lite110',
+  /** `lite4`, which is both the destination and a member of the arrow group. */
+  destinationLamp: 'lite4',
+  arrowLights: 'bsink_arrow_lights',
+  wormHoleLights: 'worm_hole_lights',
+  announceTextId: 'STRING194',
+} as const;
+
 export const RANK = {
   outerCircle: 'outer_circle',
   middleCircle: 'middle_circle',

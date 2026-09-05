@@ -71,6 +71,7 @@ const pt: Record<string, string> = {
   'pinball.mission.timeWarp2.promoted': 'Promovido a {rank}.',
   'pinball.mission.timeWarp2.demoted': 'Rebaixado a {rank}.',
 
+  'pinball.award.wormholeOpen': 'Buraco de minhoca aberto.',
   'pinball.rank.1': 'Cadete',
   'pinball.rank.2': 'Guarda-marinha',
   'pinball.rank.3': 'Tenente',

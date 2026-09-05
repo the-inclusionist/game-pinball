@@ -52,12 +52,13 @@ import {
   BUMPER_LANE_BINDINGS, LAMP_BINDINGS, RETURN_LANES, FUEL_ROLLOVERS, FUEL_BARGRAPH,
   FUEL_REFUEL_TEXT_ID, OUT_LANES, BONUS_LANE, SPOT_TARGET_SETS, MEDAL_BANK, MULTIPLIER_BANK,
   BOOSTER_BANK, TABLE_ACTIONS, FLIPPER_REBOUNDERS, GATE_LAMPS, KICKERS, SKILL_SHOT,
-  LAUNCH_RAMP, FLAGS, KICKOUTS, DRAIN, PER_BALL_RESET, MISSIONS, RANK,
+  LAUNCH_RAMP, FLAGS, KICKOUTS, DRAIN, PER_BALL_RESET, MISSIONS, RANK, WORM_HOLE,
   type BumperLaneBinding,
 } from '../control/bindings.js';
 import { addExtraBall, createTableActions } from '../control/table-actions.js';
 import {
   makeFlagControl, makeBlackHoleKickoutControl, makeGravityWellKickoutControl,
+  makeWormHoleDestinationControl, advanceWormHoleDestination, type AdvanceOptions,
 } from '../control/wormhole.js';
 import { drainBall, type DrainTable } from '../control/drain.js';
 import {
@@ -878,6 +879,56 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
     }
   }
 
+  // ⚠️ THE WORMHOLE'S DESTINATION, WHICH IS A NUMBER KEPT IN A LAMP'S MESSAGE FIELD. `lite4` holds it
+  // and is itself one of the arrow lamps, so advancing writes the next destination to the whole group
+  // and reads it back through the same lamp. The arrow's sprite is `3 - destination`: the same fact
+  // drawn, with nothing mapping between them.
+  //
+  // Built before the flags, because a flag's other branch advances the same cycle.
+  let advance: (forced: boolean) => void = () => {};
+  {
+    const targetLamp = o.components.lights.get(WORM_HOLE.targetLamp);
+    const destinationLamp = o.components.lights.get(WORM_HOLE.destinationLamp);
+    const arrowGroup = o.components.lightGroups.get(WORM_HOLE.arrowLights);
+    const holeGroup = o.components.lightGroups.get(WORM_HOLE.wormHoleLights);
+
+    if (targetLamp && destinationLamp && arrowGroup && holeGroup) {
+      const eachOf = (group: NonNullable<typeof arrowGroup>) => o.components.membersOf(group);
+      const options: AdvanceOptions = {
+        missionLamp: o.components.lights.get(MISSIONS.lamp) ?? { messageField: 0 },
+        destinationLamp,
+        arrowLights: {
+          // Group messages, forwarded to every member — which is how `lite4` learns its own new value.
+          setMessageField: (value) => { for (const lamp of eachOf(arrowGroup)) lamp.messageField = value; },
+          setOnFrame: (value) => { for (const lamp of eachOf(arrowGroup)) lamp.setOnFrame(value); },
+          lightsResetAndTurnOn: () => {
+            for (const lamp of eachOf(arrowGroup)) { lamp.resetTimed(); lamp.turnOn(); }
+          },
+        },
+        wormHoleLights: {
+          lightsResetAndTurnOn: () => {
+            for (const lamp of eachOf(holeGroup)) { lamp.resetTimed(); lamp.turnOn(); }
+          },
+        },
+      };
+      advance = (forced) => advanceWormHoleDestination(options, forced);
+
+      const control = makeWormHoleDestinationControl({
+        targetLamp: targetLamp as unknown as LaneLight & {
+          flasherStartTimedThenStayOn(seconds: number): void;
+        },
+        announceText: o.textFor(WORM_HOLE.announceTextId),
+        advance,
+      });
+      const row = scoreRows.get(WORM_HOLE.component);
+      byName.set(WORM_HOLE.component, {
+        name: WORM_HOLE.component, scores: row?.scores ?? [], control: null,
+      });
+      controls.set(WORM_HOLE.component,
+        (component) => control('ControlCollision', component, ctx));
+    }
+  }
+
   // ⚠️ THE FLAGS, WHOSE SCORE INDEX IS A LAMP. `get_scoring(lite20->light_on())` — the boolean is the
   // index, with no conditional anywhere. `lite20` is one of the three the booster bank's first rung
   // lights for sixty seconds, so a flag is worth five hundred or two thousand five hundred depending
@@ -887,9 +938,11 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
     if (lamp) {
       const control = makeFlagControl({
         lamp: lamp as unknown as LaneLight,
-        // `ControlSpinnerLoopReset` is the other branch, and nothing in this build sends it: the
-        // wormhole's arrow lights are not built. The dispatcher only ever passes a collision.
-        advance: () => {},
+        // ⚠️ THE FLAG'S OTHER BRANCH MOVES THE WORMHOLE'S CYCLE, unforced — a spinner loop nudges a
+        // cycle that is already running rather than starting one. Nothing in this build sends
+        // `ControlSpinnerLoopReset`, so the dispatcher only ever passes a collision; the reference is
+        // real so that the day something does, it lands where it should.
+        advance,
       });
       for (const name of FLAGS.components) {
         const row = scoreRows.get(name);

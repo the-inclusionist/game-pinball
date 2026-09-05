@@ -9,7 +9,7 @@ import { buildOriginalKickouts, kickoutGeometry } from '../app/js/table/original
 import {
   REENTRY_LANES, LAMP_BINDINGS, FUEL_ROLLOVERS, OUT_LANES, BONUS_LANE, SPOT_TARGET_SETS,
   MEDAL_BANK, MULTIPLIER_BANK, BOOSTER_BANK, TABLE_ACTIONS, GATE_LAMPS, KICKERS, SKILL_SHOT,
-  LAUNCH_RAMP, FLAGS, DRAIN, PER_BALL_RESET,
+  LAUNCH_RAMP, FLAGS, DRAIN, PER_BALL_RESET, WORM_HOLE,
 } from '../app/js/control/bindings.js';
 import { createScoreState } from '../app/js/control/score.js';
 import { BASE_BONUS } from '../app/js/control/drain.js';
@@ -82,7 +82,7 @@ describe('a lane crossing reaches the 1995 control function', () => {
     const w = wired();
     if (!w) return expect(existsSync(DAT)).toBe(false);
 
-    expect(w.dispatch.wired.size).toBe(55);
+    expect(w.dispatch.wired.size).toBe(56);
     expect(w.dispatch.wired.has('a_roll3')).toBe(true);
     expect(w.dispatch.wired.has('a_roll9')).toBe(true);
     // ⚠️ THE EXAMPLE OF SOMETHING DECLINED KEEPS MOVING, and that is the point of keeping one: it was
@@ -1489,24 +1489,29 @@ function missionContextOf(w: NonNullable<ReturnType<typeof wired>>): never {
 describe('⚠️ the sixteen missions that can run, and the seven that cannot', () => {
   test('a mission is declined WHOLE when one of its components is missing', () => {
     // `d.components.includes(caller)` — a mission counts hits on its own components, so half a mission
-    // would count some of its hits and silently never finish. The seven declined need `target22`, the
-    // three sinks and `kickout2`.
-    const w = wired();
+    // would count some of its hits and silently never finish.
+    //
+    // ⚠️ WITH THE GATES, because the hazard spot sets only run when there are gates to open and their
+    // targets are half of the right-hand bank. Asked without them this counts sixteen, and the
+    // difference is a configuration rather than a defect.
+    const w = wired({ gates: true });
     if (!w) return expect(existsSync(DAT)).toBe(false);
     const tagOf = new Map(SCORE_COMPONENTS.map((row) => [row.name, row.tag]));
 
     const runnable = MISSION_TABLE.filter((row) =>
       row.components.every((name) => w.dispatch.wired.has(tagOf.get(name) ?? '')));
 
-    expect(runnable).toHaveLength(16);
+    expect(runnable).toHaveLength(18);
     expect(MISSION_TABLE).toHaveLength(23);
     // ⚠️ AND THE DISPATCHER AGREES, which is the half that can fail. Reading the table alone counts
     // what COULD run; `missionsRun` is what does, and a mutation wiring a half-resolved mission passed
     // until this line existed.
-    expect(w.dispatch.missionsRun.size).toBe(16);
+    expect(w.dispatch.missionsRun.size).toBe(18);
     for (const row of runnable) expect(w.dispatch.missionsRun.has(row.mission), row.name).toBe(true);
-    // Bug Hunt needs `target22`, which is the wormhole's destination and not built.
-    expect(w.dispatch.missionsRun.has(9)).toBe(false);
+    // ⚠️ BUG HUNT USED TO BE THE EXAMPLE HERE and it runs now: `target22` is the wormhole's
+    // destination and it is wired. The five still declined need the three sinks and `kickout2`.
+    expect(w.dispatch.missionsRun.has(9)).toBe(true);
+    expect(w.dispatch.missionsRun.has(22), 'secret red needs a sink').toBe(false);
   });
 
   test('⚠️ and a mission counts hits on ITS OWN components and ignores the rest', () => {
@@ -1617,5 +1622,65 @@ describe('⚠️ the rank ladder, which is two circles of lamps and no number an
     expect(middle.onCount).toBeGreaterThan(0);
     expect(outer.lightCount).toBeGreaterThan(0);
     expect(w.shown.some((line) => line.startsWith('text:STRING184'))).toBe(true);
+  });
+});
+
+describe('⚠️ the wormhole’s destination, a number kept in a lamp’s message field', () => {
+  test('striking the target announces it ONCE and lights its lamp', () => {
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+
+    w.dispatch.hit(WORM_HOLE.component);
+
+    expect(w.components.lights.get(WORM_HOLE.targetLamp)!.lit).toBe(true);
+    expect(w.shown).toContain('text:STRING194');
+
+    const saidOnce = w.shown.filter((line) => line === 'text:STRING194').length;
+    w.dispatch.hit(WORM_HOLE.component);
+    expect(w.shown.filter((line) => line === 'text:STRING194').length, 'and not again').toBe(saidOnce);
+  });
+
+  test('⚠️ and the cycle is one, two, three, one — never zero', () => {
+    // Zero means "no destination", so the cycle has to skip it. A plain increment modulo four would
+    // send the arrow nowhere every fourth strike, and the mission that reads it would find no target.
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    const destination = w.components.lights.get(WORM_HOLE.destinationLamp)!;
+    const seen: number[] = [];
+
+    for (let i = 0; i < 4; i++) {
+      w.dispatch.hit(WORM_HOLE.component);
+      seen.push(destination.messageField);
+    }
+
+    expect(seen).toEqual([1, 2, 3, 1]);
+  });
+
+  test('⚠️ and the destination is written to the whole GROUP, which is how the lamp learns it', () => {
+    // `lite4` is one of the three arrow lamps. Advancing sends the new number to every member, and the
+    // next read comes back through that same lamp — the cycle uses two doors into one number.
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+
+    w.dispatch.hit(WORM_HOLE.component);
+
+    for (const lamp of ['lite2', 'lite3', 'lite4']) {
+      expect(w.components.lights.get(lamp)!.messageField, lamp).toBe(1);
+      // ⚠️ AND THE ARROW'S FRAME IS `3 - destination`, the same fact drawn. Setting the frame to the
+      // destination itself points the arrow the wrong way round and nothing else notices.
+      expect(w.components.lights.get(lamp)!.onFrame, `${lamp} frame`).toBe(2);
+    }
+  });
+
+  test('⚠️ and three missions freeze it, because the wormhole is what they are about', () => {
+    // Missions sixteen, twenty-two and twenty-three ARE the wormhole; moving its destination under
+    // them would change the target mid-mission.
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    w.components.lights.get('lite198')!.messageField = 22;
+
+    w.dispatch.hit(WORM_HOLE.component);
+
+    expect(w.components.lights.get(WORM_HOLE.destinationLamp)!.messageField).toBe(0);
   });
 });

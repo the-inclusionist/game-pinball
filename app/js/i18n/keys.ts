@@ -68,6 +68,8 @@ export const RESOURCE_KEYS: Readonly<Record<string, string>> = {
   STRING192: 'pinball.rank.8',
   STRING193: 'pinball.rank.9',
   STRING184: 'pinball.rank.promoted',
+  /** Said once, the first time the destination target is struck in a ball. */
+  STRING194: 'pinball.award.wormholeOpen',
   STRING195: 'pinball.ball.bonus',
   STRING196: 'pinball.ball.spareSpent',
   STRING197: 'pinball.ball.held',
