@@ -2,12 +2,13 @@
 import { describe, test, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
 import {
-  BUMPER_LANE_BINDINGS, UNBOUND_CONTROLS, SELF_CONTAINED_CONTROLS,
+  BUMPER_LANE_BINDINGS, CONTROL_REACHES, SELF_CONTAINED_CONTROLS,
 } from '../app/js/control/bindings.js';
 import { SCORE_COMPONENTS } from '../app/js/control/score-table.js';
 import { RESOURCE_KEYS } from '../app/js/i18n/keys.js';
 import { buildOriginalComponents } from '../app/js/table/original-components.js';
 import { loadTable } from '../app/js/dat/loader.js';
+import { readGroups } from '../app/js/dat/partman.js';
 
 /**
  * ⚠️ DATA TRAPPED IN CODE.
@@ -76,29 +77,52 @@ describe.each(BUMPER_LANE_BINDINGS.map((b) => [b.control, b] as const))('%s, tra
   });
 });
 
-describe('⚠️ and the file says how much is NOT transcribed', () => {
-  test('the bound and the unbound together are every control in the score table', () => {
-    // Written rather than computed, so adding a binding means deleting a line and a reader can see the
-    // size of what is left without running anything. A list that drifted from the score table would be
-    // a map of a country that no longer exists.
-    // ⚠️ AND THE ARITHMETIC FOUND TWO I HAD MISFILED. `BumperControl` and `RebounderControl` reach for
-    // nothing — they read the caller's own level and pay from the caller's own array — so they are not
-    // "unbound", they need no binding. Putting them in the not-done list would have overstated what is
-    // left by two and misdescribed both.
-    const bound = new Set(BUMPER_LANE_BINDINGS.map((b) => b.control));
+describe('⚠️ every control is accounted for, one way or the other', () => {
+  test('each one either reaches named components or is measured as reaching none', () => {
+    // Written from the upstream rather than assumed: each function body was read and asked which tagged
+    // globals it mentions. Nine reach nothing — `BumperControl` pays from the caller's own array,
+    // `JackpotLightControl` clears a flag on the table, `ShootAgainLightControl` messages only the
+    // caller — and that is not the same as lacking a binding. I first wrote two, and calling the other
+    // seven "not done yet" overstated the remaining work by that much.
     const all = new Set(SCORE_COMPONENTS.map((r) => r.controlName));
 
-    for (const name of bound) expect(all.has(name), name).toBe(true);
-    for (const name of UNBOUND_CONTROLS) expect(all.has(name), name).toBe(true);
-    for (const name of SELF_CONTAINED_CONTROLS) expect(all.has(name), name).toBe(true);
-
-    expect(bound.size + UNBOUND_CONTROLS.length + SELF_CONTAINED_CONTROLS.length).toBe(all.size);
+    for (const name of all) {
+      const reaches = CONTROL_REACHES[name];
+      const free = SELF_CONTAINED_CONTROLS.includes(name);
+      expect(Boolean(reaches) !== free, name).toBe(true);
+    }
   });
 
-  test('two chains are bound, which is where this stands today', () => {
-    // ⚠️ THE COUNT IS THE POINT. Every test above runs over the whole list, so transcribing a third
-    // chain costs nothing but the transcription — and this line is what makes growing the list a thing
-    // somebody decides rather than something that drifts.
+  test('and nothing in either list is a control the table does not use', () => {
+    const all = new Set(SCORE_COMPONENTS.map((r) => r.controlName));
+
+    for (const name of Object.keys(CONTROL_REACHES)) expect(all.has(name), name).toBe(true);
+    for (const name of SELF_CONTAINED_CONTROLS) expect(all.has(name), name).toBe(true);
+  });
+
+  test('⚠️ and EVERY name it reaches for is really a group in PINBALL.DAT', () => {
+    // The claim that makes a transcription worth anything. Two hundred and eighty-eight references,
+    // and one typo among them would read perfectly in the source and address nothing at run time.
+    if (!existsSync(DAT)) return expect(existsSync(DAT)).toBe(false);
+    const buf = readFileSync(DAT);
+    const groups = readGroups(new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength));
+    const names = new Set(groups.map((g) => g.name).filter(Boolean));
+
+    const absent: string[] = [];
+    for (const [control, reaches] of Object.entries(CONTROL_REACHES)) {
+      for (const name of reaches) if (!names.has(name)) absent.push(`${control} -> ${name}`);
+    }
+
+    expect(absent).toEqual([]);
+  });
+
+  test('two lane chains carry ROLES as well as names, which the flat table cannot', () => {
+    // `SpaceWarpRolloverControl` reaches lite27 and lite28 and the function itself says which is which.
+    // A lane chain has to say which lane lights which lamp, so those keep a richer type rather than
+    // being folded in — flattening them would have lost the mapping.
     expect(BUMPER_LANE_BINDINGS).toHaveLength(2);
+    for (const binding of BUMPER_LANE_BINDINGS) {
+      expect(CONTROL_REACHES[binding.control]).toBeDefined();
+    }
   });
 });
