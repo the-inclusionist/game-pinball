@@ -75,6 +75,42 @@ describe.skipIf(!temDados)('conformidade — PINBALL.DAT real vs o dump do Adrie
 
     expect(divergentes).toEqual([]);
   });
+
+  test('o 3DPB nao usa spliced nem dib: os 318 bitmaps sao CRUS, na resolucao 0', async () => {
+    // MEDIDO, nao suposto. A primeira versao deste teste tentava decodificar os bitmaps spliced do
+    // arquivo e falhou na guarda `resultados.length > 0`: nao existe nenhum. O formato spliced e do
+    // Full Tilt! Pinball, e o `partman.cpp` do upstream carrega os dois jogos.
+    //
+    // A CONSEQUENCIA, dita aqui porque nao aparece em lugar nenhum: `dat/spliced.ts` continua SEM
+    // validacao contra dado real. Os testes dele sao sinteticos e transcrevem o algoritmo do upstream
+    // linha a linha, o que e mais forte do que nada e mais fraco do que este gate. So dados do Full
+    // Tilt fecham essa lacuna.
+    const { carregarMesa } = await import('../app/js/dat/loader.js');
+    const { lerCabecalhoDeBitmap, TipoDeBitmap } = await import('../app/js/dat/bitmap8.js');
+    const { TipoDeEntrada } = await import('../app/js/dat/partman.js');
+
+    const cabecalhos = carregarMesa(arquivo).grupos.flatMap((g) => g.entradas
+      .filter((e) => e.tipo === TipoDeEntrada.Bitmap8 && e.dados)
+      .map((e) => lerCabecalhoDeBitmap(e.dados!)));
+
+    expect(cabecalhos.filter((c) => c.tipo !== TipoDeBitmap.Bruto)).toEqual([]);
+    expect(cabecalhos.filter((c) => c.resolucao !== 0)).toEqual([]);
+  });
+
+  test('os 302 z-maps do arquivo sao todos legiveis', async () => {
+    // O `partman.cpp` avisa que os grupos 497 e 498 tem cabecalho zerado. Este teste diz quantos
+    // caem nesse caso: se um dia forem mais, alguma coisa mudou na leitura e nao no arquivo.
+    const { carregarMesa } = await import('../app/js/dat/loader.js');
+    const { TipoDeEntrada } = await import('../app/js/dat/partman.js');
+    const { lerZMap } = await import('../app/js/dat/zmap.js');
+
+    const zmaps = carregarMesa(arquivo).grupos.flatMap((g) => g.entradas
+      .filter((e) => e.tipo === TipoDeEntrada.ZMap && e.dados)
+      .map((e) => lerZMap(e.dados!)));
+
+    expect(zmaps).toHaveLength(302);
+    expect(zmaps.filter((z) => z.vazio)).toHaveLength(2); // os grupos 497 e 498
+  });
 });
 
 describe.skipIf(temDados)('conformidade — dados ausentes', () => {

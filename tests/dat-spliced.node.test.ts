@@ -64,3 +64,32 @@ describe('spliced — divisao em bitmap indexado + z-map', () => {
     expect(r.indices[8]).toBe(4); // 10 + 8 - 10 = 8
   });
 });
+
+describe('spliced — diagnostico', () => {
+  test('conta os pixels escritos e diz que terminou no encerrador', () => {
+    const dados = fluxoSpliced([{ salto: 0, pixels: [px(1, 1), px(2, 2)] }]);
+
+    const r = dividirSpliced(dados, { largura: 4, altura: 1, larguraDaMesa: 4 });
+
+    expect(r.pixelsEscritos).toBe(2);
+    expect(r.terminouLimpo).toBe(true);
+    expect(r.foraDosLimites).toBe(0);
+  });
+
+  test('CONTA o que cai fora dos limites em vez de engolir', () => {
+    // Escrever fora e clampado para nao estourar, mas silenciar isso transformaria um erro de decodificacao
+    // num sprite com pedacos faltando — visivel, inexplicavel e sem nada apontando para a causa.
+    const dados = fluxoSpliced([{ salto: 3, pixels: [px(1, 1), px(2, 2), px(3, 3)] }]);
+
+    const r = dividirSpliced(dados, { largura: 4, altura: 1, larguraDaMesa: 4 });
+
+    expect(r.foraDosLimites).toBe(2); // destinos 4 e 5
+  });
+
+  test('um fluxo cortado no meio nao terminou limpo', () => {
+    const completo = fluxoSpliced([{ salto: 0, pixels: [px(1, 1), px(2, 2)] }]);
+    const cortado = completo.subarray(0, completo.length - 4);
+
+    expect(dividirSpliced(cortado, { largura: 4, altura: 1, larguraDaMesa: 4 }).terminouLimpo).toBe(false);
+  });
+});

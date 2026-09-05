@@ -40,6 +40,16 @@ export interface Dimensoes {
 export interface Dividido {
   readonly indices: Uint8Array;
   readonly profundidades: Uint16Array;
+  /** Quantos pixels o fluxo pediu para escrever. */
+  readonly pixelsEscritos: number;
+  /**
+   * Quantos cairiam fora do destino. Sao descartados para nao estourar, mas CONTADOS: silenciar isto
+   * transformaria um erro de decodificacao num sprite com pedacos faltando — visivel, inexplicavel, e
+   * sem nada apontando para a causa. Zero em todo o PINBALL.DAT; qualquer outro numero e defeito.
+   */
+  readonly foraDosLimites: number;
+  /** Verdadeiro quando o fluxo terminou no salto negativo, e nao por acabarem os bytes. */
+  readonly terminouLimpo: boolean;
 }
 
 export function dividirSpliced(dados: Uint8Array, d: Dimensoes): Dividido {
@@ -50,11 +60,14 @@ export function dividirSpliced(dados: Uint8Array, d: Dimensoes): Dividido {
   const dv = new DataView(dados.buffer, dados.byteOffset, dados.byteLength);
   let cursor = 0; // EM BYTES — ver o cabecalho deste modulo.
   let destino = 0;
+  let pixelsEscritos = 0;
+  let foraDosLimites = 0;
+  let terminouLimpo = false;
 
   for (;;) {
     if (cursor + 2 > dados.byteLength) break;
     let salto = dv.getInt16(cursor, true); cursor += 2;
-    if (salto < 0) break;
+    if (salto < 0) { terminouLimpo = true; break; }
 
     // O salto foi gravado em termos da largura da MESA; num bitmap mais estreito ele precisa ser
     // reexpresso. So se aplica quando o salto excede a largura deste bitmap, que e como o original o faz.
@@ -66,17 +79,22 @@ export function dividirSpliced(dados: Uint8Array, d: Dimensoes): Dividido {
     const quantos = dv.getUint16(cursor, true); cursor += 2;
 
     for (let i = 0; i < quantos; i++) {
-      if (cursor + 3 > dados.byteLength) return { indices, profundidades };
+      if (cursor + 3 > dados.byteLength) {
+        return { indices, profundidades, pixelsEscritos, foraDosLimites, terminouLimpo };
+      }
       const profundidade = dv.getUint16(cursor, true); cursor += 2;
       const indice = dv.getUint8(cursor); cursor += 1;
 
       if (destino >= 0 && destino < celulas) {
         indices[destino] = indice;
         profundidades[destino] = profundidade;
+        pixelsEscritos++;
+      } else {
+        foraDosLimites++;
       }
       destino++;
     }
   }
 
-  return { indices, profundidades };
+  return { indices, profundidades, pixelsEscritos, foraDosLimites, terminouLimpo };
 }
