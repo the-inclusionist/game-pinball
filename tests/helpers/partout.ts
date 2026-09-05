@@ -190,3 +190,11 @@ export function fluxoSpliced(corridas: readonly CorridaSpliced[]): Uint8Array {
   push16(0xffff); // salto -1: encerra
   return new Uint8Array(bytes);
 }
+
+/** Bytes de um array de int16 little-endian — a carga da entrada tipo 10. */
+export function int16s(...valores: number[]): Uint8Array {
+  const b = new Uint8Array(valores.length * 2);
+  const dv = new DataView(b.buffer);
+  valores.forEach((v, i) => dv.setInt16(i * 2, v, true));
+  return b;
+}
