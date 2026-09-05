@@ -32,8 +32,9 @@
 
 import { createBumper, type Bumper, type TimerService } from './bumper.js';
 import { createLight, type Light } from './light.js';
+import { createLightGroup, type LightGroup } from './light-group.js';
 import { readVisual } from '../dat/visual.js';
-import { floatAttribute } from '../dat/attributes.js';
+import { floatAttribute, int16Attribute } from '../dat/attributes.js';
 import { EntryType, type Group } from '../dat/partman.js';
 import { ObjectType, type Table } from '../dat/loader.js';
 
@@ -42,6 +43,10 @@ export const BUMPER_TIMER_RECORD = 407;
 /** `TLight`'s two flash delays: dark then lit. */
 export const LIGHT_DARK_RECORD = 900;
 export const LIGHT_LIT_RECORD = 901;
+/** `TLightGroup`'s `Timer1TimeDefault`: the period every timed command falls back to. */
+export const GROUP_PERIOD_RECORD = 903;
+/** The group indices of a light group's members. Read with the ATTRIBUTE form, id included. */
+export const GROUP_MEMBERS_RECORD = 1027;
 
 /** `loader::query_visual_states`. One unless the group opens with a `[100, n]` pair. */
 export function visualStatesOf(groups: readonly Group[], groupIndex: number): number {
@@ -59,6 +64,18 @@ export interface OriginalComponents {
   readonly bumpers: ReadonlyMap<string, Bumper>;
   /** By name too, which for lights is also the control layer's name — see `SIMPLE_TAGS`. */
   readonly lights: ReadonlyMap<string, Light>;
+  /**
+   * ⚠️ THE GROUPS THE LANES ACTUALLY WATCH. `BumperLaneControl` asks a group "are all of you on yet",
+   * and that question is the whole mechanic: the lanes are worth something because filling them raises
+   * the bumpers. Its members are the SAME `Light` objects as in `lights` — a group holding copies would
+   * count its own lights on while the table's stayed dark, and nothing that looks at counts would
+   * notice.
+   */
+  readonly lightGroups: ReadonlyMap<string, LightGroup>;
+  /** The lights a group holds, so a caller can check identity rather than assume it. */
+  membersOf(group: LightGroup): readonly Light[];
+  /** `Timer1TimeDefault`, from record 903. */
+  periodOf(name: string): number;
   /** The threshold a bumper was built with, so a caller can see it is not `default_vsi`'s 9e10. */
   thresholdOf(name: string): number;
   /** Drives every component's timers. Seconds. */
@@ -98,6 +115,9 @@ export function buildOriginalComponents(
   const bumpers = new Map<string, Bumper>();
   const lights = new Map<string, Light>();
   const thresholds = new Map<string, number>();
+  const lightGroups = new Map<string, LightGroup>();
+  const groupMembers = new Map<LightGroup, Light[]>();
+  const periods = new Map<string, number>();
   /** How many frames each bumper has, because `setLevel` takes it on every call and clamps with it. */
   const frameCounts = new Map<string, number>();
 
@@ -139,9 +159,35 @@ export function buildOriginalComponents(
     }
   }
 
+  // ⚠️ SECOND PASS, BECAUSE A GROUP NAMES LIGHTS. The manifest does not promise that every member is
+  // listed before the group that holds it, and building a group against a half-filled map would give it
+  // however many members happened to exist yet — a count that is wrong and never zero, which is the
+  // hardest kind to notice.
+  for (const object of table.tableObjects) {
+    if (object.type !== ObjectType.Lights) continue;
+    const group = groups[object.group];
+    const name = group?.name;
+    if (!group || !name) continue;
+
+    const memberIndices = int16Attribute(group, GROUP_MEMBERS_RECORD) ?? [];
+    const members = memberIndices
+      .map((at) => groups[at]?.name)
+      .map((memberName) => (memberName ? lights.get(memberName) : undefined))
+      .filter((light): light is Light => Boolean(light));
+
+    const period = floatAttribute(group, GROUP_PERIOD_RECORD)?.[0] ?? 0;
+    const built = createLightGroup({ timer, lights: members, defaultPeriod: period });
+    lightGroups.set(name, built);
+    groupMembers.set(built, members);
+    periods.set(name, period);
+  }
+
   return {
     bumpers,
     lights,
+    lightGroups,
+    membersOf: (group) => groupMembers.get(group) ?? [],
+    periodOf: (name) => periods.get(name) ?? 0,
     thresholdOf: (name) => thresholds.get(name) ?? Number.POSITIVE_INFINITY,
 
     advance(seconds) {

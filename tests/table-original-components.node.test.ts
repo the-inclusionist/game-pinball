@@ -145,3 +145,50 @@ describe('the components, from the manifest', () => {
     expect(light!.on).toBe(true);
   });
 });
+
+describe('⚠️ the light GROUPS, which are what the lanes actually watch', () => {
+  test('eighteen of them, which is what the manifest declares', () => {
+    const table = manifest();
+    if (!table) return expect(existsSync(DAT)).toBe(false);
+
+    expect(buildOriginalComponents(table).lightGroups.size).toBe(18);
+  });
+
+  test('⚠️ each one holds the lights record 1027 names, and they are the SAME objects', () => {
+    // A group whose members were fresh copies would count its own lights on while the table's stayed
+    // dark — and `BumperLaneControl` asks the group "are all of you on yet". Identity is the whole
+    // mechanism, and a shallow copy would fail nothing that looks at counts.
+    const table = manifest();
+    if (!table) return expect(existsSync(DAT)).toBe(false);
+
+    const built = buildOriginalComponents(table);
+    const [, group] = [...built.lightGroups].find(([, g]) => g.lightCount > 1)!;
+    const before = group.onCount;
+
+    // Turn on one of the table's own lights and ask the group.
+    const member = [...built.lights.values()].find((l) => built.membersOf(group).includes(l))!;
+    member.turnOn();
+
+    expect(group.onCount).toBe(before + 1);
+  });
+
+  test('the group the bumper lanes watch is there, by the name the control layer uses', () => {
+    // `bmpr_inc_lights` is what `BumperLaneControl` asks "are all of you on". It is a `simple_component`
+    // whose tag is its own name — see `SIMPLE_TAGS`.
+    const table = manifest();
+    if (!table) return expect(existsSync(DAT)).toBe(false);
+
+    expect(buildOriginalComponents(table).lightGroups.get('bmpr_inc_lights')).toBeDefined();
+  });
+
+  test('⚠️ and its period comes from record 903, not from a number here', () => {
+    // `Timer1TimeDefault` is what every timed command falls back to. Inventing it changes how long
+    // every animation in the table runs.
+    const table = manifest();
+    if (!table) return expect(existsSync(DAT)).toBe(false);
+
+    const built = buildOriginalComponents(table);
+
+    expect(built.periodOf('bmpr_inc_lights')).toBeGreaterThan(0);
+  });
+});
