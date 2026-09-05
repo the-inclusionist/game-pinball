@@ -281,3 +281,39 @@ describe('light group — the notify timer', () => {
     expect(t.pendingCount()).toBe(0);
   });
 });
+
+describe('⚠️ `TLightGroupResetAndTurnOn`, which is not `turnOnNext` with a flash bolted on', () => {
+  test('the next DARK lamp flashes and then stays lit', () => {
+    // `next_light_up()` then `TLightFlasherStartTimedThenStayOn(value)`. The flash is how the group
+    // says a rung was won — a plain `turnOn` lights the lamp and tells the player nothing.
+    const { group, lights } = build();
+    lights[0]!.turnOn();
+
+    group.groupResetAndTurnOn(2);
+
+    expect(lights[1]!.flashing).toBe(true);
+    expect(lights[2]!.flashing).toBe(false);
+  });
+
+  test('⚠️ and an animation in progress is stopped FIRST', () => {
+    // `if (MessageField2 != TLightGroupNull || AnimationFlag) Message(TLightGroupReset)`. Lighting a
+    // rung into a running light show would leave the show's overrides on top of the lamp that was
+    // just won, and the player would watch their award get animated away.
+    const { group } = build();
+    group.lightShow(1);
+    expect(group.mode).toBe('lightShow');
+
+    group.groupResetAndTurnOn(2);
+
+    expect(group.mode).toBe('none');
+  });
+
+  test('with every lamp already lit it does nothing at all', () => {
+    const { group, lights } = build();
+    for (const light of lights) light.turnOn();
+
+    group.groupResetAndTurnOn(2);
+
+    expect(lights.some((l) => l.flashing)).toBe(false);
+  });
+});

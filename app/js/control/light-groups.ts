@@ -69,6 +69,13 @@ export function makeDecayingLightGroupControl(o: DecayingLightGroupOptions): Con
         o.onDecay?.(ctx.score);
         o.group.offsetAnimationBackward();
         // The last lamp going out is what stops the clock.
+        //
+        // ⚠️ AND A MUTATION THAT NEVER STOPS IT SURVIVES, because on a dark group the decay is
+        // idempotent: `offsetAnimationBackward` finds no lit lamp and does nothing, and `onDecay`
+        // guards against taking the multiplier below zero. What is left is a timer that fires every
+        // thirty seconds for the rest of the game and changes nothing — invisible to a test, real in a
+        // long game, and not what the original does. Recorded as an equivalent mutant rather than
+        // chased with a test that would have to reach inside the timer to see it.
         if (o.group.onCount) o.group.restartNotifyTimer(o.period);
         return;
 

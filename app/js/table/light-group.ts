@@ -70,6 +70,16 @@ export interface LightGroup {
 
   /** Lights the next dark lamp in order. Reports whether there was one. */
   turnOnNext(): boolean;
+  /**
+   * `TLightGroupResetAndTurnOn`: the next DARK lamp FLASHES for `seconds` and then stays lit, with any
+   * animation stopped first.
+   *
+   * ⚠️ NOT `turnOnNext` WITH A FLASH ADDED. Two differences and both are rules: the flash is how the
+   * group says a rung was won, and stopping the animation first is what keeps a running light show
+   * from laying its overrides on top of the lamp that was just won — the player would watch their
+   * award get animated away.
+   */
+  groupResetAndTurnOn(seconds: number): boolean;
   /** Darkens the last lit lamp. Reports whether there was one. */
   turnOffNext(): boolean;
 
@@ -254,6 +264,14 @@ export function createLightGroup(o: LightGroupOptions): LightGroup {
       if (index < 0) return false;
       lights[index]!.turnOff();
       keepGoing();
+      return true;
+    },
+
+    groupResetAndTurnOn(seconds: number): boolean {
+      const index = nextLightUp();
+      if (index < 0) return false;
+      if (mode !== 'none' || animationFlag) group.resetGroup();
+      lights[index]!.flasherStartTimedThenStayOn(seconds);
       return true;
     },
 

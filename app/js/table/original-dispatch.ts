@@ -40,6 +40,10 @@ import {
 } from '../control/controls.js';
 import { makeMedalTargetControl, makeBoosterTargetControl, type AwardChainStep } from '../control/banks.js';
 import {
+  makeDecayingLightGroupControl, makeMultiplierLightGroupControl, DECAY_PERIODS,
+  type DecayingGroup,
+} from '../control/light-groups.js';
+import {
   makeSkillShotEntryControl, makeSkillShotGateControl, makeSkillShotCollectControl,
   makeSkillShotLostControl, type SkillShotGroup,
 } from '../control/launch.js';
@@ -52,7 +56,7 @@ import {
 import { addExtraBall, createTableActions } from '../control/table-actions.js';
 import {
   handler, bumperControl, rebounderControl, makeFlipperRebounderControl,
-  type ControlContext, type ControlledComponent,
+  type ControlContext, type ControlledComponent, type MessageCode,
 } from '../control/dispatch.js';
 import { SCORE_COMPONENTS } from '../control/score-table.js';
 import type { OriginalComponents } from './original-components.js';
@@ -105,6 +109,34 @@ function skillShotAdapter(components: OriginalComponents, name: string): SkillSh
       }
     },
     flashWhenOn: (seconds) => group.flashWhenOn(seconds),
+  };
+}
+
+/**
+ * A light group as its DECAY control drives it. Four of the seven methods are messages the original
+ * sends to the group and the port's `LightGroup` does not have, because they are not group operations
+ * at all — the default branch forwards them to every member, last to first.
+ */
+function decayingAdapter(
+  components: OriginalComponents, name: string,
+  restartNotifyTimer: (seconds: number) => void,
+): DecayingGroup | null {
+  const group = components.lightGroups.get(name);
+  if (!group) return null;
+  const members = components.membersOf(group);
+  const eachLamp = (run: (light: (typeof members)[number]) => void): void => {
+    for (let i = members.length - 1; i >= 0; i--) run(members[i]!);
+  };
+
+  return {
+    get onCount() { return group.onCount; },
+    turnOff: () => eachLamp((light) => light.turnOff()),
+    groupResetAndTurnOn: (period) => { group.groupResetAndTurnOn(period); },
+    lightsResetAndTurnOn: () => eachLamp((light) => { light.resetTimed(); light.turnOn(); }),
+    lightsResetAndTurnOff: () => eachLamp((light) => { light.resetTimed(); light.turnOff(); }),
+    restartNotifyTimer,
+    // `TLightGroupOffsetAnimationBackward`: the LAST lit lamp goes out, animation kept running.
+    offsetAnimationBackward: () => { group.turnOffNext(); },
   };
 }
 
@@ -444,6 +476,34 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
     }
   }
 
+  // ⚠️ THE TWO DECAYING LIGHT GROUPS, WHICH ARE THE OTHER HALF OF BOTH BANKS. Winning a rung starts a
+  // thirty-second clock; when it runs out the last lit lamp goes out and the clock restarts, until the
+  // group is dark. For the multiplier that also takes the score multiplier down a step — so a
+  // multiplier, like a bumper level, is held rather than won.
+  //
+  // ⚠️ AND THE BANK MUST DRIVE THE GROUP THROUGH ITS CONTROL, not around it. The original writes
+  // `MultiplierLightGroupControl(TLightGroupResetAndTurnOn, top_target_lights)` — a control function
+  // calling another control function — and that call is what starts the clock. Lighting the lamp
+  // directly leaves the group lit for ever, which is what this port did until now.
+  const groupControlFor = (name: string, text?: string): ((code: MessageCode) => void) | null => {
+    let restart: (seconds: number) => void = () => {};
+    const group = decayingAdapter(o.components, name, (seconds) => restart(seconds));
+    if (!group) return null;
+    const caller: ControlledComponent = { name, scores: [], control: null };
+    const control = text !== undefined
+      ? makeMultiplierLightGroupControl({ group, enableText: text })
+      : makeDecayingLightGroupControl({ group, period: DECAY_PERIODS.medal });
+    restart = (seconds) => o.components.restartGroupTimer(
+      name, seconds, () => control('ControlNotifyTimerExpired', caller, o.context),
+    );
+    return (code) => control(code, caller, o.context);
+  };
+
+  const medalGroup = groupControlFor(MEDAL_BANK.lightGroup);
+  const multiplierGroup = groupControlFor(
+    MULTIPLIER_BANK.lightGroup, o.textFor(MULTIPLIER_BANK.textIds[3]!),
+  );
+
   // ⚠️ THE TWO POPUP BANKS. Their memory lives in the TARGETS' message fields, so the objects handed
   // to the factory are the ones that have to be registered — a second set would give every hit a fresh
   // zero and the bank would never reach three.
@@ -465,7 +525,11 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
       const bank = bankOf(MULTIPLIER_BANK);
       const control = makeMultiplierBankControl({
         bank,
-        lightGroup: group,
+        lightGroup: {
+          get onCount() { return group.onCount; },
+          // Through the group's own control, which is what starts the thirty seconds.
+          turnOnNext: () => { multiplierGroup?.('TLightGroupResetAndTurnOn'); return true; },
+        },
         popUp: () => {},
         multiplierTexts: MULTIPLIER_BANK.textIds.map((id) => o.textFor(id)),
       });
@@ -483,7 +547,10 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
       const extraBallText = o.textFor(OUT_LANES.extraBallTextId);
       const control = makeMedalTargetControl({
         bank,
-        group: { get onCount() { return group.onCount; }, lightOneMore: () => { group.turnOnNext(); } },
+        group: {
+          get onCount() { return group.onCount; },
+          lightOneMore: () => { medalGroup?.('TLightGroupResetAndTurnOn'); },
+        },
         addExtraBall: (seconds) => addExtraBall(o.context, extraBallText, seconds),
         popUp: () => {},
         texts: MEDAL_BANK.textIds.map((id) => o.textFor(id)),

@@ -998,3 +998,67 @@ describe('⚠️ the bumper groups decay, which is what the lanes are working ag
     }
   });
 });
+
+describe('⚠️ the multiplier falls again too, and so do the medals', () => {
+  const fillMultiplier = (w: NonNullable<ReturnType<typeof wired>>) => {
+    for (const target of MULTIPLIER_BANK.targets) w.dispatch.hit(target);
+  };
+
+  test('thirty seconds after the bank is filled, the multiplier steps back down', () => {
+    // `MultiplierLightGroupControl` on its notify timer: one lamp out, one step off the multiplier,
+    // and the clock restarted. Without it a multiplier won once was a multiplier held for ever — the
+    // same one-way ratchet the bumper levels had.
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    fillMultiplier(w);
+    expect(w.score.scoreMultiplier).toBe(1);
+
+    w.components.advance(29);
+    expect(w.score.scoreMultiplier).toBe(1);
+
+    w.components.advance(2);
+
+    expect(w.score.scoreMultiplier).toBe(0);
+    expect(w.components.lightGroups.get('top_target_lights')!.onCount).toBe(0);
+  });
+
+  test('⚠️ and the clock only stops when the last lamp is out', () => {
+    // `if (o.group.onCount) restartNotifyTimer(period)` — the group stops asking once it is dark, and
+    // a timer that kept running would take the multiplier below zero on a table with no lamps lit.
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    fillMultiplier(w);
+
+    w.components.advance(300);
+
+    expect(w.score.scoreMultiplier).toBe(0);
+  });
+
+  test('the medals decay on their own thirty seconds', () => {
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    for (const target of MEDAL_BANK.targets) w.dispatch.hit(target);
+    expect(w.components.lightGroups.get('bumper_target_lights')!.onCount).toBe(1);
+
+    w.components.advance(31);
+
+    expect(w.components.lightGroups.get('bumper_target_lights')!.onCount).toBe(0);
+  });
+
+  test('⚠️ and a medal decaying does NOT touch the score multiplier', () => {
+    // One line is the whole difference between the two controls, and it belongs to the multiplier.
+    //
+    // ⚠️ THE MULTIPLIER BANK IS NOT FILLED HERE, ON PURPOSE. Filling both and advancing past thirty
+    // seconds runs BOTH clocks, so the multiplier would fall for its own reason and the test would
+    // pass whichever control the medals were given — which is exactly what the first version did.
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    w.score.scoreMultiplier = 2;
+    for (const target of MEDAL_BANK.targets) w.dispatch.hit(target);
+
+    w.components.advance(31);
+
+    expect(w.components.lightGroups.get('bumper_target_lights')!.onCount, 'the medal did decay').toBe(0);
+    expect(w.score.scoreMultiplier, 'and took nothing with it').toBe(2);
+  });
+});
