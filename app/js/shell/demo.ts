@@ -27,6 +27,7 @@ import { createOriginalDispatch, type OriginalDispatch } from '../table/original
 import { buildOriginalGates } from '../table/original-gates.js';
 import { buildOriginalKickouts, kickoutGeometry } from '../table/original-kickouts.js';
 import { flipperSides } from '../table/original-flippers.js';
+import { blockerNames } from '../table/original-blockers.js';
 import { buildOriginalPlunger } from '../table/original-plunger.js';
 import type { ControlContext } from '../control/dispatch.js';
 import { loadTable } from '../dat/loader.js';
@@ -36,6 +37,7 @@ import { createScoreState, addScore, type ScoreState } from '../control/score.js
 import { decodePlayfield, readCamera, type OriginalCamera } from '../gfx/original-view.js';
 import { readGroups, type Group } from '../dat/partman.js';
 import { advanceFrame, type Ball } from '../physics/step.js';
+import { checkStuckBall, unstuckBall, type StuckBall } from '../physics/stuck.js';
 import { fillCircle } from '../gfx/table-view.js';
 import { pack, type Framebuffer } from '../gfx/framebuffer.js';
 import { kindOf } from '../i18n/names.js';
@@ -150,6 +152,7 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
    */
   const manifest = loadTable(bytes);
   const sides = flipperSides(manifest);
+  const blockers = blockerNames(manifest);
   const components = buildOriginalComponents(manifest);
   const touched: string[] = [];
   const scored: string[] = [];
@@ -177,6 +180,8 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
    * lists it leaves behind are the record of it.
    */
   const feedBall = (): void => { ball = table.spawnBall(); };
+  /** The stuck watch counts in milliseconds, and this table's only clock is its own frames. */
+  let frames60 = 0;
 
   /**
    * ⚠️ THE REAL CONTROL FUNCTIONS FOR THE SEVEN THAT ARE WIRED, AND THE FLAT PAYMENT FOR THE REST.
@@ -224,6 +229,9 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
 
   const table = buildOriginalTable(groups, {
     geometryFor: kickoutGeometry(manifest),
+    // ⚠️ THE BARRIER ACROSS THE DRAIN IS NOT THERE UNTIL A MISSION PUTS IT THERE — and no mission runs
+    // here, so it never is. Installed active it walls off the only place a ball can be lost.
+    startsInactive: (name) => blockers.has(name),
     // ⚠️ WITHOUT THIS THERE ARE NO FLIPPERS AT ALL. A flipper has no wall record; its shape is three
     // points and two times, and the table builds one only for a group it is told the side of.
     flipperSideFor: (name) => sides.get(name),
@@ -356,6 +364,25 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
         // The components keep their own time: a bumper's lit period is what stops it firing again,
         // and a lane group's flash is what clears it.
         components.advance(1 / 60);
+
+        // ⚠️ AND THE STUCK BALL, WHICH THE AUTHORED TABLE HAS HAD SINCE IT HAD A BALL AND THIS ONE HAD
+        // NOT. Left alone, the 1995 ball comes to rest near the bottom and hits the same surface seven
+        // times a frame for ever — twenty thousand collisions in six hundred frames. It never reaches
+        // the drain, so with the drain wired the game could never end either.
+        frames60++;
+        const view = ball as unknown as StuckBall;
+        if (checkStuckBall(view, frames60 * (1000 / 60))) {
+          unstuckBall(view, {
+            controlBounds: table.controlBounds,
+            // `TableG->CollisionCompOffset / 2`.
+            boundsMargin: table.ballRadius / 2,
+            // One ball in play. The give-up branch decrements this so a rescue cannot quietly grow the
+            // number of balls on the table.
+            table: { multiballCount: 1 },
+            relaunch: feedBall,
+            ...(o.random ? { random: o.random } : {}),
+          });
+        }
       }
     },
 

@@ -94,6 +94,16 @@ export interface OriginalTable {
   readonly plungerPosition: Vector2 | null;
   /** The plunger itself, when the archive has one. Pressed and released by the player. */
   readonly plunger: Plunger | null;
+  /**
+   * ⚠️ WHERE A MOTIONLESS BALL IS NOT STUCK. `control::CheckBallInControlBounds` asks whether the ball
+   * is inside the flippers' or the plunger's box before deciding it needs rescuing — a ball held on a
+   * raised flipper or waiting on the plunger is exactly where the player put it, and throwing it back
+   * up the table would take the shot away.
+   *
+   * Derived rather than declared: each flipper's box is its pivot plus its whole reach, and the
+   * plunger's is the extent of its own wall record.
+   */
+  readonly controlBounds: readonly Bounds[];
   spawnBall(): Ball;
 }
 
@@ -169,6 +179,13 @@ export interface OriginalOptions {
    * which is what this table had until the plunger existed.
    */
   readonly plungerFor?: (groups: readonly Group[], groupIndex: number) => Plunger | null;
+  /**
+   * ⚠️ GROUPS WHOSE GEOMETRY IS INSTALLED SWITCHED OFF. `TBlocker`'s constructor ends with
+   * `ActiveFlag = 0`: the barrier across the drain is not there until a mission puts it there. Any
+   * group carrying a wall record is installed active by default, which turns that barrier into a
+   * permanent wall in front of the only place a ball can be lost.
+   */
+  readonly startsInactive?: (groupName: string) => boolean;
 }
 
 export function buildOriginalTable(groups: readonly Group[], o: OriginalOptions = {}): OriginalTable {
@@ -234,7 +251,9 @@ export function buildOriginalTable(groups: readonly Group[], o: OriginalOptions 
     };
 
     const installed: Edge[] = [];
+    const active = !o.startsInactive?.(name);
     for (const edge of installWall(data, { component, offset: ballRadius })) {
+      edge.active = active;
       if (edge.kind === 'line') placeLineInGrid(grid, edge);
       else placeCircleInGrid(grid, edge);
       installed.push(edge);
@@ -250,6 +269,7 @@ export function buildOriginalTable(groups: readonly Group[], o: OriginalOptions 
   const flippers: Flipper[] = [];
   const flipperSide = new Map<Flipper, 'left' | 'right'>();
   const flipperName = new Map<Flipper, string>();
+  const flipperBounds = new Map<Flipper, Bounds>();
 
   for (const group of groups) {
     const name = group.name;
@@ -269,6 +289,10 @@ export function buildOriginalTable(groups: readonly Group[], o: OriginalOptions 
     // Registering it at rest would leave it missing from the boxes it swings into.
     const reach = Math.max(geometry.baseRadius, geometry.tipRadius) + ballRadius
       + Math.hypot(geometry.tipAtRest.x - geometry.pivot.x, geometry.tipAtRest.y - geometry.pivot.y);
+    flipperBounds.set(flipper, {
+      xMin: geometry.pivot.x - reach, xMax: geometry.pivot.x + reach,
+      yMin: geometry.pivot.y - reach, yMax: geometry.pivot.y + reach,
+    });
     placeCircleInGrid(grid, {
       active: true,
       collisionGroup: 1,
@@ -286,6 +310,12 @@ export function buildOriginalTable(groups: readonly Group[], o: OriginalOptions 
     });
   }
 
+  const controlBounds: Bounds[] = [];
+  for (const flipper of flippers) {
+    const box = flipperBounds.get(flipper);
+    if (box) controlBounds.push(box);
+  }
+
   // The plunger, if the caller builds one. Its own line is already installed by the wall loop above;
   // what is missing without this is the component that pulls back and lets go.
   let plunger: Plunger | null = null;
@@ -295,12 +325,16 @@ export function buildOriginalTable(groups: readonly Group[], o: OriginalOptions 
     if (!at) continue;
     plungerAt = at;
     plunger = o.plungerFor?.(groups, index) ?? null;
+    // The plunger's own extent, so a ball waiting on it is never mistaken for a stuck one.
+    const shape = floatAttribute(groups[index]!, WALL_RECORD);
+    if (shape?.length) controlBounds.push(boundsOfWall(shape));
     break;
   }
 
   return {
     grid,
     bounds,
+    controlBounds,
     flippers,
     plunger,
     plungerPosition: plungerAt,

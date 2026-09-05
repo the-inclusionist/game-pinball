@@ -284,9 +284,18 @@ function step(frames: number): void {
       topUpMusic();
       demoPage!.blit(demo);
       paint();
-      // The 1995 score in ADR-0002's corner. The other three blocks carry what the demo can honestly
-      // fill: no ball count, because nothing here loses a ball, and no mission.
-      hud.update({ score: demo.score.curScore, ballCount: 1, playerNumber: 1, hint: '' });
+      // The 1995 score and ball count in ADR-0002's corners. ⚠️ THE BALL COUNT USED TO BE A LITERAL
+      // ONE, with a comment saying nothing here could lose a ball — true until the drain was wired,
+      // and the kind of stale comment that keeps a screen wrong long after the code is right.
+      //
+      // The hint stays empty: the mission machine does not run on this table, so there is nothing
+      // honest to put in it.
+      hud.update({
+        score: demo.score.curScore,
+        ballCount: demo.ballsLeft,
+        playerNumber: 1,
+        hint: demo.gameOver ? shell.t('pinball.demo.gameOver') : '',
+      });
     }
     return;
   }

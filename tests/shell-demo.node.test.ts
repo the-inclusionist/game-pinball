@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, test, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
-import { createDemo, DEMO_BALL_COLOR } from '../app/js/shell/demo.js';
+import { createDemo, DEMO_BALL_COLOR, DEMO_BALLS } from '../app/js/shell/demo.js';
 import { SCORE_COMPONENTS } from '../app/js/control/score-table.js';
 import { VOICES, SILENT_KINDS, soundForKind } from '../app/js/audio/voices.js';
 import { kindOf, COMPONENT_KINDS } from '../app/js/i18n/names.js';
@@ -236,10 +236,16 @@ describe('⚠️ and the demonstration can be HEARD, which it could not be at al
     // an out lane's miss, the bonus lane's collect — and an exact count over EVERY sound would then
     // fail on the runs where the ball happens to reach one. Which runs those are is decided by the
     // gravity jitter, so the test would have been flaky in a way that looks like a real bug.
+    // ⚠️ `drain` IS PLAYED BY BOTH STREAMS AND IS EXCLUDED FROM BOTH SIDES. It is the voice of the
+    // drain COMPONENT and the sound `BallDrainControl` asks for by name when a ball is lost, so once
+    // the drain was wired a lost ball added a sound with no touch behind it and this count went one
+    // over. Every other kind voice belongs to exactly one stream.
     const kindVoices = new Set(
-      COMPONENT_KINDS.map((kind) => soundForKind(kind)).filter((name): name is string => Boolean(name)),
+      COMPONENT_KINDS.map((kind) => soundForKind(kind))
+        .filter((name): name is string => Boolean(name) && name !== 'drain'),
     );
-    expect(heard.filter((name) => kindVoices.has(name))).toHaveLength(audible.length);
+    const audibleNotDrained = audible.filter((name) => kindOf(name) !== 'drain');
+    expect(heard.filter((name) => kindVoices.has(name))).toHaveLength(audibleNotDrained.length);
   });
 });
 
@@ -306,5 +312,38 @@ describe('⚠️ and the player can work the 1995 flippers', () => {
     demo.step(3);
 
     expect(demo.table.flippers[0]!.currentAngle).not.toBeCloseTo(before);
+  });
+});
+
+describe('⚠️ and a ball can be lost, which the demonstration counts', () => {
+  test('it starts with three and the count is what the HUD reads', () => {
+    const bytes = archive();
+    if (!bytes) return expect(existsSync(DAT)).toBe(false);
+
+    const demo = createDemo(bytes, { random: seeded() });
+
+    expect(demo.ballsLeft).toBe(DEMO_BALLS);
+    expect(demo.gameOver).toBe(false);
+  });
+
+  test('⚠️ and a ball left alone does not rattle at the bottom for ever', () => {
+    // ⚠️ THE LOSS ITSELF IS TESTED ON THE DISPATCHER, not here: driving a ball into the drain from the
+    // plunger is not something a seed can be trusted to do, and a test that stepped four thousand
+    // frames and hoped would be asking about one journey again.
+    //
+    // What IS testable here is the thing that makes the loss reachable at all. Before the stuck watch
+    // was wired the ball came to rest near the bottom and hit the same surface seven times a frame,
+    // for ever — twenty thousand collisions in six hundred frames, a game that could never end.
+    const bytes = archive();
+    if (!bytes) return expect(existsSync(DAT)).toBe(false);
+
+    const demo = createDemo(bytes, { random: seeded() });
+    demo.step(1200);
+    const before = demo.touched.length;
+
+    demo.step(600);
+
+    // A ball in play touches things; a ball rattling in a corner touches thousands.
+    expect(demo.touched.length - before).toBeLessThan(600);
   });
 });
