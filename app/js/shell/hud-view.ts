@@ -1,0 +1,95 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// shell/hud-view — what the four corner blocks say, and where they go.
+//
+// ========================= ADR-0002 WAS APPLIED TO ARITHMETIC, NOT TO A SCREEN =========================
+// `layoutHud` has computed four rectangles since phase 6 and a test has held that they do not overlap.
+// The running game showed none of them: no score, no ball count, no player name, no hint. The record
+// was real, the layout was right, and nothing drew it — the fifth time in this port that something
+// declared turned out to be inert.
+//
+// ========================= THE TEXT GOES IN THE DOM, AND THAT IS THE ENGINE'S RULE =========================
+// ADR-0010 resolves "AAA text versus a 320x180 screen" as TEXT IN THE DOM, and both halves of that
+// matter here. A four-pixel digit cannot meet a size-and-contrast requirement at any zoom the player
+// controls; and a number painted into a framebuffer is invisible to a screen reader however sharp it
+// is. So the pixels stay the table and the words stay words.
+//
+// This module is the half that touches no DOM — what the blocks SAY and where they go — because that
+// is the half worth testing, and because the engine's own HUD splits the same way (`HudRowView`:
+// "tudo que updateGameHud() escreve no DOM, sem tocar no DOM").
+
+import type { HudLayout, HudConfig } from './hud.js';
+import type { Translate } from '../i18n/index.js';
+
+export interface HudState {
+  readonly score: number;
+  readonly ballCount: number;
+  readonly playerNumber: number;
+  /** The mission or info line. Empty means there is nothing to say. */
+  readonly hint: string;
+}
+
+/** One block: what is shown, and what is heard. They differ, and that difference is the point. */
+export interface HudBlockView {
+  readonly text: string;
+  /** The accessible name. For the score it carries the word the corner has no room for. */
+  readonly label: string;
+}
+
+export interface HudTextView {
+  readonly score: HudBlockView;
+  readonly balls: HudBlockView;
+  readonly player: HudBlockView;
+  readonly hint: HudBlockView;
+}
+
+/**
+ * ⚠️ GROUPED, because seven digits across sixty-two pixels is a smear.
+ *
+ * Thin spaces rather than commas or full stops: the separator differs by locale and getting it wrong
+ * reads as a decimal point to half the players. A space is the one grouping mark that is wrong nowhere.
+ */
+export function groupDigits(value: number): string {
+  return Math.trunc(value).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+}
+
+export function hudView(state: HudState, t: Translate): HudTextView {
+  return {
+    // The digits are shown; the WORD is only heard. There is no room for both in a corner, and a bare
+    // number read aloud out of nowhere is not information.
+    score: { text: groupDigits(state.score), label: t('pinball.hud.score', { n: state.score }) },
+    balls: { text: t('pinball.hud.balls', { n: state.ballCount }), label: '' },
+    player: { text: t('pinball.hud.player', { n: state.playerNumber }), label: '' },
+    // Empty stays empty. A dash in the corner is furniture that means nothing and still takes the room.
+    hint: { text: state.hint, label: '' },
+  };
+}
+
+/** A box in per-cent, ready for `style.left` and friends. */
+export interface HudBox {
+  readonly left: string;
+  readonly top: string;
+  readonly width: string;
+  readonly height: string;
+}
+
+export type HudPlacement = Record<'score' | 'balls' | 'player' | 'hint', HudBox>;
+
+/**
+ * ⚠️ PER-CENT, NOT PIXELS. The canvas is 320x180 and is stretched to whatever width the page gives it,
+ * so a block placed at `x = 255px` sits in the middle of the table on every screen but one.
+ */
+export function hudPlacement(layout: HudLayout, screen: HudConfig): HudPlacement {
+  const box = (r: { x: number; y: number; width: number; height: number }): HudBox => ({
+    left: `${(r.x / screen.screenWidth) * 100}%`,
+    top: `${(r.y / screen.screenHeight) * 100}%`,
+    width: `${(r.width / screen.screenWidth) * 100}%`,
+    height: `${(r.height / screen.screenHeight) * 100}%`,
+  });
+
+  return {
+    score: box(layout.score),
+    balls: box(layout.ballCount),
+    player: box(layout.playerName),
+    hint: box(layout.hint),
+  };
+}

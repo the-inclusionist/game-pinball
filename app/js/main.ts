@@ -23,6 +23,7 @@ import { buildPhysics, drainedBy, launchSpeedFor, FRAME_SECONDS } from './table/
 import { advanceFrame } from './physics/step.js';
 import { bindPinballControls } from './shell/controls.js';
 import { createLiveControls } from './table/live-controls.js';
+import { mountHud } from './shell/hud-dom.js';
 
 // `?table=wide-arc` opens another one of the five. There is no menu yet, and a query parameter is
 // enough to look at all of them without one.
@@ -101,7 +102,11 @@ canvas.width = screen.width;
 canvas.height = screen.height;
 canvas.style.width = '100%';
 canvas.style.imageRendering = 'pixelated';
-document.getElementById('game-region')!.appendChild(canvas);
+const region = document.getElementById('game-region')!;
+// ⚠️ RELATIVE, because the HUD's four blocks are absolutely positioned INSIDE it. Without this they
+// would be placed against the page and land wherever the document happens to put them.
+region.style.position = 'relative';
+region.appendChild(canvas);
 const context = canvas.getContext('2d')!;
 const image = context.createImageData(screen.width, screen.height);
 
@@ -177,6 +182,13 @@ function step(frames: number): void {
     shell.advance(frames);
   }
 
+  hud.update({
+    score: live.score.curScore,
+    ballCount: live.flags.ballCount,
+    playerNumber: 1,
+    hint,
+  });
+
   blitView(screen, tablePicture, shell.hud.playfield, 0, shell.camera.offset);
   for (const ball of state.balls) {
     drawBall(screen, ball, authored.ballRadius, shell.hud.playfield, 0, shell.camera.offset);
@@ -201,9 +213,18 @@ requestAnimationFrame(frame);
  * arrow keys. See `shell/controls` for the rest, including why a held key is not a stream of presses.
  */
 const unbindControls = bindPinballControls({
-  region: document.getElementById('game-region')!,
+  region,
   setFlipper: (side, extended) => physics.setFlippers(side, extended),
   launch: () => { if (!ball.active) launch(); },
+});
+
+/**
+ * ⚠️ ADR-0002'S FOUR BLOCKS, ON SCREEN FOR THE FIRST TIME. `layoutHud` computed them from phase 6 and
+ * nothing drew them. Words rather than pixels: see `shell/hud-dom` for the engine rule that decides it.
+ */
+const hud = mountHud({
+  doc: document, host: region, layout: shell.hud, screen: { ...DEFAULT_HUD, playfieldWidth: authored.size.width },
+  t: shell.t,
 });
 
 // Exposed so the browser gate can confirm a real boot rather than a screenshot.

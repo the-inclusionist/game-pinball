@@ -69,6 +69,7 @@ const en: Record<string, string> = {
   'pinball.award.scored': '{points} points',
 
   /* ===================== HUD ===================== */
+  'pinball.hud.score': 'Score: {n}',
   'pinball.hud.player': 'Player {n}',
   'pinball.hud.balls': 'Balls: {n}',
   'pinball.hud.gameOver': 'Game over',
