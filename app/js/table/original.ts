@@ -186,6 +186,13 @@ export interface OriginalOptions {
    * permanent wall in front of the only place a ball can be lost.
    */
   readonly startsInactive?: (groupName: string) => boolean;
+  /**
+   * ⚠️ GROUPS WHOSE GEOMETRY SOMEBODY ELSE INSTALLS. A one-way gate is TWO lines on the same two
+   * points, wound opposite ways and offset by different amounts — one wall record, two edges, and
+   * neither of them the one this loop would build. Installing the plain wall as well would put a
+   * solid line across a gate the ball is supposed to pass through.
+   */
+  readonly skipWall?: (groupName: string) => boolean;
 }
 
 export function buildOriginalTable(groups: readonly Group[], o: OriginalOptions = {}): OriginalTable {
@@ -225,6 +232,7 @@ export function buildOriginalTable(groups: readonly Group[], o: OriginalOptions 
     if (!raw?.length) continue;
 
     const name = group.name ?? `group-${wallCount}`;
+    if (o.skipWall?.(name)) continue;
     const data = o.geometryFor?.(name, raw) ?? raw;
     /**
      * ⚠️ THE OWNER IS LOOKED UP AT COLLISION TIME, NOT AT INSTALL TIME. A kickout cannot exist before

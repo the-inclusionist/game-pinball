@@ -50,7 +50,11 @@ describe('the 1995 table, from an ArrayBuffer', () => {
     const demo = createDemo(bytes, { random: seeded() });
 
     expect([demo.playfield.width, demo.playfield.height]).toEqual([365, 470]);
-    expect(demo.table.wallCount).toBe(143);
+    // ⚠️ ONE HUNDRED AND THIRTY-FOUR, AND IT WAS A HUNDRED AND FORTY-THREE. The nine one-way gates are
+    // no longer installed by this loop: a one-way is TWO lines on the same two points, wound opposite
+    // ways, and neither of them is the plain wall this count is of. Installing that wall as well put a
+    // solid line across every gate the ball was supposed to pass through.
+    expect(demo.table.wallCount).toBe(134);
   });
 
   test('⚠️ the ball lands INSIDE the picture, which is what ties the physics to the pixels', () => {

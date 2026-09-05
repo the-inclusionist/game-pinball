@@ -28,6 +28,7 @@ import { buildOriginalGates } from '../table/original-gates.js';
 import { buildOriginalKickouts, kickoutGeometry } from '../table/original-kickouts.js';
 import { buildOriginalPopupTargets } from '../table/original-popup-targets.js';
 import { buildOriginalSoloTargets } from '../table/original-solo-targets.js';
+import { buildOriginalOneways, onewayNames } from '../table/original-oneways.js';
 import { flipperSides } from '../table/original-flippers.js';
 import { blockerNames } from '../table/original-blockers.js';
 import { buildOriginalPlunger } from '../table/original-plunger.js';
@@ -159,6 +160,7 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
   const manifest = loadTable(bytes);
   const sides = flipperSides(manifest);
   const blockers = blockerNames(manifest);
+  const oneways = onewayNames(manifest);
   const components = buildOriginalComponents(manifest, {
     // ⚠️ THE BUMPER SAYS WHEN IT FIRED, and that is when it is paid — see `payFor` and the wrapper it
     // is called from. A bumper reached through the wall wrapper alone is paid for every graze.
@@ -261,6 +263,10 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
     // ⚠️ THE BARRIER ACROSS THE DRAIN IS NOT THERE UNTIL A MISSION PUTS IT THERE — and no mission runs
     // here, so it never is. Installed active it walls off the only place a ball can be lost.
     startsInactive: (name) => blockers.has(name),
+    // ⚠️ A ONE-WAY IS TWO LINES AND NEITHER IS THE ONE THIS LOOP WOULD BUILD — see
+    // `table/original-oneways`. Installing the plain wall as well puts a solid line across a gate the
+    // ball is supposed to pass through, which is what this table had: nine gates, all shut.
+    skipWall: (name) => oneways.has(name),
     // ⚠️ WITHOUT THIS THERE ARE NO FLIPPERS AT ALL. A flipper has no wall record; its shape is three
     // points and two times, and the table builds one only for a group it is told the side of.
     flipperSideFor: (name) => sides.get(name),
@@ -336,6 +342,15 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
   for (const [name, target] of buildOriginalPopupTargets(manifest, table, {
     table: { tiltLocked: false }, timer: components.timer, onStruck: (struck) => payFor(struck),
   })) popupTargets.set(name, target);
+  buildOriginalOneways(manifest, {
+    table: { tiltLocked: false },
+    grid: table.grid,
+    ballRadius: table.ballRadius,
+    // A crossing is a hit like any other: the record, the sound and whatever the control pays.
+    onPass: (name) => { touched.push(name); payFor(name); },
+    onBlocked: (name) => { touched.push(name); },
+  });
+
   for (const [name, target] of buildOriginalSoloTargets(manifest, table, {
     table: { tiltLocked: false }, timer: components.timer, onStruck: (struck) => payFor(struck),
   })) soloTargets.set(name, target);
