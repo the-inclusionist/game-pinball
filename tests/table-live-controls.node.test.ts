@@ -173,3 +173,52 @@ describe('losing a ball costs a ball', () => {
     expect(live.score.curScore - secondHit).toBe(LOW_ORBIT.components.find((c) => c.name === 'target1')!.scores![0]);
   });
 });
+
+describe('⚠️ and the table can be heard', () => {
+  const played: { name: string; source?: { x: number; y: number } }[] = [];
+  const audible = (table = LOW_ORBIT) => {
+    played.length = 0;
+    return createLiveControls(table, { playSound: (name, source) => played.push({ name, source }) });
+  };
+
+  test('hitting a bumper plays the bumper voice', () => {
+    const live = audible();
+
+    live.hit('bumper1');
+
+    expect(played.map((p) => p.name)).toEqual(['bumper']);
+  });
+
+  test('⚠️ hitting a wall plays nothing, because a resting ball would rattle', () => {
+    const live = audible();
+
+    live.hit('wall.left');
+
+    expect(played).toEqual([]);
+  });
+
+  test('⚠️ the sound is placed where the component IS, in the mixer’s own coordinates', () => {
+    // `SoundSource` is documented as "normalized to [0,1]; (0,0) is the bottom left", and a table's y
+    // grows DOWNWARD. Passing the raw bounds would put every sound off the edge of the field and flip
+    // the whole table top to bottom — audible as a sound coming from the wrong end.
+    const live = audible();
+    const bumper = LOW_ORBIT.components.find((c) => c.name === 'bumper1')!;
+
+    live.hit('bumper1');
+
+    const source = played[0]!.source!;
+    expect(source.x).toBeCloseTo((bumper.bounds.x + bumper.bounds.width / 2) / LOW_ORBIT.size.width, 6);
+    expect(source.y).toBeCloseTo(
+      1 - (bumper.bounds.y + bumper.bounds.height / 2) / LOW_ORBIT.size.height, 6,
+    );
+  });
+
+  test('and losing the ball has its own voice', () => {
+    // The drain never collides — see `physics-build` — so nothing else could ever sound it.
+    const live = audible();
+
+    live.endBall();
+
+    expect(played.map((p) => p.name)).toContain('drain');
+  });
+});

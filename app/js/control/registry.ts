@@ -38,10 +38,21 @@ export interface AuthoredSelf {
   level: number;
   /** The lamps the component declared, resolved by name at dispatch time. */
   readonly lamps: readonly string[];
+  /**
+   * The voice this component speaks with, from `audio/voices.soundForKind`. Undefined is SILENT and is
+   * a decision — a wall makes no sound because a resting ball would rattle against it.
+   */
+  readonly sound?: string;
 }
 
-export function authoredSelf(lamps: readonly string[] = []): AuthoredSelf {
-  return { level: 0, lamps: [...lamps] };
+export function authoredSelf(lamps: readonly string[] = [], sound?: string): AuthoredSelf {
+  return { level: 0, lamps: [...lamps], ...(sound ? { sound } : {}) };
+}
+
+/** Every authored control sounds its component the same way, so the call lives in one place. */
+function sound(caller: ControlledComponent, ctx: ControlContext): void {
+  const voice = selfOf(caller)?.sound;
+  if (voice) ctx.playSound(voice);
 }
 
 const selfOf = (caller: ControlledComponent): AuthoredSelf | undefined =>
@@ -54,6 +65,7 @@ const selfOf = (caller: ControlledComponent): AuthoredSelf | undefined =>
  */
 export const targetControl: ControlFunc = (code, caller, ctx) => {
   if (code !== 'ControlCollision') return;
+  sound(caller, ctx);
   const self = selfOf(caller);
   const level = self ? self.level : 0;
   addScore(ctx.score, getScoring(caller, level));
@@ -72,6 +84,7 @@ export const targetControl: ControlFunc = (code, caller, ctx) => {
  */
 export const rampControl: ControlFunc = (code, caller, ctx) => {
   if (code !== 'ControlCollision') return;
+  sound(caller, ctx);
   addScore(ctx.score, getScoring(caller, 0));
   for (const lamp of selfOf(caller)?.lamps ?? []) ctx.light(lamp)?.turnOnTimed(1);
 };
@@ -83,6 +96,7 @@ export const rampControl: ControlFunc = (code, caller, ctx) => {
  */
 export const laneControl: ControlFunc = (code, caller, ctx) => {
   if (code !== 'ControlCollision') return;
+  sound(caller, ctx);
   addScore(ctx.score, getScoring(caller, 0));
   for (const lamp of selfOf(caller)?.lamps ?? []) ctx.light(lamp)?.turnOn();
 };
@@ -105,9 +119,19 @@ export const plungerControl: ControlFunc = () => {};
  * The whole vocabulary. Frozen because a table naming something outside it must be refused, and a
  * registry that could be extended at run time could not be checked at validation time.
  */
+/**
+ * ⚠️ `bumperControl` AND `rebounderControl` ARE THE 1995 ONES, TRANSCRIBED, and they do not sound
+ * anything — in the original the sound is played by the COMPONENT, not by its control function. So an
+ * authored table wraps them rather than editing them: the transcription stays a transcription.
+ */
+const withSound = (inner: ControlFunc): ControlFunc => (code, caller, ctx) => {
+  if (code === 'ControlCollision') sound(caller, ctx);
+  inner(code, caller, ctx);
+};
+
 export const AUTHORED_CONTROLS: Readonly<Record<string, ControlFunc>> = Object.freeze({
-  BumperControl: bumperControl,
-  RebounderControl: rebounderControl,
+  BumperControl: withSound(bumperControl),
+  RebounderControl: withSound(rebounderControl),
   TargetControl: targetControl,
   RampControl: rampControl,
   LaneControl: laneControl,

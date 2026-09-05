@@ -25,6 +25,8 @@ import { createLight, type Light } from './light.js';
 import { createScoreState, type ScoreState } from '../control/score.js';
 import { handler, type ControlContext, type ControlledComponent, type TableFlags } from '../control/dispatch.js';
 import { authoredSelf, controlNamed } from '../control/registry.js';
+import { soundForKind } from '../audio/voices.js';
+import type { SoundSource } from '../audio/sfx.js';
 import type { AuthoredTable } from './authored.js';
 
 /** Seconds a lamp spends dark and lit while flashing. Authoring decisions, not transcribed numbers. */
@@ -33,7 +35,12 @@ const LAMP_LIT_DELAY = 0.15;
 
 export interface LiveControlsOptions {
   /** Where a component's sound name goes. Absent = the table is silent, which is a valid table. */
-  readonly playSound?: (name: string) => void;
+  /**
+   * ⚠️ WITH A SOURCE, because the mixer places sounds in stereo and `ControlContext.playSound` takes
+   * only a name. The context is built here and knows which component is being dispatched, so the
+   * placement comes from where that component IS rather than from a second guess.
+   */
+  readonly playSound?: (name: string, source?: SoundSource) => void;
   readonly playMusic?: (track: string) => void;
   /** Text for the HUD's hint block. Absent = nothing is shown, and nothing is lost. */
   readonly showInfo?: (text: string, seconds: number) => void;
@@ -100,13 +107,29 @@ export function createLiveControls(table: AuthoredTable, o: LiveControlsOptions 
     }));
   }
 
+  /**
+   * Who is being dispatched right now, so a sound can be placed where they are. `SoundSource` is
+   * normalised to [0,1] with (0,0) at the BOTTOM LEFT, and a table's y grows downward — so y is
+   * flipped here, and getting that wrong is audible as a table upside down.
+   */
+  let dispatching: string | null = null;
+  const sourceOfCurrent = (): SoundSource | undefined => {
+    const component = dispatching && table.components.find((c) => c.name === dispatching);
+    if (!component) return undefined;
+    const b = component.bounds;
+    return {
+      x: (b.x + b.width / 2) / table.size.width,
+      y: 1 - (b.y + b.height / 2) / table.size.height,
+    };
+  };
+
   const components = new Map<string, ControlledComponent>();
   for (const component of table.components) {
     components.set(component.name, {
       name: component.name,
       scores: component.scores ?? [],
       control: component.control ? controlNamed(component.control) ?? null : null,
-      self: authoredSelf(component.lamps ?? []),
+      self: authoredSelf(component.lamps ?? [], soundForKind(component.kind)),
     });
   }
 
@@ -119,7 +142,7 @@ export function createLiveControls(table: AuthoredTable, o: LiveControlsOptions 
     group: () => undefined,
     showInfo: (text, seconds) => o.showInfo?.(text, seconds),
     showMission: (text, seconds) => o.showMission?.(text, seconds),
-    playSound: (name) => o.playSound?.(name),
+    playSound: (name) => o.playSound?.(name, sourceOfCurrent()),
     playMusic: (track) => o.playMusic?.(track),
     // ⚠️ THE MISSION MACHINE IS ABSENT, AND THE HOOK STAYS. `handler` calls it on every event and that
     // is transcribed behaviour. An authored table has no missions, and wiring the 1995 machine to it
@@ -132,7 +155,12 @@ export function createLiveControls(table: AuthoredTable, o: LiveControlsOptions 
     hit(componentName) {
       const component = components.get(componentName);
       if (!component) return;
-      handler('ControlCollision', component, context);
+      dispatching = componentName;
+      try {
+        handler('ControlCollision', component, context);
+      } finally {
+        dispatching = null;
+      }
     },
     advance(seconds) {
       now += seconds;
@@ -147,6 +175,14 @@ export function createLiveControls(table: AuthoredTable, o: LiveControlsOptions 
       // Clamped: the game loop calls this from a POSITION test, and a ball sitting in a drain would be
       // reported again on the next frame. Cheaper to hold the floor here than to be sure elsewhere.
       flags.ballCount = Math.max(0, flags.ballCount - 1);
+
+      // The drain never collides — see `physics-build` — so nothing else could ever sound it.
+      const drain = table.components.find((c) => c.kind === 'drain');
+      if (drain) {
+        dispatching = drain.name;
+        o.playSound?.('drain', sourceOfCurrent());
+        dispatching = null;
+      }
 
       // ⚠️ THE SCORE SURVIVES AND THE REST DOES NOT. The score is the player's; a lamp lit by the last
       // ball would tell the next one that work was already done, and a target that kept its level would

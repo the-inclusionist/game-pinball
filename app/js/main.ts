@@ -26,6 +26,9 @@ import { createLiveControls } from './table/live-controls.js';
 import { createRolloverWatch } from './table/rollovers.js';
 import { objectiveOf, AUTHORED_OBJECTIVE_ID } from './table/objective.js';
 import { mountHud } from './shell/hud-dom.js';
+import { createSoundBoard, releaseVoice } from './audio/sfx.js';
+import { soundEntriesOf, VOICES } from './audio/voices.js';
+import { createWebAudioOutput } from './audio/web-audio.js';
 
 // `?table=wide-arc` opens another one of the five. There is no menu yet, and a query parameter is
 // enough to look at all of them without one.
@@ -163,9 +166,55 @@ let tablePicture = drawTable({ table: authored, missionTargets: state.missionTar
  */
 const hits: string[] = [];
 
+/**
+ * ⚠️ THE AUDIO CONTEXT IS BUILT LAZILY, BECAUSE A BROWSER REFUSES TO START ONE WITHOUT A GESTURE.
+ *
+ * Constructing it at load leaves it `suspended`, and every sound before the first key press is silently
+ * dropped — silently being the word: nothing errors and nothing plays. So it is created on the first
+ * sound after the player has touched something, and resumed if the browser suspended it anyway.
+ */
+/** Every voice the mixer has sent to the output. Exposed so a check can see sound happen. */
+const voicesPlayed: string[] = [];
+let audio: AudioContext | null = null;
+let audioOutput: ((voice: import('./audio/sfx.js').Voice) => void) | null = null;
+
+function ensureAudio(): void {
+  if (audio) {
+    if (audio.state === 'suspended') void audio.resume();
+    return;
+  }
+  const Ctor = (window as unknown as { AudioContext?: typeof AudioContext }).AudioContext;
+  if (!Ctor) return;
+  audio = new Ctor();
+  audioOutput = createWebAudioOutput(audio);
+}
+
+/**
+ * ⚠️ THE MIXER AND THE VOICES SHARE ONE LIST. `sfx.play` returns a duration whether or not anything is
+ * audible and the control layer schedules on the answer, so a board built from a different list would
+ * time the game against sounds that do not exist.
+ */
+const board = createSoundBoard({
+  sounds: soundEntriesOf(),
+  channels: 8,
+  now: () => performance.now() / 1000,
+  output: (voice) => {
+    voicesPlayed.push(voice.name);
+    audioOutput?.(voice);
+    // ⚠️ THE MIXER DOES NOT POLL: a channel is held until the HOST says the sound ended, and a channel
+    // never released is a channel the eighth sound steals from the ninth for the rest of the game.
+    const duration = VOICES[voice.name]?.duration ?? 0;
+    setTimeout(() => releaseVoice(board, voice.channel), duration * 1000);
+  },
+});
+
 const live = createLiveControls(authored, {
   showInfo: (text) => { hint = text; },
   showMission: (text) => { hint = text; },
+  playSound: (name, source) => {
+    ensureAudio();
+    board.play(name, source);
+  },
 });
 let hint = '';
 
@@ -308,6 +357,10 @@ Object.assign(window as unknown as Record<string, unknown>, {
     get score() { return live.score.curScore; },
     get lamps() { return live.litLamps(); },
     get hint() { return hint; },
+    /** Exposed so the browser gate can confirm sound rather than assume it. */
+    get sound() {
+      return { context: audio?.state ?? 'none', played: voicesPlayed, live: board.voices.length };
+    },
     get objective() { return { have: state.missionHave, need: state.missionNeed, targets: state.missionTargets }; },
     get balls() { return live.flags.ballCount; },
     launch,
