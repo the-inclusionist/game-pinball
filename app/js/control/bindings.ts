@@ -100,6 +100,31 @@ export const LAUNCH_LANES: BumperLaneBinding = {
 export const BUMPER_LANE_BINDINGS: readonly BumperLaneBinding[] = [REENTRY_LANES, LAUNCH_LANES];
 
 /**
+ * `control::ReturnLaneRolloverControl`, and the other half of a rule that spans two components.
+ *
+ * ⚠️ THE SPACE WARP LIGHTS THESE LAMPS AND SCORES NOTHING; the return lanes are where the shot is
+ * collected, at score index ONE instead of index zero. Neither component means anything alone, and the
+ * lamp is the only thing joining them — which is exactly why a binding table is needed at all: nothing
+ * in either function says the other exists.
+ */
+export interface ReturnLaneBinding {
+  readonly control: string;
+  /** Each lane and the lamp the space warp lit for it. */
+  readonly lanes: readonly { readonly component: string; readonly lamp: string }[];
+  /** The shared warp indicator, darkened by whichever lane collects. */
+  readonly warpLamp: string;
+}
+
+export const RETURN_LANES: ReturnLaneBinding = {
+  control: 'ReturnLaneRolloverControl',
+  lanes: [
+    { component: 'a_roll6', lamp: 'lite27' },
+    { component: 'a_roll7', lamp: 'lite28' },
+  ],
+  warpLamp: 'lite59',
+};
+
+/**
  * ⚠️ A CONTROL WHOSE WHOLE BINDING IS A LIST OF LAMPS, IN ORDER.
  *
  * Some control functions reach for nothing but lights, and their factories take exactly that. Those

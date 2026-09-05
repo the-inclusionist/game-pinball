@@ -51,7 +51,7 @@ describe('a lane crossing reaches the 1995 control function', () => {
     const w = wired();
     if (!w) return expect(existsSync(DAT)).toBe(false);
 
-    expect(w.dispatch.wired.size).toBe(7);
+    expect(w.dispatch.wired.size).toBe(9);
     expect(w.dispatch.wired.has('a_roll3')).toBe(true);
     expect(w.dispatch.wired.has('a_roll9')).toBe(true);
     expect(w.dispatch.wired.has('a_bump1')).toBe(false);
@@ -153,6 +153,50 @@ describe('a lane crossing reaches the 1995 control function', () => {
     for (const lane of REENTRY_LANES.lanes) w.dispatch.hit(lane.component);
 
     expect(w.shown.some((t) => t.includes(REENTRY_LANES.completeTextId))).toBe(true);
+  });
+
+  test('⚠️ a return lane pays MORE when the space warp lit it, which is the rule spanning two parts', () => {
+    // Neither component means anything alone. The warp lights lite27 and lite28 and scores nothing; the
+    // return lanes collect at score index ONE instead of zero. Nothing in either function says the
+    // other exists, which is exactly why the binding table has to.
+    const cold = wired();
+    const warm = wired();
+    if (!cold || !warm) return expect(existsSync(DAT)).toBe(false);
+
+    cold.dispatch.hit('a_roll6');
+    warm.dispatch.hit('a_roll9');
+    const afterWarp = warm.score.curScore;
+    warm.dispatch.hit('a_roll6');
+
+    expect(warm.score.curScore - afterWarp).toBeGreaterThan(cold.score.curScore);
+  });
+
+  test('⚠️ and collecting DARKENS both its own lamp and the shared indicator', () => {
+    // `lite59` is the warp indicator and either lane clears it. A lane that darkened only its own lamp
+    // would leave the indicator on with nothing left to collect.
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+
+    w.dispatch.hit('a_roll9');
+    w.components.lights.get('lite59')!.turnOn();
+    w.dispatch.hit('a_roll6');
+
+    expect(w.components.lights.get('lite27')!.on).toBe(false);
+    expect(w.components.lights.get('lite59')!.on).toBe(false);
+    // The other lane's lamp is untouched: it is still there to be collected.
+    expect(w.components.lights.get('lite28')!.on).toBe(true);
+  });
+
+  test('⚠️ the control matches its caller by IDENTITY, so the wired object must be the given one', () => {
+    // `makeReturnLaneControl` looks the caller up with `===` against the components it was handed.
+    // Registering a second, equal-looking object would make every crossing fall through to the
+    // "not mine" branch, which scores nothing and reads as a dead lane.
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+
+    w.dispatch.hit('a_roll7');
+
+    expect(w.score.curScore).toBeGreaterThan(0);
   });
 
   test('a hit on something not wired is quiet rather than a crash', () => {

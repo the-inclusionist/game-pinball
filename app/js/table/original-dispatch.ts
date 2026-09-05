@@ -30,9 +30,12 @@
 // difference is real.
 
 import {
-  makeBumperLaneControl, makeSpaceWarpRolloverControl, type LaneGroup, type LaneLight,
+  makeBumperLaneControl, makeSpaceWarpRolloverControl, makeReturnLaneControl,
+  type LaneGroup, type LaneLight,
 } from '../control/lanes.js';
-import { BUMPER_LANE_BINDINGS, LAMP_BINDINGS, type BumperLaneBinding } from '../control/bindings.js';
+import {
+  BUMPER_LANE_BINDINGS, LAMP_BINDINGS, RETURN_LANES, type BumperLaneBinding,
+} from '../control/bindings.js';
 import { handler, type ControlContext, type ControlledComponent } from '../control/dispatch.js';
 import { SCORE_COMPONENTS } from '../control/score-table.js';
 import type { OriginalComponents } from './original-components.js';
@@ -147,6 +150,35 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
       control: null,
     });
     controls.set(binding.component, (component) => control('ControlCollision', component, o.context));
+  }
+
+  // ⚠️ THE RETURN LANES, WHICH COLLECT WHAT THE SPACE WARP LIT. `makeReturnLaneControl` matches the
+  // caller by IDENTITY against the components it was given, not by name — so the very objects put in
+  // `byName` have to be the ones handed to the factory. Building a second set here would make every
+  // crossing fall through to the "not mine" branch, which scores nothing and looks like a dead lane.
+  {
+    const warpLamp = o.components.lights.get(RETURN_LANES.warpLamp);
+    const lanes = RETURN_LANES.lanes
+      .map((lane) => {
+        const lamp = o.components.lights.get(lane.lamp);
+        const row = scoreRows.get(lane.component);
+        if (!lamp) return null;
+        const component: ControlledComponent = {
+          name: lane.component, scores: row?.scores ?? [], control: null,
+        };
+        return { component, lamp: lamp as unknown as LaneLight };
+      })
+      .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+
+    if (warpLamp && lanes.length === RETURN_LANES.lanes.length) {
+      const control = makeReturnLaneControl({
+        lanes, warpLamp: warpLamp as unknown as LaneLight,
+      });
+      for (const lane of lanes) {
+        byName.set(lane.component.name, lane.component);
+        controls.set(lane.component.name, (component) => control('ControlCollision', component, o.context));
+      }
+    }
   }
 
   return {
