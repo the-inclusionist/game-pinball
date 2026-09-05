@@ -14,6 +14,7 @@ import {
 import { createScoreState } from '../app/js/control/score.js';
 import { BASE_BONUS } from '../app/js/control/drain.js';
 import { SCORE_COMPONENTS } from '../app/js/control/score-table.js';
+import { MISSION_TABLE } from '../app/js/control/mission-table.js';
 import { loadTable } from '../app/js/dat/loader.js';
 import type { ControlContext } from '../app/js/control/dispatch.js';
 
@@ -1467,5 +1468,100 @@ describe('⚠️ the mission machine, and the state the table sits in before a b
     w.dispatch.hit('a_bump1');
 
     expect(w.dispatch.missions.current).toBe(0);
+  });
+});
+
+/** The machine's context, which is the control one plus the four things only a mission uses. */
+function missionContextOf(w: NonNullable<ReturnType<typeof wired>>): never {
+  const said: string[] = [];
+  const context = {
+    ...w.context,
+    missionLamp: w.components.lights.get('lite198')!,
+    dispatch: (code: string, caller: unknown) =>
+      w.dispatch.missions.dispatch(code as never, caller as never, context as never),
+    missionTextBox: { name: 'mission_text_box', scores: [], control: null },
+    showMissionText: (text: string) => said.push(text),
+    clearMissionText: () => said.push(''),
+  };
+  return context as never;
+}
+
+describe('⚠️ the sixteen missions that can run, and the seven that cannot', () => {
+  test('a mission is declined WHOLE when one of its components is missing', () => {
+    // `d.components.includes(caller)` — a mission counts hits on its own components, so half a mission
+    // would count some of its hits and silently never finish. The seven declined need `target22`, the
+    // three sinks and `kickout2`.
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    const tagOf = new Map(SCORE_COMPONENTS.map((row) => [row.name, row.tag]));
+
+    const runnable = MISSION_TABLE.filter((row) =>
+      row.components.every((name) => w.dispatch.wired.has(tagOf.get(name) ?? '')));
+
+    expect(runnable).toHaveLength(16);
+    expect(MISSION_TABLE).toHaveLength(23);
+    // ⚠️ AND THE DISPATCHER AGREES, which is the half that can fail. Reading the table alone counts
+    // what COULD run; `missionsRun` is what does, and a mutation wiring a half-resolved mission passed
+    // until this line existed.
+    expect(w.dispatch.missionsRun.size).toBe(16);
+    for (const row of runnable) expect(w.dispatch.missionsRun.has(row.mission), row.name).toBe(true);
+    // Bug Hunt needs `target22`, which is the wormhole's destination and not built.
+    expect(w.dispatch.missionsRun.has(9)).toBe(false);
+  });
+
+  test('⚠️ and a mission counts hits on ITS OWN components and ignores the rest', () => {
+    // Launch training is three trips up the ramp. A bumper is not a ramp, and a mission that counted
+    // any collision would finish itself on the way past.
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    const lamp = w.components.lights.get('lite198')!;
+    const counter = w.components.lights.get('lite56')!;
+    lamp.messageField = 3; // LaunchTraining
+    w.dispatch.missions.dispatch('ControlMissionComplete', null, missionContextOf(w));
+    expect(counter.messageField, 'three ramps to go').toBe(3);
+
+    w.dispatch.hit('a_bump1');
+    expect(counter.messageField, 'a bumper is not a ramp').toBe(3);
+
+    w.dispatch.hit('ramp');
+
+    expect(counter.messageField).toBe(2);
+    w.dispatch.hit('ramp');
+
+    // ⚠️ AND THE LINE CARRIES THE COUNT. It is re-announced on every qualifying hit, so a text chosen
+    // once would leave the same number on the screen for the whole mission. (The first announcement
+    // went through the context this test built, not the dispatcher's; these two came through the real
+    // path, which is the one that matters.)
+    expect(w.shown).toContain('text:STRING211:{"n":2}');
+    expect(w.shown).toContain('text:STRING211:{"n":1}');
+  });
+
+  test('⚠️ and finishing it moves the lamp on and pays the award', () => {
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    const lamp = w.components.lights.get('lite198')!;
+    lamp.messageField = 3;
+    w.dispatch.missions.dispatch('ControlMissionComplete', null, missionContextOf(w));
+
+    w.dispatch.hit('ramp');
+    w.dispatch.hit('ramp');
+    w.dispatch.hit('ramp');
+
+    expect(lamp.messageField, 'back to mission select').toBe(1);
+    expect(w.score.curScore).toBeGreaterThanOrEqual(500000);
+  });
+
+  test('and the rank points are kept rather than dropped', () => {
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    const lamp = w.components.lights.get('lite198')!;
+    lamp.messageField = 3;
+    w.dispatch.missions.dispatch('ControlMissionComplete', null, missionContextOf(w));
+
+    w.dispatch.hit('ramp');
+    w.dispatch.hit('ramp');
+    w.dispatch.hit('ramp');
+
+    expect(w.dispatch.rankPoints).toBe(6);
   });
 });

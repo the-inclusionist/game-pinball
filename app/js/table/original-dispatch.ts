@@ -61,8 +61,10 @@ import {
 import { drainBall, type DrainTable } from '../control/drain.js';
 import {
   createMissionMachine, makeWaitingDeploymentController, type MissionMachine,
-  type MissionContext,
+  type MissionContext, type MissionController,
 } from '../control/mission.js';
+import { makeMissionController } from '../control/mission-runner.js';
+import { MISSION_TABLE } from '../control/mission-table.js';
 import { NEW_BALL_REFLEX_SCORE } from '../control/feed.js';
 import {
   handler, bumperControl, rebounderControl, makeFlipperRebounderControl,
@@ -121,6 +123,14 @@ export interface OriginalDispatch {
    * lands in an empty function.
    */
   readonly missions: MissionMachine;
+  /** What the missions have earned towards a rank. See the note where it is counted. */
+  readonly rankPoints: number;
+  /**
+   * ⚠️ WHICH MISSIONS CAN ACTUALLY RUN, by number. A mission whose components are not all wired is
+   * declined WHOLE — half a mission would count some of its hits and never finish — and this is the
+   * inventory of that decision, in the shape every other one in this file takes.
+   */
+  readonly missionsRun: ReadonlySet<number>;
   /** A collision on the component with this archive name. Silent for anything not wired. */
   hit(groupName: string): void;
   /** Which archive names this dispatcher will actually act on. */
@@ -222,6 +232,8 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
    * can dispatch before then: the first message comes from a collision.
    */
   let missions: MissionMachine | null = null;
+  /** Rank progress earned by missions, kept because `control/rank` is not wired yet. */
+  let rankPoints = 0;
   const missionTextBox: ControlledComponent = { name: MISSIONS.textBox, scores: [], control: null };
   const ctx: ControlContext = {
     ...o.context,
@@ -1026,11 +1038,65 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
   // read, so the box's own timeout is what sends `ControlMissionStarted`. Nothing times it in this
   // build, which is exactly why it is a component and not a string: the day something does, the
   // machine already knows what to do with it.
+  // ⚠️ THE TWENTY-THREE MISSIONS, OF WHICH SIXTEEN CAN RUN. A mission counts hits on ITS OWN
+  // components — `d.components.includes(caller)` — so the objects here have to be the very ones the
+  // dispatcher registered. A row naming a component this build does not wire is declined whole: half
+  // a mission would count some of its hits and silently never finish.
+  //
+  // The seven declined need `target22`, the three sinks and `kickout2`: the wormhole, the escape
+  // chute and the hyperspace, which are on ADR-0003's list of work rather than of decisions.
   const missionLamp = o.components.lights.get(MISSIONS.lamp);
+  const counterLamp = o.components.lights.get(MISSIONS.counterLamp);
+  const tagOf = new Map(SCORE_COMPONENTS.map((row) => [row.name, row.tag]));
+  const controllers: Partial<Record<number, MissionController>> = {};
+
+  if (missionLamp && counterLamp) {
+    for (const row of MISSION_TABLE) {
+      const components = row.components
+        .map((name) => byName.get(tagOf.get(name) ?? ''))
+        .filter((component): component is ControlledComponent => Boolean(component));
+      if (components.length !== row.components.length) continue;
+
+      const lamps = row.lamps
+        .map((name) => o.components.lights.get(name))
+        .filter((lamp): lamp is NonNullable<typeof lamp> => Boolean(lamp));
+      if (lamps.length !== row.lamps.length) continue;
+
+      controllers[row.mission] = makeMissionController({
+        definition: {
+          name: row.name,
+          lamps,
+          components,
+          count: row.count,
+          nextMission: row.nextMission,
+          // ⚠️ THE COUNTDOWN IS IN THE LINE. `{n} to go` is re-announced on every qualifying hit, so
+          // the text is a function of the counter rather than a string chosen once.
+          text: (remaining) => o.textFor(row.textKey, { n: remaining }),
+          ...(row.completeTextKey ? { completeText: o.textFor(row.completeTextKey) } : {}),
+          ...(row.infoTextKey ? { infoText: o.textFor(row.infoTextKey) } : {}),
+          ...(row.award !== undefined ? { award: row.award } : {}),
+          ...(row.rankPoints !== undefined ? { rankPoints: row.rankPoints } : {}),
+          ...(row.scoreTextKey
+            ? { scoreText: (points: number) => o.textFor(row.scoreTextKey!, { points }) }
+            : {}),
+        },
+        counterLamp,
+        missionLamp,
+        score: ctx.score,
+        // ⚠️ THE RANK LADDER IS NOT WIRED, AND THE POINTS ARE KEPT RATHER THAN DROPPED. `control/rank`
+        // needs the two circles and nine rank names; until it has them this counts what was earned and
+        // answers "no promotion", which is what the runner uses the boolean for — a false here only
+        // means the score line is shown, which is the ordinary case.
+        addRankProgress: (points) => { rankPoints += points; return false; },
+      });
+    }
+  }
+
   missions = createMissionMachine({
     missionLamp: missionLamp ?? { messageField: 0 },
     missionTextBox,
     controllers: {
+      ...controllers,
       0: makeWaitingDeploymentController({
         deploymentGates: MISSIONS.deploymentGates
           .map((name) => byName.get(name))
@@ -1042,6 +1108,8 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
 
   return {
     missions,
+    get rankPoints() { return rankPoints; },
+    missionsRun: new Set(Object.keys(controllers).map(Number)),
     wired: new Set(byName.keys()),
     hit(groupName) {
       const component = byName.get(groupName);

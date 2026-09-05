@@ -453,6 +453,8 @@ export const BOOSTER_BANK: BoosterBankBinding = {
  */
 export const MISSIONS = {
   lamp: 'lite198',
+  /** `lite56`, which holds the countdown while a mission runs. */
+  counterLamp: 'lite56',
   textBox: 'mission_text_box',
   deploymentGates: ['s_onewy4', 's_onewy10'],
   awaitingTextId: 'STRING151',
