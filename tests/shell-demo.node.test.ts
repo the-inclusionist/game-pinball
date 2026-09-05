@@ -146,14 +146,14 @@ describe('the 1995 table, from an ArrayBuffer', () => {
   });
 });
 
-describe('⚠️ and the fifty-five wired components run their 1995 control function', () => {
+describe('⚠️ and the fifty-eight wired components run their 1995 control function', () => {
   test('the demo says which they are', () => {
     const bytes = archive();
     if (!bytes) return expect(existsSync(DAT)).toBe(false);
 
     const demo = createDemo(bytes);
 
-    expect(demo.wired.size).toBe(55);
+    expect(demo.wired.size).toBe(58);
   });
 
   test('⚠️ and no wired component is ALSO paid flat, over a whole ball', () => {

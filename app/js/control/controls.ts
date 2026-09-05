@@ -165,6 +165,52 @@ export function makeSpotTargetControl(o: SpotTargetOptions): ControlFunc {
   };
 }
 
+export interface MissionSpotTargetOptions {
+  readonly targets: readonly ControlledComponent[];
+  readonly lamps: readonly { flasherStartTimedThenStayOn(seconds: number): void }[];
+  readonly group: { readonly onCount: number; flashWhenOn(seconds: number): void };
+  /** `lite101`, which records which of the three were struck as bits. Never cleared here. */
+  readonly maskLamp: { messageField: number };
+  /**
+   * ⚠️ `lite198`, WHOSE STATE CHOOSES THE SOUND BEFORE ANYTHING ELSE IS KNOWN. Dark OR flashing means
+   * no mission is running, and the set sounds different for it.
+   */
+  readonly missionLamp: { readonly lit: boolean; readonly flashing: boolean };
+  /** Played when no mission is running. */
+  readonly noMissionSound: string;
+  readonly hitSound: string;
+}
+
+/**
+ * `MissionSpotTargetControl`, which is a spot set with two differences and needs its own function.
+ *
+ * ⚠️ THE SOUND IS CHOSEN BY A LAMP, NOT BY THE OUTCOME. `makeSpotTargetControl` plays one sound for a
+ * hit and another for the set completing; this one asks `lite198` whether a mission is running and
+ * plays that answer — before it knows whether the set completed, and regardless. The completion here
+ * plays NOTHING, which no amount of bending the shared factory would express.
+ *
+ * ⚠️ AND IT IS `!lit || flashing`, NOT `!lit`. A mission lamp mid-flash counts as no mission: the
+ * flash is how the game says a mission is ending, and the set follows the lamp rather than the state.
+ */
+export function makeMissionSpotTargetControl(o: MissionSpotTargetOptions): ControlFunc {
+  return (code, caller, ctx) => {
+    if (code !== 'ControlCollision' || !caller) return;
+    const index = o.targets.indexOf(caller);
+    if (index < 0) return;
+
+    o.maskLamp.messageField |= 1 << index;
+    o.lamps[index]?.flasherStartTimedThenStayOn(2);
+
+    // Before the score, as the original has it.
+    const running = o.missionLamp.lit && !o.missionLamp.flashing;
+    ctx.playSound(running ? o.hitSound : o.noMissionSound);
+
+    addScore(ctx.score, getScoring(caller, 0));
+
+    if (o.group.onCount === o.targets.length) o.group.flashWhenOn(2);
+  };
+}
+
 /* ===================== KICKERS AND THEIR GATES ===================== */
 
 export interface KickerOptions {

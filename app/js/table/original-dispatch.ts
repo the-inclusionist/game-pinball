@@ -35,8 +35,8 @@ import {
   type LaneGroup, type LaneLight,
 } from '../control/lanes.js';
 import {
-  makeSpotTargetControl, makeMultiplierBankControl, makeGateLightControl, makeKickerControl,
-  type FieldComponent,
+  makeSpotTargetControl, makeMissionSpotTargetControl, makeMultiplierBankControl,
+  makeGateLightControl, makeKickerControl, type FieldComponent,
 } from '../control/controls.js';
 import { makeMedalTargetControl, makeBoosterTargetControl, type AwardChainStep } from '../control/banks.js';
 import {
@@ -334,6 +334,38 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
   // nothing and a mutation that drops it SURVIVES. Recorded rather than contrived around: they are two
   // different reasons a set cannot run, and the day a gate exists the first half stops covering the
   // second. This is the same shape as the pair of guards over `LAMP_BINDINGS` above.
+  // ⚠️ AND THE MISSION SET, WHICH RUNS ITS OWN FUNCTION. Its sound comes from `lite198` rather than
+  // from whether the set completed, and its completion is silent — see `makeMissionSpotTargetControl`.
+  // It is registered here rather than bent into the loop below, because approximating it would be a
+  // table that sounds the same whether or not a mission is running.
+  for (const set of SPOT_TARGET_SETS) {
+    if (!set.soundFromLamp || !set.maskLamp || !set.noMissionSound) continue;
+
+    const group = o.components.lightGroups.get(set.lightGroup);
+    const maskLamp = o.components.lights.get(set.maskLamp);
+    const missionLamp = o.components.lights.get(set.soundFromLamp);
+    const lamps = set.lamps
+      .map((name) => o.components.lights.get(name))
+      .filter((light): light is NonNullable<typeof light> => Boolean(light));
+    if (!group || !maskLamp || !missionLamp || lamps.length !== set.lamps.length) continue;
+
+    const targets: ControlledComponent[] = set.targets.map((name) => {
+      const row = scoreRows.get(name);
+      return { name, scores: row?.scores ?? [], control: null };
+    });
+
+    const control = makeMissionSpotTargetControl({
+      targets, lamps, group, maskLamp, missionLamp,
+      noMissionSound: set.noMissionSound,
+      hitSound: set.hitSound,
+    });
+
+    for (const target of targets) {
+      byName.set(target.name, target);
+      controls.set(target.name, (component) => control('ControlCollision', component, o.context));
+    }
+  }
+
   for (const set of SPOT_TARGET_SETS) {
     if (set.soundFromLamp) continue;
 

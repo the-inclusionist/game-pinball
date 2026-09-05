@@ -63,13 +63,13 @@ describe('a lane crossing reaches the 1995 control function', () => {
     const w = wired();
     if (!w) return expect(existsSync(DAT)).toBe(false);
 
-    expect(w.dispatch.wired.size).toBe(49);
+    expect(w.dispatch.wired.size).toBe(52);
     expect(w.dispatch.wired.has('a_roll3')).toBe(true);
     expect(w.dispatch.wired.has('a_roll9')).toBe(true);
-    // ⚠️ `a_bump1` USED TO BE THE EXAMPLE HERE, and it is wired now. The mission spot set is the
-    // current one: its binding is transcribed and the dispatcher declines it, which is the difference
-    // between a gap and a lie.
-    expect(w.dispatch.wired.has('a_targ13')).toBe(false);
+    // ⚠️ THE EXAMPLE OF SOMETHING DECLINED KEEPS MOVING, and that is the point of keeping one. It was
+    // `a_bump1`, then `a_targ13` when the mission spot set was still transcribed-but-not-run. Both
+    // run now. `a_flag1` is the current one: `FlagControl` is written and its component is not built.
+    expect(w.dispatch.wired.has('a_flag1')).toBe(false);
   });
 
   test('⚠️ and the two lamp controls with NO EVENT SOURCE are declined, not faked', () => {
@@ -218,7 +218,7 @@ describe('a lane crossing reaches the 1995 control function', () => {
     const w = wired();
     if (!w) return expect(existsSync(DAT)).toBe(false);
 
-    expect(() => w.dispatch.hit('a_targ13')).not.toThrow();
+    expect(() => w.dispatch.hit('a_flag1')).not.toThrow();
     expect(w.score.curScore).toBe(0);
   });
 });
@@ -400,15 +400,15 @@ describe('⚠️ the spot targets: three lamps, and the set is what pays', () =>
     expect(tank.onCount).toBe(0);
   });
 
-  test('⚠️ the other three sets are declined WITHOUT GATES, each for its own stated reason', () => {
-    // Two of them disable a gate on completion and this build constructs no gates; the third chooses
-    // its sound from a lamp rather than from whether the set completed, which the shared factory
-    // cannot express. Their bindings are transcribed and correct — the dispatcher says which it runs.
+  test('⚠️ the two HAZARD sets are declined without gates, and only those two', () => {
+    // Their completion disables a gate, and a build with no gates cannot do it. The mission set has a
+    // different shape — its sound comes from a lamp — and it runs anyway, because it was given its own
+    // control function rather than an approximation of the shared one.
     const w = wired();
     if (!w) return expect(existsSync(DAT)).toBe(false);
 
     for (const set of SPOT_TARGET_SETS) {
-      const runs = set.completion.kind === 'fillTank' && !set.soundFromLamp;
+      const runs = set.completion.kind !== 'disableGate';
       for (const target of set.targets) {
         expect(w.dispatch.wired.has(target), `${set.control}/${target}`).toBe(runs);
       }
@@ -527,14 +527,13 @@ describe('⚠️ the booster bank, which walks an award chain one rung per round
 describe('⚠️ the hazard spot sets, whose reward is a wall that stops being one', () => {
   const left = SPOT_TARGET_SETS.find((set) => set.control === 'LeftHazardSpotTargetControl')!;
 
-  test('given gates, both hazard sets run — and the mission set still does not', () => {
+  test('given gates, all four spot sets run', () => {
     const w = wired({ gates: true });
     if (!w) return expect(existsSync(DAT)).toBe(false);
 
     for (const set of SPOT_TARGET_SETS) {
-      const runs = !set.soundFromLamp;
       for (const target of set.targets) {
-        expect(w.dispatch.wired.has(target), `${set.control}/${target}`).toBe(runs);
+        expect(w.dispatch.wired.has(target), `${set.control}/${target}`).toBe(true);
       }
     }
   });
@@ -858,5 +857,66 @@ describe('⚠️ the skill shot, which pays most for the THIRD lamp', () => {
 
     expect(w.components.lightGroups.get('skill_shot_lights')!.onCount).toBe(0);
     expect(w.score.curScore).toBe(0);
+  });
+});
+
+describe('⚠️ the mission spot set, whose sound is chosen by a LAMP', () => {
+  const set = SPOT_TARGET_SETS.find((s2) => s2.control === 'MissionSpotTargetControl')!;
+
+  test('it lights its own lamp and records the hit as a BIT', () => {
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+
+    w.dispatch.hit(set.targets[1]!);
+
+    expect(w.components.lights.get('lite102')!.lit).toBe(true);
+    expect(w.components.lights.get(set.maskLamp!)!.messageField).toBe(2);
+    expect(w.score.curScore).toBeGreaterThan(0);
+  });
+
+  test('⚠️ with NO mission running it sounds different, which is the whole reason it is its own', () => {
+    // `lite198` dark means no mission. The shared spot factory plays one sound for a hit and another
+    // for the set completing; this one asks a lamp and plays the answer, before it knows whether the
+    // set completed.
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+
+    w.dispatch.hit(set.targets[0]!);
+
+    expect(w.sounds).toEqual(['noMission']);
+  });
+
+  test('and with one running it is the ordinary hit', () => {
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    w.components.lights.get('lite198')!.turnOn();
+
+    w.dispatch.hit(set.targets[0]!);
+
+    expect(w.sounds).toEqual(['hit']);
+  });
+
+  test('⚠️ but a mission lamp mid-FLASH counts as no mission', () => {
+    // `!light_on() || FlasherOnFlag`. The flash is how the game says a mission is ending, and the set
+    // follows the lamp rather than the state — so `!lit` alone would keep playing the running sound
+    // through the whole of that flash.
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    w.components.lights.get('lite198')!.turnOn();
+    w.components.lights.get('lite198')!.flasherStart();
+
+    w.dispatch.hit(set.targets[0]!);
+
+    expect(w.sounds).toEqual(['noMission']);
+  });
+
+  test('⚠️ and completing the set is SILENT, unlike every other spot set', () => {
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    w.components.lights.get('lite198')!.turnOn();
+
+    for (const target of set.targets) w.dispatch.hit(target);
+
+    expect(w.sounds).toEqual(['hit', 'hit', 'hit']);
   });
 });

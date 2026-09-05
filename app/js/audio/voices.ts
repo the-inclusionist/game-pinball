@@ -93,6 +93,10 @@ export const VOICES: Readonly<Record<string, VoiceSpec>> = {
   // the fuel spot set completing. Reading the first of those as a miss — which is what it looks like
   // in isolation, since the lamp was dark — gave it a falling tone for an event that is a reward.
   refuel: { frequency: 294, endFrequency: 587, duration: 0.2, wave: 'triangle' },
+  // ⚠️ A SPOT TARGET STRUCK WITH NO MISSION RUNNING. `soundwave52` against `soundwave49D`: the
+  // original gives the same three targets two different emitters and picks between them by asking
+  // `lite198`. Flat and short, because it is an acknowledgement of something that led nowhere.
+  noMission: { frequency: 349, endFrequency: 330, duration: 0.08, wave: 'triangle' },
 
   // The ramp pays four different ways, and the original branches on three lamps to decide which.
   reflexOnly: { frequency: 349, endFrequency: 523, duration: 0.18, wave: 'triangle' },
@@ -127,6 +131,7 @@ export const VOICES: Readonly<Record<string, VoiceSpec>> = {
 export const ORIGINAL_FX: readonly string[] = [
   'hit', 'miss', 'complete', 'collect', 'promotion', 'multiball', 'highScore', 'chain',
   'reflexOnly', 'rampAward', 'mission', 'plain', 'drain', 'extraBall', 'shootAgain', 'refuel',
+  'noMission',
 ];
 
 /** Kind to voice name. A kind with no entry makes no sound, which a wall does on purpose. */

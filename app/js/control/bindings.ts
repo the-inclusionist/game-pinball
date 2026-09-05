@@ -276,10 +276,13 @@ export interface SpotTargetBinding {
   readonly completeSound: string;
   readonly completion: SpotCompletion;
   /**
-   * The mission set alone picks its sound from a LAMP rather than from the outcome. Present here means
-   * the shared factory does not fit, and the dispatcher declines rather than approximating.
+   * ⚠️ THE MISSION SET ALONE PICKS ITS SOUND FROM A LAMP rather than from the outcome, and its
+   * completion plays nothing at all. It has its own control function for that reason —
+   * `makeMissionSpotTargetControl` — and this field is what says which set needs it.
    */
   readonly soundFromLamp?: string;
+  /** For that set only: what it sounds like when no mission is running. */
+  readonly noMissionSound?: string;
 }
 
 export const SPOT_TARGET_SETS: readonly SpotTargetBinding[] = [
@@ -300,9 +303,12 @@ export const SPOT_TARGET_SETS: readonly SpotTargetBinding[] = [
     lightGroup: 'ramp_tgt_lights',
     maskLamp: 'lite101',
     hitSound: 'hit',
+    // ⚠️ NEVER PLAYED: this set's completion is silent. Kept because the shape is shared.
     completeSound: 'complete',
     completion: { kind: 'none' },
     soundFromLamp: 'lite198',
+    // `soundwave52`, which the original plays nowhere else — see `audio/voices`.
+    noMissionSound: 'noMission',
   },
   {
     control: 'LeftHazardSpotTargetControl',
