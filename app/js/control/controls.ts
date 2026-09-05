@@ -115,6 +115,12 @@ export interface SpotTargetOptions {
   readonly onComplete: (ctx: ControlContext) => void;
   readonly hitSound: string;
   readonly completeSound: string;
+  /**
+   * The HAZARD spot targets also record themselves as bits in one lamp's message field —
+   * `lite104->MessageField |= 1u`, `|= 2u`, `|= 4u`. See `control/two-stage`: the mission reads that
+   * mask, and nothing here ever clears it.
+   */
+  readonly maskLamp?: { messageField: number };
 }
 
 /**
@@ -129,6 +135,9 @@ export function makeSpotTargetControl(o: SpotTargetOptions): ControlFunc {
     if (code !== 'ControlCollision' || !caller) return;
     const index = o.targets.indexOf(caller);
     if (index < 0) return;
+
+    // The SECOND memory of the same hit, with a different lifetime — see `maskLamp` above.
+    if (o.maskLamp) o.maskLamp.messageField |= 1 << index;
 
     o.lamps[index]?.flasherStartTimedThenStayOn(2);
     addScore(ctx.score, getScoring(caller, 0));

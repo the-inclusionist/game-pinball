@@ -176,6 +176,48 @@ describe('spot targets — the memory lives in the LAMPS', () => {
     expect(sounds).toEqual(['blip', 'blip', 'fanfare']);
   });
 
+  test('the HAZARD variants remember the same hit TWICE, in different places', () => {
+    // One bit per target in a lamp's message field, alongside the lamps themselves. The lamps are
+    // flashed off when the set completes; the mask is not, and only the mission that reads it ever
+    // clears it. Two memories of one event, with different lifetimes — see `control/two-stage`.
+    const targets = [target('target16', [750]), target('target17', [750]), target('target18', [750])];
+    let lit = 0;
+    const maskLamp = { messageField: 0 };
+    const control = makeSpotTargetControl({
+      targets,
+      lamps: targets.map(() => ({ flasherStartTimedThenStayOn: () => { lit++; } })),
+      group: { get onCount() { return lit; }, flashWhenOn: () => { lit = 0; } },
+      onComplete: () => {},
+      hitSound: 'blip', completeSound: 'fanfare',
+      maskLamp,
+    });
+    const { ctx } = context();
+
+    control('ControlCollision', targets[0]!, ctx);
+    control('ControlCollision', targets[2]!, ctx);
+
+    expect(maskLamp.messageField).toBe(0b101);
+  });
+
+  test('completing the set does NOT clear the mask', () => {
+    const targets = [target('target16', [750]), target('target17', [750]), target('target18', [750])];
+    let lit = 0;
+    const maskLamp = { messageField: 0 };
+    const control = makeSpotTargetControl({
+      targets,
+      lamps: targets.map(() => ({ flasherStartTimedThenStayOn: () => { lit++; } })),
+      group: { get onCount() { return lit; }, flashWhenOn: () => { lit = 0; } },
+      onComplete: () => {},
+      hitSound: 'blip', completeSound: 'fanfare',
+      maskLamp,
+    });
+    const { ctx } = context();
+
+    targets.forEach((t) => control('ControlCollision', t, ctx));
+
+    expect(maskLamp.messageField).toBe(0b111);
+  });
+
   test('a target that is not part of the set is ignored', () => {
     const { control, ctx } = build();
 
