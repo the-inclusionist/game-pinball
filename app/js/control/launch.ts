@@ -157,7 +157,12 @@ export interface LaunchRampOptions {
   readonly reflexText: (points: number) => string;
   readonly sounds: {
     readonly reflexOnly: string;
-    readonly ramp: string;
+    /**
+     * ⚠️ NAMED FOR THE ROLE, NOT FOR THE COMPONENT. This was `ramp`, and `ramp` is ALSO the voice a
+     * ramp makes when the ball rolls over it — so wiring `sounds.ramp = 'ramp'` would have played the
+     * rolling noise where the award belongs, at the right moment, with nothing to notice.
+     */
+    readonly rampAward: string;
     readonly mission: string;
     readonly plain: string;
   };
@@ -186,7 +191,7 @@ export function makeLaunchRampControl(o: LaunchRampOptions): ControlFunc {
 
     if (flag === 1) ctx.playSound(o.sounds.reflexOnly);
     else if (flag > 3) ctx.playSound(o.sounds.mission);
-    else ctx.playSound(o.sounds.ramp);
+    else ctx.playSound(o.sounds.rampAward);
   };
 }
 

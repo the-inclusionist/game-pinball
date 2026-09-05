@@ -83,6 +83,11 @@ export const VOICES: Readonly<Record<string, VoiceSpec>> = {
   highScore: { frequency: 784, endFrequency: 1568, duration: 0.6, wave: 'sine' },
   // One step of the award chain. Deliberately small: it repeats.
   chain: { frequency: 587, endFrequency: 784, duration: 0.1, wave: 'square' },
+  // ⚠️ AN EXTRA BALL, WHICH IS THE ONLY THING IN THE GAME THAT GIVES TIME BACK. Two octaves of square
+  // wave, above `collect` and below `promotion`: bigger than any single award, smaller than a rank.
+  extraBall: { frequency: 392, endFrequency: 1568, duration: 0.45, wave: 'square' },
+  // The ball returning after a drain that did not count. Soft on purpose — it is a reprieve, not a win.
+  shootAgain: { frequency: 330, endFrequency: 660, duration: 0.3, wave: 'sine' },
 
   // The ramp pays four different ways, and the original branches on three lamps to decide which.
   reflexOnly: { frequency: 349, endFrequency: 523, duration: 0.18, wave: 'triangle' },
@@ -105,13 +110,18 @@ export const VOICES: Readonly<Record<string, VoiceSpec>> = {
  * it is the level a substitute has to match. A test reads the control modules and fails if a role is
  * added without a voice, because an unknown name plays nothing and returns zero — silently.
  *
+ * ⚠️ AND A ROLE CAN ALSO BE NAMED IN THE CALL ITSELF. `table_add_extra_ball` plays its sound with a
+ * literal — `ctx.playSound('extraBall')` — so no `*Sound` field declares it and the option scan above
+ * cannot see it. `extraBall` and `shootAgain` were asked for that way from the day they were written
+ * and had never made a sound; a second scan, over the literals, is what found them.
+ *
  * ⚠️ AND IT MEANS THE WAV FILES ARE NOT NEEDED AT RUN TIME AT ALL. `docs/LICENSES.md` § 3 keeps them out
  * of the repository; this keeps them out of the running game, which is a stronger claim and a better
  * one: the port can be played by somebody who does not own the original.
  */
 export const ORIGINAL_FX: readonly string[] = [
   'hit', 'miss', 'complete', 'collect', 'promotion', 'multiball', 'highScore', 'chain',
-  'reflexOnly', 'rampAward', 'mission', 'plain', 'drain',
+  'reflexOnly', 'rampAward', 'mission', 'plain', 'drain', 'extraBall', 'shootAgain',
 ];
 
 /** Kind to voice name. A kind with no entry makes no sound, which a wall does on purpose. */

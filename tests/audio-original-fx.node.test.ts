@@ -64,10 +64,33 @@ describe('⚠️ and the list is checked against the control layer itself', () =
     expect([...declared].filter((role) => !ORIGINAL_FX.includes(role))).toEqual([]);
   });
 
-  test('and no voice in the list is unreachable padding', () => {
-    // The other direction: a name nobody asks for is a sound that can never play, which is the same
-    // defect as a lamp nothing can light.
-    expect(ORIGINAL_FX.length).toBeGreaterThan(0);
-    for (const name of ORIGINAL_FX) expect(typeof name).toBe('string');
+  test('⚠️ every LITERAL name passed to `playSound` is a voice too', () => {
+    // The option scan above cannot see these: `ctx.playSound('extraBall')` names its sound in the call
+    // itself, so no `*Sound` field ever declares it. Both forms end at the same mixer, and both are
+    // silent when the name is unknown — `sfx.play` answers zero and nothing reports it. This scan found
+    // two roles that had been asked for since they were written and had never made a sound.
+    const literals = new Set<string>();
+    for (const file of readdirSync(CONTROL_DIR)) {
+      if (!file.endsWith('.ts')) continue;
+      const source = readFileSync(resolve(CONTROL_DIR, file), 'utf8');
+      for (const match of source.matchAll(/playSound\('([^']+)'\)/g)) literals.add(match[1]!);
+    }
+
+    expect([...literals].filter((role) => !ORIGINAL_FX.includes(role))).toEqual([]);
+  });
+
+  test('⚠️ and the roles asked for by NAME today are exactly these three', () => {
+    // An inventory, like `wired.size` in the dispatcher. Every other role is supplied as an option by
+    // whoever wires the table, and that wiring does not exist yet — so this list is the honest measure
+    // of how much of the effect bank a player can currently hear. It grows as the controls are wired,
+    // and it should be updated deliberately rather than relaxed.
+    const literals = new Set<string>();
+    for (const file of readdirSync(CONTROL_DIR)) {
+      if (!file.endsWith('.ts')) continue;
+      const source = readFileSync(resolve(CONTROL_DIR, file), 'utf8');
+      for (const match of source.matchAll(/playSound\('([^']+)'\)/g)) literals.add(match[1]!);
+    }
+
+    expect([...literals].sort()).toEqual(['drain', 'extraBall', 'shootAgain']);
   });
 });

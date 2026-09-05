@@ -234,7 +234,7 @@ describe('the launch ramp — three lamps, and only one of them pays', () => {
       reflexLamp, rampLamp, missionLamp,
       reflexScore: () => 25000,
       reflexText: (points) => 'REFLEX ' + points,
-      sounds: { reflexOnly: 's21', ramp: 's23', mission: 's24', plain: 's30' },
+      sounds: { reflexOnly: 's21', rampAward: 's23', mission: 's24', plain: 's30' },
     });
     return { reflexLamp, rampLamp, missionLamp, control, ...context() };
   }
