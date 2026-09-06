@@ -49,6 +49,12 @@ populated locally by `npm run data:extract`.
   `tests/gfx-original-shot` now leaves one on disk per run, for the 1995 table, its screen and each of
   the five authored ones. Reading the page's own words counts as output too: the caveat under the file
   picker described a build from two months earlier.
+- **Registering with an API is not the API doing the thing.** The palette menu joined the engine's
+  overlay registry with `inEscapeChain: true`, and the header, a test comment and the reasoning behind
+  writing no close button all said Escape would dismiss it. Escape did nothing: the engine drives that
+  chain from its own key handling, which does not run while a ball is in play. The registration was
+  right and worth keeping; what was wrong was believing it without pressing the key. A borrowed
+  guarantee is a claim about somebody else's code, and it costs one boot to check.
 - **Distrust the claim you write while writing the test.** Four times in one night a test asserted
   something the mutant said it could not see: a bumper's rectangle called square when the projection
   foreshortens it, a "four corners beat two" comparison computed from the same two corners, an inset
