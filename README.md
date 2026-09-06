@@ -47,18 +47,32 @@ fake models that — which is how a dialog ships whose Escape key never arrives.
 
 ## Playing it
 
+The controls are a **cabinet**, and the keyboard is one mapping of it:
+
+| control | does |
+|---|---|
+| left / right | the left and right flippers |
+| button 1 | launch the ball |
+| button 2 / button 3 | the left and right flippers again |
+| start | pause |
+
 | key | what it does |
 |---|---|
-| `←` / `Z` | left flipper |
-| `→` / `.` | right flipper |
-| `Space` / `Enter` | plunger — **held**, not pressed: holding draws it back and letting go launches |
+| `A` / `J` | left flipper |
+| `D` / `K` | right flipper |
+| `U` | launch the ball — **held**, not pressed: holding draws the plunger back and letting go launches |
+| `Enter` | pause |
 | `B` | blind mode |
 | `S` | sweep the sonar |
 | `C` | switch between the normal and CB-Safe palettes |
 
-Two keys per flipper because one hand is not everybody's, and the accessibility switches are KEYS
-rather than menu entries — a player who needs blind mode is not the player who will find it three
-screens into a settings panel. The palette also has a menu, because it was asked for by name.
+Two keys per flipper because one hand is not everybody's: `A`/`D` are a direction pair for one hand and
+`J`/`K` a button pair for the other, so a player who cannot reach across a keyboard uses whichever is
+nearer and a player using one hand has a full set within it.
+
+The accessibility switches are KEYS rather than menu entries — a player who needs blind mode is not the
+player who will find it three screens into a settings panel. The palette also has a menu, because it
+was asked for by name.
 
 ### Query parameters
 

@@ -124,7 +124,11 @@ describe('⚠️ the keyboard is bound to #game-region and NOT to the window', (
     //
     // A key that is "consumed" is not a key that works.
     const before = debug().ball;
-    await userEvent.keyboard(' ');
+    // ⚠️ `u`, NOT SPACE. The Dev respecified the controls as a cabinet — directions, three buttons and
+    // a start — and button 1 is the plunger. This test pressed Space and failed the moment the mapping
+    // changed, which is the gate working: a control test naming a key that is no longer bound is
+    // testing a game nobody plays.
+    await userEvent.keyboard('u');
 
     expect(debug().problems, 'and nothing fell over doing it').toEqual([]);
     expect(debug().ball.speed, 'the plunger launched the ball').toBeGreaterThan(before.speed);

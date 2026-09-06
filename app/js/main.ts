@@ -651,6 +651,18 @@ const unbindControls = bindPinballControls({
    */
   cyclePalette: () => choosePalette(nextPalette(palette)),
   /**
+   * ⚠️ START, AND THE PAUSED PHASE HAS EXISTED SINCE BOOT WITH NOTHING TO ENTER IT. `bootPinball` tells
+   * the engine `isNavigable: () => phase === 'paused'` — that is how the engine knows it may walk its
+   * own menus — so until now the engine has been asking a question whose answer was always no.
+   *
+   * Only a running game pauses. Pressing it on the title would put the game into a state the title
+   * screen has no way out of.
+   */
+  togglePause: () => {
+    if (phase === 'playing') phase = 'paused';
+    else if (phase === 'paused') phase = 'playing';
+  },
+  /**
    * ⚠️ THE BACK DOOR, AND ONLY THE 1995 TABLE HAS ONE. `bmax`, `rmax`, `gmax`, `1max`, `easy mode` and
    * `hidden test` are the Space Cadet's own codes and mean nothing on an authored table, so a
    * character typed while the authored one is on screen goes nowhere rather than somewhere wrong.

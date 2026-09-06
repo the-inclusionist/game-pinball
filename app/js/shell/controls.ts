@@ -26,7 +26,7 @@ export type FlipperSide = 'left' | 'right';
  * are the classic pinball pair; a player who cannot reach across a keyboard uses whichever half is
  * nearer, and a player using one hand has both sides within it.
  */
-export type PinballAction = 'left' | 'right' | 'plunger' | 'blindMode' | 'sweep' | 'palette';
+export type PinballAction = 'left' | 'right' | 'plunger' | 'pause' | 'blindMode' | 'sweep' | 'palette';
 
 /**
  * ⚠️ THE ACCESSIBILITY KEYS ARE KEYS, and that is the point of them. `createGame` reads blind mode
@@ -37,21 +37,52 @@ export type PinballAction = 'left' | 'right' | 'plunger' | 'blindMode' | 'sweep'
  * A player who needs blind mode is not the player who is going to find it in a settings panel.
  */
 export const DEFAULT_BINDINGS: Readonly<Record<PinballAction, readonly string[]>> = {
-  left: ['ArrowLeft', 'KeyZ'],
-  right: ['ArrowRight', 'Period'],
-  plunger: ['Space', 'Enter'],
-  blindMode: ['KeyB'],
-  // The guide pings by itself every 0.8s; a sweep is the player ASKING, which is what makes a table
-  // explorable rather than merely announced at.
-  sweep: ['KeyS'],
   /**
-   * ⚠️ THE PALETTE IS AN ACCESSIBILITY SWITCH, so it is a key as well as a menu entry.
+   * ⚠️ THIS IS A CABINET, NOT A KEYBOARD, AND THE KEYS ARE ONE MAPPING OF IT.
    *
-   * The Dev asked for the CB-Safe colours to be adjustable from a menu, and they are. This is the
-   * same argument the paragraph above makes about blind mode, pointed at the other half of the
-   * request: a player who cannot tell the gate from the water is not helped by an alternative three
-   * screens into a settings panel. One key, and they find it in the first minute.
+   * The Dev specified the controls as a machine: a direction each way, three buttons and a start.
+   * Button 1 launches; buttons 2 and 3 are the flippers again, beside the directions, so a player can
+   * use whichever half of the layout suits their hands. Start pauses.
+   *
+   *     esquerda → left flipper       botão 1 → launch
+   *     direita  → right flipper      botão 2 → left flipper
+   *                                   botão 3 → right flipper
+   *                                   start   → pause
+   *
+   * And then the keyboard mapping of it, which is what this table holds:
+   *
+   *     a → esquerda   u → botão 1    enter → start
+   *     d → direita    j → botão 2
+   *                    k → botão 3
+   *
+   * ⚠️ THE PREVIOUS SCHEME IS GONE, not extended. It was the arrows with Z and full stop, Space and
+   * Enter on the plunger — the classic PC pinball layout, and a reasonable guess that was never asked
+   * for. The Dev's words: "E não o mapeamento atual." A binding kept "just in case" is a key that does
+   * something nobody documented.
+   *
+   * ⚠️ TWO KEYS PER FLIPPER SURVIVES THE CHANGE, and that is accessibility rather than nostalgia. A/D
+   * are a direction pair for one hand; J/K are a button pair for the other. A player who cannot reach
+   * across a keyboard uses whichever is nearer, and a player using one hand has a full set within it.
    */
+  left: ['KeyA', 'KeyJ'],
+  right: ['KeyD', 'KeyK'],
+  plunger: ['KeyU'],
+  /**
+   * ⚠️ START, AND IT IS A NEW FEATURE RATHER THAN A REMAP. `Phase` has always had `'paused'` and
+   * `bootPinball` has always told the engine `isNavigable: () => phase === 'paused'` — so the engine's
+   * own menus have been waiting on a state nothing could ever enter. This is the key that enters it.
+   */
+  pause: ['Enter'],
+  /**
+   * ⚠️ THE ACCESSIBILITY KEYS ARE NOT IN THE DEV'S LIST AND ARE KEPT ANYWAY. Blind mode, the sonar
+   * sweep and the palette are not controls of the cabinet — they are switches for how the game is
+   * PERCEIVED, and `shell/controls` has argued since it was written that they must be keys rather than
+   * menu entries: a player who needs blind mode is not the player who will find it in a settings
+   * panel. Removing them because they were absent from a list about flippers would be reading the list
+   * as saying something it does not.
+   */
+  blindMode: ['KeyB'],
+  sweep: ['KeyS'],
   palette: ['KeyC'],
 };
 
@@ -84,6 +115,8 @@ export interface ControlOptions {
   readonly sweep?: () => void;
   /** Moves to the next palette and says which one it is. Optional, like the other two. */
   readonly cyclePalette?: () => void;
+  /** Start. Pauses a running game and resumes a paused one. */
+  readonly togglePause?: () => void;
   /**
    * The engine's remapper, when the pinball's scheme is registered with it. Given a key code it returns
    * the action, and `DEFAULT_BINDINGS` is consulted only when it says nothing.
@@ -153,6 +186,7 @@ export function bindPinballControls(o: ControlOptions): () => void {
     else if (action === 'blindMode') o.toggleBlindMode?.();
     else if (action === 'sweep') o.sweep?.();
     else if (action === 'palette') o.cyclePalette?.();
+    else if (action === 'pause') o.togglePause?.();
     else o.setFlipper(action, true);
   };
 

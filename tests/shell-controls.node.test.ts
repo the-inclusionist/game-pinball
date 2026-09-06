@@ -46,8 +46,8 @@ describe('the flippers answer the keyboard', () => {
   test('pressing the left key raises the left flipper and releasing drops it', () => {
     const h = harness();
 
-    h.region.send('keydown', { code: 'ArrowLeft' });
-    h.region.send('keyup', { code: 'ArrowLeft' });
+    h.region.send('keydown', { code: 'KeyA' });
+    h.region.send('keyup', { code: 'KeyA' });
 
     expect(h.moved).toEqual(['left:up', 'left:down']);
   });
@@ -55,7 +55,7 @@ describe('the flippers answer the keyboard', () => {
   test('and the right key is a different flipper', () => {
     const h = harness();
 
-    h.region.send('keydown', { code: 'ArrowRight' });
+    h.region.send('keydown', { code: 'KeyD' });
 
     expect(h.moved).toEqual(['right:up']);
   });
@@ -67,9 +67,9 @@ describe('the flippers answer the keyboard', () => {
     // exists for exactly this and the browser sets it for us.
     const h = harness();
 
-    h.region.send('keydown', { code: 'ArrowLeft' });
-    h.region.send('keydown', { code: 'ArrowLeft', repeat: true });
-    h.region.send('keydown', { code: 'ArrowLeft', repeat: true });
+    h.region.send('keydown', { code: 'KeyA' });
+    h.region.send('keydown', { code: 'KeyA', repeat: true });
+    h.region.send('keydown', { code: 'KeyA', repeat: true });
 
     expect(h.moved).toEqual(['left:up']);
   });
@@ -86,7 +86,7 @@ describe('the flippers answer the keyboard', () => {
   test('the plunger has its own key', () => {
     const h = harness();
 
-    h.region.send('keydown', { code: 'Space' });
+    h.region.send('keydown', { code: 'KeyU' });
 
     expect(h.launched).toEqual([1]);
   });
@@ -97,7 +97,7 @@ describe('the flippers answer the keyboard', () => {
     const h = harness();
     let prevented = 0;
 
-    h.region.send('keydown', { code: 'Space', preventDefault: () => { prevented++; } });
+    h.region.send('keydown', { code: 'KeyU', preventDefault: () => { prevented++; } });
     h.region.send('keydown', { code: 'KeyQ', preventDefault: () => { prevented++; } });
 
     expect(prevented).toBe(1);
@@ -138,6 +138,7 @@ describe('what the keys are', () => {
       toggleBlindMode: () => fired.push('blindMode'),
       sweep: () => fired.push('sweep'),
       cyclePalette: () => fired.push('palette'),
+      togglePause: () => fired.push('pause'),
     });
 
     for (const codes of Object.values(DEFAULT_BINDINGS)) {
@@ -246,8 +247,8 @@ describe('⚠️ a table with a plunger holds it, and one without still launches
       setPlunger: (down) => pressed.push(down),
     });
 
-    region.send('keydown', { code: 'Space' });
-    region.send('keyup', { code: 'Space' });
+    region.send('keydown', { code: 'KeyU' });
+    region.send('keyup', { code: 'KeyU' });
 
     expect(pressed).toEqual([true, false]);
   });
@@ -259,8 +260,8 @@ describe('⚠️ a table with a plunger holds it, and one without still launches
     const region = fakeRegion();
     bindPinballControls({ region: region as never, setFlipper: () => {}, launch: () => launched.push(1) });
 
-    region.send('keydown', { code: 'Space' });
-    region.send('keyup', { code: 'Space' });
+    region.send('keydown', { code: 'KeyU' });
+    region.send('keyup', { code: 'KeyU' });
 
     expect(launched).toEqual([1]);
   });
@@ -293,7 +294,7 @@ describe('the back door’s characters', () => {
     const t = typing();
 
     t.region.send('keydown', { code: 'KeyB', key: 'b' });
-    t.region.send('keydown', { code: 'Space', key: ' ' });
+    t.region.send('keydown', { code: 'KeyU', key: ' ' });
 
     expect(t.typed).toEqual(['b', ' ']);
   });
@@ -327,7 +328,7 @@ describe('the back door’s characters', () => {
   test('a named key is not a character, and never enters the buffer', () => {
     const t = typing();
 
-    t.region.send('keydown', { code: 'ArrowLeft', key: 'ArrowLeft' });
+    t.region.send('keydown', { code: 'KeyA', key: 'ArrowLeft' });
     t.region.send('keydown', { code: 'ShiftLeft', key: 'Shift' });
 
     expect(t.typed).toEqual([]);

@@ -26,9 +26,10 @@ const scripts = (): Record<string, string> =>
 
 /** How each action is written in the README's table of keys. */
 const DOCUMENTED_AS: Readonly<Record<PinballAction, string>> = {
-  left: '`←` / `Z`',
-  right: '`→` / `.`',
-  plunger: '`Space` / `Enter`',
+  left: '`A` / `J`',
+  right: '`D` / `K`',
+  plunger: '`U`',
+  pause: '`Enter`',
   blindMode: '`B`',
   sweep: '`S`',
   palette: '`C`',
