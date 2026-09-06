@@ -14,6 +14,22 @@
 // Installed here rather than by `table/original`, which is told to skip these groups — building the
 // plain wall as well would put a solid line across a gate the ball is supposed to go through.
 
+// ========================= THE LAUNCH LANE IS A DEAD END, AND THAT IS THE DESIGN =========================
+// Worth writing down because it looks exactly like a defect and I chased it as one for a night.
+//
+// A launched ball runs the lane to y = -6.89 and comes back down. The two walls that stop it converge:
+// `group-5`'s curve moves right as it climbs (face at x = -7.19 falling to -6.48) while `group-7`'s
+// left face stays at about -6.6, so the corridor closes at roughly y = -7.7. The ball cannot get out
+// of the top.
+//
+// ⚠️ AND LAUNCH POWER MAKES NO DIFFERENCE, which is what settles it. A 61% pull and a full hundred both
+// stop at exactly y = -6.89. A ball short of energy stops wherever its energy ran out; a ball stopped
+// by geometry stops at the same place every time.
+//
+// So the ball is MEANT to come back down. The skill shot is scored on the way down — `s_trip1`, `s_trip2`
+// and `s_trip3` are crossed descending — and the ball enters the playfield at the bottom through
+// `s_onewy4`, which is where a real Space Cadet ball enters it too. Nothing here is broken.
+//
 import { createOneway, type Oneway } from './oneway.js';
 import type { LineEdge } from '../physics/edges.js';
 import { createCollisionComponent, type TableState } from './collision-component.js';
