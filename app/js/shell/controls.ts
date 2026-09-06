@@ -26,7 +26,7 @@ export type FlipperSide = 'left' | 'right';
  * are the classic pinball pair; a player who cannot reach across a keyboard uses whichever half is
  * nearer, and a player using one hand has both sides within it.
  */
-export type PinballAction = 'left' | 'right' | 'plunger' | 'blindMode' | 'sweep';
+export type PinballAction = 'left' | 'right' | 'plunger' | 'blindMode' | 'sweep' | 'palette';
 
 /**
  * ⚠️ THE ACCESSIBILITY KEYS ARE KEYS, and that is the point of them. `createGame` reads blind mode
@@ -44,6 +44,15 @@ export const DEFAULT_BINDINGS: Readonly<Record<PinballAction, readonly string[]>
   // The guide pings by itself every 0.8s; a sweep is the player ASKING, which is what makes a table
   // explorable rather than merely announced at.
   sweep: ['KeyS'],
+  /**
+   * ⚠️ THE PALETTE IS AN ACCESSIBILITY SWITCH, so it is a key as well as a menu entry.
+   *
+   * The Dev asked for the CB-Safe colours to be adjustable from a menu, and they are. This is the
+   * same argument the paragraph above makes about blind mode, pointed at the other half of the
+   * request: a player who cannot tell the gate from the water is not helped by an alternative three
+   * screens into a settings panel. One key, and they find it in the first minute.
+   */
+  palette: ['KeyC'],
 };
 
 /**
@@ -73,6 +82,8 @@ export interface ControlOptions {
   /** Optional, because a table under construction has no engine behind it. */
   readonly toggleBlindMode?: () => void;
   readonly sweep?: () => void;
+  /** Moves to the next palette and says which one it is. Optional, like the other two. */
+  readonly cyclePalette?: () => void;
   /**
    * The engine's remapper, when the pinball's scheme is registered with it. Given a key code it returns
    * the action, and `DEFAULT_BINDINGS` is consulted only when it says nothing.
@@ -97,7 +108,16 @@ export interface ControlOptions {
 export function bindPinballControls(o: ControlOptions): () => void {
   const bindings = o.bindings ?? DEFAULT_BINDINGS;
 
-  const ACTIONS: readonly PinballAction[] = ['left', 'right', 'plunger', 'blindMode', 'sweep'];
+  /**
+   * ⚠️ DERIVED FROM THE TABLE, NOT WRITTEN OUT AGAIN. This was a third copy of the same names — beside
+   * `PinballAction` and beside `DEFAULT_BINDINGS` — and the failure it invited is silent: an action
+   * added to the type and the table but forgotten here is bound to a key, matched by nothing, and does
+   * nothing at all. No error, no warning, a key that simply does not work.
+   *
+   * The order is the table's, which is the order this list always had, and `find` below still takes
+   * the first match.
+   */
+  const ACTIONS = Object.keys(bindings) as PinballAction[];
 
   const actionFor = (code: string): PinballAction | null => {
     const mapped = o.actionOf?.(code);
@@ -132,6 +152,7 @@ export function bindPinballControls(o: ControlOptions): () => void {
     }
     else if (action === 'blindMode') o.toggleBlindMode?.();
     else if (action === 'sweep') o.sweep?.();
+    else if (action === 'palette') o.cyclePalette?.();
     else o.setFlipper(action, true);
   };
 

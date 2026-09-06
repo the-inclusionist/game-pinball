@@ -11,6 +11,12 @@
 // Neither can see a key that this port invented, which is all of them outside the archive. Five such
 // keys were added the day this test was written and would have shipped unwritten.
 //
+// ⚠️ `pinball.` WITH A DOT IS THE TEXT NAMESPACE, and nothing else may use it. The first key this test
+// ever caught was `'pinball.palette'` — a `localStorage` key, not a string, with nothing to write
+// behind it. Rather than exempt it, the storage key moved to `pinball:palette`: an exemption list is a
+// thing that grows, and two namespaces that look identical would go on producing this every time. A
+// dot means a word the player reads; a colon means a value the browser keeps.
+//
 // ⚠️ IT READS THE SOURCE, WHICH IS THE WEAK PART AND IS THE POINT. A key built by concatenation is
 // invisible here, so this cannot promise that every key resolves — only that every key written down as
 // a literal is answered. That covers how this project actually writes them, and the alternative was

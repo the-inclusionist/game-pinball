@@ -131,6 +131,26 @@ describe('the camera on a table wider than the window', () => {
       .toMatch(/demoView = demoWorld\(\{ demo: ready, groups: groupsOf\(archive\) \}\)/);
   });
 
+  test('⚠️ the palette key is CONNECTED, and the table is redrawn when it turns', () => {
+    // The defect this shape of test exists for: `createGame` took `isBlindMode` and `main.ts` supplied
+    // none, so the engine's default stood and the audio guide never fired — a switch nobody could
+    // flip, two commits after the thing it switches was built. The palette has the same shape and the
+    // same three ways to be dead, so all three are named.
+    //
+    // ⚠️ AN INVENTORY, NOT A RUN. `main.ts` is the browser entry point and no unit test drives it.
+    const source = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../app/js/main.ts'), 'utf8');
+
+    // 1. The key reaches a handler at all.
+    expect(source, 'the controls are given a palette handler').toContain('cyclePalette: () => {');
+    // 2. The choice is remembered, or it lasts until the page reloads and no further.
+    expect(source, 'and the choice is written back').toMatch(/writePalette\(localStorage, palette\)/);
+    // 3. ⚠️ AND THE PICTURE IS REBUILT. `tablePicture` is composed once per change and the camera moves
+    // a window over it, so a handler that changed the variable and stopped would take effect at the
+    // next mission event — minutes later, looking like a bug in the mission machine.
+    expect(source.match(/cbSafe: isCbSafe\(palette\)/g) ?? [],
+      'every drawTable call is told which palette').toHaveLength(4);
+  });
+
   test('⚠️ and a table NO wider than the window does not move sideways at all', () => {
     // Which is every other authored table and the 1995 one. The horizontal camera is built for all of
     // them and is a no-op on all but `wide-arc`; a table that jittered sideways with nothing to show

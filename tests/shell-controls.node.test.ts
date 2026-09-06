@@ -122,6 +122,32 @@ describe('what the keys are', () => {
     expect(DEFAULT_BINDINGS.right.length).toBeGreaterThan(1);
   });
 
+  test('⚠️ and EVERY action in the table is actually dispatched', () => {
+    // `bindPinballControls` used to keep its own list of the actions, beside the type and beside
+    // `DEFAULT_BINDINGS` — three copies of the same five names. A sixth added to the type and the
+    // table but not to that list would be bound to a key, swallowed on the way down, and do nothing:
+    // no error, no warning, a key that just does not work. The list is now derived from the table, and
+    // this is what says it must stay derived.
+    const fired: string[] = [];
+    const region = fakeRegion();
+    bindPinballControls({
+      region: region as never,
+      setFlipper: (side) => fired.push(side),
+      launch: () => fired.push('plunger'),
+      setPlunger: () => fired.push('plunger'),
+      toggleBlindMode: () => fired.push('blindMode'),
+      sweep: () => fired.push('sweep'),
+      cyclePalette: () => fired.push('palette'),
+    });
+
+    for (const codes of Object.values(DEFAULT_BINDINGS)) {
+      region.send('keydown', { code: codes[0]! });
+    }
+
+    expect([...new Set(fired)].sort(), 'every bound action reached its callback')
+      .toEqual(Object.keys(DEFAULT_BINDINGS).sort());
+  });
+
   test('and no key does two things', () => {
     const all = Object.values(DEFAULT_BINDINGS).flat();
 
@@ -159,6 +185,26 @@ describe('the accessibility keys', () => {
     h.region.send('keydown', { code: DEFAULT_BINDINGS.blindMode[0] });
 
     expect(h.toggled).toEqual(['blind']);
+  });
+
+  test('⚠️ and one CYCLES THE PALETTE, because a settings panel is not where this player looks', () => {
+    // The same argument this file already makes for blind mode, pointed at the other half of the
+    // Dev's request. The menu is being built and the menu is what was asked for; a key beside it costs
+    // one line and is the difference between a colour-blind player finding the alternative in the
+    // first minute and finding it never.
+    const region = fakeRegion();
+    let cycles = 0;
+    bindPinballControls({
+      region: region as never,
+      setFlipper: () => {},
+      launch: () => {},
+      cyclePalette: () => { cycles++; },
+    });
+
+    region.send('keydown', { code: 'KeyC' });
+    region.send('keydown', { code: 'KeyC' });
+
+    expect(cycles).toBe(2);
   });
 
   test('another asks the sonar where things are', () => {

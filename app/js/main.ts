@@ -22,6 +22,9 @@ import { drawTable, blitView, drawBall } from './gfx/table-view.js';
 import { buildPhysics, drainedBy, launchSpeedFor, FRAME_SECONDS } from './table/physics-build.js';
 import { advanceFrame } from './physics/step.js';
 import { bindPinballControls } from './shell/controls.js';
+import {
+  readPalette, writePalette, nextPalette, isCbSafe, PALETTE_LABEL, type PaletteChoice,
+} from './shell/options.js';
 import { createLiveControls } from './table/live-controls.js';
 import { createRolloverWatch } from './table/rollovers.js';
 import { objectiveOf, AUTHORED_OBJECTIVE_ID } from './table/objective.js';
@@ -36,6 +39,13 @@ import { createSoundBoard, releaseVoice } from './audio/sfx.js';
 import { soundEntriesOf, VOICES } from './audio/voices.js';
 import { createWebAudioOutput } from './audio/web-audio.js';
 import { ensureAC } from '@the-inclusionist/engine/platform/audio.js';
+
+/**
+ * ⚠️ READ ONCE, AT BOOT, AND FROM A STORE THAT MAY REFUSE. `shell/options` swallows the throw a private
+ * window raises on `localStorage`, so a browser that will not remember the choice still opens the
+ * table in the normal palette rather than not opening at all.
+ */
+let palette: PaletteChoice = readPalette(localStorage);
 
 // `?table=wide-arc` opens another one of the five. There is no menu yet, and a query parameter is
 // enough to look at all of them without one.
@@ -99,7 +109,7 @@ function refreshObjective(force = false): void {
     missionNeed: objective.need,
     missionTargets: objective.targets,
   };
-  tablePicture = drawTable({ table: authored, missionTargets: state.missionTargets });
+  tablePicture = drawTable({ table: authored, missionTargets: state.missionTargets, cbSafe: isCbSafe(palette) });
 }
 
 /**
@@ -214,7 +224,7 @@ const context = canvas.getContext('2d')!;
 const image = context.createImageData(screen.width, screen.height);
 
 // Redrawn only when what it shows changes, which today is when the mission's targets change.
-let tablePicture = drawTable({ table: authored, missionTargets: state.missionTargets });
+let tablePicture = drawTable({ table: authored, missionTargets: state.missionTargets, cbSafe: isCbSafe(palette) });
 
 // `update(dt)` counts FRAMES, not seconds — see `shell/boot`. The engine hands the count through and
 // the camera's damping is per frame, so this passes it on untouched.
@@ -538,6 +548,23 @@ const unbindControls = bindPinballControls({
     shell.engine.sonar.sonar(sonarPlayer);
   },
   /**
+   * ⚠️ AND THE TABLE IS REDRAWN, not merely marked. `tablePicture` is composed once per change and the
+   * camera moves a window over it — so a palette that changed a variable and nothing else would take
+   * effect on the next mission event and look like a bug until then.
+   *
+   * The demonstration keeps the 1995 artwork whatever this says: those are Microsoft's pixels, and
+   * recolouring them is not something this port is entitled to do.
+   */
+  cyclePalette: () => {
+    palette = nextPalette(palette);
+    writePalette(localStorage, palette);
+    tablePicture = drawTable({
+      table: authored, missionTargets: state.missionTargets, cbSafe: isCbSafe(palette),
+    });
+    const status = document.getElementById('sr-status');
+    if (status) status.textContent = shell.t(PALETTE_LABEL[palette]);
+  },
+  /**
    * ⚠️ THE BACK DOOR, AND ONLY THE 1995 TABLE HAS ONE. `bmax`, `rmax`, `gmax`, `1max`, `easy mode` and
    * `hidden test` are the Space Cadet's own codes and mean nothing on an authored table, so a
    * character typed while the authored one is on screen goes nowhere rather than somewhere wrong.
@@ -724,7 +751,7 @@ Object.assign(window as unknown as Record<string, unknown>, {
     get diag() { return { frameCount, lastFrames, phase, ballsLost, speed: ball.speed, y: ball.position.y }; },
     setState(next: Partial<TableState>) {
       state = { ...state, ...next };
-      tablePicture = drawTable({ table: authored, missionTargets: state.missionTargets });
+      tablePicture = drawTable({ table: authored, missionTargets: state.missionTargets, cbSafe: isCbSafe(palette) });
     },
   },
 });
