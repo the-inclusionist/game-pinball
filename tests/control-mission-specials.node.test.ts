@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, test, expect } from 'vitest';
 import {
-  makeAlienMenaceController, makeWaitingDeploymentController,
+  makeAlienMenaceController,
   makeTimeWarpPartTwoController, makeGameoverController,
   PHASE_PLAYERS, PHASE_HIGH_SCORES, TIME_WARP_AWARD, TOP_RANK,
 } from '../app/js/control/mission-specials.js';
@@ -99,46 +99,6 @@ describe('Alien Menace is won without hitting anything', () => {
     b.controller('TBumperSetBmpIndex', component('bump5'), b.ctx);
 
     expect(b.missionLamp.messageField).toBe(10);
-  });
-});
-
-describe('waiting for deployment is a held breath, not a mission', () => {
-  function build() {
-    const exits = [component('oneway4'), component('oneway10')];
-    const missionLamp = { messageField: 0 };
-    const calls: string[] = [];
-    const controller = makeWaitingDeploymentController({
-      exits, missionLamp, text: 'PRESS SPACE',
-      clearMissionText: () => calls.push('clear'),
-      setWaitingFlag: (w) => calls.push('waiting:' + w),
-      playMusic: (t) => calls.push('music:' + t),
-    });
-    return { exits, missionLamp, calls, controller, ...harness() };
-  }
-
-  test('the ball leaving the chute ends it', () => {
-    const b = build();
-
-    b.controller('ControlCollision', b.exits[1]!, b.ctx);
-
-    expect(b.missionLamp.messageField).toBe(1);
-    expect(b.dispatched).toEqual(['ControlMissionComplete']);
-  });
-
-  test('anything else on the table is ignored', () => {
-    const b = build();
-
-    b.controller('ControlCollision', component('bump1'), b.ctx);
-
-    expect(b.missionLamp.messageField).toBe(0);
-  });
-
-  test('handing over clears the text, drops the flag and starts the music', () => {
-    const b = build();
-
-    b.controller('ControlMissionComplete', null, b.ctx);
-
-    expect(b.calls).toEqual(['clear', 'waiting:false', 'music:track1']);
   });
 });
 

@@ -1574,6 +1574,13 @@ describe('⚠️ the eighteen missions that can run without the holes, and the t
       expect(w.dispatch.missionsRun.has(mission), `mission ${mission}`).toBe(true);
     }
     expect(MISSION_TABLE.filter((row) => !w.dispatch.missionsRun.has(row.mission))).toEqual([]);
+    // ⚠️ AND THREE CASES OF THE SWITCH ARE STILL NOT RUN, which the table cannot show because they are
+    // not rows in it: Alien Menace, Time Warp part two and Game Over are their own controllers in
+    // `control/mission-specials`, written and tested and unwired for want of their NAMES — the lamps
+    // and strings live past the point where the upstream file can be read in one piece from here.
+    for (const mission of [10, 24, 32]) {
+      expect(w.dispatch.missionsRun.has(mission), `special ${mission}`).toBe(false);
+    }
     // And every component every mission names is registered, which is the same claim from the other
     // side: nothing is declined for want of a part any more.
     for (const row of MISSION_TABLE) {

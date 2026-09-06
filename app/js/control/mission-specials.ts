@@ -1,7 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// control/mission-specials — the last four cases of the mission switch, none of which is an ordinary
-// mission. Ports of `AlienMenaceController`, `WaitingDeploymentController`, `TimeWarpPartTwoController`
-// and `GameoverController`.
+// control/mission-specials — three cases of the mission switch, none of which is an ordinary mission.
+// Ports of `AlienMenaceController`, `TimeWarpPartTwoController` and `GameoverController`.
+//
+// ⚠️ IT HELD A FOURTH AND IT WAS A DUPLICATE. `WaitingDeploymentController` was written here AND in
+// `control/mission`, with different option shapes, both tested, and only the one in `control/mission`
+// ever wired. Two implementations of one function is how the two drift apart; the wired one stays and
+// this copy is gone. What it had and the survivor does not is `control::waiting_deployment_flag` —
+// see the note there.
 //
 // ========================= ALIEN MENACE IS WON WITHOUT HITTING ANYTHING =========================
 // It does not listen for a collision. It listens for `TBumperSetBmpIndex` — the message the bumper
@@ -82,44 +87,6 @@ export function makeAlienMenaceController(o: AlienMenaceOptions): MissionControl
     o.lamp.turnOff();
     o.missionLamp.messageField = o.nextMission;
     ctx.dispatch('ControlMissionComplete', null);
-  };
-}
-
-/* ===================== WAITING FOR DEPLOYMENT ===================== */
-
-export interface WaitingDeploymentOptions {
-  /** The two one-ways out of the deployment chute. */
-  readonly exits: readonly ControlledComponent[];
-  readonly missionLamp: { messageField: number };
-  readonly text: string;
-  readonly clearMissionText: () => void;
-  readonly setWaitingFlag: (waiting: boolean) => void;
-  readonly playMusic: (track: string) => void;
-}
-
-/** `WaitingDeploymentController`: not a mission, a held breath. The ball leaving the chute ends it. */
-export function makeWaitingDeploymentController(o: WaitingDeploymentOptions): MissionController {
-  return (code, caller, ctx) => {
-    switch (code) {
-      case 'ControlCollision':
-        if (!caller || !o.exits.includes(caller)) return;
-        o.missionLamp.messageField = 1;
-        ctx.dispatch('ControlMissionComplete', null);
-        return;
-
-      case 'ControlMissionComplete':
-        o.clearMissionText();
-        o.setWaitingFlag(false);
-        o.playMusic('track1');
-        return;
-
-      case 'ControlMissionStarted':
-        ctx.showMissionText(o.text, -1);
-        return;
-
-      default:
-        return;
-    }
   };
 }
 

@@ -120,6 +120,11 @@ export interface WaitingDeploymentOptions {
  * It shows one line of text forever (`-1` seconds is the original's "until told otherwise") and waits
  * for the ball to cross the deployment chute. Then it writes the lamp and re-enters, which is the
  * whole transition.
+ *
+ * ⚠️ THE ORIGINAL ALSO CLEARS `control::waiting_deployment_flag`, AND THIS DOES NOT. The flag is a
+ * module-level global upstream; nothing in this port reads it, so a setter here would be a value
+ * written and never asked for — the kind of object this port removes rather than adds. It is named
+ * here so the day something needs it, the omission is a decision on the record and not a gap.
  */
 export function makeWaitingDeploymentController(o: WaitingDeploymentOptions): MissionController {
   return (code, caller, ctx) => {

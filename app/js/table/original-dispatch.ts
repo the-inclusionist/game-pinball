@@ -1445,6 +1445,16 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
     }
   }
 
+  // ⚠️ AND THREE CASES OF THE MISSION SWITCH ARE NOT MISSIONS AND ARE NOT HERE. `control/mission-specials`
+  // holds `AlienMenaceController` (10), `TimeWarpPartTwoController` (24) and `GameoverController` (32),
+  // all three written and tested and none of them wired.
+  //
+  // The reason is not that a component is missing — it is that the NAMES are. Every binding in
+  // `control/bindings` was transcribed from `control.cpp`, and these three functions sit past the point
+  // where the upstream file can be read in one piece from here; their lamps, their strings and their
+  // next-mission numbers have never been read. Wiring them from a guess would put a mission on the
+  // table that announces the wrong thing and hands over to the wrong mission, which is worse than a
+  // mission that does not run — so they are declined, and this says so.
   missions = createMissionMachine({
     missionLamp: missionLamp ?? { messageField: 0 },
     missionTextBox,
