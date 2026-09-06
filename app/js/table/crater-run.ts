@@ -178,11 +178,24 @@ export const CRATER_RUN: AuthoredTable = {
       scores: [3500], control: 'RebounderControl', lamps: ['lamp.probeHigh'],
       mover: { from: { x: 40, y: 110 }, to: { x: 132, y: 110 }, seconds: 2.8, radius: 5 } },
     { name: 'probe.low', kind: 'rebounder', role: 'goal',
-      bounds: { x: 53, y: 177, width: 62, height: 10 },
+      bounds: { x: 18, y: 172, width: 60, height: 20 },
       scores: [3500], control: 'RebounderControl', lamps: ['lamp.probeLow'],
       // ⚠️ SHORTER AND QUICKER THAN ITS FIRST PATH, which was 96 pixels in 2.2 seconds and met nothing
       // in sixty balls. A long slow body is somewhere the ball is not, almost always.
-      mover: { from: { x: 110, y: 182 }, to: { x: 58, y: 182 }, seconds: 1.4, radius: 5 } },
+      //
+      // ⚠️ AND A THIRD PATH, WHEN THE PLUNGER LANE GAINED ITS CURVE. The launch now sweeps across the
+      // top of the table instead of coming straight back down, and sixty balls stopped meeting this
+      // probe where they used to. Ball-time in twenty-pixel cells put the traffic further LEFT than it
+      // was: the band y 180-199 reads 0.8% at x 20-39 and 0.8% at 40-59 against 0.5% where the old
+      // path sat.
+      //
+      // ⚠️ BUT MOVING IT WAS NOT ENOUGH, AND WHAT FIXED IT IS A RULE NOTHING HERE HAD WRITTEN DOWN:
+      // THE SAME PATH IN THE SAME PLACE IS MET OR NOT DEPENDING ON HOW FAST IT IS RUN. Forty pixels at
+      // y 182 failed at 1.4 seconds and passed at 0.6. A shuttle occupies the same FRACTION of its own
+      // path whatever its speed — that is geometry — but a faster one makes more independent passes,
+      // and the ball's visits to any square of a table are brief and uncorrelated. Slow is not "the
+      // same chance, later"; it is fewer chances.
+      mover: { from: { x: 24, y: 178 }, to: { x: 72, y: 186 }, seconds: 0.8, radius: 5 } },
 
     /* ===================== THE RIM ===================== */
     { name: 'rim1', kind: 'lane', role: 'goal', bounds: { x: 40, y: 16, width: 12, height: 14 },

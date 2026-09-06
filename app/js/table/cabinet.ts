@@ -22,7 +22,7 @@
 // with flippers twice as long would play nothing like a pinball. Those numbers are `low-orbit`'s,
 // which are the ones that were played.
 
-import type { AuthoredComponent } from './authored.js';
+import type { AuthoredComponent, AuthoredShape } from './authored.js';
 
 const WALL = 'structure' as const;
 
@@ -43,6 +43,48 @@ export interface CabinetOptions {
  * Every collision line's winding is chosen so its normal faces the play. See `normalOf` in
  * `table/authored` for the four cases and for why the first draft of every table here got it wrong.
  */
+/**
+ * The radius of the rounded top of the plunger lane. See `wall.laneReturn`.
+ *
+ * ⚠️ TWENTY, AND THE TWO NUMBERS EITHER SIDE OF IT ARE BOTH RECORDED FAILURES. Thirty-four reached
+ * down to y = 38 against a divider whose top is at 34, so its lower half hung inside the lane and
+ * `crater-run` lost balls through the geometry. An arc centred on the LANE rather than the corner has
+ * a vertical tangent at the lane's own column, so a rising ball travels parallel to it and is never
+ * touched at all.
+ */
+const RETURN_RADIUS = 20;
+/**
+ * ⚠️ EIGHT SEGMENTS, WHICH IS A MEASUREMENT AND NOT A ROUND NUMBER. A quarter turn of radius 20 is
+ * thirty-one pixels of arc; eight chords deviate from the true curve by `R(1 - cos 5.6°)` = a TENTH of
+ * a pixel, which is well inside the framebuffer's own resolution. More would be arithmetic nobody can
+ * see; four would be a visible corner cut.
+ */
+const RETURN_SEGMENTS = 8;
+
+/**
+ * A quarter-circle as a chain of lines, wound so that every normal points AT THE CENTRE.
+ *
+ * ⚠️ THE WINDING IS THE WHOLE THING, exactly as `table/authored` says of a single line: a wall from
+ * one side and thin air from the other. Walking the angle DOWNWARD makes each chord run up-and-left
+ * around a top-right corner, and `(dy, -dx)` then points inward — at the play. Walked the other way
+ * the arc is a wall the ball can only hit from outside the table, which is to say never.
+ */
+function arcInward(
+  centre: { x: number; y: number }, radius: number, fromDegrees: number, toDegrees: number,
+): AuthoredShape[] {
+  const at = (degrees: number) => ({
+    x: centre.x + radius * Math.cos((degrees * Math.PI) / 180),
+    y: centre.y + radius * Math.sin((degrees * Math.PI) / 180),
+  });
+  const shapes: AuthoredShape[] = [];
+  for (let i = 0; i < RETURN_SEGMENTS; i++) {
+    const a = fromDegrees + ((toDegrees - fromDegrees) * i) / RETURN_SEGMENTS;
+    const b = fromDegrees + ((toDegrees - fromDegrees) * (i + 1)) / RETURN_SEGMENTS;
+    shapes.push({ kind: 'line', from: at(a), to: at(b) });
+  }
+  return shapes;
+}
+
 export function cabinet(o: CabinetOptions): AuthoredComponent[] {
   const { width: w, height: h } = o;
 
@@ -90,12 +132,13 @@ export function cabinet(o: CabinetOptions): AuthoredComponent[] {
      * ball arrives from: a single slope, steep enough to redirect and shallow enough not to stop the
      * ball dead.
      *
-     * ⚠️ AND THE DEV ASKED FOR A CURVE HERE, WHICH IS NOT DONE. His words: "o lançador é um túnel que
-     * vai retamente pra cima, mas ele deve acabar com uma curva (topo deve ser curvado) de modo que
-     * uma bola lançada com força total ande por uma curva até a parede da esquerda."
+     * ⚠️ AND IT IS THE DEV'S CURVE AT LAST. His words: "o lançador é um túnel que vai retamente pra
+     * cima, mas ele deve acabar com uma curva (topo deve ser curvado) de modo que uma bola lançada
+     * com força total ande por uma curva até a parede da esquerda." It was the seventh item of his
+     * list and the oldest one still open.
      *
-     * Three shapes were tried and all three broke tables, which is why the straight line is still here
-     * rather than a half-working arc:
+     * ⚠️ AND IT TOOK FOUR ATTEMPTS AND TWO MEASUREMENTS, so the failures stay written down. Three
+     * shapes were tried first and all three broke tables:
      *
      *   · AN ARC CENTRED ON THE LANE never touched the ball. Its lowest point sits at the lane's own
      *     column with a VERTICAL tangent, so a rising ball meets the end of the arc travelling
@@ -128,8 +171,34 @@ export function cabinet(o: CabinetOptions): AuthoredComponent[] {
      * bend, flippers and funnel are a copy that has been drifting quietly.
      */
     { name: 'wall.laneReturn', kind: 'wall', role: WALL,
-      bounds: { x: divider - 14, y: 4, width: w - divider + 14, height: 18 },
-      collision: [{ kind: 'line', from: { x: w - 4, y: 21 }, to: { x: divider - 14, y: 6 } }] },
+      bounds: { x: w - 4 - RETURN_RADIUS, y: 4, width: RETURN_RADIUS, height: RETURN_RADIUS },
+      // From the right wall's face round to the top wall's, so the two ends meet the shell rather than
+      // stopping in mid-air. The angle DECREASES, which is what points the normals into the play.
+      collision: arcInward({ x: w - 4 - RETURN_RADIUS, y: 4 + RETURN_RADIUS }, RETURN_RADIUS, 0, -90) },
+
+    /**
+     * ⚠️ THE HEAD BEND, AND IT IS THE FURNITURE THE CURVE IMPLIES.
+     *
+     * The record above says a ball thrown at the left wall "has nothing there to meet" and runs down
+     * the wall out of the play. That was measured before the curve existed and it was still true after
+     * it: with the arc in and nothing here, `long-climb` failed "flapping the flippers changes the
+     * ball's life" — a flapping run and a quiet one came out the same, which is the gate's definition
+     * of a table the player watches.
+     *
+     * So the top-left corner is rounded too. A ball sweeping left under the ceiling meets it and is
+     * turned DOWN AND RIGHT, back into the play, instead of finding the wall and following it to the
+     * outlane. It is the return bend mirrored, and it is in the cabinet rather than in six files for
+     * the reason everything else here is: a shape written six times is a shape that drifts.
+     *
+     * ⚠️ AND IT IS NOT A THIRD WALL. `wall.left` and `wall.top` still meet at the corner behind it;
+     * this rounds the inside of that corner so the ball never reaches the join. Taking it out would
+     * not open a hole — it would only give the ball a right angle to lose its speed in.
+     */
+    { name: 'wall.headBend', kind: 'wall', role: WALL,
+      bounds: { x: 4, y: 4, width: RETURN_RADIUS, height: RETURN_RADIUS },
+      // From the top wall's face round to the left wall's, angle decreasing, so the normals point into
+      // the play — the same rule and the same helper as the return bend.
+      collision: arcInward({ x: 4 + RETURN_RADIUS, y: 4 + RETURN_RADIUS }, RETURN_RADIUS, -90, -180) },
 
     /* ===================== THE PLUNGER LANE ===================== */
     /**
