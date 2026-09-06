@@ -11,6 +11,12 @@ const tracked = () =>
   execFileSync('git', ['ls-files'], { cwd: ROOT, encoding: 'utf8' }).split('\n').filter(Boolean);
 
 /**
+ * What counts as an asset, in ONE place because two tests ask the question — and a second copy of this
+ * expression is exactly the defect the README test below exists to record.
+ */
+const ASSET = /\.(png|jpe?g|gif|webp|bmp|ttf|otf|woff2?|mp3|ogg)$/i;
+
+/**
  * ⚠️ `docs/LICENSES.md` § 3 SAYS `.gitignore` IS A MECHANISM AND NOT THE PROMISE. THIS IS THE PROMISE.
  *
  * `game_resources/` being ignored keeps the original data out of a commit by accident. It does nothing
@@ -22,6 +28,12 @@ const tracked = () =>
  * So the rule is checked where it can still be enforced — before the commit — and it is checked against
  * what git actually tracks rather than against what `.gitignore` claims.
  */
+/**
+ * What counts as an asset, in ONE place because two tests ask the question — and a second copy of this
+ * expression is exactly the defect the README test below exists to record.
+ */
+const ASSET = /\.(png|jpe?g|gif|webp|bmp|ttf|otf|woff2?|mp3|ogg)$/i;
+
 describe('⚠️ the original game data never enters the history', () => {
   // Microsoft's own file types. Deliberately by EXTENSION rather than by directory: moving a WAV out of
   // `game_resources/` would defeat a path check, and would not make the file any more ours.
@@ -45,7 +57,7 @@ describe('⚠️ the original game data never enters the history', () => {
     // So it became a ledger. Every tracked asset must satisfy all three, and `LICENSES.md` § 4 says
     // why each one matters: a licence file BESIDE it, a row in the licence note, and an attribution in
     // the credits. An asset that is none of those is one nobody can lawfully ship.
-    const assets = tracked().filter((f) => /\.(png|jpe?g|gif|webp|bmp|ttf|otf|woff2?|mp3|ogg)$/i.test(f));
+    const assets = tracked().filter((f) => ASSET.test(f));
     const note = readFileSync(resolve(ROOT, 'docs', 'LICENSES.md'), 'utf8');
     const credits = readFileSync(resolve(ROOT, 'docs', 'CREDITS.md'), 'utf8');
     const files = new Set(tracked());
@@ -72,6 +84,39 @@ describe('⚠️ the original game data never enters the history', () => {
 
     expect(note).not.toContain('There is no art in this repository.');
     expect(note, 'the note names the terms').toContain('SIL Open Font License 1.1');
+  });
+
+  /**
+   * ⚠️ AND THE SAME CLAIM LIVES IN THE README, WHERE THE GATE ABOVE COULD NOT SEE IT.
+   *
+   * The test above was written when the font landed, because § 4 of the note had said "there is no art
+   * in this repository" and had stopped being true. The README's licence section said the same thing in
+   * different words — "Art follows its own author's terms, and there is none in this repository yet" —
+   * and went on saying it for every commit since, because the gate reads one file and the sentence was
+   * in two.
+   *
+   * That is this project's most-repeated shape arriving in prose: one rule, two copies, one of them
+   * checked. It has already cost a bumper's rectangle, a HUD inset and a plunger's speed.
+   */
+  test('⚠️ and the README, which says it too, agrees with the tree', () => {
+    const readme = readFileSync(resolve(ROOT, 'README.md'), 'utf8');
+    const assets = tracked().filter((f) => ASSET.test(f));
+
+    expect(assets.length, 'there is something to be wrong about').toBeGreaterThan(0);
+    expect(readme, 'the README does not claim an empty tree')
+      .not.toMatch(/there is none in this repository/i);
+
+    /**
+     * ⚠️ THE DIRECTORY AND NOT THE FILE, so this scales to a table's worth of sprites without asking
+     * a README to list them one by one — and still fails the day an asset arrives somewhere the
+     * licence section has never heard of, which is the case a phrase match cannot reach. A
+     * hand-written sentence is checked against `git ls-files` rather than against the last time
+     * somebody remembered.
+     */
+    for (const asset of assets) {
+      const directory = asset.slice(0, asset.lastIndexOf('/'));
+      expect(readme, `${directory} is accounted for in the README`).toContain(directory);
+    }
   });
 
   test('the licence note and the credits both exist and are reachable from the README', () => {
