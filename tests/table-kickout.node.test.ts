@@ -187,3 +187,68 @@ describe('kickout — tilt', () => {
     expect(k.captured).toBe(false);
   });
 });
+
+/**
+ * ⚠️ A DORMANT HOLE MUST NOT PULL, AND THIS ONE DID.
+ *
+ * `TEdgeManager::FieldEffects` tests `*field->ActiveFlag` before it asks a field for anything, and a
+ * `Kickout2` — the gravity well — is born with that flag clear: it is dormant until a mission arms it.
+ * This port's field checked only whether the hole was full and whether the ball was inside its reach.
+ *
+ * The gravity well of the 1995 table sits at (0, 6) with a reach of three and a half units, which is
+ * the MIDDLE OF THE PLAYFIELD. So every ball that crossed the centre was dragged in and parked there,
+ * drifting at a fifth of a unit a second, for the rest of the game. Reported by the player as "the ball
+ * gets caught at some points", which is exactly what it looked like: no error, no collision, no drain.
+ */
+describe('a hole that is not armed', () => {
+  function well(startsActive: boolean) {
+    const t = fakeTimer();
+    const kickout = createKickout({
+      table: { tiltLocked: false }, timer: t.timer, edges: [anEdge()],
+      center: { x: 0, y: 6 },
+      fieldRadiusSq: 12.25, // the 1995 well's own reach, three and a half units
+      fieldMult: 10,
+      capturedZ: -3,
+      holdTime: 1.5,
+      throwDirection: { x: 0, y: -1 },
+      throwAngleMult: 0, throwSpeedMult1: 1, throwSpeedMult2: 1,
+      startsActive,
+    });
+    return kickout;
+  }
+
+  const ballNearIt = () => ({
+    position: { x: 0.5, y: 6.5, z: 0 }, direction: { x: 0, y: 1 }, speed: 4,
+    collisionDisabled: false, component: null as unknown,
+    memory: { record: () => {} },
+    throwBall: () => {},
+  });
+
+  test('⚠️ pulls NOTHING while it is dormant', () => {
+    const kickout = well(false);
+    const destination = { x: 0, y: 0 };
+
+    const answered = kickout.fieldEffect(ballNearIt() as never, destination);
+
+    expect(answered, 'it declines').toBe(false);
+    expect(destination, 'and writes nothing').toEqual({ x: 0, y: 0 });
+  });
+
+  test('and pulls once a mission arms it', () => {
+    const kickout = well(false);
+    kickout.active = true;
+    const destination = { x: 0, y: 0 };
+
+    expect(kickout.fieldEffect(ballNearIt() as never, destination)).toBe(true);
+    expect(Math.hypot(destination.x, destination.y)).toBeGreaterThan(0);
+  });
+
+  test('⚠️ and a hole that is armed and FULL pulls nothing either', () => {
+    // Already answered before this: a hole that has the ball has nothing to pull with.
+    const kickout = well(true);
+    kickout.collision(ballNearIt(), { x: 0, y: 6 }, { x: 0, y: 1 }, 0, null);
+    const destination = { x: 0, y: 0 };
+
+    expect(kickout.fieldEffect(ballNearIt() as never, destination)).toBe(false);
+  });
+});

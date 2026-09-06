@@ -161,6 +161,16 @@ export function createKickout(o: KickoutOptions): Kickout {
     },
 
     fieldEffect(ball, destination): boolean {
+      /**
+       * ⚠️ A DORMANT HOLE PULLS NOTHING. `TEdgeManager::FieldEffects` tests `*field->ActiveFlag`
+       * before it asks a field for anything, and a `Kickout2` is born with that flag clear.
+       *
+       * The 1995 gravity well sits at (0, 6) with a reach of three and a half units — the MIDDLE of
+       * the playfield. Without this, every ball that crossed the centre was dragged in and parked
+       * there, drifting at a fifth of a unit a second, for the rest of the game: no error, no
+       * collision, no drain. It is what the player meant by "the ball gets caught".
+       */
+      if (!active) return false;
       // A hole that is already full has nothing to pull with.
       if (captured) return false;
 

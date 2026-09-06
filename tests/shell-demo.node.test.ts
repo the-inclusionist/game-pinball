@@ -426,6 +426,30 @@ describe('⚠️ and a ball can be lost, which the demonstration counts', () => 
     expect(demo.gameOver).toBe(false);
   });
 
+  test('⚠️ AND IT DOES NOT PARK IN THE MIDDLE OF THE TABLE', () => {
+    // Reported by the player as "the ball gets caught at some points", and it was: the gravity well
+    // sits at (0, 6) with a reach of three and a half units — the middle of the playfield — and its
+    // field pulled even while the well was dormant. Every ball that crossed the centre was dragged in
+    // and left drifting at a fifth of a unit a second, for the rest of the game. No error, no
+    // collision, no drain.
+    const bytes = archive();
+    if (!bytes) return expect(existsSync(DAT)).toBe(false);
+    const demo = createDemo(bytes, { random: seeded(2) });
+    demo.plunge(true);
+    demo.step(45);
+    demo.plunge(false);
+
+    let slowSeconds = 0;
+    for (let second = 0; second < 30; second++) {
+      const before = { x: demo.ball.position.x, y: demo.ball.position.y };
+      demo.step(60);
+      const moved = Math.hypot(demo.ball.position.x - before.x, demo.ball.position.y - before.y);
+      if (moved < 0.3) slowSeconds++;
+    }
+
+    expect(slowSeconds, 'seconds spent going nowhere').toBeLessThan(10);
+  });
+
   test('⚠️ and a ball left alone does not rattle at the bottom for ever', () => {
     // ⚠️ THE LOSS ITSELF IS TESTED ON THE DISPATCHER, not here: driving a ball into the drain from the
     // plunger is not something a seed can be trusted to do, and a test that stepped four thousand
