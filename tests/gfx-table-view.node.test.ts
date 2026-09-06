@@ -5,6 +5,7 @@ import {
   ROLE_COLORS, PLAYFIELD_COLOR, BALL_COLOR,
 } from '../app/js/gfx/table-view.js';
 import { createFramebuffer } from '../app/js/gfx/framebuffer.js';
+import { backdropAt } from '../app/js/gfx/table-palette.js';
 import { CATALOG, LOW_ORBIT } from '../app/js/table/catalog.js';
 
 const at = (fb: { width: number; pixels: Uint32Array }, x: number, y: number) =>
@@ -30,7 +31,11 @@ describe('drawing a table from its ROLES', () => {
     // pass just as well if `sceneOf` returned nothing for every table and all five fell to slate,
     // which is the exact failure the scene map was written without a default to avoid.
     // A spot with nothing on it: between the target bank and the bumpers.
-    expect(at(fb, 30, 90)).toBe(packRgb(paletteOf(LOW_ORBIT, false).ground));
+    // ⚠️ THE GROUND AT THAT ROW, not the world's one colour: `sky` is a gradient now — the Earth's
+    // atmosphere the Dev asked for — so "the table's own world" is a colour that depends on height.
+    const sky = paletteOf(LOW_ORBIT, false);
+    const atRow90 = packRgb(backdropAt(sky.bands!, 90 / (LOW_ORBIT.size.height - 1)));
+    expect(at(fb, 30, 90)).toBe(atRow90);
     expect(at(fb, 30, 90), 'low-orbit is not on the neutral ground').not.toBe(PLAYFIELD_COLOR);
   });
 
@@ -72,7 +77,8 @@ describe('drawing a table from its ROLES', () => {
     const fb = drawTable({ table: LOW_ORBIT });
 
     expect(at(fb, 60, 209), 'nothing is painted where the flipper rests')
-      .toBe(packRgb(paletteOf(LOW_ORBIT, false).ground));
+      .toBe(packRgb(backdropAt(paletteOf(LOW_ORBIT, false).bands!,
+        209 / (LOW_ORBIT.size.height - 1))));
   });
 
   test('⚠️ and drawFlipper puts it on the SCREEN, at whatever angle it is handed', () => {

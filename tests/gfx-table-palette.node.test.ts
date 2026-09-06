@@ -21,7 +21,7 @@
 import { describe, test, expect } from 'vitest';
 import { CVD_MATRIX } from '@the-inclusionist/engine/render/cvd-matrices.js';
 import {
-  SCENES, sceneOf, paletteFor, type Rgb, type TablePalette,
+  SCENES, sceneOf, paletteFor, backdropAt, type Rgb, type TablePalette,
 } from '../app/js/gfx/table-palette.js';
 import { CATALOG } from '../app/js/table/catalog.js';
 
@@ -191,6 +191,75 @@ describe('the CB-Safe alternative', () => {
       // game: switching it on must not move the player from Mars to somewhere else. The ground carries
       // the scene, so the ground is what has to survive the switch.
       expect(safe.ground, `${name} keeps its own ground`).toEqual(normal.ground);
+    }
+  });
+});
+
+/**
+ * ⚠️ A WORLD IS ONE FLAT COLOUR, AND THE DEV ASKED FOR FOUR THAT ARE NOT.
+ *
+ * "low orbit deve ter desenhos que lembram a atmosfera azul da terra até a metade"; "crater-run deve
+ * ter a temática da lua... com trilhos sob uma mina branca e sombras pretas"; "ion-storm deve ter um
+ * fundo que varia de preto, marrom, vermelho, amarelo e branco"; "ring-belt deve ser ambientado nos
+ * anéis de saturno". Every one of those is a background that CHANGES down the table, and a `Scene`
+ * has had exactly one `ground` since it was written.
+ *
+ * ⚠️ BANDS RATHER THAN AN IMAGE, and that is the licence talking as much as the size. `docs/LICENSES`
+ * § 4 keeps art under its author's terms and this repository has one asset in it, a font. A gradient
+ * declared as colour stops is CODE — it is AGPL like everything around it, it costs no bytes, and it
+ * scales to any table height without a second file.
+ */
+describe('⚠️ a world that changes down the table', () => {
+  const stops = [
+    { at: 0, color: { r: 0, g: 0, b: 0 } },
+    { at: 1, color: { r: 100, g: 200, b: 40 } },
+  ];
+
+  test('at the top it is the first stop', () => {
+    expect(backdropAt(stops, 0)).toEqual({ r: 0, g: 0, b: 0 });
+  });
+
+  test('at the bottom it is the last', () => {
+    expect(backdropAt(stops, 1)).toEqual({ r: 100, g: 200, b: 40 });
+  });
+
+  test('⚠️ and between them it INTERPOLATES, which is the whole point of a stop', () => {
+    expect(backdropAt(stops, 0.5)).toEqual({ r: 50, g: 100, b: 20 });
+  });
+
+  test('three stops give two segments, each interpolated on its own', () => {
+    // The Dev's `low-orbit` is "the blue atmosphere to the HALFWAY line" and space above it, which is
+    // two segments with a hard boundary in the middle rather than one wash.
+    const three = [
+      { at: 0, color: { r: 0, g: 0, b: 0 } },
+      { at: 0.5, color: { r: 0, g: 0, b: 100 } },
+      { at: 1, color: { r: 0, g: 0, b: 200 } },
+    ];
+
+    expect(backdropAt(three, 0.25)).toEqual({ r: 0, g: 0, b: 50 });
+    expect(backdropAt(three, 0.75)).toEqual({ r: 0, g: 0, b: 150 });
+  });
+
+  test('⚠️ a single stop is a flat colour, so a world may still be one', () => {
+    // Four of the five worlds want no gradient at all, and answering "then do not declare stops" is
+    // better than making every scene carry a two-element list that says nothing.
+    expect(backdropAt([{ at: 0, color: { r: 9, g: 9, b: 9 } }], 0.6)).toEqual({ r: 9, g: 9, b: 9 });
+  });
+
+  test('and outside the stops it holds the nearest one rather than running off', () => {
+    expect(backdropAt(stops, -1)).toEqual({ r: 0, g: 0, b: 0 });
+    expect(backdropAt(stops, 4)).toEqual({ r: 100, g: 200, b: 40 });
+  });
+
+  test('⚠️ every scene that declares bands starts and ends where the table does', () => {
+    // A stop list that began at 0.2 would leave the top fifth of the table undefined, and "hold the
+    // nearest" would paint it a colour nobody chose. The rule is checkable, so it is checked.
+    for (const [name, scene] of Object.entries(SCENES)) {
+      if (!scene.bands) continue;
+      expect(scene.bands[0]!.at, `${name} starts at the top`).toBe(0);
+      expect(scene.bands[scene.bands.length - 1]!.at, `${name} ends at the bottom`).toBe(1);
+      const rising = scene.bands.every((s, i) => i === 0 || s.at > scene.bands![i - 1]!.at);
+      expect(rising, `${name}'s stops are in order`).toBe(true);
     }
   });
 });

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, test, expect } from 'vitest';
 import { drawTable, paletteOf, packRgb, EDGE_THICKNESS } from '../app/js/gfx/table-view.js';
+import { backdropAt } from '../app/js/gfx/table-palette.js';
 import { CATALOG as TABLES } from '../app/js/table/catalog.js';
 
 /**
@@ -15,7 +16,21 @@ import { CATALOG as TABLES } from '../app/js/table/catalog.js';
  * itself — but that is not what this file is asking about. What is painted where is; that the
  * ground is the table's own colour and not the neutral is asserted in `tests/gfx-table-view`.
  */
-const groundOf = (table: AuthoredTable) => packRgb(paletteOf(table, false).ground);
+/**
+ * ⚠️ AT A ROW, BECAUSE A WORLD MAY BE A GRADIENT NOW. This took the table's one flat `ground` until
+ * `Scene.bands` arrived — the Dev's four themes are backgrounds that change with height — and with a
+ * gradient in place EVERY pixel differs from the flat colour, so this whole file reported the entire
+ * table as painted where nothing is solid. Six tests at once, which is the gate correctly refusing a
+ * question that had stopped making sense rather than a defect in the drawing.
+ *
+ * The question it asks is unchanged: is this pixel a colour other than the ground HERE.
+ */
+const groundAt = (table: AuthoredTable, y: number) => {
+  const palette = paletteOf(table, false);
+  if (!palette.bands) return packRgb(palette.ground);
+  const at = table.size.height <= 1 ? 0 : y / (table.size.height - 1);
+  return packRgb(backdropAt(palette.bands, at));
+};
 import { CATALOG } from '../app/js/table/catalog.js';
 import type { AuthoredTable } from '../app/js/table/authored.js';
 
@@ -98,7 +113,7 @@ describe('⚠️ the drawing tells the truth about what the ball can touch', () 
 
       for (let y = 0; y < fb.height; y++) {
         for (let x = 0; x < fb.width; x++) {
-          if (fb.pixels[y * fb.width + x] === groundOf(table)) continue;
+          if (fb.pixels[y * fb.width + x] === groundAt(table, y)) continue;
           if (!isSolidAt(table, x + 0.5, y + 0.5)) lies.push(`${x},${y}`);
         }
       }
@@ -127,7 +142,7 @@ describe('⚠️ the drawing tells the truth about what the ball can touch', () 
     const lowOrbit = CATALOG.find((t) => t.name === 'low-orbit')!;
     const fb = drawTable({ table: lowOrbit });
 
-    expect(fb.pixels[212 * fb.width + 53]).toBe(groundOf(lowOrbit));
+    expect(fb.pixels[212 * fb.width + 53]).toBe(groundAt(lowOrbit, 212));
   });
 
   test('wide-arc’s ramp corner is empty space, and is drawn as empty space', () => {
@@ -136,7 +151,7 @@ describe('⚠️ the drawing tells the truth about what the ball can touch', () 
     const wideArc = CATALOG.find((t) => t.name === 'wide-arc')!;
     const fb = drawTable({ table: wideArc });
 
-    expect(fb.pixels[170 * fb.width + 328]).toBe(groundOf(wideArc));
+    expect(fb.pixels[170 * fb.width + 328]).toBe(groundAt(wideArc, 170));
   });
 });
 
@@ -222,10 +237,15 @@ describe('⚠️ and the drawing never grows', () => {
   test('every table paints exactly the area it painted before', () => {
     const counted: Record<string, number> = {};
     for (const table of TABLES) {
+      // ⚠️ ROW BY ROW, because a world may be a gradient. Comparing against one flat colour counted
+      // 43,005 painted pixels on `low-orbit` — every pixel of the table — the moment `sky` grew its
+      // bands. The count means "how much is not ground", and what the ground IS depends on the row.
       const fb = drawTable({ table });
-      const ground = packRgb(paletteOf(table, false).ground);
       let painted = 0;
-      for (const pixel of fb.pixels) if (pixel !== ground) painted++;
+      for (let y = 0; y < fb.height; y++) {
+        const ground = groundAt(table, y);
+        for (let x = 0; x < fb.width; x++) if (fb.pixels[y * fb.width + x] !== ground) painted++;
+      }
       counted[table.name] = painted;
     }
 

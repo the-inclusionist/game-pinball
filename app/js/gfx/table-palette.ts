@@ -73,20 +73,74 @@ export interface Rgb {
   readonly b: number;
 }
 
+/** One colour at one height, `at` being a fraction of the table from top (0) to bottom (1). */
+export interface Band {
+  readonly at: number;
+  readonly color: Rgb;
+}
+
 export interface Scene {
   /** The colour of the playfield, which is most of the screen and therefore the scene itself. */
   readonly ground: Rgb;
+  /**
+   * How the ground CHANGES down the table, if it does. Absent means flat `ground`, which is what four
+   * of the five worlds want.
+   *
+   * ⚠️ THE DEV ASKED FOR BACKGROUNDS THAT ARE NOT ONE COLOUR: "a atmosfera azul da terra até a
+   * metade", "trilhos sob uma mina branca e sombras pretas", "um fundo que varia de preto, marrom,
+   * vermelho, amarelo e branco", "os anéis de saturno". Every one of those changes with height.
+   *
+   * ⚠️ BANDS RATHER THAN AN IMAGE, and that is the licence as much as the size. `docs/LICENSES` § 4
+   * keeps art under its author's terms and this repository holds one asset, a font. Stops are CODE:
+   * AGPL like everything around them, no bytes, and the same declaration works at any table height.
+   *
+   * ⚠️ AND THE SAME IN BOTH PALETTES, like `ground` itself. Only the ROLES change for colour
+   * blindness — the ground is the thing everything else is measured against, and moving it would move
+   * every contrast the CB-Safe palette was chosen to protect.
+   */
+  readonly bands?: readonly Band[];
   /** What the world is, in a word the i18n layer can look up when a menu lists them. */
   readonly textId: string;
 }
 
 export interface TablePalette {
   readonly ground: Rgb;
+  /** The world's bands, if it has any. See `Scene.bands`; absent means flat `ground`. */
+  readonly bands?: readonly Band[];
   readonly ball: Rgb;
   readonly roles: Readonly<Record<Role, Rgb>>;
 }
 
 const rgb = (r: number, g: number, b: number): Rgb => ({ r, g, b });
+
+/**
+ * The colour of the ground at `t`, a fraction of the table's height.
+ *
+ * Holds the nearest stop outside the list rather than running off: a scene whose stops did not span
+ * the table would otherwise paint the remainder a colour nobody chose, and `tests/gfx-table-palette`
+ * refuses stops that do not start at 0 and end at 1 for the same reason.
+ */
+export function backdropAt(bands: readonly Band[], t: number): Rgb {
+  if (bands.length === 0) return rgb(0, 0, 0);
+  if (t <= bands[0]!.at) return bands[0]!.color;
+  const last = bands[bands.length - 1]!;
+  if (t >= last.at) return last.color;
+
+  for (let i = 1; i < bands.length; i++) {
+    const a = bands[i - 1]!;
+    const b = bands[i]!;
+    if (t > b.at) continue;
+    const span = b.at - a.at;
+    const k = span === 0 ? 0 : (t - a.at) / span;
+    return rgb(
+      Math.round(a.color.r + (b.color.r - a.color.r) * k),
+      Math.round(a.color.g + (b.color.g - a.color.g) * k),
+      Math.round(a.color.b + (b.color.b - a.color.b) * k),
+    );
+  }
+  return last.color;
+}
+
 
 /**
  * The five worlds.
@@ -97,7 +151,30 @@ const rgb = (r: number, g: number, b: number): Rgb => ({ r, g, b });
  * the table which exists to show the floor of the format goes on showing exactly that.
  */
 export const SCENES: Readonly<Record<string, Scene>> = {
-  sky: { ground: rgb(14, 26, 46), textId: 'pinball.scene.sky' },
+  /**
+   * ⚠️ THE EARTH'S ATMOSPHERE TO THE HALFWAY LINE, AND SPACE ABOVE IT. The Dev's theme for
+   * `low-orbit`: "desenhos que lembram a atmosfera azul da terra até a metade".
+   *
+   * Four stops rather than two, because an atmosphere is not a wash: it is black at the top of the
+   * frame, a thin bright line where the air catches the sun, then the blue thickening down to the
+   * horizon. The bright band sits at 0.5 exactly, which is the "até a metade" the Dev asked for and
+   * the line a player's eye lands on.
+   *
+   * ⚠️ AND EVERY COLOUR IS DARKER THAN EVERY ROLE. The ground is what the whole table is measured
+   * against — `tests/gfx-table-palette` holds the roles apart from it by lightness, which is ADR-0004's
+   * whole mechanism — so a backdrop that brightened past a role would make that role unreadable
+   * wherever the two met. The brightest band here is 74, and the darkest role is well clear of it.
+   */
+  sky: {
+    ground: rgb(14, 26, 46),
+    bands: [
+      { at: 0, color: rgb(4, 5, 10) },
+      { at: 0.44, color: rgb(10, 16, 34) },
+      { at: 0.5, color: rgb(34, 62, 74) },
+      { at: 1, color: rgb(12, 30, 58) },
+    ],
+    textId: 'pinball.scene.sky',
+  },
   space: { ground: rgb(8, 8, 12), textId: 'pinball.scene.space' },
   mars: { ground: rgb(42, 20, 16), textId: 'pinball.scene.mars' },
   ice: { ground: rgb(10, 28, 30), textId: 'pinball.scene.ice' },
@@ -235,6 +312,8 @@ export interface PaletteOptions {
 export function paletteFor(scene: string, o: PaletteOptions): TablePalette {
   return {
     ground: (SCENES[scene] ?? SCENES['slate']!).ground,
+    // Carried through unchanged, like `ground`: only the ROLES differ between the two palettes.
+    ...((SCENES[scene] ?? SCENES['slate']!).bands ? { bands: (SCENES[scene] ?? SCENES['slate']!).bands } : {}),
     ball: BALL,
     roles: o.cbSafe ? CB_SAFE : NORMAL,
   };

@@ -48,7 +48,7 @@ import type { Role } from '@the-inclusionist/engine/core/contract.js';
 import { createFramebuffer, pack, type Framebuffer } from './framebuffer.js';
 import type { AuthoredTable } from '../table/authored.js';
 import {
-  paletteFor, sceneOf, shade, SHADE_HEADROOM, type Rgb, type TablePalette,
+  paletteFor, sceneOf, shade, backdropAt, SHADE_HEADROOM, type Rgb, type TablePalette,
 } from './table-palette.js';
 import type { Rect } from '../shell/hud.js';
 
@@ -244,8 +244,24 @@ export function drawTable(o: TableViewOptions): Framebuffer {
   const targets = new Set(o.missionTargets ?? []);
   const lamps = new Set(o.litLamps ?? []);
   const palette = paletteOf(table, o.cbSafe ?? false);
-  fillRect(fb, { x: 0, y: 0, width: table.size.width, height: table.size.height },
-    packRgb(palette.ground));
+  /**
+   * ⚠️ THE GROUND IS A GRADIENT WHEN THE WORLD SAYS SO, and one flat colour when it does not.
+   *
+   * A scene may declare `bands` — colour stops down the table — because four of the Dev's themes are
+   * backgrounds that change with height: the Earth's atmosphere to the halfway line, a white mine
+   * with black shadows, a solar storm's colours, Saturn's rings. Painted row by row rather than as one
+   * rectangle, which costs one `backdropAt` per row of a picture composed once per change.
+   */
+  if (palette.bands) {
+    for (let y = 0; y < table.size.height; y++) {
+      const at = table.size.height <= 1 ? 0 : y / (table.size.height - 1);
+      fillRect(fb, { x: 0, y, width: table.size.width, height: 1 },
+        packRgb(backdropAt(palette.bands, at)));
+    }
+  } else {
+    fillRect(fb, { x: 0, y: 0, width: table.size.width, height: table.size.height },
+      packRgb(palette.ground));
+  }
 
   const hidden = new Set(o.hidden ?? []);
 
