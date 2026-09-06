@@ -30,6 +30,7 @@ import { buildOriginalPopupTargets } from '../table/original-popup-targets.js';
 import { buildOriginalSoloTargets } from '../table/original-solo-targets.js';
 import { buildOriginalOneways, onewayNames } from '../table/original-oneways.js';
 import { buildOriginalRollovers, rolloverNames } from '../table/original-rollovers.js';
+import { buildOriginalTripwires } from '../table/original-tripwires.js';
 import { flipperSides } from '../table/original-flippers.js';
 import { blockerNames, buildOriginalBlockers } from '../table/original-blockers.js';
 import { buildOriginalSinks } from '../table/original-sinks.js';
@@ -87,6 +88,12 @@ export interface Demo {
    * here — `v_sink7`, the escape chute, runs `EscapeChuteSinkControl` and this build has none.
    */
   readonly sinks: ReadonlyMap<string, unknown>;
+  /**
+   * ⚠️ THE TRIP LINES THAT DO NOT BOUNCE. Their geometry is an ordinary wall record and only the
+   * component tells the ball it may cross; left to the default they are five walls across the skill
+   * shot's own run, and nothing anywhere reports it.
+   */
+  readonly tripwires: ReadonlyMap<string, unknown>;
   /** The archive names whose 1995 control function actually runs. */
   readonly wired: ReadonlySet<string>;
   /**
@@ -290,6 +297,13 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
    */
   const sinks: ReturnType<typeof buildOriginalSinks> = new Map();
   /**
+   * ⚠️ THE FIVE TRIP LINES, WHOSE GEOMETRY IS AN ORDINARY WALL AND WHOSE COMPONENT IS NOT. A tripwire
+   * takes the wall loop's record, offset and all — only its collision differs, and the whole of that
+   * difference is that the ball goes THROUGH. Left to the default component they are five walls across
+   * the skill shot's own run, which nothing reports.
+   */
+  const tripwires = buildOriginalTripwires(manifest, { table: { tiltLocked: false } });
+  /**
    * ⚠️ THE NINE THAT DROP. A popup target reports only a hard hit and disables its own edges before it
    * does — so the payment comes from the component, like the bumper's, and the ball stops being able
    * to touch a target it has already knocked down.
@@ -335,7 +349,7 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
       ?? components.bumpers.get(name) ?? components.kickbacks.get(name)
       // Only the bound ones: an unbound hole must not be given a ball it cannot give back.
       ?? (kickouts.get(name)?.control ? kickouts.get(name) : undefined)
-      ?? sinks.get(name),
+      ?? sinks.get(name) ?? tripwires.get(name),
     onHit: (hit) => {
       touched.push(hit.group);
       // ⚠️ BY KIND, NOT PER COLLISION. A ball resting against a wall collides many times a second, and
@@ -353,6 +367,8 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
       // swallowed the ball, so paying here as well would score the hole twice on one shot.
       if (components.bumpers.has(hit.group) || popupTargets.has(hit.group)
         || soloTargets.has(hit.group) || sinks.has(hit.group)) return;
+      // ⚠️ AND A TRIP LINE IS PAID THROUGH THE WRAPPER, because unlike the others its component does
+      // not know its own name — it is the wall loop that reports which wire was crossed.
 
       payFor(hit.group);
     },
@@ -492,6 +508,7 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
     scored,
     components,
     sinks,
+    tripwires,
     wired: dispatch.wired,
     paidFlat,
     get info() { return info; },

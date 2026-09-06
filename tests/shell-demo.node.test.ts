@@ -405,6 +405,34 @@ describe('⚠️ and a ball can be lost, which the demonstration counts', () => 
     expect(demo.scored.filter((name) => name.startsWith('roll')).length).toBe(crossed.length);
   });
 
+  test('⚠️ and the five trip lines own theirs, which is what stops them being walls', () => {
+    // Nothing in a six-hundred-frame run reaches them: the trip lines are up the launch chute and the
+    // ball only gets there on a strong plunge. So this asks the wiring directly, the way the holes'
+    // ownership is asked — the alternative is a test that passes whether or not they are wired.
+    const bytes = archive();
+    if (!bytes) return expect(existsSync(DAT)).toBe(false);
+    const demo = createDemo(bytes, { random: seeded() });
+
+    expect([...demo.tripwires.keys()].sort())
+      .toEqual(['s_trip1', 's_trip2', 's_trip3', 's_trip4', 's_trip5']);
+
+    // ⚠️ AND THE EDGE THE GRID HOLDS ANSWERS THROUGH THE WIRE, which is the half that can fail: the
+    // map existing proves nothing if the wall loop never asks it. Drive the edge and the ball must
+    // come out the other side with the speed it went in with.
+    const edge = demo.table.edgesOf('s_trip1')[0] as unknown as {
+      component: { collision(b: unknown, p: unknown, d: unknown, n: number, e: unknown): void };
+    };
+    const ball = {
+      position: { x: 0, y: 0 }, direction: { x: 0, y: -1 }, speed: 9,
+      memory: { record: () => {} },
+    };
+
+    edge.component.collision(ball, { x: 1, y: 2 }, { x: 0, y: 1 }, 0, edge);
+
+    expect(ball.speed, 'across, not off').toBe(9);
+    expect(ball.position).toEqual({ x: 1, y: 2 });
+  });
+
   test('⚠️ only the three holes the wormhole runs own their collisions', () => {
     // A sink with no control swallows the ball and never gives it back: it does not drain, does not
     // score and does not count as lost — the ball stops existing. So the escape chute, whose
