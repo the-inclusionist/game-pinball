@@ -1,0 +1,173 @@
+---
+metadata:
+  status: "accepted"
+  date: 2026-09-06
+  decision-makers: [Dev]
+  consulted:
+    - "The Dev's first item, verbatim: 'Coloque luzes e recursos de iluminação pelos cenários.'"
+    - "The Dev's theme for `ion-storm`, verbatim: 'ion-storm deve ter um fundo que varia de preto,
+       marrom, vermelho, amarelo e branco' — and, on the mechanic, 'o flare deixando a bolinha mais
+       lenta durante sua incidência.'"
+    - "The Dev's themes for the launch pad and the slipstream, given 2026-09-06: 'tema plataforma de
+       lançamento, com motor soltando fogo por toda a base... céu escuro no alto, holofotes'; 'viagem
+       em alta velocidade pelo espaço, com estrelas na forma de traço.'"
+    - "ADR-0004 (this repository) — the worlds are told apart by LIGHTNESS, and the ground is the
+       darkest thing on the table. That is the rule this one bounds."
+    - "ADR-0002 (this repository) — the 320x180 screen, which is why every pixel of ground is a pixel
+       somebody has to be able to read a component against."
+  informed: []
+
+title: The ground may be lit, up to a measured ceiling, and the flare is the one place the rule is broken on purpose
+
+context-and-problem-statement: |
+  ADR-0004 decided that the five worlds are told apart by an ORDER rather than by a hue: whatever the
+  world is made of, the ground is the darkest thing on the table and the ball is the lightest. That
+  ordering is the whole mechanism by which a player finds anything, and `tests/gfx-table-palette`
+  holds every role lighter than the brightest ground band.
+
+  ⚠️ THE DEV THEN ASKED FOR TWO THINGS THAT BOTH BRIGHTEN THE GROUND.
+
+    1. "Luzes e recursos de iluminação pelos cenários" — floodlights over the launch pad, rails
+       glowing through the mine, neon around the storm. A light brightens the ground around it. That
+       is what a light is.
+    2. A background for `ion-storm` running "de preto, marrom, vermelho, amarelo e BRANCO", swept
+       across the table by the flare that slows the ball.
+
+  ⚠️ AND THE HEADROOM IS NARROWER THAN IT LOOKS. Measured rather than assumed: the darkest role is
+  `free` at a CIE lightness of 34.7 and the brightest ground band is `sky`'s at 24.6. Twenty per
+  channel added to that band reaches 33.2 — inside the rule by a pixel and a half. Thirty reaches 37.4
+  and is outside it. There is room for lighting, and it is about one step wide.
+
+  So the question is not whether ADR-0004 survives — it is where the line goes, and what happens at
+  the one place the Dev's words put something on the far side of it.
+
+decision-drivers:
+  - "A player has to be able to find the ball, and then the component they are aiming at, on a screen
+    183 pixels wide."
+  - "What the Dev asked for is the deliverable. 'White' is a colour he named; a flare that stopped at
+    grey is not the thing he described."
+  - "A rule with an exception nobody wrote down is a rule that has already been lost. ADR-0004's
+    mechanism is worth keeping precisely because it is checked."
+  - "The cost has to be affordable on a school laptop. Lighting is the only per-pixel work in a
+    composition otherwise made of rectangle fills."
+
+considered-options:
+  - "Refuse both. The ground stays flat-dark and the themes are delivered as colour stops only."
+  - "Drop ADR-0004's ordering and give every component an outline instead, so legibility comes from a
+    border rather than from lightness."
+  - "Keep the ordering, cap the lights below the darkest role, and take ONE named exception for the
+    flare — bounded so that the half of the identity that carries the game survives it."
+
+pros-and-cons-of-the-options:
+  - option: "Refuse both"
+    pros:
+      - "Nothing to check, nothing to get wrong, no cost per pixel."
+    cons:
+      - "It is not what was asked for, twice over. The first item of the Dev's list would stay open."
+      - "⚠️ AND IT WOULD NOT EVEN BE SAFE. The rule it protects is already broken in the other
+        direction by anything bright the tables gain later; refusing lighting does not make the
+        question go away, it postpones it to a commit that will not be thinking about it."
+  - option: "Drop the ordering, outline every component"
+    pros:
+      - "It is the real fix for legibility against arbitrary art, and it is what BITMAP art will need
+        when the Dev's own pictures arrive — a rim does not care what is behind it."
+      - "It would also fix a cost this port already carries: a goal rollover the flare crosses at grip
+        0.8 is nearly the colour of the flare's yellow."
+    cons:
+      - "It changes every component on every table for a feature that has not landed yet."
+      - "⚠️ AND IT SPENDS THE ORDERING TO BUY IT. The ordering is what makes the CB-Safe palette work
+        and what the sonar's own descriptions lean on; giving it up for lighting would be paying in
+        the wrong currency."
+  - option: "Cap the lights, take one named exception"
+    pros:
+      - "ADR-0004 survives as a checked rule everywhere except one place, and that place is written
+        down here rather than discovered later."
+      - "The cap is a number that can be measured against the palette, so a later change to a role's
+        colour fails a gate instead of quietly crossing the line."
+      - "The exception is bounded on the axis that matters: the ball stays the lightest thing on the
+        table even at the flare's core."
+    cons:
+      - "Two mechanisms where there was one, and the exception has to be re-argued if the flare ever
+        moves or grows."
+      - "The intensities are no longer free: each light's brightest honest value depends on the ground
+        it stands on, so they are computed rather than chosen."
+
+decision-outcome: |
+  ⚠️ CHOSEN: cap the lights, take ONE exception, and bound it.
+
+  **The ceiling is L\* 32**, against the darkest role's 34.7 — two and a half units of headroom, so a
+  later change to `free`'s colour fails a gate rather than drifting across the line. It is applied to
+  the RESULT, after every light in reach has been summed: a per-light limit is defeated by two lights
+  overlapping, which is exactly what a row of floodlights is. `gfx/lighting.GLOW_CEILING` holds the
+  number and `tests/gfx-lighting` checks it against the palette itself rather than against a literal.
+
+  **A light declares a ROLE, not a colour.** Every colour in this game comes from the palette so that
+  the CB-Safe variant moves with it; a light carrying its own triple would be the one thing on the
+  table that did not change when a player asked for colours they can tell apart.
+
+  **And a light may name a LAMP**, in which case it is dark until that lamp is lit. This is what makes
+  lighting part of the game rather than part of the wallpaper, and it costs nothing new: the picture
+  already recomposes when a lamp changes, because it has to draw the lamps.
+
+  ⚠️ **THE EXCEPTION IS THE FLARE, AND WHAT IS GIVEN UP IS THE ROLE ORDERING — NOT THE BALL.** The
+  Dev's background runs to white. A band that reaches white is lighter than every role while it
+  passes, so inside it the contrast INVERTS: components read dark-on-light instead of light-on-dark.
+  That is legible; it is simply the other way round, and only for as long as the band is over them.
+
+  What is NOT given up is the half of the identity the game rests on: **the ball is the lightest thing
+  on the table**. Pure white would swallow it, so the flare's peak is the brightest white that stays
+  under the ball in CIE lightness — 90.6 against 95.4. Against a sky whose brightest band is 74 it
+  reads as white, and the ball stays findable in the one place the player most needs it, which is the
+  core of the flare, where the table has just taken hold of the ball.
+
+  **The scope of the exception, stated so it cannot creep:** one table, `ion-storm`; one band, 44
+  pixels of a 250-pixel table; and the near-white part of it — grip above 0.8 — is under nine pixels
+  tall. Any second table wanting a flare re-opens this decision.
+
+more-information: |
+  ⚠️ WHAT THE MEASUREMENTS WERE, so the next person changing a colour can redo them rather than
+  trusting them.
+
+  The lightness figures are CIE L\* over sRGB with the gamma step, D65. Skipping the gamma flatters
+  dark colours badly and would have made all of this look comfortable.
+
+      darkest role `free`                   34.7
+      brightest ground band, `sky`          24.6
+      `sky` band + 20 per channel           33.2   (inside)
+      `sky` band + 30 per channel           37.4   (outside)
+      the ball                              95.4
+      the flare's peak                      90.6
+
+  ⚠️ AND THE INTENSITIES ARE COMPUTED, NOT CHOSEN. Each light's brightest honest value depends on the
+  ground it actually stands on, and the first set was picked by eye at 0.4 to 0.85 — at which point
+  the runtime cap was doing all the work and the declared colour was not the colour drawn. The legal
+  maxima came out between 0.12 and 0.50: `slipstream`'s vane lights take 0.19 where 0.55 had been
+  written, and `low-orbit`'s Earth-glow 0.12 against 0.42.
+
+  ⚠️ AND THE COST WAS THE THING THAT NEARLY KILLED IT. Lighting is the only per-pixel work in a
+  composition otherwise made of `fillRect` calls, and `ion-storm`'s picture is rebuilt about forty
+  times a second because its flare moves. The first working version composed in 8.75 ms — thirty-five
+  per cent of a fast machine's second, spent on scenery, in a game for school laptops.
+
+  Three changes took it to 1.34 ms, and none of them was the arithmetic:
+
+    · a 256-entry table instead of `** 2.4`, because every channel arriving there is already an
+      integer, so the exponent is one of 256 answers;
+    · comparing relative luminance instead of taking a cube root — L\* is monotone in Y, so "brighter
+      than L\* 32" and "brighter than the Y that L\* 32 corresponds to" are the same question;
+    · removing every allocation from the inner loop, which was eleven colour objects per lit pixel.
+
+  If it has to come down further, the lever is named and deliberately not taken: a light's contribution
+  to a pixel does not depend on the flare, so it could be computed once per lit-lamp change and kept.
+  That is a cache inside a pure function and it has not been paid for.
+
+  ⚠️ AND ONE COST IS RECORDED RATHER THAN FIXED. `goal` is (242, 206, 84) and the flare's fourth stop
+  is (236, 186, 52), so a yellow rollover the band crosses at grip 0.8 is nearly the colour of what is
+  behind it — visible on both flank rollovers of `shots/authored-ion-storm-flare.png`. Every fix gives
+  up something the Dev asked for except a dark rim on every component, which is the second option
+  above and is a change to every table. It is his decision and it is waiting on him.
+
+  ⚠️ AND THIS DECISION HAS A SHELF LIFE. The Dev is preparing BITMAP art for all six tables. A
+  photograph-like background cannot be held under an L\* ceiling and stay the picture he drew, so the
+  arrival of that art re-opens this ADR — and the answer then is likely to be the second option here,
+  outlines, which is why it is written out rather than dismissed.

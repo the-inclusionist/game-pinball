@@ -134,6 +134,60 @@ Applied here, honestly, as of phase 8:
   answered: *"Quem desenha: trabalho seu."* So it is produced inside this work, on the Dev's
   instruction, rather than sourced from a third party.
 
+### 4.1 · The table art is machine-generated, and it is dedicated under CC0 1.0
+
+Decided 2026-09-06, and the decision changed once on a fact the Dev supplied.
+
+He first said he would work on the art himself and chose **CC BY-SA 4.0**, which matched the reason the
+engine is AGPL rather than MIT: work that stays open when someone reuses it. Then: *"Opa, calma. Esta
+arte foi gerada pelo Gemini! (Nano Banana)."*
+
+⚠️ **THAT IS NOT A DETAIL, IT IS THE WHOLE QUESTION.** A Creative Commons licence operates **on a
+copyright**. It grants permissions a rights-holder has and attaches conditions to them; where there is
+no copyright there is nothing for it to act on. And a copyright needs a human author — **Lei 9.610/98
+art. 11**: *"Autor é a pessoa física criadora de obra literária, artística ou científica."* The United
+States Copyright Office has reached the same conclusion for material without human authorship.
+
+So putting CC BY-SA on purely machine-generated images would be asserting a **ShareAlike restriction
+over work that may carry no exclusive right at all** — a condition nobody would have standing to
+enforce, published in a file whose whole purpose is to state obligations accurately. This repository
+does not get to make a claim it cannot back.
+
+**Separately, and much more simply: using it is fine.** Google's terms for Gemini do not claim
+ownership of output and permit its use, including commercially. That is a question about *permission*,
+and it is routinely conflated with the question about *copyright*. They are not the same question and
+only the second one decides what licence can be applied.
+
+**The decision:**
+
+| | |
+|---|---|
+| files | `art/low-orbit.png`, `ion-storm`, `crater-run`, `slipstream`, `long-climb`, `ring-belt` |
+| tool | Google Gemini ("Nano Banana") |
+| prompted by | José Rocha |
+| when | September 2026 |
+| dedication | **CC0 1.0 Universal** |
+| copyright claimed | **none** |
+
+CC0 is the instrument that works **whether or not a copyright exists**, which is exactly the state of
+uncertainty here: it is a dedication of any rights that may exist, with a permissive fallback licence
+built in for the jurisdictions where a dedication is not possible. It asserts nothing that might turn
+out to be false. Wikimedia Commons treats purely machine-generated images the same way.
+
+⚠️ **AND CC0 IS NOT WEAKER THAN CC BY-SA HERE, BECAUSE THE STRONGER LICENCE WAS NEVER AVAILABLE.** The
+choice was not "share-alike or public domain". It was "claim a right that may not exist, or say plainly
+what happened". The second is the only one of the two this file can hold.
+
+**What would change the answer:** substantial human authorship in the *arrangement* — composing,
+cutting and rearranging, editing the output, or iterating prompts toward a layout the person designed
+— can attract a copyright in that contribution, distinct from the raw output. If that is what happened,
+the honest record is CC BY-SA over the arrangement, saying what it covers and what it does not. The Dev
+was asked and accepted CC0; if the working method turns out to have been the other one, this section is
+where it gets corrected.
+
+**The provenance line travels with the files**, in `art/README.md`, because a dedication with no record
+of what was dedicated is not much of a record.
+
 ⚠️ AND THAT CHANGES WHICH PROBLEM PILLAR 10 IS SOLVING HERE. The pillar exists to stop AGPL being
 extended over **somebody else's economic rights** — in the engine there is an artist who holds them in
 full, and giving them away would dispose of a right that is not the project's to dispose of. With the
