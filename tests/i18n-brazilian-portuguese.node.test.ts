@@ -7,8 +7,8 @@
 // The three gates that already exist compare the dictionaries WITH EACH OTHER: same keys
 // (`i18n-keys-exist`), same `{parameters}`, same 63-pixel column (`i18n`). None of them can see this,
 // because the three locales can be perfectly in step and all three be wrong. What was here when this
-// test was written: `Bónus` on one line and `Bônus` twelve lines below it, `ficheiro` three times,
-// `poço gravítico`, `sobresselente`, and four `joga outra vez` in the Portuguese imperative rather
+// test was written: `Bónus` on one line and `Bônus` twenty lines below it, `ficheiro` three times,
+// `poço gravítico`, `sobresselente`, and six `joga outra vez` in the Portuguese imperative rather
 // than the Brazilian one. Nothing failed. It reached the screen.
 //
 // ⚠️ A MARKER LIST IS A FLOOR, NOT A PROOF OF BRAZILIAN-NESS. It catches the words that are spelled
@@ -34,7 +34,7 @@ import pt from '../app/js/i18n/pt.js';
  * as substrings, which is what makes `ficheiro` catch `ficheiros` and `Bónus` catch `bónus`.
  *
  * `Bónus` is on the list with its acute accent: the Brazilian `Bônus` has a circumflex, and the two
- * spellings sat eleven lines apart in the same file for as long as it existed.
+ * spellings sat twenty lines apart in the same file for as long as it existed.
  */
 const EUROPEAN_MARKERS: readonly string[] = [
   'ficheiro', 'ecrã', 'Bónus', 'gravítico', 'sobresselente',
