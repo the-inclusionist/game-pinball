@@ -151,18 +151,34 @@ export const ION_STORM: AuthoredTable = {
     // Vertical faces on the flanks have neither problem: nothing rests on them, and a ball can always
     // pass down the middle. The pairs also sit where this table paid nothing before — outside the
     // storm, on the routes a ball takes when it squeezes past the cluster along a wall.
-    { name: 'shelf.west1', kind: 'target', role: 'key', bounds: { x: 8, y: 140, width: 12, height: 14 },
+    /**
+     * ⚠️ MOVED INBOARD ONTO THE PICTURE, 2026-09-06, AND EACH BANK MOVED AS ONE. Eight pixels off
+     * the wall and four down for the west pair, the mirror for the east. Structure under them, from
+     * `art/ion-storm.jpg` reduced to this table's size:
+     *
+     *     west1  1.02x median -> 1.98x      east1  0.94x -> 1.61x
+     *     west2  1.02x        -> 1.79x      east2  1.26x -> 1.56x
+     *
+     * ⚠️ RIGIDLY, BECAUSE A BANK IS A UNIT. The search that proposed this wanted west1 down four
+     * and west2 UP four — which would have slid the two halves of one bank into each other, an
+     * overlap no gate here refuses because two targets in the same place are both drawn and both
+     * hit. The proposal was legal by every constraint it was given and wrong anyway; what caught
+     * it was reading the numbers it produced rather than applying them.
+     *
+     * Gated before it was kept, against reachability, playability, the flipper's force and density.
+     */
+    { name: 'shelf.west1', kind: 'target', role: 'key', bounds: { x: 16, y: 144, width: 12, height: 14 },
       scores: [1800], control: 'TargetBankControl', bank: 'bank.debris', lamps: ['lamp.debris1'],
-      collision: [{ kind: 'line', from: { x: 20, y: 140 }, to: { x: 20, y: 154 } }] },
-    { name: 'shelf.west2', kind: 'target', role: 'key', bounds: { x: 8, y: 158, width: 12, height: 14 },
+      collision: [{ kind: 'line', from: { x: 28, y: 144 }, to: { x: 28, y: 158 } }] },
+    { name: 'shelf.west2', kind: 'target', role: 'key', bounds: { x: 16, y: 162, width: 12, height: 14 },
       scores: [1800], control: 'TargetBankControl', bank: 'bank.debris', lamps: ['lamp.debris2'],
-      collision: [{ kind: 'line', from: { x: 20, y: 158 }, to: { x: 20, y: 172 } }] },
-    { name: 'shelf.east1', kind: 'target', role: 'key', bounds: { x: 147, y: 140, width: 12, height: 14 },
+      collision: [{ kind: 'line', from: { x: 28, y: 162 }, to: { x: 28, y: 176 } }] },
+    { name: 'shelf.east1', kind: 'target', role: 'key', bounds: { x: 139, y: 144, width: 12, height: 14 },
       scores: [1800], control: 'TargetBankControl', bank: 'bank.debris', lamps: ['lamp.debris3'],
-      collision: [{ kind: 'line', from: { x: 147, y: 154 }, to: { x: 147, y: 140 } }] },
-    { name: 'shelf.east2', kind: 'target', role: 'key', bounds: { x: 147, y: 158, width: 12, height: 14 },
+      collision: [{ kind: 'line', from: { x: 139, y: 158 }, to: { x: 139, y: 144 } }] },
+    { name: 'shelf.east2', kind: 'target', role: 'key', bounds: { x: 139, y: 162, width: 12, height: 14 },
       scores: [1800], control: 'TargetBankControl', bank: 'bank.debris', lamps: ['lamp.debris4'],
-      collision: [{ kind: 'line', from: { x: 147, y: 172 }, to: { x: 147, y: 158 } }] },
+      collision: [{ kind: 'line', from: { x: 139, y: 176 }, to: { x: 139, y: 162 } }] },
 
     /* ===================== THE ION TRAILS ===================== */
     //

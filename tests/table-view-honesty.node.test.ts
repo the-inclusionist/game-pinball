@@ -230,6 +230,11 @@ describe('⚠️ the drawing tells the truth about what the ball can touch', () 
  * sitting on plain sky at 0.15 times the table's median detail; the art draws a satellite, a
  * constellation node and the ISS at the same x positions and about fifty pixels higher. The shapes
  * did not change size — one of them now overlaps the ramp's stroke, and that is the 43.
+ *
+ * ⚠️ AND `ion-storm` LOST 2 WHEN ITS TWO DEBRIS BANKS WERE MOVED INBOARD ONTO THE PICTURE. Eight
+ * pixels off the walls and four down, each bank moved RIGIDLY so its members keep their spacing —
+ * a bank is a unit, and the search that proposed the move had wanted to slide its two halves into
+ * each other. The two is a face that used to be drawn over a wall's stroke and now is not.
  */
 const PAINTED = {
   // ⚠️ 6991 UNTIL THE TABLE WAS AUTHORED UP TO THE 1995 DENSITY. `tests/table-density` measures the
@@ -250,7 +255,7 @@ const PAINTED = {
   // ⚠️ +1768 when this table was authored up to the 1995 density: two more bumpers in the storm,
   // four drop targets in two flank shelves, three more arc rollovers and two ion trails down the
   // sides, and the eye rollover in the middle. Bumpers are the expensive ones to paint — a filled circle against a stroked line.
-  'ion-storm': 5727,
+  'ion-storm': 5725,
   // ⚠️ +1070: the two INLANES the cabinet now gives all five of its tables, and this table's own
   // authoring up to the 1995 density — two flank drop banks and a three-rollover reentry row.
   'crater-run': 4783,
