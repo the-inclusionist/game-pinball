@@ -167,9 +167,27 @@ export const LONG_CLIMB: AuthoredTable = {
     // Rollovers, so they can sit anywhere: a lane declares no collision and the ball passes over it.
     // The steps flank the ice at the halfway mark; the trails run beside the funnel, where a ball that
     // failed the climb comes home.
-    { name: 'step.left', kind: 'lane', role: 'free', bounds: { x: 14, y: 156, width: 14, height: 16 },
+    /**
+     * ⚠️ MOVED ONTO THE PICTURE AS A MIRRORED PAIR, 2026-09-06, AND THE FIRST ATTEMPT DEGRADED ONE
+     * OF THEM. Six pixels inward each and twelve down: 1.82x the table's median structure to 1.83x
+     * on the left, 1.04x to 1.63x on the right.
+     *
+     * The search that proposed it optimises the WORST member of a group, and offered the pair an
+     * identical shift of six left and fourteen down — which took the right one from 1.04x to 1.64x
+     * and the left one DOWN from 1.82x to 1.63x. Better by the metric being optimised and worse
+     * for half the pair, which is what optimising a minimum does when the members are not alike.
+     *
+     * A mirrored pair moves mirrored, and the move has to improve BOTH. Searched that way there is
+     * one, and this is it.
+     *
+     * ⚠️ AND THE `crest` WAS REFUSED. Its own proposal — two left, twelve down, 0.93x to 1.55x —
+     * fails `tests/table-playable` on its own: the ball stops reaching the paddles, so a flapping
+     * run and a quiet one come out identical. Same answer as `low-orbit`'s drop bank, and the same
+     * reason: on this table that geometry is the route.
+     */
+    { name: 'step.left', kind: 'lane', role: 'free', bounds: { x: 20, y: 168, width: 14, height: 16 },
       scores: [1600], control: 'LaneControl', lamps: ['lamp.stepLeft'] },
-    { name: 'step.right', kind: 'lane', role: 'free', bounds: { x: 141, y: 156, width: 14, height: 16 },
+    { name: 'step.right', kind: 'lane', role: 'free', bounds: { x: 135, y: 168, width: 14, height: 16 },
       scores: [1600], control: 'LaneControl', lamps: ['lamp.stepRight'] },
     { name: 'trail.left', kind: 'lane', role: 'free', bounds: { x: 8, y: 210, width: 12, height: 22 },
       scores: [1300], control: 'LaneControl', lamps: ['lamp.trailLeft'] },

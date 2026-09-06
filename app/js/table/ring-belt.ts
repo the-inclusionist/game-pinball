@@ -270,9 +270,19 @@ export const RING_BELT: AuthoredTable = {
 
     /* ===================== THE CENTRE ===================== */
     // One target in the middle, so the ball that goes straight up still meets something.
-    { name: 'core', kind: 'target', role: 'key', bounds: { x: 165, y: 52, width: 14, height: 14 },
+    /**
+     * ⚠️ THE ONLY THING ON THIS TABLE THAT MOVED, 2026-09-06. Sixteen pixels left and eighteen
+     * down: 0.79x the table's median structure to 1.50x.
+     *
+     * ⚠️ AND THAT IS THE FINDING RATHER THAN THE MOVE. Every one of `ring-belt`'s forty-one
+     * scoring parts was searched against the Dev's picture for somewhere better to be, and forty
+     * had nowhere — most already sitting between 1.5x and 2.7x. This is the widest table and the
+     * one whose art is a pure background with no cabinet drawn into it, so the geometry and the
+     * picture were never competing for the same pixels.
+     */
+    { name: 'core', kind: 'target', role: 'key', bounds: { x: 149, y: 70, width: 14, height: 14 },
       scores: [3000], control: 'TargetControl', lamps: ['lamp.core'],
-      collision: [{ kind: 'line', from: { x: 165, y: 66 }, to: { x: 179, y: 66 } }] },
+      collision: [{ kind: 'line', from: { x: 149, y: 84 }, to: { x: 163, y: 84 } }] },
   ],
 
   lamps: [
