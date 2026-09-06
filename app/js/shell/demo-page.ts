@@ -13,6 +13,7 @@
 import { createDemo, type Demo } from './demo.js';
 import { keyOf } from '../i18n/keys.js';
 import { blitView } from '../gfx/table-view.js';
+import type { Rect } from './hud.js';
 import type { Framebuffer } from '../gfx/framebuffer.js';
 import type { Translate } from '../i18n/index.js';
 
@@ -20,6 +21,11 @@ export interface DemoPageOptions {
   readonly doc: Document;
   readonly host: HTMLElement;
   readonly screen: Framebuffer;
+  /**
+   * Where the table goes on that screen. `layoutHud`'s own rect — the four HUD blocks are laid out
+   * around it, and a table drawn anywhere else is a table the HUD is not beside.
+   */
+  readonly playfield: Rect;
   readonly t: Translate;
   /** Called once the archive has been read, so the caller can start driving frames. */
   readonly onReady: (demo: Demo) => void;
@@ -73,6 +79,23 @@ export function windowFor(
     x: clamp(Math.floor(ball.x - screen.width / 2), Math.max(0, picture.width - screen.width)),
     y: clamp(Math.floor(ball.y - screen.height / 2), Math.max(0, picture.height - screen.height)),
   };
+}
+
+/**
+ * ⚠️ THE TABLE GOES WHERE THE HUD THINKS IT IS. This used to blit into the whole screen — `{ 0, 0, 320,
+ * 180 }` — while `layoutHud` puts the playfield at x = 69 for a 183-wide table and lays the four blocks
+ * out either side of it. So the table sat 69 columns left of where the HUD expected: the player name and
+ * the ball count were printed over the table's left edge, and the score floated in the empty 137 columns
+ * on the right.
+ *
+ * Nothing caught it because nothing composed the screen and looked. It was found by writing
+ * `shots/demo-original-screen.png` and opening it — the table flush left, a third of the screen blank.
+ */
+export function drawDemoInto(
+  screen: Framebuffer, picture: Framebuffer, ball: { x: number; y: number }, into: Rect,
+): void {
+  const window = windowFor(ball, picture, into);
+  blitView(screen, picture, into, window.x, window.y);
 }
 
 export function mountDemoPage(o: DemoPageOptions): DemoPage {
@@ -191,14 +214,7 @@ export function mountDemoPage(o: DemoPageOptions): DemoPage {
 
   return {
     blit(demo) {
-      const at = demo.ballOnScreen();
-      const picture = demo.render();
-      const window = windowFor(at, picture, o.screen);
-      blitView(
-        o.screen, picture,
-        { x: 0, y: 0, width: o.screen.width, height: o.screen.height },
-        window.x, window.y,
-      );
+      drawDemoInto(o.screen, demo.render(), demo.ballOnScreen(), o.playfield);
     },
     destroy() {
       panel.remove();

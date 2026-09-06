@@ -525,6 +525,7 @@ const demoPage = demoRequested
     doc: document,
     host: region,
     screen,
+    playfield: shell.hud.playfield,
     t: shell.t,
     onReady: (ready) => { demo = ready; },
     // ⚠️ THE SAME BOARD THE AUTHORED TABLE USES, so the demonstration is mixed, channel-limited and

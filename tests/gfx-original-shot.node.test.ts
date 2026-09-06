@@ -19,6 +19,9 @@ import { describe, test, expect } from 'vitest';
 import { readFileSync, existsSync, writeFileSync, mkdirSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
 import { createDemo } from '../app/js/shell/demo.js';
+import { createFramebuffer } from '../app/js/gfx/framebuffer.js';
+import { drawDemoInto } from '../app/js/shell/demo-page.js';
+import { layoutHud, DEFAULT_HUD } from '../app/js/shell/hud.js';
 
 const DAT = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/PINBALL.DAT';
 const MAGNIFY = 3;
@@ -118,5 +121,55 @@ describe('the frame the demonstration draws', () => {
     // ⚠️ AND ALMOST ALL OF IT OPAQUE. The playfield is forced opaque on decode; what is not are the
     // corners of the sprites drawn over it, which are transparent on purpose.
     expect(opaque / frame.pixels.length, 'the table is not full of holes').toBeGreaterThan(0.95);
+  });
+
+  test('⚠️ and the SCREEN the player sees, which is a window onto it', () => {
+    // 320x180, the whole of decision 4, with the camera's window onto a 183x235 table. Written beside
+    // the table shot because the two answer different questions: whether the table is drawn, and
+    // whether the right part of it reaches the screen.
+    if (!existsSync(DAT)) return expect(existsSync(DAT)).toBe(false);
+    const file = readFileSync(DAT);
+    const bytes = file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength);
+    const demo = createDemo(bytes, { textFor: (id) => id, random: () => 0.5 });
+    demo.plunge(true);
+    demo.step(150);
+    demo.plunge(false);
+    demo.step(400);
+
+    const picture = demo.render();
+    const screen = createFramebuffer(320, 180);
+    // ⚠️ THE HUD'S OWN RECT, not the whole screen. `layoutHud` puts a 183-wide playfield at x = 69 and
+    // lays the four blocks out either side; the demonstration used to blit at x = 0, so the table sat
+    // 69 columns left of where the HUD expected it — the player name over the table's edge, the score
+    // in the empty 137 columns. Found by looking at this very shot.
+    const layout = layoutHud({ ...DEFAULT_HUD, playfieldWidth: picture.width });
+    drawDemoInto(screen, picture, demo.ballOnScreen(), layout.playfield);
+
+    writeFileSync(
+      'shots/demo-original-screen.png',
+      png(screen.width * MAGNIFY, screen.height * MAGNIFY,
+        magnify(new Uint8Array(screen.bytes.buffer, screen.bytes.byteOffset, screen.bytes.length),
+          screen.width, screen.height, MAGNIFY)),
+    );
+
+    // ⚠️ THE TABLE IS NARROWER THAN THE SCREEN, so 137 columns of it are never table. That is not a
+    // defect: it is where ADR-0002 puts the four HUD blocks, as DOM text rather than pixels.
+    let drawn = 0;
+    for (let y = 0; y < screen.height; y++) {
+      for (let x = 0; x < layout.playfield.width; x++) {
+        if (screen.pixels[y * screen.width + layout.playfield.x + x] !== 0) drawn++;
+      }
+    }
+    expect(drawn / (screen.height * layout.playfield.width), 'the window is full of table')
+      .toBeGreaterThan(0.95);
+
+    // ⚠️ AND THE COLUMNS THE HUD OWNS ARE LEFT ALONE. 137 of the 320 are not table, which is where
+    // ADR-0002 puts the four blocks — as DOM text over a canvas that leaves them clear.
+    let leftEdge = 0;
+    for (let y = 0; y < screen.height; y++) {
+      for (let x = 0; x < layout.playfield.x; x++) if (screen.pixels[y * screen.width + x] !== 0) leftEdge++;
+    }
+    expect(layout.playfield.x, 'the table is inset, not flush left').toBeGreaterThan(0);
+    expect(leftEdge, 'and nothing is drawn in the HUD column beside it').toBe(0);
   });
 });
