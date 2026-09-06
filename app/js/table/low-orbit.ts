@@ -135,6 +135,17 @@ export const LOW_ORBIT: AuthoredTable = {
     'lamp.droneHigh', 'lamp.droneLow',
   ],
 
+  /**
+   * ⚠️ THE STATION AND THE EARTH, which is the Dev's theme for this table lit rather than coloured:
+   * "satélites, estação espacial" over "a atmosfera azul da terra até a metade". The `sky` bands
+   * already put the horizon at the halfway line; this is the light that comes off it, and one lamp on
+   * the station that only burns once a drone has been struck.
+   */
+  lights: [
+    { at: { x: 91, y: 118 }, radius: 70, role: 'gate', intensity: 0.12 },
+    { at: { x: 70, y: 88 }, radius: 40, role: 'goal', intensity: 0.3, lamp: 'lamp.droneHigh' },
+  ],
+
   components: [
     /**
      * ⚠️ THE CABINET, AT LAST, AND THIS TABLE HAD BEEN WRITING ITS OWN FOR MONTHS.

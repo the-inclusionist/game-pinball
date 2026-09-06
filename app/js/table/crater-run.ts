@@ -104,6 +104,20 @@ export const CRATER_RUN: AuthoredTable = {
     { award: 30000, stages: [{ id: 'pinball.mission.craterRun.rim', targets: ['rim1', 'rim2'] }] },
   ],
 
+  /**
+   * ⚠️ THE RAILS UNDER THE MINE, LIT BY THE PROBES THAT RUN ON THEM. The Dev's theme: "trilhos sob uma
+   * mina branca e sombras pretas", and his art has them glowing green.
+   *
+   * Both are wired to a lamp, which is what makes them a lighting FEATURE and not scenery: the rails
+   * are dark until a probe has been struck, so the table lights its own workings by being played.
+   */
+  lights: [
+    { at: { x: 60, y: 158 }, radius: 46, role: 'key', intensity: 0.27, lamp: 'lamp.probeLow' },
+    { at: { x: 120, y: 112 }, radius: 46, role: 'key', intensity: 0.29, lamp: 'lamp.probeHigh' },
+    // Earth over the rim, cold and always on.
+    { at: { x: 150, y: 24 }, radius: 44, role: 'gate', intensity: 0.4 },
+  ],
+
   components: [
     // ⚠️ THE DIVIDER IS THIS TABLE'S OWN, because it has a hole in it. Everything else in the shell
     // is the cabinet's; see the passage below for why this one is not.

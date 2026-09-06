@@ -71,6 +71,18 @@ export const RING_BELT: AuthoredTable = {
     { award: 30000, stages: [{ id: 'pinball.mission.ringBelt.edges', targets: ['edge.west', 'edge.east'] }] },
   ],
 
+  /**
+   * ⚠️ SATURN OFF THE EDGE OF THE TABLE. `ring-belt` is 360 wide against a 320 window and the camera
+   * pans across it, so a light on one side gives the pan something to move against — the same reason
+   * the `rings` bands were made alternating rather than a gradient.
+   *
+   * The second is wired to the belt probe's lamp: the rocks light as the probe works its way along.
+   */
+  lights: [
+    { at: { x: 40, y: 60 }, radius: 90, role: 'goal', intensity: 0.29 },
+    { at: { x: 265, y: 128 }, radius: 55, role: 'water', intensity: 0.36, lamp: 'lamp.probeBelt' },
+  ],
+
   components: [
     ...cabinet({ width: WIDTH, height: HEIGHT }),
 

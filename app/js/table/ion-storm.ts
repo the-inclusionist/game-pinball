@@ -77,6 +77,18 @@ export const ION_STORM: AuthoredTable = {
     { award: 25000, stages: [{ id: 'pinball.mission.ionStorm.ramp', targets: ['ramp'] }] },
   ],
 
+  /**
+   * ⚠️ THE STORM LIT BY ITSELF. Three lights on the middle cluster, each wired to one bumper's lamp,
+   * so the cluster glows brighter the more of it the player has hit — and goes dark again when the
+   * lamps do. It is the clearest case in the catalogue for wiring a light to a lamp: the thing the
+   * table is named after is the thing that lights up.
+   */
+  lights: [
+    { at: { x: 69, y: 105 }, radius: 44, role: 'climb', intensity: 0.42, lamp: 'lamp.storm1' },
+    { at: { x: 114, y: 105 }, radius: 44, role: 'climb', intensity: 0.42, lamp: 'lamp.storm2' },
+    { at: { x: 91, y: 140 }, radius: 40, role: 'climb', intensity: 0.16, lamp: 'lamp.storm3' },
+  ],
+
   components: [
     ...cabinet({ width: WIDTH, height: HEIGHT }),
 

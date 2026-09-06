@@ -66,6 +66,19 @@ export const LONG_CLIMB: AuthoredTable = {
     { award: 28000, stages: [{ id: 'pinball.mission.longClimb.summit', targets: ['landing2', 'landing3'] }] },
   ],
 
+  /**
+   * ⚠️ THE FLOODLIGHTS AND THE ENGINE, which is the Dev's theme made of light rather than of colour
+   * stops: "guindaste vermelho, céu escuro no alto, holofotes" and "motor soltando fogo por toda a
+   * base." The `pad` backdrop already runs dark at the head and hot at the foot; these are the two
+   * SOURCES that explains, standing where the art puts them.
+   */
+  lights: [
+    { at: { x: 30, y: 26 }, radius: 58, role: 'structure', intensity: 0.5 },
+    { at: { x: 140, y: 26 }, radius: 58, role: 'structure', intensity: 0.5 },
+    // The engine, across the whole base, and the brightest thing on any table here.
+    { at: { x: 91, y: 296 }, radius: 78, role: 'hazard', intensity: 0.38 },
+  ],
+
   components: [
     ...cabinet({ width: WIDTH, height: HEIGHT }),
 

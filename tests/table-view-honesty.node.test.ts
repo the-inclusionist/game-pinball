@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, test, expect } from 'vitest';
-import { drawTable, paletteOf, packRgb, EDGE_THICKNESS } from '../app/js/gfx/table-view.js';
-import { backdropAt } from '../app/js/gfx/table-palette.js';
+import {
+  drawTable, drawBackground, paletteOf, packRgb, EDGE_THICKNESS,
+} from '../app/js/gfx/table-view.js';
+import { createFramebuffer, type Framebuffer } from '../app/js/gfx/framebuffer.js';
 import { CATALOG as TABLES } from '../app/js/table/catalog.js';
 
 /**
@@ -25,11 +27,19 @@ import { CATALOG as TABLES } from '../app/js/table/catalog.js';
  *
  * The question it asks is unchanged: is this pixel a colour other than the ground HERE.
  */
-const groundAt = (table: AuthoredTable, y: number) => {
-  const palette = paletteOf(table, false);
-  if (!palette.bands) return packRgb(palette.ground);
-  const at = table.size.height <= 1 ? 0 : y / (table.size.height - 1);
-  return packRgb(backdropAt(palette.bands, at));
+/**
+ * ⚠️ AND IT ASKS `gfx/table-view` RATHER THAN WORKING IT OUT, which it used to do. This computed the
+ * ground from the bands itself — one rule with two copies — and the copies parted company the moment
+ * a LIGHT could brighten it. Six tests went red saying the table claimed to be solid where it was
+ * merely lit, which is the gate correctly refusing a question that had stopped making sense.
+ *
+ * `drawBackground` is the function `drawTable` itself calls, so the reference cannot drift from the
+ * thing being measured again.
+ */
+const backgroundOf = (table: AuthoredTable): Framebuffer => {
+  const fb = createFramebuffer(table.size.width, table.size.height);
+  drawBackground(fb, table, paletteOf(table, false), { table });
+  return fb;
 };
 import { CATALOG } from '../app/js/table/catalog.js';
 import type { AuthoredTable } from '../app/js/table/authored.js';
@@ -109,11 +119,12 @@ describe('⚠️ the drawing tells the truth about what the ball can touch', () 
     '%s: no painted pixel sits where the ball would pass straight through',
     (_name, table) => {
       const fb = drawTable({ table });
+      const background = backgroundOf(table);
       const lies: string[] = [];
 
       for (let y = 0; y < fb.height; y++) {
         for (let x = 0; x < fb.width; x++) {
-          if (fb.pixels[y * fb.width + x] === groundAt(table, y)) continue;
+          if (fb.pixels[y * fb.width + x] === background.pixels[y * fb.width + x]) continue;
           if (!isSolidAt(table, x + 0.5, y + 0.5)) lies.push(`${x},${y}`);
         }
       }
@@ -142,7 +153,7 @@ describe('⚠️ the drawing tells the truth about what the ball can touch', () 
     const lowOrbit = CATALOG.find((t) => t.name === 'low-orbit')!;
     const fb = drawTable({ table: lowOrbit });
 
-    expect(fb.pixels[212 * fb.width + 53]).toBe(groundAt(lowOrbit, 212));
+    expect(fb.pixels[212 * fb.width + 53]).toBe(backgroundOf(lowOrbit).pixels[212 * fb.width + 53]);
   });
 
   test('wide-arc’s ramp corner is empty space, and is drawn as empty space', () => {
@@ -151,7 +162,7 @@ describe('⚠️ the drawing tells the truth about what the ball can touch', () 
     const wideArc = CATALOG.find((t) => t.name === 'wide-arc')!;
     const fb = drawTable({ table: wideArc });
 
-    expect(fb.pixels[170 * fb.width + 328]).toBe(groundAt(wideArc, 170));
+    expect(fb.pixels[170 * fb.width + 328]).toBe(backgroundOf(wideArc).pixels[170 * fb.width + 328]);
   });
 });
 
@@ -275,10 +286,12 @@ describe('⚠️ and the drawing never grows', () => {
       // 43,005 painted pixels on `low-orbit` — every pixel of the table — the moment `sky` grew its
       // bands. The count means "how much is not ground", and what the ground IS depends on the row.
       const fb = drawTable({ table });
+      const background = backgroundOf(table);
       let painted = 0;
       for (let y = 0; y < fb.height; y++) {
-        const ground = groundAt(table, y);
-        for (let x = 0; x < fb.width; x++) if (fb.pixels[y * fb.width + x] !== ground) painted++;
+        for (let x = 0; x < fb.width; x++) {
+          if (fb.pixels[y * fb.width + x] !== background.pixels[y * fb.width + x]) painted++;
+        }
       }
       counted[table.name] = painted;
     }

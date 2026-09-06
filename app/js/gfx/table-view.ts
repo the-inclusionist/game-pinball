@@ -48,6 +48,7 @@ import type { Role } from '@the-inclusionist/engine/core/contract.js';
 import { createFramebuffer, pack, type Framebuffer } from './framebuffer.js';
 import type { AuthoredTable } from '../table/authored.js';
 import { flareGrip } from '../table/storm.js';
+import { glowInto, type Light } from './lighting.js';
 import { LANE_SEGMENTS } from '../table/lane-progress.js';
 import {
   paletteFor, sceneOf, shade, backdropAt, flareColor, SHADE_HEADROOM, type Rgb, type TablePalette,
@@ -318,12 +319,19 @@ export interface TableViewOptions {
  * The whole table, at its own size. Drawn once per change rather than per frame — the camera moves
  * over this, it does not redraw it.
  */
-export function drawTable(o: TableViewOptions): Framebuffer {
-  const { table } = o;
-  const fb = createFramebuffer(table.size.width, table.size.height);
-  const targets = new Set(o.missionTargets ?? []);
+/**
+ * The ground alone: the world's bands, the flare if one is passing, and every light that is on.
+ *
+ * ⚠️ EXPORTED BECAUSE `tests/table-view-honesty` HAS TO ASK THE SAME QUESTION `drawTable` ANSWERS.
+ * That file's whole job is "is this pixel a component, or is it the ground here", and it computed the
+ * ground from the bands itself — one rule with two copies, and the copies parted company the moment a
+ * light could brighten the ground. Six tests went red saying the table claimed to be solid where it
+ * was merely lit. Now there is one implementation and the gate calls it.
+ */
+export function drawBackground(
+  fb: Framebuffer, table: AuthoredTable, palette: TablePalette, o: TableViewOptions,
+): void {
   const lamps = new Set(o.litLamps ?? []);
-  const palette = paletteOf(table, o.cbSafe ?? false);
   /**
    * ⚠️ THE GROUND IS A GRADIENT WHEN THE WORLD SAYS SO, and one flat colour when it does not.
    *
@@ -339,6 +347,28 @@ export function drawTable(o: TableViewOptions): Framebuffer {
    * however the caller writes the frame loop. Otherwise the first tidy-up of `main` that passed the
    * argument unconditionally would put a solar flare on Saturn's rings.
    */
+  /**
+   * The table's lights with their palette colours resolved, and their reach scaled by intensity.
+   *
+   * Resolved once rather than per pixel: `paletteFor` builds an object, and doing that forty thousand
+   * times to answer the same question is the kind of cost a composition made once per change is
+   * supposed to be spending instead of a per-frame one.
+   */
+  const cast: Light[] = (table.lights ?? []).map((light) => {
+    const role = palette.roles[light.role];
+    return {
+      at: light.at,
+      radius: light.radius,
+      color: {
+        r: role.r * light.intensity, g: role.g * light.intensity, b: role.b * light.intensity,
+      },
+      ...(light.lamp === undefined ? {} : { lamp: light.lamp }),
+    };
+  });
+
+  /** One scratch colour for every lit pixel of the table — see `glowInto`. */
+  const glow = { r: 0, g: 0, b: 0 };
+
   const flare = table.storm !== undefined && o.flareAt !== undefined
     ? { at: o.flareAt, thickness: table.storm.thickness }
     : undefined;
@@ -351,12 +381,58 @@ export function drawTable(o: TableViewOptions): Framebuffer {
         const grip = flareGrip(y, flare.at, flare.thickness);
         if (grip > 0) color = flareColor(color, grip);
       }
-      fillRect(fb, { x: 0, y, width: table.size.width, height: 1 }, packRgb(color));
+      /**
+       * ⚠️ AND THE LIGHTS, WHICH ARE THE ONE THING HERE THAT IS NOT A ROW. Everything else about the
+       * ground varies with HEIGHT and is therefore one `fillRect` per row; a light is round, so this
+       * is the only per-pixel work in the composition. It is paid once per change, and only on the
+       * columns a light actually reaches — `glowAt` returns the base colour untouched otherwise.
+       */
+      const reaching = cast.filter((light) => Math.abs(y - light.at.y) < light.radius
+        && (light.lamp === undefined || lamps.has(light.lamp)));
+      if (reaching.length === 0) {
+        fillRect(fb, { x: 0, y, width: table.size.width, height: 1 }, packRgb(color));
+      } else {
+        /**
+         * ⚠️ ONLY THE COLUMNS A LIGHT ACTUALLY REACHES, and the row is filled flat either side. A
+         * light is round, so most rows of most tables meet none at all and the rest meet one over a
+         * fraction of their width. Without this the composition pays a `hypot` for every pixel of
+         * every table that has a lamp on it — and `ion-storm` recomposes forty times a second, because
+         * its flare moves.
+         */
+        let from = table.size.width;
+        let to = 0;
+        for (const light of reaching) {
+          const half = Math.sqrt(light.radius * light.radius - (y - light.at.y) ** 2);
+          from = Math.min(from, Math.floor(light.at.x - half));
+          to = Math.max(to, Math.ceil(light.at.x + half));
+        }
+        from = Math.max(0, from);
+        to = Math.min(table.size.width, to);
+
+        const row = y * fb.width;
+        const flat = packRgb(color);
+        for (let x = 0; x < from; x++) fb.pixels[row + x] = flat;
+        for (let x = from; x < to; x++) {
+          fb.pixels[row + x] = glowInto(color, reaching, x, y, lamps, glow)
+            ? packRgb(glow)
+            : flat;
+        }
+        for (let x = to; x < table.size.width; x++) fb.pixels[row + x] = flat;
+      }
     }
   } else {
     fillRect(fb, { x: 0, y: 0, width: table.size.width, height: table.size.height },
       packRgb(palette.ground));
   }
+}
+
+export function drawTable(o: TableViewOptions): Framebuffer {
+  const { table } = o;
+  const fb = createFramebuffer(table.size.width, table.size.height);
+  const targets = new Set(o.missionTargets ?? []);
+  const lamps = new Set(o.litLamps ?? []);
+  const palette = paletteOf(table, o.cbSafe ?? false);
+  drawBackground(fb, table, palette, o);
 
   const hidden = new Set(o.hidden ?? []);
 

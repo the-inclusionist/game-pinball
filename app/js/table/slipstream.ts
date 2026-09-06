@@ -50,6 +50,16 @@ export const SLIPSTREAM: AuthoredTable = {
     { award: 26000, stages: [{ id: 'pinball.mission.slipstream.return', targets: ['return.left', 'return.right'] }] },
   ],
 
+  /**
+   * ⚠️ THE VANES, WHICH ARE THE ONE SHOT THIS TABLE IS ABOUT. Passing through them is what opens the
+   * upper chamber, and a light on each says so without a word of tutorial: they come on when the vane
+   * has been crossed. Cyan, because `water` is the palette's cold colour and this is a stream.
+   */
+  lights: [
+    { at: { x: 57, y: 119 }, radius: 42, role: 'water', intensity: 0.19, lamp: 'lamp.vaneLeft' },
+    { at: { x: 126, y: 119 }, radius: 42, role: 'water', intensity: 0.19, lamp: 'lamp.vaneRight' },
+  ],
+
   components: [
     ...cabinet({ width: WIDTH, height: HEIGHT }),
 

@@ -220,6 +220,37 @@ export interface AuthoredTable {
    * none. The picture reads the table; the table does not read the picture.
    */
   readonly storm?: AuthoredStorm;
+  /**
+   * Lights standing on the playfield, brightening the ground around them.
+   *
+   * ⚠️ THE DEV'S FIRST ITEM: "Coloque luzes e recursos de iluminação pelos cenários." See
+   * `gfx/lighting` for the ceiling they are held under — a light is the one feature that can walk
+   * through ADR-0004's rule that the ground is the darkest thing on the table.
+   */
+  readonly lights?: readonly AuthoredLight[];
+}
+
+/**
+ * ⚠️ A LIGHT DECLARES A ROLE AND NOT A COLOUR, which is the whole reason it is described here rather
+ * than as three numbers. Every colour in this game comes from the palette so that the CB-Safe variant
+ * moves with it; a light carrying its own triple would be the one thing on the table that did not
+ * change when a player asked for colours they can tell apart. `gfx/table-view` resolves it.
+ */
+export interface AuthoredLight {
+  readonly at: { readonly x: number; readonly y: number };
+  /** How far it reaches, in table pixels. */
+  readonly radius: number;
+  /** Which palette colour it casts. */
+  readonly role: Role;
+  /** How much of that colour lands at the centre, 0 to 1, before the ceiling. */
+  readonly intensity: number;
+  /**
+   * The lamp that switches it on. Absent means always on.
+   *
+   * This is what makes a light a lighting FEATURE rather than wallpaper: the table lights its own
+   * scenery by being played, and the picture already recomposes when a lamp changes.
+   */
+  readonly lamp?: string;
 }
 
 export interface ValidationOptions {
@@ -476,6 +507,22 @@ export function validateTable(table: AuthoredTable, o: ValidationOptions): strin
     }
     if (!component.collision?.length) {
       problems.push(`${component.name}: a secret door needs a collision — it is a wall until it opens`);
+    }
+  }
+
+  /**
+   * ⚠️ A LIGHT NOBODY CAN SEE, IN THREE WAYS, and all three validate and draw. A reach of nought lights
+   * one pixel; an intensity of nought casts nothing at all; and a lamp nobody declared can never be
+   * lit, so the light is dark for the whole game — the same class of defect as a component naming a
+   * lamp that does not exist, which the rule below this one already catches for components.
+   */
+  for (const light of table.lights ?? []) {
+    const where = `light at ${light.at.x},${light.at.y}`;
+    if (!(light.radius > 0)) problems.push(`${where}: needs a radius`);
+    if (!(light.intensity > 0)) problems.push(`${where}: needs an intensity above nought`);
+    if (light.intensity > 1) problems.push(`${where}: intensity is a fraction, not a multiplier`);
+    if (light.lamp !== undefined && !table.lamps.includes(light.lamp)) {
+      problems.push(`${where}: names ${light.lamp}, which this table does not declare`);
     }
   }
 
