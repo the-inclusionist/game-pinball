@@ -35,6 +35,7 @@ import { integerScale } from './shell/present.js';
 import { createPadReader, CABINET_OF_ENGINE_ACTION } from './shell/pad.js';
 import { createPlunger } from './shell/plunger.js';
 import { mountTitle } from './shell/title-dom.js';
+import { mountPauseMenu } from './shell/pause-menu.js';
 import { mountHighScoreDialog } from './shell/high-score-dialog.js';
 import { createLiveControls } from './table/live-controls.js';
 import { createRolloverWatch } from './table/rollovers.js';
@@ -649,6 +650,14 @@ function step(frames: number): void {
     shell.advance(frames);
   }
 
+  /**
+   * ⚠️ THE MENU FOLLOWS THE PHASE RATHER THAN THE KEY, so every way of pausing opens it — the keyboard,
+   * the pad's start button, and anything that pauses in future. A menu opened by a key handler is a
+   * menu the gamepad does not have.
+   */
+  if (phase === 'paused') pauseMenu.open();
+  else pauseMenu.close();
+
   hud.update({
     score: live.score.curScore,
     ballCount: live.flags.ballCount,
@@ -1169,6 +1178,44 @@ const title = mountTitle({
  * the player's own archive through a file picker — and putting a title in front of that would be a
  * screen between somebody and the thing they came to the URL for.
  */
+
+/**
+ * ⚠️ THE WAY OUT OF A GAME, WHICH THERE HAS NEVER BEEN ONE OF.
+ *
+ * The Dev: "menu de pausa deve permitir dar quit, voltar à tela inicial e escolher outras mesas."
+ * Pause stopped the world and wrote "Paused" in the footer, and the only exits from a table were
+ * draining three balls or reloading the page.
+ *
+ * Mounted AFTER the title screen because three of its four entries hand the player back to it, and
+ * because the last element appended to `#game-region` is the one on top — a pause menu under the
+ * title screen would be a menu nobody can click.
+ */
+const leaveGame = (): void => {
+  phase = 'title';
+  hud.setVisible(false);
+  ball.speed = 0;
+  shell.resetCamera();
+};
+
+const pauseMenu = mountPauseMenu({
+  doc: document,
+  host: region,
+  t: shell.t,
+  onResume: () => { phase = 'playing'; region.focus(); },
+  onTables: () => { leaveGame(); screens.show('select'); title.refresh(); },
+  onTitle: () => { leaveGame(); screens.show('title'); title.refresh(); },
+  /**
+   * ⚠️ THE ONLY EXIT THAT RECORDS THE GAME. See `shell/pause-menu`'s header for why Quit and Title are
+   * not one entry: a page cannot close its own window, so Quit means "I am done" — the score is final
+   * and the board is offered if it places. Leaving by the other two abandons the game instead.
+   */
+  onQuit: () => {
+    highScores.offer(live.score.curScore);
+    leaveGame();
+    screens.show('title');
+    title.refresh();
+  },
+});
 
 
 /**

@@ -62,6 +62,19 @@ export interface TitleScreen {
   choose(table: string): void;
   /** The way out of the selector. On the title it is a no-op rather than an error. */
   back(): void;
+  /**
+   * Shows a screen outright, which is how a game is LEFT.
+   *
+   * ⚠️ THE ONLY TRANSITION THAT DOES NOT COME FROM THE TITLE SCREEN'S OWN BUTTONS, and it exists
+   * because there was no way back from `playing`. `advance`, `choose` and `back` are the three moves
+   * the title screen offers; once a game started the exits were draining three balls or reloading the
+   * page. The Dev asked the pause menu to fix that — "voltar à tela inicial e escolher outras mesas".
+   *
+   * ⚠️ AND `playing` IS NOT A SCREEN ANYBODY MAY BE SHOWN. It is one they are PUT INTO, by choosing a
+   * table, and a second way in that skipped the choosing would be a game with no table decided. The
+   * type refuses it, and a test says the refusal is deliberate.
+   */
+  show(screen: Exclude<Screen, 'playing'>): void;
 }
 
 export function titleScreen(o: TitleOptions = {}): TitleScreen {
@@ -95,6 +108,15 @@ export function titleScreen(o: TitleOptions = {}): TitleScreen {
 
     back() {
       if (current === 'select') current = 'title';
+    },
+
+    show(screen) {
+      // ⚠️ AND THE GUARD IS REAL, NOT DECORATIVE. The type already refuses `playing`, and a type is not
+      // a runtime guarantee: this game boots from a `<script>` and anything that reached this with the
+      // wrong string would start a table nobody had chosen. A test presses on it with @ts-expect-error,
+      // which is how the missing check was found — the type refused the call and the code ran it.
+      if (screen === 'playing') return;
+      current = screen;
     },
   };
 }

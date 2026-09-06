@@ -132,3 +132,47 @@ describe('the screens are a closed set', () => {
     expect(known).toContain(screen.current);
   });
 });
+
+/**
+ * ⚠️ THERE WAS NO WAY BACK FROM `playing`, and until the pause menu existed nothing needed one.
+ *
+ * The three transitions this machine had are the ones the title screen itself offers: `advance` from
+ * the title to the selector, `choose` from the selector into a game, `back` from the selector to the
+ * title. Once a game started, the only exits were draining three balls or reloading the page — which
+ * is exactly what the Dev asked the pause menu to fix: "voltar à tela inicial e escolher outras mesas".
+ */
+describe('⚠️ leaving a game', () => {
+  const playing = () => {
+    const screen = titleScreen();
+    screen.advance();
+    screen.choose(screen.tables[0]!);
+    return screen;
+  };
+
+  test('a game can be left for the selector', () => {
+    const screen = playing();
+
+    screen.show('select');
+
+    expect(screen.current).toBe('select');
+  });
+
+  test('and for the title', () => {
+    const screen = playing();
+
+    screen.show('title');
+
+    expect(screen.current).toBe('title');
+  });
+
+  test('⚠️ and `show` cannot start a game, which is what `choose` is for', () => {
+    // A `show('playing')` would be a second way into a table that skips choosing one — so the type
+    // refuses it, and this test is what says the refusal is deliberate rather than an oversight.
+    const screen = titleScreen();
+
+    // @ts-expect-error `playing` is not a screen anybody may be SHOWN; it is one they are put into.
+    screen.show('playing');
+
+    expect(screen.current, 'and nothing happened').toBe('title');
+  });
+});

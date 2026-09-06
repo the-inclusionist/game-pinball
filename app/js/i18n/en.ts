@@ -140,6 +140,13 @@ const en: Record<string, string> = {
   'pinball.highScore.confirm': 'Save',
   'pinball.highScore.anonymous': 'Anonymous',
   'pinball.hud.paused': 'Paused',
+  'pinball.pause.heading': 'Paused',
+  'pinball.pause.resume': 'Continue',
+  'pinball.pause.tables': 'Change table',
+  'pinball.pause.title': 'Title screen',
+  // ⚠️ "End game", not "Quit". A page cannot close its own window, so the entry says what it does:
+  // this game is over, the score is final, and the board is offered if it places.
+  'pinball.pause.quit': 'End game',
   'pinball.title.back': 'Back',
   'pinball.title.highScores': 'High scores',
   'pinball.title.noScores': 'Nobody has played yet.',
