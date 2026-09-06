@@ -10,6 +10,25 @@
 // at three times size because 183x235 is small, and anyone who wonders what the port draws can open it.
 // `shots/` is gitignored — it is a verification artefact, and the frame is the archive's art.
 //
+// ========================= THE SIDE-BY-SIDE, DONE ON 2026-09-06 =========================
+// The plan's verification asks for "comparação lado a lado com o pinball.alula.me, aberto no painel
+// como referência viva". It had never been done in this repository's sessions, so it was: the
+// reference opened in the browser panel next to `shots/demo-original-screen.png`.
+//
+// WHAT MATCHED, item by item: the purple ramp down the left, the bumper cluster and its white-and-red
+// caps, the yellow target bank, the wormhole ring with its collar of orange and blue lamps, the launch
+// lane on the right, the flippers, and the palette throughout. The port draws the 1995 table.
+//
+// WHAT DIFFERED, and both were decided rather than found: there is no side panel, because ADR-0002
+// killed it, and the view is 180 tall over a 235-tall table, because ADR-0001 gave the camera travel.
+//
+// ⚠️ AND WHAT THIS COMPARISON CANNOT RESOLVE, said rather than left for somebody to assume. Two
+// screenshots at different scales, of different scenes, read by eye: it can tell a missing sprite from
+// a present one and a wrong palette from a right one. It cannot tell a pixel out of place, a sprite one
+// row high, or a z-order that differs only where two things overlap. It is not a gate and it is not
+// repeatable — nothing here fetches that site, which would also mean fetching Microsoft's data from a
+// third party — so it is written down as an observation with a date on it.
+//
 // ⚠️ AND THE ASSERTIONS HERE ARE DELIBERATELY WEAK. A picture cannot be asserted into correctness, and
 // pretending otherwise with a hash would give a test that fails for every legitimate change and says
 // nothing about any of them. What is checked is that the frame is a PICTURE — full, opaque, and made of
