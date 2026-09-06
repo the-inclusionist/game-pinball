@@ -116,11 +116,31 @@ export function createDeclaration(world: PinballWorld): GameDeclaration {
     return undefined;
   };
 
+  /**
+   * ⚠️ MIGRATED 2026-09-06: `width`/`height` BECAME `size`, AND TWO FIELDS APPEARED.
+   *
+   * The engine is linked by `file:` and is in active modularisation, which the plan names as a
+   * declared risk — "a engine é alvo móvel... um consumidor externo vai encostar em APIs que ainda
+   * mudam". This is the second time it has moved under this game: ADR-0084 turned `topology` from a
+   * value into a function, and now `Topology` carries `size`, `move` and `frame`.
+   *
+   * ⚠️ `move: 'free'` BECAUSE A BALL IS NOT ON A GRID. The engine's own comment records why the field
+   * exists: a sliding puzzle where nothing moves diagonally had its sonar UNDER-REPORTING distance by
+   * up to twice, because Chebyshev counts a diagonal as one step and the puzzle needs four. In a
+   * continuous space with a ball obeying `physics/step`, every direction costs what it measures.
+   *
+   * ⚠️ `frame: 'compass'` AND NOT `'clock'`, and that is an accessibility choice rather than a taste.
+   * The engine's own note: "o relógio pressupõe ler relógio analógico, num público que inclui
+   * alfabetização". This game is for school machines and its players are learning to read; "acima à
+   * esquerda" needs nothing an eight-year-old has not got, and "às dez horas" needs a skill some of
+   * them are still being taught.
+   */
   const topology: Topology = {
     kind: 'continuous',
-    width: world.playfield.width,
-    height: world.playfield.height,
+    size: [world.playfield.width, world.playfield.height],
     unit: world.ballRadius,
+    move: 'free',
+    frame: 'compass',
   };
 
   return {

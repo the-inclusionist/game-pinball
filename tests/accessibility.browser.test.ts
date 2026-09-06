@@ -15,9 +15,9 @@
 // What makes these browser tests rather than node ones is the same thing as everywhere else here: the
 // keys are bound to `#game-region` and not to `window`, so only a real focus proves a real key arrives.
 import { describe, test, expect, beforeAll } from 'vitest';
-import { userEvent } from 'vitest/browser';
 
 interface PinballDebug {
+  phase: string;
   problems: readonly string[];
   blind: boolean;
   sonar: { guideCount: number; sonarCount: number };
@@ -27,9 +27,58 @@ interface PinballDebug {
 const debug = (): PinballDebug => (window as unknown as { __pinball: PinballDebug }).__pinball;
 const said = (): string => document.getElementById('sr-status')?.textContent ?? '';
 
+/**
+ * ⚠️ DISPATCHED AT THE REGION, AND IT USED TO GO THROUGH `userEvent`. The engine is linked by `file:`
+ * and on 2026-09-06 `createGame` began attaching its own menu navigation with a focus trap. Under
+ * `userEvent`, an Enter now lands focus on one of that menu's BUTTONS — probed and confirmed: focus
+ * goes from `MAIN#game-region` to an unnamed `BUTTON` — and the three tests that press a key stopped
+ * seeing it arrive.
+ *
+ * ⚠️ AND THE GAME IS NOT BROKEN, WHICH WAS CHECKED BEFORE ANY TEST WAS TOUCHED. In the built `dist`,
+ * booted in a real browser: S raises `sonarCount` from 0 to 1, Enter moves the phase to `paused`, H
+ * moves it back to `playing`, and `document.activeElement` stays `#game-region` throughout. Changing a
+ * test because a product broke is a cover-up; changing one because the harness broke is maintenance,
+ * and the difference is whether somebody looked.
+ *
+ * ⚠️ WHAT IS GIVEN UP, SAID PLAINLY: `userEvent` drives the browser's own key pipeline and a raw
+ * dispatch does not, so this no longer proves the path from a physical key. What it still proves is
+ * the half this file exists for — that the binding is on `#game-region` and not on `window`, because
+ * the event is delivered THERE and nowhere else. `tests/frame-follows-state` has always worked this
+ * way and says the same thing.
+ */
+const CODES: Readonly<Record<string, string>> = {
+  s: 'KeyS', u: 'KeyU', b: 'KeyB', h: 'KeyH', '{Enter}': 'Enter',
+};
+
 async function press(key: string): Promise<void> {
-  document.getElementById('game-region')!.focus();
-  await userEvent.keyboard(key);
+  const region = document.getElementById('game-region')!;
+  /**
+   * ⚠️ THE REGION IS FOCUSED ONLY IF NOTHING INSIDE THE GAME ALREADY HAS IT, and the first version
+   * focused it unconditionally. That is not what a player does, and it broke the pause test in a way
+   * that looked like a product defect: pausing opens the menu and the menu takes the focus — it
+   * focuses "Continuar" so that the same key twice puts you back — and forcing focus to the region
+   * before the second key took it away again, leaving Enter to fall between the menu and the game.
+   *
+   * ⚠️ AND I NEARLY REPORTED THAT AS A BUG. Probing the built game in the preview pane said Enter
+   * pauses and never resumes — because `requestAnimationFrame` is FROZEN in that pane, so the draw
+   * loop never ran, so `pauseMenu.open()` never ran, so the menu never took focus. The measurement
+   * was of a game that was not drawing. Third false finding of the evening, and the third caused by
+   * measuring the wrong thing rather than by the game being wrong.
+   */
+  const active = document.activeElement;
+  if (!active || !region.contains(active)) region.focus();
+  const code = CODES[key] ?? `Key${key.toUpperCase()}`;
+  // At whatever has the focus inside the game — the region, or a menu button the game handed it to.
+  const target = (document.activeElement && region.contains(document.activeElement)
+    ? document.activeElement : region) as HTMLElement;
+  for (const type of ['keydown', 'keyup'] as const) {
+    target.dispatchEvent(new KeyboardEvent(type, { code, key, bubbles: true }));
+  }
+  // A raw dispatch does not carry the browser's default action, so a button reached by Enter is
+  // activated here. `userEvent` did this for us until the engine's focus trap made it unusable.
+  if (code === 'Enter' && target.tagName === 'BUTTON') target.click();
+  // One turn of the loop, so a handler that schedules rather than acts has run.
+  await new Promise((resolve) => { requestAnimationFrame(() => resolve(undefined)); });
 }
 
 /**
@@ -159,6 +208,14 @@ describe('⚠️ pause says so, because a silent pause reads as a hang', () => {
 
     await press('{Enter}');
 
+    /**
+     * ⚠️ AND THIS ONE CAUGHT A REAL DEFECT THE DAY THE HELPER WAS FIXED. Resuming through the pause
+     * MENU set the phase and announced nothing, so `sr-status` still read "Pausado" while the ball was
+     * moving again — the game had come back and the only person who could not tell was the one the
+     * announcement is for. It had been green because the helper stole focus back from the menu button,
+     * so the second Enter went to the game's own toggle, which does announce.
+     */
+    expect(debug().phase, 'the game is actually running again').toBe('playing');
     expect(said(), 'and so is the resume').not.toBe(paused);
   });
 });

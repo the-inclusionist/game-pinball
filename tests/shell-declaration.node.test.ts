@@ -60,7 +60,16 @@ describe('the topology is the table, and the ruler is the ball', () => {
     // 3x3, 4x4 or 5x5 and a memorised topology went stale in silence. A pinball's playfield is one size
     // for the life of the game, so the answer is the same every call — but the contract asks in the
     // shape that suits the game that needed it, and this consumer follows.
-    expect(d.topology()).toEqual({ kind: 'continuous', width: 183, height: 235, unit: 3 });
+    /**
+     * ⚠️ `size` AND NOT `width`/`height`, AND TWO FIELDS THAT DID NOT EXIST. The engine moved again on
+     * 2026-09-06 — it is linked by `file:` and in active modularisation, which the plan names as a
+     * declared risk. `move` and `frame` are new; `shell/declaration` records why a pinball answers
+     * 'free' and 'compass' and it is worth reading, because the second one is an accessibility choice
+     * and not a default.
+     */
+    expect(d.topology()).toEqual({
+      kind: 'continuous', size: [183, 235], unit: 3, move: 'free', frame: 'compass',
+    });
   });
 
   test('the UNIT is the ball’s radius, which is what makes "two steps away" sayable', () => {

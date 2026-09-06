@@ -968,15 +968,32 @@ const cabinet = {
    * `shell/hud-dom` already makes and the same one blind mode announces through.
    */
   togglePause: () => {
-    if (phase === 'playing') phase = 'paused';
-    else if (phase === 'paused') phase = 'playing';
-    else return;
-
-    hint = phase === 'paused' ? shell.t('pinball.hud.paused') : shell.t('pinball.hud.waiting');
-    const status = document.getElementById('sr-status');
-    if (status) status.textContent = hint;
+    if (phase === 'playing') enterPhase('paused');
+    else if (phase === 'paused') enterPhase('playing');
   },
 };
+
+/**
+ * Pausing and coming back, in one place, because it is TWO THINGS and one of them was being skipped.
+ *
+ * ⚠️ RESUMING FROM THE MENU WAS SILENT TO A SCREEN READER. `togglePause` set the phase AND announced
+ * it; the pause menu's own "Continuar" set the phase and said nothing. So a player using the keyboard
+ * pressed Enter, the game resumed, and `sr-status` still read "Pausado" — the game had come back and
+ * the only person who could not tell was the one the announcement exists for.
+ *
+ * ⚠️ AND IT TOOK THE ENGINE BREAKING SOMETHING ELSE TO FIND IT. The gate had been green because the
+ * test's own helper focused the game region before every key, which took the focus away from the menu
+ * button that pause had just given it — so the second Enter went to the game and toggled, announcement
+ * and all. The engine's new focus trap made that helper untenable, the helper was fixed to send keys
+ * where the focus actually is, and the defect underneath came straight out. It is the third time today
+ * that one rule with two copies has had one copy that was not keeping up.
+ */
+function enterPhase(next: Phase): void {
+  phase = next;
+  hint = next === 'paused' ? shell.t('pinball.hud.paused') : shell.t('pinball.hud.waiting');
+  const status = document.getElementById('sr-status');
+  if (status) status.textContent = hint;
+}
 
 /**
  * ⚠️ AND THE PAD IS THE ENGINE'S, NOT THIS PORT'S. `shell/pad` translates the engine's action
@@ -1367,7 +1384,7 @@ const pauseMenu = mountPauseMenu({
   doc: document,
   host: region,
   t: shell.t,
-  onResume: () => { phase = 'playing'; region.focus(); },
+  onResume: () => { enterPhase('playing'); region.focus(); },
   onTables: () => { leaveGame(); screens.show('select'); title.refresh(); },
   onTitle: () => { leaveGame(); screens.show('title'); title.refresh(); },
   /**
