@@ -86,15 +86,22 @@ export function buildOriginalOneways(
       ...(o.sound ? { sound: o.sound as never } : {}),
     });
 
-    // The passing line first, because the component is built around it.
-    const [passingEdge] = installWall(
-      [data[0]!, data[1]!, data[2]!, data[3]!, data[4]!],
-      { component: { collision: () => {} }, offset: o.ballRadius * PASSING_OFFSET },
-    );
-    // And the blocking line on the SAME two points, wound the other way.
+    // ⚠️ THE BLOCKING LINE TAKES THE RECORD'S OWN ORDER, AND THE PASSING LINE REVERSES IT. `TOneway`'s
+    // constructor names the FIRST pair `linePt2` and the SECOND `linePt1`, and then builds
+    // `TLine(linePt2, linePt1)` — the file's order — as the wall, and `TLine(linePt1, linePt2)` as the
+    // one the ball may cross. This port had the two the other way round, so every one-way on the table
+    // blocked the side it should have opened.
+    //
+    // ⚠️ AND THE PASSING OFFSET IS NEGATIVE. `Offset(-CollisionCompOffset * 0.8f)`: the passing line is
+    // pushed INWARD, to the ball's side of the wall, which is what puts it in front of the bounce. With
+    // the sign lost it sits behind, and a ball arriving at the open face reaches the wall first.
     const [blockingEdge] = installWall(
-      [data[0]!, data[3]!, data[4]!, data[1]!, data[2]!],
+      [data[0]!, data[1]!, data[2]!, data[3]!, data[4]!],
       { component: { collision: () => {} }, offset: o.ballRadius },
+    );
+    const [passingEdge] = installWall(
+      [data[0]!, data[3]!, data[4]!, data[1]!, data[2]!],
+      { component: { collision: () => {} }, offset: -o.ballRadius * PASSING_OFFSET },
     );
     if (passingEdge?.kind !== 'line' || blockingEdge?.kind !== 'line') continue;
 

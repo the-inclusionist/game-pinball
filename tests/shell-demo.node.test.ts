@@ -48,6 +48,28 @@ const launch = (demo: ReturnType<typeof createDemo>): void => {
 };
 
 /**
+ * ⚠️ AND A RUN HAS TO KEEP LAUNCHING, because a lost ball comes back to the plunger and waits there.
+ *
+ * Before the plunger was found, a drained ball was replaced by one already in mid-air and a test could
+ * step the clock and watch a whole game. Now the second ball sits on the plunger until somebody pulls
+ * it, which is the game working — and a run that only launched once would spend the rest of its frames
+ * watching a stationary ball, which is what nine tests in this file were doing.
+ */
+const play = (demo: ReturnType<typeof createDemo>, frames: number): void => {
+  const at = demo.ball.position as { x: number; y: number };
+  let waiting = 0;
+  launch(demo);
+  for (let f = 0; f < frames; f++) {
+    const before = { x: at.x, y: at.y };
+    demo.step(1);
+    // A ball that has not moved for half a second and is down at the plunger's end of the lane is a
+    // ball waiting to be launched, not a stuck one.
+    waiting = Math.abs(at.x - before.x) + Math.abs(at.y - before.y) < 0.01 ? waiting + 1 : 0;
+    if (waiting > 30 && at.y > 8) { launch(demo); waiting = 0; }
+  }
+};
+
+/**
  * How many pixels of the frame the BALL is responsible for, found by moving it.
  *
  * ⚠️ THE BALL IS THE ARCHIVE'S OWN SPRITE AND NOT A COLOUR THIS FILE PICKED, so it cannot be looked
@@ -221,8 +243,7 @@ describe('the 1995 table, from an ArrayBuffer', () => {
     if (!bytes) return expect(existsSync(DAT)).toBe(false);
 
     const demo = createDemo(bytes, { random: seeded() });
-    launch(demo);
-    demo.step(900);
+    play(demo, 900);
 
     expect(demo.scored.length).toBeGreaterThan(0);
     expect(demo.score.curScore).toBeGreaterThan(0);
@@ -252,8 +273,7 @@ describe('the 1995 table, from an ArrayBuffer', () => {
     const demo = createDemo(bytes, { random: seeded() });
     expect(demo.components.bumpers.size).toBe(7);
 
-    launch(demo);
-    demo.step(900);
+    play(demo, 900);
 
     // The ball reaches at least one of them in a ball's life on this table.
     expect(demo.touched.some((name) => demo.components.bumpers.has(name))).toBe(true);
@@ -480,8 +500,7 @@ describe('⚠️ and a ball can be lost, which the demonstration counts', () => 
     if (!bytes) return expect(existsSync(DAT)).toBe(false);
     const heard: number[] = [];
     const demo = createDemo(bytes, { random: seeded(6), onSoundId: (id) => heard.push(id) });
-    launch(demo);
-    demo.step(1800);
+    play(demo, 1800);
 
     expect(heard.length, 'something was heard').toBeGreaterThan(0);
     // ⚠️ AND ZERO IS NEVER ONE OF THEM. `play_sound` rejects anything at or below zero, and the first
@@ -518,8 +537,7 @@ describe('⚠️ and a ball can be lost, which the demonstration counts', () => 
     if (!bytes) return expect(existsSync(DAT)).toBe(false);
     const heard = new Set<number>();
     const demo = createDemo(bytes, { random: seeded(6), onSoundId: (id) => heard.add(id) });
-    launch(demo);
-    demo.step(1800);
+    play(demo, 1800);
 
     const sounds = findSoundGroups(readGroups(new Uint8Array(bytes)));
     const byGroup = new Map(sounds.map((sound) => [sound.groupIndex, sound.fileName]));
@@ -600,8 +618,7 @@ describe('⚠️ and a ball can be lost, which the demonstration counts', () => 
     if (!bytes) return expect(existsSync(DAT)).toBe(false);
     const demo = createDemo(bytes, { random: seeded() });
 
-    launch(demo);
-    demo.step(600);
+    play(demo, 600);
 
     const crossed = demo.touched.filter((name) => name.startsWith('a_roll'));
     expect([...new Set(crossed)].sort()).toEqual(['a_roll1', 'a_roll2']);
@@ -905,8 +922,7 @@ describe('⚠️ a bumper scores when it FIRES, not when it is grazed', () => {
     if (!bytes) return expect(existsSync(DAT)).toBe(false);
 
     const demo = createDemo(bytes, { random: seeded() });
-    launch(demo);
-    demo.step(1800);
+    play(demo, 1800);
 
     const bumperTouches = demo.touched.filter((name) => demo.components.bumpers.has(name)).length;
     const bumperScores = demo.scored.filter((name) => /^bump/.test(name)).length;
@@ -927,8 +943,7 @@ describe('⚠️ and a target is never paid TWICE for one hit', () => {
     if (!bytes) return expect(existsSync(DAT)).toBe(false);
 
     const demo = createDemo(bytes, { random: seeded() });
-    launch(demo);
-    demo.step(1800);
+    play(demo, 1800);
 
     const touches = demo.touched.filter((name) => /^a_targ/.test(name)).length;
     const payments = demo.scored.filter((name) => /^target/.test(name)).length;
