@@ -70,7 +70,7 @@ export function flipperGeometryOf(component: AuthoredComponent, ballRadius: numb
     tipRadius: f.tipRadius,
     extendTime: f.extendTime,
     retractTime: f.retractTime,
-    collisionMult: RESPONSES.flipper!.elasticity === 0 ? 1 : FLIPPER_COLLISION_MULT,
+    collisionMult: RESPONSES.flipper!.elasticity === 0 ? 1 : flipperMultFor(component),
     elasticity: RESPONSES.flipper!.elasticity,
     smoothness: RESPONSES.flipper!.smoothness,
     // `table->CollisionCompOffset`: the faces are pushed out by the ball's radius so the ball can be
@@ -85,6 +85,47 @@ export function flipperGeometryOf(component: AuthoredComponent, ballRadius: numb
  * a constant rather than smuggled in as a magic number.
  */
 export const FLIPPER_COLLISION_MULT = 2;
+
+/**
+ * ⚠️ AND THE MULTIPLIER CARRIES A LENGTH, BECAUSE THE TRANSCRIBED FORMULA DIVIDES ONE OUT.
+ *
+ * The Dev, playing: "os flaps precisam ter força para mandar a bola voando para o topo." Measured on
+ * all six tables before anything was changed: a ball dropped onto the paddle and flipped rose
+ * TWENTY-NINE PIXELS up a table between 235 and 300 tall, and its peak speed after the flip equalled
+ * the speed it arrived with. The paddle was a wall that happened to move.
+ *
+ * `physics/flipper` transcribes `TFlipperEdge::flipper_collision` exactly, and the kick is
+ *
+ *     tangentialSpeed = |moveSpeed| * sqrt(distanceSq / distanceDivSq)
+ *
+ * `moveSpeed` is RADIANS PER SECOND; the square root is the contact point as a FRACTION of the
+ * paddle's reach. So the product is ω × (r / L) where the tangential speed of a rotating paddle is
+ * ω × r. A length is missing, and in the original it is invisible: its table units make L about one,
+ * and a number near one divides out without anybody noticing a dimension go with it.
+ *
+ * ⚠️ AN AUTHORED TABLE IS IN PIXELS. Gravity is 120 px/s², a full plunger is 273 px/s, and a paddle is
+ * 24 px long — so ω × (r/L) came out around twelve, against ball speeds in the hundreds. The kick was
+ * never weak. It was an angular rate being added to a linear speed, short by exactly the paddle's
+ * length.
+ *
+ * ⚠️ AND THE CORRECTION GOES HERE RATHER THAN IN `physics/flipper`, on purpose. That module is a
+ * transcription and the 1995 table runs through it with coordinates and a multiplier read from the
+ * archive; changing the formula would change a table whose numbers were calibrated in 1995 against
+ * this exact arithmetic. This function is the authored tables' own seam — the constant above exists
+ * because "an authored table has no such file" — so the fix reaches the tables it is about and no
+ * others.
+ *
+ * A paddle twice as long therefore gets twice the multiplier, which is the point: the ratio the
+ * formula normalises away is restored, and a table author who draws a longer flipper does not have to
+ * discover this comment.
+ */
+export function flipperMultFor(component: AuthoredComponent): number {
+  const f = component.flipper!;
+  const reach = Math.hypot(f.tipAtRest.x - f.pivot.x, f.tipAtRest.y - f.pivot.y);
+  // `distanceDiv` in `physics/flipper` is the reach out to the tip's SURFACE, and this must be the
+  // same length or the ratio is only mostly cancelled.
+  return FLIPPER_COLLISION_MULT * (reach + f.tipRadius);
+}
 
 export interface Hit {
   /** The component's name, which is what the control layer dispatches on. */

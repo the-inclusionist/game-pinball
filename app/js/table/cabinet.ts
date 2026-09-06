@@ -87,8 +87,29 @@ export function cabinet(o: CabinetOptions): AuthoredComponent[] {
       collision: [{ kind: 'line', from: { x: w - 4, y: 21 }, to: { x: divider - 14, y: 6 } }] },
 
     /* ===================== THE PLUNGER LANE ===================== */
+    /**
+     * ⚠️ THE PLUNGER IS A BODY, AND IT HAD NO EDGE AT ALL.
+     *
+     * The Dev, playing: "após lançar a bola, se o lançamento é fraco ela cai pro cima do lançador ao
+     * invés de quicar nele." A launch that does not clear the return bend comes back down the lane,
+     * and there was nothing at the bottom of it — the ball fell through the launcher, through the
+     * floor of the table, and kept going. Measured before it was fixed: a ball dropped in the lane
+     * of a table 235 tall reached y = 1841.
+     *
+     * `authored.ts` states the rule this came from and the rule is right — a lane is rolled over, a
+     * well swallows, "a plunger is where the ball STARTS" — but the plunger is in the wrong sentence.
+     * Where a ball is PUT is a fact about `spawnBall`. What happens when a ball ARRIVES is a different
+     * question, and for a steel rod with a spring behind it the answer is that the ball lands on it.
+     *
+     * ⚠️ ONE-SIDED, AND THE WINDING IS THE WHOLE OF IT. `lineInit`'s normal is `(dy, -dx)`, so a face
+     * drawn LEFT TO RIGHT has its normal pointing up the screen and answers only what comes down onto
+     * it. The launch travels the other way and is let through untouched. Wound backwards, the plunger
+     * catches its own ball and the game cannot be started — which is why the launch has a test of its
+     * own beside the two about the landing.
+     */
     { name: 'plunger', kind: 'plunger', role: WALL,
-      bounds: { x: laneX, y: h - 35, width: 10, height: 32 } },
+      bounds: { x: laneX, y: h - 35, width: 10, height: 32 },
+      collision: [{ kind: 'line', from: { x: laneX, y: h - 35 }, to: { x: laneX + 10, y: h - 35 } }] },
     { name: 'lane.launch', kind: 'lane', role: 'free',
       bounds: { x: laneX, y: 40, width: 10, height: h - 77 },
       scores: [500], control: 'LaneControl', lamps: ['lamp.launch'] },

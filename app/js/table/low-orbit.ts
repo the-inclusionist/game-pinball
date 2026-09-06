@@ -112,7 +112,12 @@ export const LOW_ORBIT: AuthoredTable = {
       collision: [{ kind: 'line', from: { x: 179, y: 21 }, to: { x: 148, y: 6 } }] },
 
     /* ===================== THE PLUNGER LANE ===================== */
-    { name: 'plunger', kind: 'plunger', role: WALL, bounds: { x: 167, y: 200, width: 10, height: 32 } },
+    // ⚠️ THE FACE IS A BODY. See `table/cabinet`, where the same edge and the same reasoning are set
+    // out at length: a weak launch comes back down the lane, and without this there was nothing at the
+    // bottom of it — the ball fell through the launcher and out of the table. This table is
+    // hand-authored rather than built by `cabinet()`, which is why it needed the fix twice.
+    { name: 'plunger', kind: 'plunger', role: WALL, bounds: { x: 167, y: 200, width: 10, height: 32 },
+      collision: [{ kind: 'line', from: { x: 167, y: 200 }, to: { x: 177, y: 200 } }] },
     { name: 'lane.launch', kind: 'lane', role: 'free', bounds: { x: 167, y: 40, width: 10, height: 158 },
       scores: [500], control: 'LaneControl', lamps: ['lamp.ramp'] },
 
