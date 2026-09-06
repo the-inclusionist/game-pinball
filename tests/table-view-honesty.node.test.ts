@@ -181,6 +181,18 @@ describe('⚠️ the drawing tells the truth about what the ball can touch', () 
  * the physics and the screen showed it at rest for ever. They are drawn per frame now, with the ball,
  * from the live geometry — so the area they used to occupy here is the area the counts lost.
  */
+/**
+ * ⚠️ EVERY ONE OF THESE FELL, SOME BY NEARLY HALF, THE DAY LANES STOPPED BEING FILLED.
+ *
+ * `ring-belt` 13654 to 7246, `long-climb` 10863 to 5820, `ion-storm` 9277 to 5373. A lane is now two
+ * rails with the floor showing between them rather than a solid rectangle — see `gfx/table-view`'s
+ * `drawLaneRails` and the Dev's report that the inlanes read as an extension of the paddles.
+ *
+ * ⚠️ AND THE SIZE OF THE FALL IS ITSELF THE FINDING. Half of what these tables painted was lane, drawn
+ * with the mark this renderer uses for things the ball bounces off. The three that did not move —
+ * `wide-arc`, `four-flippers`, `bare-minimum` — are the three with no lanes on them, which is a
+ * check on the reading rather than a coincidence.
+ */
 const PAINTED = {
   // ⚠️ 6991 UNTIL THE TABLE WAS AUTHORED UP TO THE 1995 DENSITY. `tests/table-density` measures the
   // archive at 5.25 scoring components per ten thousand pixels and this table at 4.19, which is what
@@ -194,32 +206,32 @@ const PAINTED = {
   // five tables and skipped this one. The difference is mostly the bottom assembly moving seven
   // pixels left: this file centred the flippers and the drain on the TABLE, and the cabinet
   // centres them on the PLAY, because sixteen pixels of the width are the plunger lane.
-  'low-orbit': 7769,
+  'low-orbit': 5011,
   // +572 on each of the four below: the cabinet's two inlanes, which five tables had never had.
   // The lower third paid 2000 for bad luck through the outlanes and nothing at all for good play.
   // ⚠️ +1768 when this table was authored up to the 1995 density: two more bumpers in the storm,
   // four drop targets in two flank shelves, three more arc rollovers and two ion trails down the
   // sides, and the eye rollover in the middle. Bumpers are the expensive ones to paint — a filled circle against a stroked line.
-  'ion-storm': 9277,
+  'ion-storm': 5373,
   // ⚠️ +1070: the two INLANES the cabinet now gives all five of its tables, and this table's own
   // authoring up to the 1995 density — two flank drop banks and a three-rollover reentry row.
-  'crater-run': 7907,
+  'crater-run': 4339,
   // ⚠️ +2640, the largest single move in this table: three more bumpers in a second gauntlet, a
   // four-target drop column up the left wall, two rebounders, four rollovers on the flanks and
   // three across the head. It is 300 tall against a 180 window and had 56 pixels of nothing in
   // the middle of its own climb.
-  'long-climb': 10863,
+  'long-climb': 5820,
   // ⚠️ +5437, and it is the last of the six to be authored up to the 1995 density — it was the
   // thinnest by a distance, at a THIRD of the archive's. Three more rocks on the belt, a
   // three-target drop column against each far wall, two rebounder cornices, and seventeen
   // rollovers spread across a table 360 wide whose outer thirds paid nothing at all.
   // -7 when the east scree column moved up twelve pixels: sixty balls never reached its lowest target,
   // which sat where the funnel has already gathered the ball toward the middle.
-  'ring-belt': 13654,
+  'ring-belt': 7246,
   // ⚠️ +2122 when this table was authored up to the 1995 density: two more eddies in the chamber, a
   // three-target drop COLUMN on its wall, two spillways in its corners, three wake rollovers and
   // two rebounders below the vanes.
-  'slipstream': 8593,
+  'slipstream': 4778,
   'wide-arc': 4313,
   // ⚠️ 3553 UNTIL THE BALL GAINED A RADIUS. `table/physics-build` now offsets every wall by it, the way
   // the original does and `physics/wall` already did for the 1995 table, and two of this fixture's
@@ -228,7 +240,7 @@ const PAINTED = {
   // met one time in four, and the table gained the funnel guides it had never had. That is +1285
   // painted pixels — 984 of them the wider landing — and it is a change to the TABLE, not to the
   // drawing: this number is a golden, so it moves only when somebody says why.
-  'narrow-tower': 4838,
+  'narrow-tower': 3138,
   'four-flippers': 2623,
   'bare-minimum': 388,
 };

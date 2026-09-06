@@ -121,6 +121,42 @@ export function fillLitRect(fb: Framebuffer, rect: Rect, lit: Lit): void {
 }
 
 /**
+ * A LANE: two rails along its long axis, and the floor between them left showing.
+ *
+ * ⚠️ THE DEV, PLAYING: "Você está desenhando artefatos embaixo das pás e continuidade das pás: não tem
+ * como interagir com estes itens." Things the ball cannot interact with, drawn as though it could —
+ * and the inlanes, twenty-two pixels tall on each flipper's pivot and filled in the same family of
+ * grey as the paddle, read as the paddle continuing upward.
+ *
+ * Fill is mass. A lane has none: `table/authored` calls it "a stretch of table the ball rolls over"
+ * and leaves it out of `STRUCK_KINDS` on purpose. What was wrong was never the placement — an inlane
+ * IS the strip between the guide and the paddle it feeds — it was the mark.
+ *
+ * ⚠️ RAILS AND NOT AN OUTLINE, because an outline is still a closed shape and a closed shape is still
+ * an object. The ends being open is the whole of it: that is where the ball comes in and goes out.
+ *
+ * ⚠️ AND THE RAILS ARE ONE FLAT COLOUR. `fillLitRect` above records why — at this size a lit edge on a
+ * small shape is a stripe rather than shading — and a rail IS the edge, so there is nothing left to
+ * shade. A lit lane arrives here already brightened, in `lit.body`.
+ */
+export function drawLaneRails(fb: Framebuffer, rect: Rect, lit: Lit): void {
+  const x = Math.floor(rect.x);
+  const y = Math.floor(rect.y);
+  const width = Math.max(1, Math.round(rect.width));
+  const height = Math.max(1, Math.round(rect.height));
+
+  // Along the LONG side, which is the direction the ball travels. Railed on the short sides it would
+  // be two dashes with a gap between them, which is a gate rather than a lane.
+  if (height >= width) {
+    fillRect(fb, { x, y, width: 1, height }, lit.body);
+    fillRect(fb, { x: x + width - 1, y, width: 1, height }, lit.body);
+  } else {
+    fillRect(fb, { x, y, width, height: 1 }, lit.body);
+    fillRect(fb, { x, y: y + height - 1, width, height: 1 }, lit.body);
+  }
+}
+
+/**
  * A ball or a bumper with the light on it: the top third catches it, the bottom quarter loses it.
  * Fractions of the radius rather than pixel counts, so a 3-pixel ball and a 12-pixel bumper are lit
  * the same way instead of the small one being all edge.
@@ -343,6 +379,20 @@ export function drawTable(o: TableViewOptions): Framebuffer {
      * position `table/mover` keeps, the same arrangement the other two ended up with.
      */
     if (component.mover) continue;
+
+    /**
+     * ⚠️ A LANE IS FLOOR, AND FLOOR IS NOT FILLED. See `drawLaneRails`: the Dev found the inlanes
+     * reading as an extension of the paddles, and a filled rectangle is the mark this renderer uses
+     * for everything the ball bounces off.
+     *
+     * ⚠️ THE RULE IS THE KIND AND NOT THE ABSENCE OF A COLLISION. A well, a hole and a drain declare
+     * none either, and each is a MOUTH — a filled shape is exactly right for something that swallows
+     * the ball, and the drain reading as a red bar across the floor is the table telling the truth.
+     */
+    if (component.kind === 'lane') {
+      drawLaneRails(fb, component.bounds, lit);
+      continue;
+    }
 
     if (!component.collision?.length) {
       // Nothing solid was declared, so the bounds is the whole claim and there is nothing to overstate.
