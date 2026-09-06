@@ -45,6 +45,7 @@
 import type { Role } from '@the-inclusionist/engine/core/contract.js';
 import type { ComponentKind } from '../i18n/names.js';
 import type { AuthoredMission } from './missions.js';
+import type { MoverPath } from './mover.js';
 // ⚠️ A VALUE IMPORT INTO A MODULE THAT `rollovers` ITSELF IMPORTS, and it is not a cycle: the
 // import going the other way is `import type`, which erases. The alternative was a third copy of
 // the list, and two copies of a rule is how this repository's last four defects were held open.
@@ -138,6 +139,19 @@ export interface AuthoredComponent {
   readonly flipper?: AuthoredFlipper;
   /** Lamps this component drives. Every one must be declared by the table. */
   readonly lamps?: readonly string[];
+  /**
+   * The path this component travels, if it travels one.
+   *
+   * ⚠️ IT COMPOSES WITH THE KIND RATHER THAN REPLACING IT. A mover is still a bumper, or a target, or
+   * a rebounder — the kind decides its colour, its role, its sound and what a hit is worth, and this
+   * decides where it is. That is what lets the Dev's three themes be written without three new kinds:
+   * a drone going satellite to satellite is a rebounder with a path, and a probe on a conveyor is a
+   * bumper with one.
+   *
+   * ⚠️ AND A MOVER DECLARES NO `collision`. Its body IS the disc `mover.radius` describes, moving; a
+   * component that declared both would have a shape that stays behind while the thing moves away.
+   */
+  readonly mover?: MoverPath;
   /**
    * The drop-target bank this component belongs to, by name.
    *
@@ -276,9 +290,14 @@ export function validateTable(table: AuthoredTable, o: ValidationOptions): strin
         problems.push(`${component.name}: its sweep LOWERS the tip, so the flipper swings into the`
           + ' floor. y grows downward and the sign of the sweep is not guessable; this is that check');
       }
-    } else if (STRUCK_KINDS.includes(component.kind) && !component.collision?.length) {
+    } else if (STRUCK_KINDS.includes(component.kind) && !component.collision?.length && !component.mover) {
+      // ⚠️ OR A MOVER, WHOSE BODY IS ITS DISC. The rule is that a struck kind must have something the
+      // ball can strike, and a travelling body has one — it simply is not a `collision` shape, because
+      // a shape sits still while the thing moves away from it. Written as an OR rather than by adding
+      // movers to `STRUCK_KINDS`: the list says which KINDS are struck, and a mover is a property a
+      // bumper or a rebounder or a target can have.
       problems.push(`${component.name}: a ${component.kind} is something the ball STRIKES, and this one`
-        + ' declares no collision, so it can never be hit and its score can never fire');
+        + ' declares neither a collision nor a mover, so it can never be hit and its score can never fire');
     }
     for (const shape of component.collision ?? []) {
       if (!shapeInside(shape, table)) {
@@ -381,6 +400,28 @@ export function validateTable(table: AuthoredTable, o: ValidationOptions): strin
    * error anywhere. The targets simply never drop, or the award is never paid, and the table looks
    * finished. Every rule below is one of the halves.
    */
+  /**
+   * ⚠️ A MOVER'S PATH IS A PROMISE ABOUT WHERE IT GOES, and a path that leaves the table is a body the
+   * ball meets outside the world. `physics/grid` is built to the table's own extent, so an edge
+   * registered past it is placed in no cell at all and simply stops existing — silently, which is the
+   * shape this repository keeps paying for.
+   */
+  for (const component of table.components) {
+    if (!component.mover) continue;
+    const m = component.mover;
+    if (component.collision?.length) {
+      // Its body is the disc, moving. A shape as well would be geometry left behind by the thing.
+      problems.push(`${component.name}: declares a mover AND a collision; a mover's body is its disc`);
+    }
+    if (!(m.radius > 0)) problems.push(`${component.name}: a mover needs a radius`);
+    if (!(m.seconds > 0)) problems.push(`${component.name}: a mover needs a time for its path`);
+    for (const [label, point] of [['from', m.from], ['to', m.to]] as const) {
+      const inside = point.x - m.radius >= 0 && point.x + m.radius <= table.size.width
+        && point.y - m.radius >= 0 && point.y + m.radius <= table.size.height;
+      if (!inside) problems.push(`${component.name}: its mover's "${label}" leaves the table`);
+    }
+  }
+
   const banks = table.banks ?? [];
   const bankNames = new Set(banks.map((b) => b.name));
   for (const component of table.components) {

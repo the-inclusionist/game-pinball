@@ -31,12 +31,14 @@ import {
 } from '../physics/grid.js';
 import { createLine, createCircle, offsetLine, type Component } from '../physics/edges.js';
 import { basicCollision, type CollisionResponse } from '../physics/collision.js';
+import { rayIntersectCircle } from '../maths/maths.js';
 import { createBall, type Ball, type StepContext } from '../physics/step.js';
 import {
   createFlipper, deriveFlipper, setFlipperMotion, setControlPoints, distanceToFlipper,
   flipperCollision, type Flipper, type FlipperGeometry,
 } from '../physics/flipper.js';
 import { extendedTipOf, type AuthoredComponent, type AuthoredTable } from './authored.js';
+import { createMover, type Mover } from './mover.js';
 import { createStuckWatch, type StuckWatch } from './stuck-watch.js';
 
 /** How a surface answers a ball. One per kind, because a bumper is not a wall. */
@@ -100,6 +102,17 @@ export function flipperGeometryOf(component: AuthoredComponent, ballRadius: numb
  * dialled in.
  */
 export const FLIPPER_COLLISION_MULT = 1;
+
+/**
+ * How much of its own speed a travelling body hands the ball.
+ *
+ * ⚠️ ONE, FOR THE REASON `FLIPPER_COLLISION_MULT` IS ONE: a body contributes its own speed once. That
+ * number was measured — a paddle's tip speed lands on the plunger's full launch — and this is the same
+ * claim for a body that travels in a line. Anything larger and a drone becomes a second plunger; the
+ * flipper's own history is what says so, where a multiplier of 2 pinned the ball against the engine's
+ * clamp and made every table play the same.
+ */
+export const MOVER_PUSH = 1;
 
 /**
  * ⚠️ AND THE MULTIPLIER CARRIES A LENGTH, BECAUSE THE TRANSCRIBED FORMULA DIVIDES ONE OUT.
@@ -251,6 +264,13 @@ export interface TablePhysics {
   readonly context: StepContext;
   /** The live flippers, in declaration order. */
   readonly flippers: readonly Flipper[];
+  /**
+   * The bodies that travel a path of their own, with the names that declared them.
+   *
+   * The frame loop advances them and the renderer draws them where they are; neither can ask the grid,
+   * which holds a static disc covering the whole path rather than the body itself.
+   */
+  readonly movers: readonly { readonly name: string; readonly mover: Mover }[];
   /** By name, because the control layer and the keyboard both address them that way. */
   flipperNamed(name: string): Flipper | undefined;
   /**
@@ -429,6 +449,77 @@ export function buildPhysics(table: AuthoredTable, o: PhysicsOptions = {}): Tabl
    */
   const flippers: Flipper[] = [];
   const flipperByName = new Map<string, Flipper>();
+  const movers: { readonly name: string; readonly mover: Mover }[] = [];
+
+  /**
+   * ⚠️ A BODY THAT TRAVELS, REGISTERED OVER EVERYWHERE IT CAN GO.
+   *
+   * `physics/grid` places an edge into cells ONCE, by its bounding box, so a moving body registered
+   * where it starts stops existing as soon as it moves. The flipper below has the same problem and the
+   * same answer: register a disc covering the whole sweep, and let `findCollisionDistance` ask the
+   * body where it actually is. `table/physics-build` already records what the other half of that
+   * mistake cost — a resting paddle that vanished because only the sweep was registered.
+   *
+   * ⚠️ AND THE BODY PUSHES. A mover that only got in the way would be a wall that changes address:
+   * the ball would bounce off wherever it happened to be and the motion would be decoration. The push
+   * is the mover's own speed, scaled by how squarely it is travelling INTO the ball — which is the
+   * shape of the flipper's kick, `collisionMult * alignment * tangentialSpeed`, for a body that
+   * travels in a line instead of turning about a pivot.
+   */
+  for (const component of table.components) {
+    if (!component.mover) continue;
+    const mover = createMover(component.mover);
+    movers.push({ name: component.name, mover });
+
+    const response = responseFor(component);
+    const disc = { center: { x: 0, y: 0 }, radiusSq: component.mover.radius * component.mover.radius };
+    const path = component.mover;
+    const half = Math.hypot(path.to.x - path.from.x, path.to.y - path.from.y) / 2;
+
+    placeCircleInGrid(grid, {
+      active: true,
+      collisionGroup: 1,
+      center: { x: (path.from.x + path.to.x) / 2, y: (path.from.y + path.to.y) / 2 },
+      // The whole path, plus the body, plus the ball — the ball is a point here, as everywhere else.
+      radius: half + path.radius + table.ballRadius,
+      findCollisionDistance(ray) {
+        const at = mover.at;
+        disc.center.x = at.x;
+        disc.center.y = at.y;
+        return rayIntersectCircle(ray, {
+          center: disc.center,
+          radiusSq: (path.radius + table.ballRadius) ** 2,
+        });
+      },
+      edgeCollision(ballLike, distance) {
+        const ball = ballLike as Ball;
+        const position = {
+          x: distance * ball.direction.x + ball.position.x,
+          y: distance * ball.direction.y + ball.position.y,
+        };
+        const at = mover.at;
+        const normal = { x: position.x - at.x, y: position.y - at.y };
+        const length = Math.hypot(normal.x, normal.y) || 1;
+        normal.x /= length;
+        normal.y /= length;
+
+        // How squarely the body is travelling into the ball. Nought when it is moving away, which is
+        // what stops a drone from dragging a ball along behind it.
+        const into = Math.max(0, mover.direction.x * normal.x + mover.direction.y * normal.y);
+        const boost = MOVER_PUSH * into * mover.speed;
+        basicCollision(ball, position, normal, {
+          elasticity: response.elasticity,
+          smoothness: response.smoothness,
+          // A negative threshold is how the flipper escapes the "only above such a rebound speed" rule,
+          // and a body that pushes has to escape it too or a slow ball is ignored by a fast drone.
+          threshold: boost > 0 ? -1 : response.threshold,
+          boost,
+        });
+        hits.push({ name: component.name, reboundSpeed: 0 });
+      },
+    });
+  }
+
   for (const component of table.components) {
     if (component.kind !== 'flipper' || !component.flipper) continue;
 
@@ -464,6 +555,7 @@ export function buildPhysics(table: AuthoredTable, o: PhysicsOptions = {}): Tabl
   return {
     grid,
     flippers,
+    movers,
     stuck: createStuckWatch(table, { relaunch: o.relaunch ?? (() => {}) }),
     flipperNamed: (name) => flipperByName.get(name),
     /**
