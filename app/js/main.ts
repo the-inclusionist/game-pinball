@@ -28,6 +28,7 @@ import {
 import { mountOptionsDialog } from './shell/options-dialog.js';
 import { titleScreen } from './shell/title.js';
 import { integerScale } from './shell/present.js';
+import { createPadReader } from './shell/pad.js';
 import { mountTitle } from './shell/title-dom.js';
 import { createLiveControls } from './table/live-controls.js';
 import { createRolloverWatch } from './table/rollovers.js';
@@ -495,6 +496,9 @@ function step(frames: number): void {
     }
 
     shell.advance(frames);
+    // ⚠️ POLLED, NOT LISTENED TO. A gamepad has no events: the browser exposes a snapshot and a game
+    // that does not ask never hears anything. Once per frame, before the world moves on it.
+    pad.poll();
   }
 
   hud.update({
@@ -564,15 +568,45 @@ requestAnimationFrame(frame);
  * Bound to `#game-region` and not to `window`, so a table embedded in a page does not eat the reader's
  * arrow keys. See `shell/controls` for the rest, including why a held key is not a stream of presses.
  */
+/**
+ * ⚠️ THE CABINET, ONCE, SO THE KEYBOARD AND THE PAD CANNOT DRIFT.
+ *
+ * The Dev specified the controls as a machine and asked whether the engine supplies the gamepad. It
+ * does — `input/gamepad` has the wizard, the analog thresholds and the persistence — so what is left
+ * here is the four things the cabinet DOES, written once and handed to both readers. Two copies of
+ * "what button 1 means" is how a game ends up launching on the keyboard and not on the pad.
+ */
+const cabinet = {
+  setFlipper: (side: 'left' | 'right', extended: boolean) => {
+    if (demo) demo.setFlippers(side, extended);
+    else physics.setFlippers(side, extended);
+  },
+  launch: () => { if (phase !== 'playing') launch(); },
+  togglePause: () => {
+    if (phase === 'playing') phase = 'paused';
+    else if (phase === 'paused') phase = 'playing';
+  },
+};
+
+/**
+ * ⚠️ AND THE PAD IS THE ENGINE'S, NOT THIS PORT'S. `shell/pad` translates the engine's action
+ * vocabulary into the cabinet and does nothing else; every reason a stick counts as "left" past one
+ * threshold stays in `input/gamepad`, where it was written and tested.
+ *
+ * `navigator.getGamepads` is read through a function rather than captured, because a pad connected
+ * after boot appears in a later call and never in an earlier one.
+ */
+const pad = createPadReader({
+  getGamepads: () => navigator.getGamepads?.() ?? [],
+  on: cabinet,
+});
+
 const unbindControls = bindPinballControls({
   region,
   // ⚠️ THE DEMONSTRATION HAS ITS OWN FLIPPERS, and one key binding serves both tables. Routing to the
   // authored physics while the 1995 table is on screen leaves the player pressing a key that moves
   // something they cannot see.
-  setFlipper: (side, extended) => {
-    if (demo) demo.setFlippers(side, extended);
-    else physics.setFlippers(side, extended);
-  },
+  setFlipper: cabinet.setFlipper,
   /**
    * ⚠️ GUARDED ON THE PHASE, NOT ON `ball.active`, AND THE DIFFERENCE MADE THE GAME UNSTARTABLE.
    *
@@ -585,7 +619,7 @@ const unbindControls = bindPinballControls({
    * The question the guard is asking is "is a game already in progress", and that is what `phase`
    * answers. `active` answers "does a ball exist", which was true before the player touched anything.
    */
-  launch: () => { if (phase !== 'playing') launch(); },
+  launch: cabinet.launch,
   /**
    * ⚠️ AND THE HOLD, WHICH ONLY THE 1995 TABLE HAS. Its plunger is drawn back while the key is
    * down and fires at whatever was drawn; the authored table has no plunger component at all, so this
@@ -658,10 +692,7 @@ const unbindControls = bindPinballControls({
    * Only a running game pauses. Pressing it on the title would put the game into a state the title
    * screen has no way out of.
    */
-  togglePause: () => {
-    if (phase === 'playing') phase = 'paused';
-    else if (phase === 'paused') phase = 'playing';
-  },
+  togglePause: cabinet.togglePause,
   /**
    * ⚠️ THE BACK DOOR, AND ONLY THE 1995 TABLE HAS ONE. `bmax`, `rmax`, `gmax`, `1max`, `easy mode` and
    * `hidden test` are the Space Cadet's own codes and mean nothing on an authored table, so a
