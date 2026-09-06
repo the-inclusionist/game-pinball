@@ -5,6 +5,9 @@ import { createDemo, hintFor, DEMO_BALLS } from '../app/js/shell/demo.js';
 import { SCORE_COMPONENTS } from '../app/js/control/score-table.js';
 import { findSoundGroups } from '../app/js/audio/sound-table.js';
 import { readGroups } from '../app/js/dat/partman.js';
+import { readTableObjects } from '../app/js/dat/loader.js';
+import { decodePlayfield } from '../app/js/gfx/original-view.js';
+import { halve } from '../app/js/gfx/scale.js';
 import { VOICES, SILENT_KINDS, soundForKind } from '../app/js/audio/voices.js';
 import { kindOf, COMPONENT_KINDS } from '../app/js/i18n/names.js';
 import { resolve, dirname } from 'node:path';
@@ -310,6 +313,50 @@ describe('the 1995 table, from an ArrayBuffer', () => {
     for (const name of demo.scored) {
       expect(SCORE_COMPONENTS.some((row) => row.name === name), name).toBe(true);
     }
+  });
+
+  test('⚠️ THE 1995 SIDE PANEL IS NOT DRAWN, which decision 6 of the plan turns on', () => {
+    // The sprite loop took every named group that had a bitmap, and two of the fifty-seven it drew are
+    // not components of the table at all. One is `background`: the side panel, 203x394, halved to
+    // 102x197 and painted at (125, 5) of a 183x235 screen. The right-hand third of the playfield was
+    // under the panel's logo every frame, and had been since component sprites existed.
+    //
+    // ⚠️ NOTHING FOUND IT BECAUSE NOTHING EVER LOOKED. Every gate on this render asks about a lamp, a
+    // corner, a palette entry, a count of changed pixels — none asks what the frame looks like. It was
+    // found by writing the picture to a PNG and opening it.
+    //
+    // "O painel lateral de 203x394 deixa de existir" is the decision the whole layout rests on: the
+    // score, the ball count, the player and the hint moved to the corners of a 320x180 screen, which is
+    // why the playfield is halved at all.
+    const bytes = archive();
+    if (!bytes) return expect(existsSync(DAT)).toBe(false);
+    const groups = readGroups(new Uint8Array(bytes));
+    const components = new Set(
+      readTableObjects(groups).map((object) => groups[object.group]?.name).filter(Boolean),
+    );
+
+    const demo = createDemo(bytes, { random: seeded() });
+
+    const drawn = [...demo.spriteFrames.keys()];
+    expect(drawn, 'the panel is not a component and is not drawn').not.toContain('background');
+    expect(drawn.filter((name) => !components.has(name)), 'nothing drawn that the table does not declare')
+      .toEqual([]);
+  });
+
+  test('⚠️ and the pixels agree: the top right of the frame is the TABLE, not the panel', () => {
+    // The structural check above says what is in the map; this says what reaches the screen. (170, 20)
+    // sits inside the panel's footprint — x 125 to 183, y 5 to 202 — and inside no component's.
+    const bytes = archive();
+    if (!bytes) return expect(existsSync(DAT)).toBe(false);
+    const groups = readGroups(new Uint8Array(bytes));
+    const table = halve(decodePlayfield(groups));
+
+    const demo = createDemo(bytes, { random: seeded() });
+    const frame = demo.render();
+
+    const at = 20 * table.width + 170;
+    expect(frame.pixels[at], 'the playfield shows through where the panel used to be')
+      .toBe(table.pixels[at]);
   });
 
   test('⚠️ the table’s own bumpers answer the ball, not a generic wall', () => {

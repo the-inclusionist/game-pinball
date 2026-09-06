@@ -41,7 +41,7 @@ import { buildOriginalSinks } from '../table/original-sinks.js';
 import { DRAIN, WORM_HOLE_SINKS } from '../control/bindings.js';
 import { buildOriginalPlunger } from '../table/original-plunger.js';
 import type { ControlContext } from '../control/dispatch.js';
-import { loadTable } from '../dat/loader.js';
+import { loadTable, readTableObjects } from '../dat/loader.js';
 import { readMidiFile } from '../audio/midi.js';
 import { scheduleMidi, scheduleLength, type ScheduledNote } from '../audio/midi-synth.js';
 import { createScoreState, addScore, type ScoreState } from '../control/score.js';
@@ -708,9 +708,33 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
    * showed its state through the lamps alone.
    */
   const componentSprites = new Map<string, LampSprite>();
+  /**
+   * ⚠️ ONLY GROUPS THE TABLE DECLARES AS OBJECTS, and this loop used to take every named group with a
+   * bitmap. Two of the fifty-seven it drew are not components of the table at all, and one of them is
+   * `background` — the 1995 SIDE PANEL, 203x394, halved to 102x197 and painted at (125, 5) of a
+   * 183x235 screen. The right-hand third of the playfield has been under the panel's logo every frame
+   * since component sprites existed.
+   *
+   * ⚠️ AND DECISION 6 OF THE PLAN IS THAT THE PANEL DOES NOT EXIST HERE. "O painel lateral de 203x394
+   * deixa de existir": the score, the ball count, the player and the hint moved to the four corners of
+   * a 320x180 screen, which is the whole reason the playfield is halved. Drawing the panel back over
+   * the table is not a small mistake about a sprite — it is the one decision the layout is built on.
+   *
+   * Nothing found it because nothing ever LOOKED. Every gate on this render asked about a lamp, a
+   * corner, a palette entry or a count of changed pixels; not one asked what the frame looks like.
+   *
+   * The filter is the object list rather than a list of names to skip, because "not a component" is the
+   * property that matters and `background`, `font1`, the sounds and the text boxes all share it.
+   */
+  const componentGroups = new Set(
+    readTableObjects(groups)
+      .map((object) => groups[object.group]?.name)
+      .filter((name): name is string => Boolean(name)),
+  );
   for (const group of groups) {
     const name = group.name;
     if (!name || name.startsWith('lite') || name === 'ball' || name === 'table') continue;
+    if (!componentGroups.has(name)) continue;
     const sprite = readSprite(groups, name, { scale: PLAYFIELD_SCALE });
     if (!sprite) continue;
     componentSprites.set(name, sprite);
