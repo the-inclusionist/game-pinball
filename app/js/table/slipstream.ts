@@ -37,6 +37,10 @@ export const SLIPSTREAM: AuthoredTable = {
   size: { width: WIDTH, height: HEIGHT },
   ballRadius: BALL_RADIUS,
 
+  // Worth more than its three targets together: clearing the chamber's floor is a route, and on this
+  // table it is a route the vanes only let you take from above.
+  banks: [{ name: 'bank.drift', award: 9000 }],
+
   missions: [
     // Through the vanes first — the table teaching its own rule.
     { award: 8000, stages: [{ id: 'pinball.mission.slipstream.through', targets: ['vane.left', 'vane.right'] }] },
@@ -91,6 +95,78 @@ export const SLIPSTREAM: AuthoredTable = {
       scores: [500, 1000, 1500, 2000], control: 'BumperControl', lamps: ['lamp.eddy2'],
       collision: [{ kind: 'circle', at: { x: 120, y: 70 }, radius: 8 }] },
 
+    // ⚠️ AND TWO MORE, MAKING FOUR, because the chamber is this table's whole reward and it was two
+    // bumpers and a target. Authored up to the 1995 playfield's density — `tests/table-density`, where
+    // the Dev's "mesas tão simples" is a number: this table measured 2.67 against the archive's 5.25.
+    { name: 'eddy3', kind: 'bumper', role: WALL, bounds: { x: 83, y: 42, width: 16, height: 16 },
+      scores: [500, 1000, 1500, 2000], control: 'BumperControl', lamps: ['lamp.eddy3'],
+      collision: [{ kind: 'circle', at: { x: 91, y: 50 }, radius: 8 }] },
+    { name: 'eddy4', kind: 'bumper', role: WALL, bounds: { x: 83, y: 84, width: 16, height: 16 },
+      scores: [500, 1000, 1500, 2000], control: 'BumperControl', lamps: ['lamp.eddy4'],
+      collision: [{ kind: 'circle', at: { x: 91, y: 92 }, radius: 8 }] },
+
+    /* ===================== THE DRIFT: A DROP COLUMN ON THE CHAMBER WALL ===================== */
+    //
+    // Three drop targets stacked against the chamber's left wall. Each sinks when hit and the ball
+    // passes over where it was, so the column opens as it is cleared.
+    //
+    // ⚠️ VERTICAL, AND ON THIS TABLE THAT IS THE ONLY SHAPE THAT WORKS. An up-facing row was tried in
+    // both of the two places it could go and each was a different failure:
+    //
+    //   · ON THE CHAMBER'S FLOOR, at y = 106, it stood directly above the vanes — in the very column
+    //     `tests/table-slipstream` drops a ball down to prove a falling ball gets THROUGH one. The
+    //     bank was standing in front of the mechanism this whole table is named for.
+    //   · BELOW THE VANES, at y = 134, it was a floor under a one-way CEILING. The ball fell through a
+    //     vane, landed on the bank, and could go neither down nor back up: four thousand frames
+    //     without a drain, which is the box this table's own header records having been built once
+    //     already when the vanes were wound the other way.
+    //
+    // A vertical face has neither problem — nothing rests on it, and it stands beside the vanes rather
+    // than across them. `ion-storm` reached the same shape from a different direction, which is worth
+    // noticing: a drop bank wants a wall to stand against unless there is a bumper nest overhead.
+    { name: 'drift1', kind: 'target', role: 'key', bounds: { x: 8, y: 60, width: 12, height: 14 },
+      scores: [2200], control: 'TargetBankControl', bank: 'bank.drift', lamps: ['lamp.drift1'],
+      collision: [{ kind: 'line', from: { x: 20, y: 60 }, to: { x: 20, y: 74 } }] },
+    { name: 'drift2', kind: 'target', role: 'key', bounds: { x: 8, y: 78, width: 12, height: 14 },
+      scores: [2200], control: 'TargetBankControl', bank: 'bank.drift', lamps: ['lamp.drift2'],
+      collision: [{ kind: 'line', from: { x: 20, y: 78 }, to: { x: 20, y: 92 } }] },
+    { name: 'drift3', kind: 'target', role: 'key', bounds: { x: 8, y: 96, width: 12, height: 14 },
+      scores: [2200], control: 'TargetBankControl', bank: 'bank.drift', lamps: ['lamp.drift3'],
+      collision: [{ kind: 'line', from: { x: 20, y: 96 }, to: { x: 20, y: 110 } }] },
+
+    /* ===================== THE SPILLWAYS ===================== */
+    // Rollovers in the chamber's top corners, where a ball that came up the outside arrives. They pay
+    // for the hard way in — which is the route this table is about and the one it scored nothing for.
+    { name: 'spill.left', kind: 'lane', role: 'goal', bounds: { x: 20, y: 44, width: 14, height: 20 },
+      scores: [3500], control: 'LaneControl', lamps: ['lamp.spillLeft'] },
+    { name: 'spill.right', kind: 'lane', role: 'goal', bounds: { x: 144, y: 44, width: 14, height: 20 },
+      scores: [3500], control: 'LaneControl', lamps: ['lamp.spillRight'] },
+
+    /* ===================== THE WAKE ===================== */
+    // Three rollovers across the chamber's floor, where a ball on its way to the vanes crosses them.
+    //
+    // ⚠️ A LANE DECLARES NO COLLISION, which is why these can sit in the vanes' own column and the
+    // drop bank could not. The ball rolls over a lane and bounces off a target, and this table is the
+    // one place in the catalogue where the difference decides where a component may go at all.
+    { name: 'wake1', kind: 'lane', role: 'free', bounds: { x: 50, y: 96, width: 14, height: 16 },
+      scores: [1400], control: 'LaneControl', lamps: ['lamp.wake1'] },
+    { name: 'wake2', kind: 'lane', role: 'free', bounds: { x: 80, y: 96, width: 14, height: 16 },
+      scores: [1400], control: 'LaneControl', lamps: ['lamp.wake2'] },
+    { name: 'wake3', kind: 'lane', role: 'free', bounds: { x: 110, y: 96, width: 14, height: 16 },
+      scores: [1400], control: 'LaneControl', lamps: ['lamp.wake3'] },
+
+    /* ===================== THE BACKWASH ===================== */
+    // ⚠️ CLEAR OF BOTH WALLS BY THIRTY AND TWENTY PIXELS. `ion-storm`'s fifth bumper sat nine pixels of
+    // body from the lane divider and wedged the ball: the touch list read bumper, divider, bumper,
+    // divider, and every ball was spat into the outlane without ever reaching a paddle. A rebounder
+    // near a wall is a funnel nobody designed.
+    { name: 'back.left', kind: 'rebounder', role: 'goal', bounds: { x: 34, y: 150, width: 16, height: 16 },
+      scores: [2800], control: 'RebounderControl', lamps: ['lamp.backLeft'],
+      collision: [{ kind: 'circle', at: { x: 42, y: 158 }, radius: 8 }] },
+    { name: 'back.right', kind: 'rebounder', role: 'goal', bounds: { x: 126, y: 150, width: 16, height: 16 },
+      scores: [2800], control: 'RebounderControl', lamps: ['lamp.backRight'],
+      collision: [{ kind: 'circle', at: { x: 134, y: 158 }, radius: 8 }] },
+
     /* ===================== THE WAY BACK DOWN ===================== */
     // ⚠️ OUTSIDE THE VANES, which is what stops the chamber being a trap: the flanks are open, so a
     // ball can always fall back down the sides whether or not it finds these.
@@ -107,7 +183,11 @@ export const SLIPSTREAM: AuthoredTable = {
 
   lamps: [
     ...CABINET_LAMPS,
-    'lamp.vaneLeft', 'lamp.vaneRight', 'lamp.eddy1', 'lamp.eddy2',
+    'lamp.vaneLeft', 'lamp.vaneRight', 'lamp.eddy1', 'lamp.eddy2', 'lamp.eddy3', 'lamp.eddy4',
+    'lamp.drift1', 'lamp.drift2', 'lamp.drift3',
+    'lamp.spillLeft', 'lamp.spillRight',
+    'lamp.wake1', 'lamp.wake2', 'lamp.wake3',
+    'lamp.backLeft', 'lamp.backRight',
     'lamp.returnLeft', 'lamp.returnRight', 'lamp.crown',
   ],
 };

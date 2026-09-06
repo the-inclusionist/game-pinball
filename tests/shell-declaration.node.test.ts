@@ -56,13 +56,25 @@ describe('the topology is the table, and the ruler is the ball', () => {
   test('a continuous space, 183 by 235', () => {
     const d = createDeclaration(world());
 
-    expect(d.topology).toEqual({ kind: 'continuous', width: 183, height: 235, unit: 3 });
+    // ⚠️ CALLED, NOT READ. The engine's ADR-0084 made `topology` a function because `game-15puzzle` is
+    // 3x3, 4x4 or 5x5 and a memorised topology went stale in silence. A pinball's playfield is one size
+    // for the life of the game, so the answer is the same every call — but the contract asks in the
+    // shape that suits the game that needed it, and this consumer follows.
+    expect(d.topology()).toEqual({ kind: 'continuous', width: 183, height: 235, unit: 3 });
   });
 
   test('the UNIT is the ball’s radius, which is what makes "two steps away" sayable', () => {
     const d = createDeclaration(world({ ballRadius: 7 }));
 
-    expect(d.topology.kind === 'continuous' && d.topology.unit).toBe(7);
+    expect(d.topology().kind === 'continuous' && (d.topology() as { unit: number }).unit).toBe(7);
+  });
+
+  test('⚠️ and the WORLD is the canvas, which the contract now requires it to name', () => {
+    // New with the same engine change, and required rather than defaulted. The engine's own note gives
+    // the reason: blindfold chess exists, so a game with no visible space is not one where empathy
+    // makes no sense — it is one that asks more of whoever writes it. A default would have let
+    // forgetting pass as a decision.
+    expect(createDeclaration(world()).world()).toEqual({ kind: 'element', selector: '#game-region' });
   });
 
   test('the clock owns the tick, because a pinball does not wait', () => {

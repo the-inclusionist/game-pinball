@@ -70,7 +70,6 @@ const THIN: Readonly<Record<string, number>> = {
   // somebody of a loss they did not cause. `long-climb` measures 2.3679 and was first written 2.37.
   'long-climb': 2.36,
   'ring-belt': 1.85,
-  slipstream: 2.67,
 };
 
 describe('⚠️ how much there is to hit', () => {

@@ -124,7 +124,31 @@ export function createDeclaration(world: PinballWorld): GameDeclaration {
   };
 
   return {
-    topology,
+    /**
+     * ⚠️ A FUNCTION SINCE THE ENGINE'S ADR-0084, AND IT WAS A VALUE HERE. The engine changed under this
+     * game — `conformanceProblems` began answering "topology: must be a FUNCTION (it was a value until
+     * ADR-0084)" — and the reason it changed is one this table does not have: `game-15puzzle` is 3x3,
+     * 4x4 or 5x5, so a memorised topology went stale in silence. A pinball's playfield is one size for
+     * the life of the game, so the constant above is still the whole answer and this is the shape the
+     * contract now asks it in.
+     *
+     * The plan called this risk out in one line — "a engine é alvo móvel... um consumidor externo vai
+     * encostar em APIs que ainda mudam" — and this is the first time it has cost anything.
+     */
+    topology: () => topology,
+
+    /**
+     * ⚠️ AND `world` IS NEW AND REQUIRED, which the engine's own note explains better than a paraphrase
+     * would: blindfold chess exists, so a game with no visible space is not a game where empathy makes
+     * no sense — it is one that asks more of whoever writes it. A default would have let forgetting
+     * pass as a decision.
+     *
+     * The pinball's world is the canvas the table is composed onto, which is the element the engine
+     * already scales, filters for colour blindness and reads the CRT over. `#game-region` is where the
+     * engine mounts and `REQUIRED_MARKUP` in `shell/boot` is what refuses a page without it.
+     */
+    world: () => ({ kind: 'element', selector: '#game-region' }),
+
     // A pinball never waits for the player.
     tick: 'clock',
 

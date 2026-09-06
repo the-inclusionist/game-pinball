@@ -186,7 +186,10 @@ const PAINTED = {
   'crater-run': 7907,
   'long-climb': 8223,
   'ring-belt': 8224,
-  'slipstream': 6471,
+  // ⚠️ +2122 when this table was authored up to the 1995 density: two more eddies in the chamber, a
+  // three-target drop COLUMN on its wall, two spillways in its corners, three wake rollovers and
+  // two rebounders below the vanes.
+  'slipstream': 8593,
   'wide-arc': 4313,
   // ⚠️ 3553 UNTIL THE BALL GAINED A RADIUS. `table/physics-build` now offsets every wall by it, the way
   // the original does and `physics/wall` already did for the 1995 table, and two of this fixture's

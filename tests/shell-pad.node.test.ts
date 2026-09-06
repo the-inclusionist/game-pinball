@@ -17,8 +17,20 @@
 import { describe, test, expect } from 'vitest';
 import { cabinetFromPad, createPadReader, type PadReaderEvents } from '../app/js/shell/pad.js';
 
+/**
+ * ⚠️ THE ENGINE'S MIGRATION LANDED, AND THIS FIXTURE IS WHERE IT SURFACED. `padActions` used to return
+ * `jump`/`run`/`swap`/`especial`; it now returns `action1`..`action4`, which is the engine's issue
+ * #103 executing ADR-0085 and ADR-0086. `PadActions` requires the new four, so the old fixture stopped
+ * type-checking — the first thing in this repository to notice.
+ *
+ * ⚠️ AND NOTHING ELSE BROKE, WHICH WAS THE POINT OF THE DUAL TABLE. `CABINET_OF_ENGINE_ACTION` has held
+ * both vocabularies since the Dev said the rename was coming, precisely so this day would cost a
+ * fixture rather than a controller. The old names stay below as well: they cost nothing, and a game
+ * that runs against two engine versions is a game whose player is not waiting on a package.
+ */
 const NOTHING = {
   left: false, right: false, up: false, down: false,
+  action1: false, action2: false, action3: false, action4: false,
   jump: false, run: false, swap: false, especial: false, _start: false, _pause: false,
 };
 
