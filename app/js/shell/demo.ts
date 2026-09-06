@@ -15,10 +15,23 @@
 // 1995 SCORES, because `control/score-table` can finally be addressed: its rows now carry the tag that
 // names each component's group in the archive, which is what `make_component_link` uses upstream.
 //
-// ⚠️ STILL NO LAMPS AND NO MISSIONS. Those need the forty `T*` components built from the object
-// manifest, each with its own state — a bumper that knows its own level, a target that knows it is
-// down. This scores a hit at the component's FIRST level, which is what the original pays for a fresh
-// one, and does not pretend the rest is there.
+// ⚠️ THIS PARAGRAPH SAID "STILL NO LAMPS AND NO MISSIONS" AND HAD BEEN WRONG FOR DAYS.
+//
+// Both arrived and the header did not move: `readLampSprites` and `drawLamp` put the real lamps on the
+// playfield, and the mission machine runs twenty-three of twenty-three — a note further down this same
+// file says so, and says the footer had been left empty by a comment that outlived the code. So the
+// file contradicted itself, and the half that was read first was the stale half.
+//
+// It is recorded here rather than quietly deleted because of what it cost. Asked why the playable
+// tables are so much thinner than the original, I read my own header and nearly answered that the 1995
+// path was a viewer. It is not: with the player's own archive it is the real table, its walls, its
+// flippers and plunger, its lamps, its 1995 scores and its campaign. Prose about code is the least
+// tested thing in any repository, and this is the second one found this week — see the README's claim
+// that there was no art in the tree.
+//
+// WHAT IT STILL DOES NOT HAVE: the forty `T*` components with their own state, so a hit scores at the
+// component's FIRST level — what the original pays for a fresh one — and a bumper does not remember
+// being raised.
 
 import { buildOriginalTable, type OriginalTable } from '../table/original.js';
 import { SCORE_COMPONENTS } from '../control/score-table.js';
