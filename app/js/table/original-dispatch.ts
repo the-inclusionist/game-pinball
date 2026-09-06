@@ -53,7 +53,7 @@ import {
   FUEL_REFUEL_TEXT_ID, OUT_LANES, BONUS_LANE, SPOT_TARGET_SETS, MEDAL_BANK, MULTIPLIER_BANK,
   BOOSTER_BANK, TABLE_ACTIONS, FLIPPER_REBOUNDERS, GATE_LAMPS, KICKERS, SKILL_SHOT,
   LAUNCH_RAMP, FLAGS, KICKOUTS, DRAIN, PER_BALL_RESET, MISSIONS, RANK, WORM_HOLE,
-  DRAIN_BLOCKER, PLUNGER_FEED, WORM_HOLE_SINKS, HYPERSPACE, CHEAT_GATES,
+  DRAIN_BLOCKER, PLUNGER_FEED, WORM_HOLE_SINKS, HYPERSPACE, CHEAT_GATES, ALIEN_MENACE,
   type BumperLaneBinding,
 } from '../control/bindings.js';
 import { addExtraBall, createTableActions } from '../control/table-actions.js';
@@ -74,6 +74,7 @@ import { makeMissionController } from '../control/mission-runner.js';
 import { MISSION_TABLE } from '../control/mission-table.js';
 import { addRankProgress as advanceRank } from '../control/rank.js';
 import { cheatBumpRank } from '../control/cheats.js';
+import { makeAlienMenaceController } from '../control/mission-specials.js';
 import {
   makePlungerControl, makeDrainBallBlockerControl, NEW_BALL_REFLEX_SCORE,
   type FeedGroup, type FeedTable,
@@ -299,16 +300,30 @@ function groupAdapter(components: OriginalComponents, name: string): LaneGroup |
   };
 }
 
+/** One named member's level, which is what the original reads: `bump1->BmpIndex`. */
+function levelOfGroup(components: OriginalComponents, groupName: string): number {
+  const first = components.bumperGroups.get(groupName)?.[0];
+  if (first === undefined) return 0;
+  return components.bumpers.get(first)?.level ?? 0;
+}
+
 function bumperAdapter(
   components: OriginalComponents, binding: BumperLaneBinding,
   restartNotifyTimer: (seconds: number) => void,
+  announceLevel: () => void,
 ): { level: number; incLevel(): void; restartNotifyTimer(seconds: number): void } {
   return {
     // ⚠️ THE LEVEL IS READ OFF ONE NAMED BUMPER, as the original does: `bump1->BmpIndex`. They rise
     // together, so any member would answer the same — but transcribing it as "the highest in the group"
     // would be a different rule the day one is raised alone.
     get level() { return components.bumpers.get(binding.guardBumper)?.level ?? 0; },
-    incLevel: () => components.raiseGroup(binding.bumperGroup),
+    incLevel: () => {
+      const before = components.bumpers.get(binding.guardBumper)?.level ?? 0;
+      components.raiseGroup(binding.bumperGroup);
+      // Only a level that MOVED speaks — `if (nextBmp != BmpIndex)`. At the top of the ladder the
+      // group clamps and the mission must not be handed a win it did not earn.
+      if ((components.bumpers.get(binding.guardBumper)?.level ?? 0) !== before) announceLevel();
+    },
     // ⚠️ AND THIS IS THE OTHER HALF OF THE MECHANIC. Filling the lanes restarts the sixty seconds, so
     // a player who keeps working them holds the level; one who stops watches it fall. It was a no-op
     // until the group's own control existed to be restarted.
@@ -362,13 +377,37 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
   //
   // Built before the lane chains because a lane crossing RESTARTS this timer, and the adapter it
   // hands the lane control has to be able to.
+  /**
+   * ⚠️ THE MESSAGE THAT WINS ALIEN MENACE, AND NOTHING WAS SENDING IT. `TBumper::Message` ends its
+   * `TBumperSetBmpIndex` case with `control::handler(TBumperSetBmpIndex, this)` — but only inside
+   * `if (nextBmp != BmpIndex)`, so a level that does not move says nothing. Both the increment and the
+   * decrement route through that case, which is why a DECREMENT that leaves the level above zero also
+   * finishes the mission: the controller asks `if (bump1->BmpIndex)` and not "did it go up".
+   *
+   * ⚠️ AND IT IS SENT FROM HERE RATHER THAN FROM `table/bumper`. The original puts it in the component;
+   * this port has exactly two places where a level moves — the lane chain's `incLevel` and the group's
+   * own sixty-second decay — and putting it in both keeps the component free of the control layer. The
+   * difference is a level changed by some third path, of which this port has none, and this comment is
+   * where whoever adds one will find out that they have to send it.
+   */
+  const announceBumperLevel = (groupName: string): void => {
+    for (const member of o.components.bumperGroups.get(groupName) ?? []) {
+      const component = byName.get(member);
+      if (component) handler('TBumperSetBmpIndex', component, ctx);
+    }
+  };
+
   const restartGroupNotify = new Map<string, (seconds: number) => void>();
   for (const name of o.components.bumperGroups.keys()) {
     const caller: ControlledComponent = { name, scores: [], control: null };
     let restart: (seconds: number) => void = () => {};
     const control = makeBumperGroupControl({
       bumpers: {
-        decLevel: () => o.components.lowerGroup(name),
+        decLevel: () => {
+          const before = levelOfGroup(o.components, name);
+          o.components.lowerGroup(name);
+          if (levelOfGroup(o.components, name) !== before) announceBumperLevel(name);
+        },
         restartNotifyTimer: (seconds) => restart(seconds),
       },
     });
@@ -393,6 +432,7 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
       group,
       bumpers: bumperAdapter(
         o.components, binding, restartGroupNotify.get(binding.bumperGroup) ?? (() => {}),
+        () => announceBumperLevel(binding.bumperGroup),
       ),
       completeText: o.textFor(binding.completeTextId),
       isFullTilt: o.isFullTilt ?? (() => false),
@@ -1508,6 +1548,38 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
   // next-mission numbers have never been read. Wiring them from a guess would put a mission on the
   // table that announces the wrong thing and hands over to the wrong mission, which is worse than a
   // mission that does not run — so they are declined, and this says so.
+  /**
+   * ⚠️ CASE 10 OF THE MISSION SWITCH, WHICH IS NOT A ROW IN THE TABLE. Alien Menace listens for a
+   * bumper LEVEL and for nothing else — no collision, no lane, no target — so it is built here rather
+   * than in the loop over `MISSION_TABLE`, and it is declined whole if any of its parts is missing,
+   * like every other block in this file.
+   */
+  {
+    const watched = byName.get(ALIEN_MENACE.watched);
+    const alienLamp = o.components.lights.get(ALIEN_MENACE.lamp);
+    const trekGroups = ALIEN_MENACE.trekGroups
+      .map((name) => feedAdapter(o.components, name))
+      .filter((group): group is FeedGroup => Boolean(group));
+
+    if (watched && alienLamp && missionLamp
+      && trekGroups.length === ALIEN_MENACE.trekGroups.length) {
+      controllers[ALIEN_MENACE.mission] = makeAlienMenaceController({
+        bumpers: {
+          get level() { return levelOfGroup(o.components, ALIEN_MENACE.bumperGroup); },
+          // `attack_bump->Message(TBumperSetBmpIndex, 0.0)`, which is the group primitive and not a
+          // Reset: a reset would clear the bumper's timers and message field as well.
+          setLevel: (level: number) => o.components.setGroupLevel(ALIEN_MENACE.bumperGroup, level),
+        },
+        watched,
+        lamp: alienLamp,
+        trekGroups,
+        text: o.textFor(ALIEN_MENACE.textId),
+        nextMission: ALIEN_MENACE.nextMission,
+        missionLamp,
+      });
+    }
+  }
+
   missions = createMissionMachine({
     missionLamp: missionLamp ?? { messageField: 0 },
     missionTextBox,

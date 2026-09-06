@@ -124,6 +124,12 @@ export interface OriginalComponents {
    */
   lowerGroup(groupName: string): void;
   /**
+   * `TBumperGroup::Message(TBumperSetBmpIndex, level)` — the level SET rather than nudged. The take-over
+   * of Alien Menace is the only sender, and it sends zero. Kept apart from `reset`, which also clears
+   * the bumper's timers and its message field.
+   */
+  setGroupLevel(groupName: string, level: number): void;
+  /**
    * `TComponentGroupResetNotifyTimer`. The callback is the group's own control function, passed in
    * each time because the component builder is made before the dispatcher that binds it.
    */
@@ -331,6 +337,12 @@ export function buildOriginalComponents(
       for (const member of bumperGroups.get(groupName) ?? []) {
         const bumper = bumpers.get(member);
         if (bumper) bumper.setLevel(bumper.level + 1, frameCounts.get(member) ?? 1);
+      }
+    },
+
+    setGroupLevel(groupName, level) {
+      for (const member of bumperGroups.get(groupName) ?? []) {
+        bumpers.get(member)?.setLevel(level, frameCounts.get(member) ?? 1);
       }
     },
 

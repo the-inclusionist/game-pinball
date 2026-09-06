@@ -17,6 +17,7 @@ import {
 import { createScoreState } from '../app/js/control/score.js';
 import { BASE_BONUS } from '../app/js/control/drain.js';
 import { SCORE_COMPONENTS } from '../app/js/control/score-table.js';
+import { ALIEN_MENACE } from '../app/js/control/bindings.js';
 import { MISSION_TABLE } from '../app/js/control/mission-table.js';
 import { loadTable } from '../app/js/dat/loader.js';
 import type { ControlContext } from '../app/js/control/dispatch.js';
@@ -1470,6 +1471,82 @@ describe('⚠️ the mission machine, and the state the table sits in before a b
     clearMissionText: () => said.push(''),
   });
 
+  /**
+   * ⚠️ ALIEN MENACE IS WON WITHOUT HITTING ANYTHING, which is why it is not a row in `MISSION_TABLE`.
+   *
+   *     if (bump1 == caller) { if (bump1->BmpIndex) { lite307 off; lite198->MessageField = 20;
+   *                                                   MissionControl(ControlMissionComplete); } }
+   *
+   * It listens for `TBumperSetBmpIndex` — the message a bumper group sends when its LEVEL changes — and
+   * its own take-over sets that level back to zero. So the mission is "raise the attack bumpers one
+   * level, starting now", and what raises them is filling a lane. Every number here is read from
+   * `control.cpp`: the lamp is `lite307`, the line is STRING275 and the mission it hands over to is 20.
+   */
+  describe('mission 10, Alien Menace', () => {
+    test('⚠️ taking over resets the bumper level, so the mission is the NEXT one earned', () => {
+      const w = wired({ gates: true, wormHole: true });
+      if (!w) return expect(existsSync(DAT)).toBe(false);
+      const said: string[] = [];
+      const lamp = w.components.lights.get('lite198')!;
+      const bump1 = w.components.bumpers.get('a_bump1')!;
+      bump1.setLevel(3, 8);
+      lamp.messageField = 10;
+
+      w.dispatch.missions.dispatch('ControlMissionComplete', null, missionContext(w, said) as never);
+
+      expect(bump1.level, 'back to zero on take-over').toBe(0);
+      expect(said.at(-1), 'and it announces itself').toBe('text:STRING275');
+    });
+
+    test('⚠️ FILLING A LANE RAISES THE LEVEL, AND THAT — not a hit — finishes the mission', () => {
+      // End to end, because the interesting half is the message nobody was sending. Crossing every
+      // lane of a set completes it, the group's level goes up, `TBumper::Message` sends
+      // `TBumperSetBmpIndex` with the bumper as caller, and the mission reads `bump1->BmpIndex`.
+      // A port that raised the level silently gives a mission that announces itself and can never end.
+      const w = wired({ gates: true, wormHole: true });
+      if (!w) return expect(existsSync(DAT)).toBe(false);
+      const lamp = w.components.lights.get('lite198')!;
+      const bump1 = w.components.bumpers.get('a_bump1')!;
+      lamp.messageField = ALIEN_MENACE.mission;
+      expect(bump1.level, 'the ladder starts at the bottom').toBe(0);
+
+      for (const lane of REENTRY_LANES.lanes) w.dispatch.hit(lane.component);
+
+      expect(bump1.level, 'a full set of lanes is one level').toBe(1);
+      // ⚠️ THE LITERAL, NOT `ALIEN_MENACE.nextMission`. Asserting the constant the code reads makes the
+      // test move with the table it is supposed to hold still: changing 20 to 1 in `bindings` passed.
+      expect(lamp.messageField, 'and the mission hands over to 20').toBe(20);
+      expect(ALIEN_MENACE.nextMission, 'which is what the binding says').toBe(20);
+    });
+
+    test('⚠️ AN EQUIVALENT MUTANT, RECORDED: the "did the level move" guard cannot fire here', () => {
+      // `TBumper::Message` sends `TBumperSetBmpIndex` only inside `if (nextBmp != BmpIndex)`, and this
+      // port transcribes that guard. It is unreachable on this table, and I found that out by writing
+      // a test that claimed to exercise it and did not: dropping the guard leaves all 140 green.
+      //
+      // Two reasons, both worth knowing. `BumperLaneControl` has its OWN outer guard —
+      // `if (bump1->BmpIndex < 3)` — so a raise is never even attempted at the top of the ladder. And
+      // the only other path, the group's sixty-second decay, can only fail to move the level when it
+      // is already zero, which the mission reads as "not won" either way.
+      //
+      // The guard stays because it is the original's, because the decrement leans on it, and because
+      // the day something else sets a level it is the thing standing between a mission and a win it
+      // did not earn. What cannot be claimed is that a test covers it.
+      const w = wired({ gates: true, wormHole: true });
+      if (!w) return expect(existsSync(DAT)).toBe(false);
+      const bump1 = w.components.bumpers.get('a_bump1')!;
+
+      // The set completes once and then flashes for five seconds, so a second crossing does nothing
+      // at all — no raise attempted, no message either way. That is `light->FlasherOnFlag` upstream.
+      for (const lane of REENTRY_LANES.lanes) w.dispatch.hit(lane.component);
+      const afterFirst = bump1.level;
+      for (const lane of REENTRY_LANES.lanes) w.dispatch.hit(lane.component);
+
+      expect(afterFirst).toBe(1);
+      expect(bump1.level, 'a flashing set is not a set').toBe(1);
+    });
+  });
+
   test('the table starts in mission ZERO, which is a state and not a mission', () => {
     const w = wired();
     if (!w) return expect(existsSync(DAT)).toBe(false);
@@ -1548,7 +1625,12 @@ describe('⚠️ the eighteen missions that can run without the holes, and the t
     // ⚠️ AND THE DISPATCHER AGREES, which is the half that can fail. Reading the table alone counts
     // what COULD run; `missionsRun` is what does, and a mutation wiring a half-resolved mission passed
     // until this line existed.
-    expect(w.dispatch.missionsRun.size).toBe(19);
+    //
+    // ⚠️ PLUS ONE FOR ALIEN MENACE, which is case 10 of the switch and NOT a row in the table — it has
+    // no components to count hits on, because it is won by a bumper LEVEL. So the two numbers stopped
+    // being the same number the day it was wired, and the sum is spelled out rather than adjusted.
+    expect(w.dispatch.missionsRun.size, 'nineteen rows and one special').toBe(19 + 1);
+    expect(w.dispatch.missionsRun.has(ALIEN_MENACE.mission)).toBe(true);
     for (const row of runnable) expect(w.dispatch.missionsRun.has(row.mission), row.name).toBe(true);
     // ⚠️ BUG HUNT USED TO BE THE EXAMPLE HERE and it runs now: `target22` is the wormhole's
     // destination and it is wired. The five still declined need the three sinks and `kickout2`.
@@ -1569,16 +1651,22 @@ describe('⚠️ the eighteen missions that can run without the holes, and the t
     if (!w) return expect(existsSync(DAT)).toBe(false);
     const tagOf = new Map(SCORE_COMPONENTS.map((row) => [row.name, row.tag]));
 
-    expect(w.dispatch.missionsRun.size).toBe(23);
+    expect(w.dispatch.missionsRun.size, 'twenty-three rows and one special').toBe(23 + 1);
     for (const mission of [16, 22, 23, 30, 31]) {
       expect(w.dispatch.missionsRun.has(mission), `mission ${mission}`).toBe(true);
     }
     expect(MISSION_TABLE.filter((row) => !w.dispatch.missionsRun.has(row.mission))).toEqual([]);
-    // ⚠️ AND THREE CASES OF THE SWITCH ARE STILL NOT RUN, which the table cannot show because they are
-    // not rows in it: Alien Menace, Time Warp part two and Game Over are their own controllers in
-    // `control/mission-specials`, written and tested and unwired for want of their NAMES — the lamps
-    // and strings live past the point where the upstream file can be read in one piece from here.
-    for (const mission of [10, 24, 32]) {
+    expect(MISSION_TABLE.some((row) => row.mission === ALIEN_MENACE.mission),
+      'and it is not one of them').toBe(false);
+    // ⚠️ AND THREE CASES OF THE SWITCH ARE NOT ROWS IN THE TABLE: Alien Menace, Time Warp part two and
+    // Game Over are their own controllers in `control/mission-specials`.
+    //
+    // ⚠️ AND THE REASON THEY WERE DECLINED IS GONE. It was "the lamps and strings live past the point
+    // where the upstream file can be read in one piece from here" — true of a fetch that truncates,
+    // false of `gh api`, which hands over all 4603 lines of `control.cpp`. Alien Menace is wired from
+    // the source rather than from a guess; the other two are next, and stay declined until they are.
+    expect(w.dispatch.missionsRun.has(10), 'alien menace').toBe(true);
+    for (const mission of [24, 32]) {
       expect(w.dispatch.missionsRun.has(mission), `special ${mission}`).toBe(false);
     }
     // And every component every mission names is registered, which is the same claim from the other
@@ -2165,6 +2253,6 @@ describe('the hole that pays more every time', () => {
     if (!w) return expect(existsSync(DAT)).toBe(false);
 
     expect(w.dispatch.wired.has(HYPERSPACE.component)).toBe(true);
-    expect(w.dispatch.missionsRun.size).toBe(23);
+    expect(w.dispatch.missionsRun.size, 'and Alien Menace on top of the table').toBe(23 + 1);
   });
 });

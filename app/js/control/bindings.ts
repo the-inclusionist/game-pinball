@@ -573,6 +573,32 @@ export const HYPERSPACE = {
  */
 export const CHEAT_GATES: readonly string[] = ['v_gate1', 'v_gate2'];
 
+/**
+ * ⚠️ ALIEN MENACE, WHICH IS CASE 10 OF THE MISSION SWITCH AND NOT A ROW IN `MISSION_TABLE`.
+ *
+ * Every number here is transcribed from `AlienMenaceController`, which was declined until now for want
+ * of exactly these five values — the file reads whole through `gh api`, which is what changed.
+ *
+ *     if (bump1 == caller) { if (bump1->BmpIndex) { lite307 -> TLightResetAndTurnOff;
+ *                                                   lite198->MessageField = 20;
+ *                                                   MissionControl(ControlMissionComplete, nullptr); } }
+ *
+ * ⚠️ AND THE NAMES ARE THE ARCHIVE'S, NOT THE VARIABLES'. `bump1` is `a_bump1` and `attack_bump` is
+ * `attack_bumpers`; the lamps and the trek groups happen to be the same in both.
+ */
+export const ALIEN_MENACE = {
+  mission: 10,
+  /** `bump1`. Its level going above zero is the whole win condition. */
+  watched: 'a_bump1',
+  /** `attack_bump`, whose level the take-over sets back to zero. */
+  bumperGroup: 'attack_bumpers',
+  lamp: 'lite307',
+  trekGroups: ['l_trek_lights', 'r_trek_lights'],
+  textId: 'STRING275',
+  /** `lite198->MessageField = 20` — the mission it hands over to. */
+  nextMission: 20,
+} as const;
+
 export const RANK = {
   outerCircle: 'outer_circle',
   middleCircle: 'middle_circle',
