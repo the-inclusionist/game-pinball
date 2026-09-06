@@ -1039,6 +1039,8 @@ Object.assign(window as unknown as Record<string, unknown>, {
     get hits() { return hits; },
     get score() { return live.score.curScore; },
     get lamps() { return live.litLamps(); },
+    get playfieldX() { return shell.hud.playfield.x; },
+    get cameraY() { return Math.floor(shell.camera.offset); },
     get hint() { return hint; },
     /** Exposed so the browser gate can confirm sound rather than assume it. */
     get blind() { return blind; },
@@ -1069,8 +1071,20 @@ Object.assign(window as unknown as Record<string, unknown>, {
     /** Steps the game by hand, for a check that cannot rely on the browser compositing. */
     step,
     /** The flippers, so a check can confirm a key press reached them. */
+    /**
+     * ⚠️ AND THE GEOMETRY, NOT ONLY THE MOTION. This reported `motion` and `currentAngle`, which say
+     * that a paddle is moving and never where it IS — so a check could confirm the simulation and had
+     * no way to ask whether the screen agreed. `rotOrigin` and `t1` are the pivot and the tip the
+     * renderer draws between, which is what lets a test look at the right pixels rather than hunt a
+     * paddle by colour and find the guides as well.
+     */
     get flippers() {
-      return physics.flippers.map((f) => ({ motion: f.motion, angle: f.currentAngle }));
+      return physics.flippers.map((f) => ({
+        motion: f.motion,
+        angle: f.currentAngle,
+        pivot: { x: f.rotOrigin.x, y: f.rotOrigin.y },
+        tip: { x: f.t1.x, y: f.t1.y },
+      }));
     },
     setFlippers: (side: 'left' | 'right', extended: boolean) => physics.setFlippers(side, extended),
     unbindControls,
