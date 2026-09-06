@@ -12,9 +12,39 @@
 import { describe, test, expect } from 'vitest';
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { createDemo } from '../app/js/shell/demo.js';
+import { readGroups } from '../app/js/dat/partman.js';
+import { findSoundLinks, TIMER_SOUND_COMPONENTS } from '../app/js/audio/sound-links.js';
 
 const DIR = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources';
 const DAT = `${DIR}/PINBALL.DAT`;
+
+/**
+ * The length of a WAV, from its header. `AudioContext.decodeAudioData` is the port's own reader and it
+ * is a browser API; this walks the chunks itself because the question — how long does this hold the
+ * ball — has to be answerable without one.
+ */
+function wavSeconds(bytes: Buffer): number | null {
+  if (bytes.length < 44 || bytes.toString('latin1', 0, 4) !== 'RIFF') return null;
+  let at = 12;
+  let rate = 0;
+  let channels = 0;
+  let bits = 0;
+  let dataLength = 0;
+  while (at + 8 <= bytes.length) {
+    const id = bytes.toString('latin1', at, at + 4);
+    const size = bytes.readUInt32LE(at + 4);
+    if (id === 'fmt ') {
+      channels = bytes.readUInt16LE(at + 10);
+      rate = bytes.readUInt32LE(at + 12);
+      bits = bytes.readUInt16LE(at + 22);
+    }
+    if (id === 'data') dataLength = size;
+    // Chunks are padded to an even length, and a reader that forgets that walks off the end.
+    at += 8 + size + (size % 2);
+  }
+  if (!rate || !channels || !bits) return null;
+  return dataLength / (rate * channels * (bits / 8));
+}
 
 const demoOf = () => {
   if (!existsSync(DAT)) return null;
@@ -66,6 +96,43 @@ describe('the sound files the 1995 table asks for', () => {
     // them so a player can tell "silent" from "stuck".
     expect(report.silent).toContain('soundwave37');
     expect(report.silent.length, 'named, not counted').toBeGreaterThan(0);
+  });
+
+  test('⚠️ AND THE SEVEN HOLDS ARE ALL BETWEEN A SECOND AND THREE', () => {
+    // The seven timer components hold the ball for as long as their sound lasts, so the DURATION of
+    // those seven files is a gameplay number and not an audio one. Read from the WAV headers rather
+    // than from anything the port computes: `soundwave7` 2.39 s, `soundwave41` 0.93, `soundwave36`
+    // 3.06, `soundwave50` 1.08, `soundwave35` 1.76, `soundwave38` 1.17, `soundwave39` 2.55.
+    //
+    // ⚠️ A LONG FILE HERE IS A HOLE THAT KEEPS THE BALL, and it would look like sluggish play rather
+    // than like a defect. The bound is generous — a tenth of a second to six, against a set whose
+    // longest sound of any kind is 5.02 — and its job is to catch an order of magnitude, not to pin a
+    // number the archive chose.
+    //
+    // ⚠️ AND `soundwave41` IS `SOUND29.WAV`. The group's name and its file's name do not match, which
+    // is why the port reads the name out of the group's String field instead of deriving it.
+    const demo = demoOf();
+    if (!demo) return expect(existsSync(DAT)).toBe(false);
+    const groups = readGroups(new Uint8Array(readFileSync(DAT)));
+    const onDisk = new Map(readdirSync(DIR).map((name) => [name.toUpperCase(), name]));
+
+    const fileOf = new Map<string, string>();
+    for (const link of findSoundLinks(groups)) {
+      const file = demo.soundFiles.get(link.soundGroup);
+      if (file) fileOf.set(link.component, file);
+    }
+
+    for (const component of TIMER_SOUND_COMPONENTS) {
+      const wanted = fileOf.get(component);
+      expect(wanted, `${component} names a file`).toBeTruthy();
+      const real = onDisk.get(wanted!.toUpperCase());
+      expect(real, `${component} wants ${wanted}, which is present`).toBeTruthy();
+
+      const seconds = wavSeconds(readFileSync(`${DIR}/${real}`));
+      expect(seconds, `${real} parses as a WAV`).not.toBeNull();
+      expect(seconds!, `${component} holds the ball for a sensible time`).toBeGreaterThan(0.1);
+      expect(seconds!).toBeLessThan(6);
+    }
   });
 
   test('and every file it asks for is a name a filesystem can hold', () => {
