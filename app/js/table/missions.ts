@@ -23,13 +23,33 @@
 // This is a small declarative format instead: an ordered list, each with targets and an award. It says
 // what it is.
 
-/** One mission, as a table file declares it. */
-export interface AuthoredMission {
-  /** An i18n key. The text is what the HUD shows while the mission runs. */
+/**
+ * One ACT of a mission: a line of text and the things to hit while it is on screen.
+ *
+ * ⚠️ THE 1995 CAMPAIGN IS MOSTLY STAGED AND THIS FORMAT COULD NOT SAY SO. The i18n dictionaries have
+ * carried the evidence all along — `strayComet.run` is "Derrube os três alvos da direita",
+ * `strayComet.stage2` is "Agora o ejetor da direita", and only then `.done`. Six authored tables had
+ * eighteen missions between them and every one was a single act: hit these three things, collect. That
+ * is a large part of what "the tables are simpler than the original" means, measured.
+ */
+export interface MissionStage {
+  /** An i18n key. The text the HUD shows while THIS act runs. */
   readonly id: string;
   /** Component names. Every one has to be hit — see `hit` for why hits are not counted. */
   readonly targets: readonly string[];
-  /** Paid once, on the hit that finishes it. */
+}
+
+/** One mission, as a table file declares it. */
+export interface AuthoredMission {
+  /**
+   * Its acts, in order. A one-act mission is a list of one.
+   *
+   * ⚠️ AND THERE IS NO `targets` BESIDE THIS. Keeping the old flat field as a shortcut would be the
+   * same rule written twice, which is the defect this repository has already found in a bumper's
+   * rectangle, a HUD inset, a plunger's speed and a licence note. The six tables were converted.
+   */
+  readonly stages: readonly MissionStage[];
+  /** Paid once, on the hit that finishes the LAST act. */
   readonly award: number;
 }
 
@@ -41,7 +61,9 @@ export interface MissionHit {
 export interface MissionRunner {
   /** The mission running now, or `null` on a table that declares none. */
   readonly current: AuthoredMission | null;
-  /** Its targets that have not been hit yet, in the order the table listed them. */
+  /** The act running now — what the HUD shows and what the sonar points at. */
+  readonly stage: MissionStage | null;
+  /** The CURRENT ACT's targets that have not been hit yet, in the order the table listed them. */
   readonly remaining: readonly string[];
   /** How many times the list has been round. Zero on the first pass. */
   readonly lap: number;
@@ -52,18 +74,25 @@ export interface MissionRunner {
 
 export function runMissions(missions: readonly AuthoredMission[]): MissionRunner {
   let index = 0;
+  let act = 0;
   let lap = 0;
   let done = new Set<string>();
 
   const current = (): AuthoredMission | null => missions[index] ?? null;
+  const stage = (): MissionStage | null => current()?.stages[act] ?? null;
 
   return {
     get current() { return current(); },
 
+    get stage() { return stage(); },
+
     get remaining() {
-      const mission = current();
-      if (!mission) return [];
-      return mission.targets.filter((target) => !done.has(target));
+      // ⚠️ THE CURRENT ACT'S, NOT THE MISSION'S. A player is asked for one act at a time, and this
+      // list is what the sonar points a blind player at: naming a later act's targets would send them
+      // across the table for something that does not count yet.
+      const now = stage();
+      if (!now) return [];
+      return now.targets.filter((target) => !done.has(target));
     },
 
     get lap() { return lap; },
@@ -75,15 +104,28 @@ export function runMissions(missions: readonly AuthoredMission[]): MissionRunner
      */
     hit(component: string): MissionHit {
       const mission = current();
-      if (!mission || !mission.targets.includes(component)) return { completed: false, award: 0 };
+      const now = stage();
+      // ⚠️ THE CURRENT ACT DECIDES WHAT COUNTS. A target belonging to an act already finished is an
+      // ordinary hit and nothing more: otherwise a player rattling one bumper walks through every act
+      // of every mission, and the stages are decoration.
+      if (!mission || !now || !now.targets.includes(component)) return { completed: false, award: 0 };
 
       done.add(component);
-      if (mission.targets.some((target) => !done.has(target))) return { completed: false, award: 0 };
+      if (now.targets.some((target) => !done.has(target))) return { completed: false, award: 0 };
+
+      // The act is finished. If the mission has another, it opens with nothing crossed off and NOTHING
+      // IS PAID — a staged mission that paid on its first act would be two missions sharing one reward,
+      // and the player would never be shown the second half.
+      done = new Set();
+      if (act + 1 < mission.stages.length) {
+        act += 1;
+        return { completed: false, award: 0 };
+      }
 
       // ⚠️ AND THE LIST WRAPS. A pinball table is played until the ball is lost, not until a story
       // ends; the 1995 game cycles its missions too. Stopping would leave a live ball with nothing the
       // sonar can point at, which is the silence `objective.ts` exists to avoid.
-      done = new Set();
+      act = 0;
       index += 1;
       if (index >= missions.length) {
         index = 0;
@@ -94,6 +136,7 @@ export function runMissions(missions: readonly AuthoredMission[]): MissionRunner
 
     reset() {
       index = 0;
+      act = 0;
       lap = 0;
       done = new Set();
     },

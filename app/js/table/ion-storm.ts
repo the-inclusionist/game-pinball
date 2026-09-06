@@ -38,11 +38,11 @@ export const ION_STORM: AuthoredTable = {
   missions: [
     // The middle cluster first, because it is what the player will hit whether they aim at it or not:
     // a first mission that completes itself teaches the machine before it asks anything.
-    { id: 'pinball.mission.ionStorm.cluster', targets: ['storm1', 'storm2', 'storm3'], award: 6000 },
+    { award: 6000, stages: [{ id: 'pinball.mission.ionStorm.cluster', targets: ['storm1', 'storm2', 'storm3'] }] },
     // Then the flanks, which have to be aimed at and which throw the ball back.
-    { id: 'pinball.mission.ionStorm.flanks', targets: ['flank.left', 'flank.right'], award: 12000 },
+    { award: 12000, stages: [{ id: 'pinball.mission.ionStorm.flanks', targets: ['flank.left', 'flank.right'] }] },
     // Then the ramp, once, which is the hardest single shot on the table.
-    { id: 'pinball.mission.ionStorm.ramp', targets: ['ramp'], award: 25000 },
+    { award: 25000, stages: [{ id: 'pinball.mission.ionStorm.ramp', targets: ['ramp'] }] },
   ],
 
   components: [

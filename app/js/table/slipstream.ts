@@ -39,11 +39,11 @@ export const SLIPSTREAM: AuthoredTable = {
 
   missions: [
     // Through the vanes first — the table teaching its own rule.
-    { id: 'pinball.mission.slipstream.through', targets: ['vane.left', 'vane.right'], award: 8000 },
+    { award: 8000, stages: [{ id: 'pinball.mission.slipstream.through', targets: ['vane.left', 'vane.right'] }] },
     // Then the upper chamber, which is only reachable through them.
-    { id: 'pinball.mission.slipstream.upper', targets: ['eddy1', 'eddy2'], award: 16000 },
+    { award: 16000, stages: [{ id: 'pinball.mission.slipstream.upper', targets: ['eddy1', 'eddy2'] }] },
     // Then the return lanes, which are the only way down that scores.
-    { id: 'pinball.mission.slipstream.return', targets: ['return.left', 'return.right'], award: 26000 },
+    { award: 26000, stages: [{ id: 'pinball.mission.slipstream.return', targets: ['return.left', 'return.right'] }] },
   ],
 
   components: [

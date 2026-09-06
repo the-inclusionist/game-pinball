@@ -52,11 +52,11 @@ export const RING_BELT: AuthoredTable = {
 
   missions: [
     // The belt first: it spans the table, so finishing it means having been everywhere once.
-    { id: 'pinball.mission.ringBelt.belt', targets: BELT.map((b) => b.name), award: 14000 },
+    { award: 14000, stages: [{ id: 'pinball.mission.ringBelt.belt', targets: BELT.map((b) => b.name) }] },
     // Then the two far ramps, which are the shots taken at something off screen.
-    { id: 'pinball.mission.ringBelt.reach', targets: ['ramp.far', 'ramp.near'], award: 22000 },
+    { award: 22000, stages: [{ id: 'pinball.mission.ringBelt.reach', targets: ['ramp.far', 'ramp.near'] }] },
     // Then the outer rollovers, at the two extremes of the width.
-    { id: 'pinball.mission.ringBelt.edges', targets: ['edge.west', 'edge.east'], award: 30000 },
+    { award: 30000, stages: [{ id: 'pinball.mission.ringBelt.edges', targets: ['edge.west', 'edge.east'] }] },
   ],
 
   components: [

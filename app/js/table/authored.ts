@@ -45,6 +45,10 @@
 import type { Role } from '@the-inclusionist/engine/core/contract.js';
 import type { ComponentKind } from '../i18n/names.js';
 import type { AuthoredMission } from './missions.js';
+// ⚠️ A VALUE IMPORT INTO A MODULE THAT `rollovers` ITSELF IMPORTS, and it is not a cycle: the
+// import going the other way is `import type`, which erases. The alternative was a third copy of
+// the list, and two copies of a rule is how this repository's last four defects were held open.
+import { ROLLOVER_KINDS } from './rollovers.js';
 import type { Rect } from '../shell/hud.js';
 import type { DeclaredBall, DeclaredComponent } from '../shell/declaration.js';
 import type { LiveTable } from '../shell/boot.js';
@@ -305,13 +309,40 @@ export function validateTable(table: AuthoredTable, o: ValidationOptions): strin
    * rather than discovered by somebody playing it.
    */
   const placed = new Set(table.components.map((c) => c.name));
-  for (const mission of table.missions ?? []) {
-    if (mission.targets.length === 0) {
-      problems.push(`mission "${mission.id}": no targets, so it can never be completed`);
+  for (const [at, mission] of (table.missions ?? []).entries()) {
+    // ⚠️ AND A MISSION WITH NO ACTS IS REFUSED TOO. A mission is a sequence now, and an empty sequence
+    // is a mission that is finished the moment it starts — or, depending on where it is read, one that
+    // never starts at all. Neither is a thing a table meant to say.
+    if (mission.stages.length === 0) {
+      problems.push(`mission ${at}: no stages, so there is nothing to do`);
     }
-    for (const target of mission.targets) {
-      if (!placed.has(target)) {
-        problems.push(`mission "${mission.id}": names "${target}", which the table does not have`);
+    for (const stage of mission.stages) {
+      if (stage.targets.length === 0) {
+        problems.push(`mission "${stage.id}": no targets, so it can never be completed`);
+      }
+      for (const target of stage.targets) {
+        if (!placed.has(target)) {
+          problems.push(`mission "${stage.id}": names "${target}", which the table does not have`);
+          continue;
+        }
+        /**
+         * ⚠️ AND BEING ON THE TABLE IS NOT ENOUGH: IT HAS TO BE ABLE TO REPORT BEING HIT.
+         *
+         * `low-orbit`'s third mission named three LANES. A lane is a `ROLLOVER_KIND` — the ball passes
+         * over it and `table/rollovers` polls for the crossing, because nothing collides to report one
+         * — and the frame loop pushed those crossings into the score and not into the mission machine.
+         * The mission could never be completed and the campaign stopped there for the rest of the
+         * game, in silence: the table validated, the lanes scored, the runner had tests of its own,
+         * and the sonar went on pointing at three lanes the player kept crossing.
+         *
+         * The wiring was the other half and is fixed in `main`. This is the half a TABLE can get
+         * wrong: a drain and a plunger are in neither list on purpose, so a mission naming one can
+         * never advance, and it is refused here rather than discovered by somebody playing it.
+         */
+        const kind = table.components.find((c) => c.name === target)!.kind;
+        if (!STRUCK_KINDS.includes(kind) && !ROLLOVER_KINDS.includes(kind)) {
+          problems.push(`mission "${stage.id}": names "${target}", a ${kind}, which cannot report being hit`);
+        }
       }
     }
   }

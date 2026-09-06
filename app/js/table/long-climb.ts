@@ -57,9 +57,9 @@ export const LONG_CLIMB: AuthoredTable = {
   missions: [
     // The rungs, in order. The first is low enough to reach on a poor launch, which is what makes the
     // mission teach the table rather than gate it.
-    { id: 'pinball.mission.longClimb.first', targets: ['landing1'], award: 4000 },
-    { id: 'pinball.mission.longClimb.gauntlet', targets: ['ice1', 'ice2', 'ice3'], award: 12000 },
-    { id: 'pinball.mission.longClimb.summit', targets: ['landing2', 'landing3'], award: 28000 },
+    { award: 4000, stages: [{ id: 'pinball.mission.longClimb.first', targets: ['landing1'] }] },
+    { award: 12000, stages: [{ id: 'pinball.mission.longClimb.gauntlet', targets: ['ice1', 'ice2', 'ice3'] }] },
+    { award: 28000, stages: [{ id: 'pinball.mission.longClimb.summit', targets: ['landing2', 'landing3'] }] },
   ],
 
   components: [

@@ -368,6 +368,31 @@ describe('booting', () => {
     expect(bootPinball(wide, fakeEngine()).hud.overlaying).toBe(true);
   });
 
+  /**
+   * ⚠️ A CROSSING IS A HIT, AND THE MISSION MACHINE WAS NEVER TOLD.
+   *
+   * Half of what an authored table offers is regions the ball rolls OVER — lanes, wells, kickers,
+   * holes. Nothing collides to report one, so `table/rollovers` polls for them, and the frame loop
+   * pushed the result into the SCORE and not into the missions. `low-orbit`'s third mission names
+   * three lanes: it could never be completed, and the campaign stopped there for the rest of the game.
+   *
+   * In silence, as usual. The table validated, the lanes scored, the runner had tests of its own, and
+   * the sonar went on pointing at three lanes the player kept crossing.
+   *
+   * ⚠️ THIS IS A SOURCE GATE BECAUSE THE LOOP IS THE ENTRY POINT. `table/rollovers` and
+   * `table/missions` are both unit-tested and both were right; what was missing was the line between
+   * them, and no unit can see a line that is not there. Proven by mutation instead: deleting the call
+   * fails this and nothing else.
+   */
+  test('⚠️ a rollover crossing reaches the missions, not only the score', () => {
+    const source = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../app/js/main.ts'), 'utf8');
+    const loop = source.slice(source.indexOf('for (const name of rollovers.poll('));
+    const block = loop.slice(0, loop.indexOf('}'));
+
+    expect(block, 'the crossing is scored').toMatch(/live\.hit\(name\)/);
+    expect(block, 'and the missions are told about it too').toMatch(/missions\.hit\(name\)/);
+  });
+
   test('the camera starts on the flippers', () => {
     expect(bootPinball(options(), fakeEngine()).camera.offset).toBe(55);
   });

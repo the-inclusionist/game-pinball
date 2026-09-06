@@ -69,9 +69,37 @@ export const LOW_ORBIT: AuthoredTable = {
    * the lanes are at the top of the table, which is the furthest a ball has to be kept alive to reach.
    */
   missions: [
-    { id: 'pinball.mission.lowOrbit.bumpers', targets: ['bumper1', 'bumper2', 'bumper3'], award: 5000 },
-    { id: 'pinball.mission.lowOrbit.targets', targets: ['target1', 'target2', 'target3'], award: 10000 },
-    { id: 'pinball.mission.lowOrbit.lanes', targets: ['lane1', 'lane2', 'lane3'], award: 20000 },
+    /**
+     * ⚠️ EACH ONE IS TWO ACTS NOW, WHICH IS THE SHAPE THE 1995 CAMPAIGN HAS. Its missions read
+     * "derrube os tres alvos da direita" and then "agora o ejetor da direita" — a route, then the shot
+     * that cashes it. Three one-line checklists were what "the tables are simpler than the original"
+     * meant, and this is the first table converted.
+     *
+     * The second act is always somewhere ELSE on the table, and always a single thing: the first act
+     * is the work and the second is the aim. A second act in the same corner as the first would be a
+     * longer checklist wearing a costume.
+     */
+    {
+      award: 5000,
+      stages: [
+        { id: 'pinball.mission.lowOrbit.bumpers', targets: ['bumper1', 'bumper2', 'bumper3'] },
+        { id: 'pinball.mission.lowOrbit.bumpers2', targets: ['ramp'] },
+      ],
+    },
+    {
+      award: 10000,
+      stages: [
+        { id: 'pinball.mission.lowOrbit.targets', targets: ['target1', 'target2', 'target3'] },
+        { id: 'pinball.mission.lowOrbit.targets2', targets: ['kicker'] },
+      ],
+    },
+    {
+      award: 20000,
+      stages: [
+        { id: 'pinball.mission.lowOrbit.lanes', targets: ['lane1', 'lane2', 'lane3'] },
+        { id: 'pinball.mission.lowOrbit.lanes2', targets: ['well1', 'well2', 'well3'] },
+      ],
+    },
   ],
   lamps: [
     'lamp.mission', 'lamp.jackpot',

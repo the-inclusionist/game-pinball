@@ -48,11 +48,11 @@ export const CRATER_RUN: AuthoredTable = {
 
   missions: [
     // The bank first, because it is the table's whole idea and a player should meet it immediately.
-    { id: 'pinball.mission.craterRun.bank', targets: BANK.map((t) => t.name), award: 15000 },
+    { award: 15000, stages: [{ id: 'pinball.mission.craterRun.bank', targets: BANK.map((t) => t.name) }] },
     // Then the two ramps, which are the shots the bank teaches you to make.
-    { id: 'pinball.mission.craterRun.ramps', targets: ['ramp.left', 'ramp.right'], award: 20000 },
+    { award: 20000, stages: [{ id: 'pinball.mission.craterRun.ramps', targets: ['ramp.left', 'ramp.right'] }] },
     // Then the rim, at the top, reached only by keeping the ball alive up there.
-    { id: 'pinball.mission.craterRun.rim', targets: ['rim1', 'rim2'], award: 30000 },
+    { award: 30000, stages: [{ id: 'pinball.mission.craterRun.rim', targets: ['rim1', 'rim2'] }] },
   ],
 
   components: [

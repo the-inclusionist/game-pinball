@@ -115,6 +115,11 @@ const en: Record<string, string> = {
   'pinball.mission.lowOrbit.bumpers': 'Hit all three bumpers',
   'pinball.mission.lowOrbit.targets': 'Drop the target bank',
   'pinball.mission.lowOrbit.lanes': 'Complete the three reentry lanes',
+  // The second act of each mission. Short on purpose: the HUD's column is about fifteen characters a
+  // line (ADR-0002), and "now" is the word that tells a player the target has moved.
+  'pinball.mission.lowOrbit.bumpers2': 'Now take the ramp',
+  'pinball.mission.lowOrbit.targets2': 'Now the kicker',
+  'pinball.mission.lowOrbit.lanes2': 'Now the three wells',
   'pinball.mission.ionStorm.cluster': 'Cross the ion cluster',
   'pinball.mission.ionStorm.flanks': 'Hit both kickers',
   'pinball.mission.ionStorm.ramp': 'Take the ramp',

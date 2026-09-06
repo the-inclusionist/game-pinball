@@ -127,6 +127,11 @@ const pt: Record<string, string> = {
   'pinball.mission.lowOrbit.bumpers': 'Acerte os três amortecedores',
   'pinball.mission.lowOrbit.targets': 'Derrube o banco de alvos',
   'pinball.mission.lowOrbit.lanes': 'Complete as três pistas de reentrada',
+  // ⚠️ O SEGUNDO ATO DE CADA MISSÃO. Curto de propósito: a coluna do HUD tem cerca de quinze
+  // caracteres por linha (ADR-0002), e "agora" é a palavra que diz ao jogador que o alvo mudou.
+  'pinball.mission.lowOrbit.bumpers2': 'Agora suba a rampa',
+  'pinball.mission.lowOrbit.targets2': 'Agora o ejetor',
+  'pinball.mission.lowOrbit.lanes2': 'Agora os três poços',
   'pinball.mission.ionStorm.cluster': 'Atravesse o aglomerado de íons',
   'pinball.mission.ionStorm.flanks': 'Acerte os dois ejetores',
   'pinball.mission.ionStorm.ramp': 'Suba a rampa',

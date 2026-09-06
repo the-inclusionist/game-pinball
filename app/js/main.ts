@@ -124,11 +124,16 @@ let lastLit = '';
 
 function refreshObjective(force = false): void {
   // A table with missions is asked about its mission; one without is asked about its roles.
-  const objective = missions.current
+  //
+  // ⚠️ THE ACT, NOT THE MISSION. A mission is a sequence now, and "have 1 of 3" is a question about
+  // the act on screen — counting the whole mission's targets would show a player progress towards
+  // things they have not been asked for yet, and point the sonar at them.
+  const stage = missions.stage;
+  const objective = stage
     ? {
       targets: missions.remaining,
-      have: missions.current.targets.length - missions.remaining.length,
-      need: missions.current.targets.length,
+      have: stage.targets.length - missions.remaining.length,
+      need: stage.targets.length,
     }
     : objectiveOf(authored, live);
   /**
@@ -145,7 +150,7 @@ function refreshObjective(force = false): void {
   lastLit = litNow;
   state = {
     ...state,
-    missionTextId: missions.current?.id ?? AUTHORED_OBJECTIVE_ID,
+    missionTextId: missions.stage?.id ?? AUTHORED_OBJECTIVE_ID,
     missionHave: objective.have,
     missionNeed: objective.need,
     missionTargets: objective.targets,
@@ -208,8 +213,9 @@ const plunger = createPlunger({ maxSpeed: launchSpeedFor(authored) });
  * design, and "objective: " with a blank after it is worse than a quiet HUD.
  */
 function announceMission(): void {
-  if (!missions.current) return;
-  hint = shell.t(missions.current.id);
+  const stage = missions.stage;
+  if (!stage) return;
+  hint = shell.t(stage.id);
 }
 
 const authoredTable = toLiveTable(authored, () => state);
@@ -539,6 +545,23 @@ function step(frames: number): void {
       for (const name of rollovers.poll(ball)) {
         hits.push(name);
         live.hit(name);
+        /**
+         * ⚠️ AND THE MISSIONS, WHICH THIS LINE DID NOT TELL FOR AS LONG AS THERE HAVE BEEN MISSIONS.
+         *
+         * Half of what an authored table offers is regions the ball rolls OVER, and nothing collides
+         * to report one — that is why `table/rollovers` polls. The crossings went into the score and
+         * stopped there. `low-orbit`'s third mission names three LANES, so it could never be
+         * completed and the campaign stopped at it for the rest of the game: the mission stayed on
+         * screen and the sonar went on pointing at three lanes the player kept crossing.
+         *
+         * The collision path four blocks up has always done this. One of the two ways a component can
+         * be hit was wired and the other was not, which is the shape of half the defects in this port.
+         */
+        const crossed = missions.hit(name);
+        if (crossed.completed) {
+          addScore(live.score, crossed.award);
+          announceMission();
+        }
       }
     }
     live.advance(frames * FRAME_SECONDS);
