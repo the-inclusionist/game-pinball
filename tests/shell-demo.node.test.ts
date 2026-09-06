@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, test, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
-import { createDemo, DEMO_BALL_COLOR, DEMO_BALLS } from '../app/js/shell/demo.js';
+import { createDemo, DEMO_BALLS } from '../app/js/shell/demo.js';
 import { SCORE_COMPONENTS } from '../app/js/control/score-table.js';
 import { VOICES, SILENT_KINDS, soundForKind } from '../app/js/audio/voices.js';
 import { kindOf, COMPONENT_KINDS } from '../app/js/i18n/names.js';
@@ -25,6 +25,50 @@ function seeded(seed = 0x9e3779b9): () => number {
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
+}
+
+/**
+ * How many pixels of the frame the BALL is responsible for, found by moving it.
+ *
+ * ⚠️ THE BALL IS THE ARCHIVE'S OWN SPRITE AND NOT A COLOUR THIS FILE PICKED, so it cannot be looked
+ * for by value any more. Two renders that differ only in where the ball is differ only in the ball —
+ * every lamp, and the whole playfield, are identical in both.
+ */
+function ballPixels(
+  demo: ReturnType<typeof createDemo>,
+  at?: { x: number; y: number },
+  z?: number,
+): number {
+  const position = demo.ball.position as { x: number; y: number; z?: number };
+  if (at) { position.x = at.x; position.y = at.y; }
+  if (z !== undefined) position.z = z;
+  const here = [...demo.render().pixels];
+
+  const keep = { x: position.x, y: position.y };
+  // The far top-left corner of the table, where the ball is off the picture entirely.
+  position.x = -100;
+  position.y = -100;
+  const without = [...demo.render().pixels];
+  position.x = keep.x;
+  position.y = keep.y;
+
+  return here.filter((pixel, i) => pixel !== without[i]).length;
+}
+
+/** The distinct colours the ball is responsible for, found the same way. */
+function ballColours(demo: ReturnType<typeof createDemo>): Set<number> {
+  const position = demo.ball.position as { x: number; y: number };
+  const here = [...demo.render().pixels];
+  const keep = { x: position.x, y: position.y };
+  position.x = -100;
+  position.y = -100;
+  const without = [...demo.render().pixels];
+  position.x = keep.x;
+  position.y = keep.y;
+
+  const colours = new Set<number>();
+  here.forEach((pixel, i) => { if (pixel !== without[i]) colours.add(pixel); });
+  return colours;
 }
 
 const DAT = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/PINBALL.DAT';
@@ -114,10 +158,19 @@ describe('the 1995 table, from an ArrayBuffer', () => {
 
     const demo = createDemo(bytes, { random: seeded() });
     const before = demo.playfield.pixels.slice();
-    const frame = demo.render();
 
-    expect([...frame.pixels].includes(DEMO_BALL_COLOR)).toBe(true);
+    // ⚠️ THE BALL IS THE ARCHIVE'S OWN NINE-PIXEL SPRITE NOW, not a colour this file chose, so it is
+    // found by MOVING it: whatever changes between two renders that differ only in the ball's position
+    // is the ball. Every lamp is identical in both.
+    const moved = ballPixels(demo);
+
+    expect(moved, 'the ball is somewhere in the picture').toBeGreaterThan(0);
     expect([...demo.playfield.pixels]).toEqual([...before]);
+
+    // ⚠️ AND IT IS SHADED, which is how a sprite is told from the flat disc this used to draw. The
+    // archive's ball is nine pixels across with a highlight on it; one colour would mean the fallback
+    // ran, and the fallback is only for an archive that has no picture at all.
+    expect(ballColours(demo).size, 'more than one colour').toBeGreaterThan(1);
   });
 
   test('⚠️ and it SCORES, from the 1995 table’s own arrays', () => {
@@ -457,15 +510,8 @@ describe('⚠️ and a ball can be lost, which the demonstration counts', () => 
     if (!bytes) return expect(existsSync(DAT)).toBe(false);
     const demo = createDemo(bytes, { random: seeded() });
 
-    demo.ball.position.x = 3.271;
-    demo.ball.position.y = -12.453;
-    const hidden = demo.render();
-    expect([...hidden.pixels].includes(DEMO_BALL_COLOR), 'under the arch').toBe(false);
-
-    demo.ball.position.x = 0.16;
-    demo.ball.position.y = 9.4;
-    const shown = demo.render();
-    expect([...shown.pixels].includes(DEMO_BALL_COLOR), 'out on the open table').toBe(true);
+    expect(ballPixels(demo, { x: 3.271, y: -12.453 }), 'under the arch').toBe(0);
+    expect(ballPixels(demo, { x: 0.16, y: 9.4 }), 'out on the open table').toBeGreaterThan(0);
   });
 
   test('⚠️ and it is the BALL’S OWN Z that decides, which is what a ramp writes', () => {
@@ -482,10 +528,8 @@ describe('⚠️ and a ball can be lost, which the demonstration counts', () => 
     position.y = -12.453;
 
     position.z = demo.table.ballRadius;
-    expect([...demo.render().pixels].includes(DEMO_BALL_COLOR), 'on the floor').toBe(false);
-
-    position.z = 1;
-    expect([...demo.render().pixels].includes(DEMO_BALL_COLOR), 'and a unit up').toBe(true);
+    expect(ballPixels(demo, { x: 3.271, y: -12.453 }, demo.table.ballRadius), 'on the floor').toBe(0);
+    expect(ballPixels(demo, { x: 3.271, y: -12.453 }, 1), 'and a unit up').toBeGreaterThan(0);
   });
 
   test('⚠️ the two ramps exist, and a ball that climbs one feels ITS gravity', () => {

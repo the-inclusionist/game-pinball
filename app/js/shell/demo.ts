@@ -50,7 +50,9 @@ import { advanceFrame, type Ball } from '../physics/step.js';
 import { checkStuckBall, unstuckBall, type StuckBall } from '../physics/stuck.js';
 import { fillCircle, fillCircleBehind } from '../gfx/table-view.js';
 import { halve, halveDepth } from '../gfx/scale.js';
-import { readLampSprites, drawLamp } from '../gfx/original-lamps.js';
+import {
+  readLampSprites, readSprite, drawLamp, drawSpriteCentred, drawSpriteCentredBehind,
+} from '../gfx/original-sprites.js';
 import { pack, type Framebuffer } from '../gfx/framebuffer.js';
 import { kindOf } from '../i18n/names.js';
 import { soundForKind } from '../audio/voices.js';
@@ -521,6 +523,12 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
    * the fuel all happened in silence. See `gfx/original-lamps`.
    */
   const lampSprites = readLampSprites(groups, { scale: PLAYFIELD_SCALE });
+  /**
+   * ⚠️ THE BALL'S OWN PICTURE, WHICH IS NINE PIXELS ACROSS. This drew a flat coloured disc from the day
+   * it had a ball. The archive's own sprite records its corner as (0, 0) — the one bitmap in the file
+   * whose position is not a position, because the ball is wherever it is.
+   */
+  const ballSprite = readSprite(groups, 'ball', { scale: PLAYFIELD_SCALE });
   const fullDepth = readPlayfieldDepth(groups);
   const playfieldDepth = fullDepth ? halveDepth(fullDepth) : null;
 
@@ -625,7 +633,8 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
       const radius = table.ballRadius * pixelsPerUnit;
       // An archive without a depth map gets the ball flat on top, which is what this had before.
       if (!playfieldDepth) {
-        fillCircle(frame, at.x, at.y, radius, DEMO_BALL_COLOR);
+        if (ballSprite) drawSpriteCentred(frame, ballSprite, at.x, at.y);
+        else fillCircle(frame, at.x, at.y, radius, DEMO_BALL_COLOR);
         return frame;
       }
 
@@ -635,7 +644,8 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
       // of one on the floor, and it would disappear under the very arch it is on top of.
       const z = (ball.position as { z?: number }).z ?? table.ballRadius;
       const depth = camera.projection.depthOf({ x: ball.position.x, y: ball.position.y, z });
-      fillCircleBehind(frame, playfieldDepth, at.x, at.y, radius, depth, DEMO_BALL_COLOR);
+      if (ballSprite) drawSpriteCentredBehind(frame, playfieldDepth, ballSprite, at.x, at.y, depth);
+      else fillCircleBehind(frame, playfieldDepth, at.x, at.y, radius, depth, DEMO_BALL_COLOR);
       return frame;
     },
 

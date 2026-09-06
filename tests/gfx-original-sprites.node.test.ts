@@ -3,7 +3,9 @@ import { describe, test, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
 import { readGroups, EntryType } from '../app/js/dat/partman.js';
 import { readBitmapHeader } from '../app/js/dat/bitmap8.js';
-import { readLampSprites, drawLamp, TABLE_ORIGIN_RECORD } from '../app/js/gfx/original-lamps.js';
+import {
+  readLampSprites, readSprite, drawLamp, drawSpriteCentred, TABLE_ORIGIN_RECORD,
+} from '../app/js/gfx/original-sprites.js';
 import { createFramebuffer } from '../app/js/gfx/framebuffer.js';
 
 /**
@@ -155,5 +157,55 @@ describe('the lamps, as pictures', () => {
 
     expect([header.x, header.y], 'which on this file happen to be').toEqual([137, 2]);
     expect(TABLE_ORIGIN_RECORD, 'and are read, not written down').toBe('table');
+  });
+});
+
+/**
+ * ⚠️ THE BALL HAS A PICTURE TOO, AND IT IS NINE PIXELS ACROSS.
+ *
+ * The demonstration has drawn a flat coloured disc since it had a ball at all. The archive ships the
+ * real one: a 9x9 sprite at (0, 0), the origin standing for "wherever the ball is" rather than for a
+ * place on the table — it is the one bitmap in the file whose position is not its position.
+ */
+describe('the ball’s own picture', () => {
+  test('it is read like any other sprite, and its recorded corner is the origin', () => {
+    const groups = archive();
+    if (!groups) return expect(existsSync(DAT)).toBe(false);
+
+    const ball = readSprite(groups, 'ball')!;
+
+    expect([ball.frames[0]!.width, ball.frames[0]!.height]).toEqual([9, 9]);
+    // (0,0) in the window is (-137,-2) against the table's corner: the ball is not AT a place.
+    expect([ball.x, ball.y]).toEqual([-137, -2]);
+  });
+
+  test('⚠️ and a group that does not exist answers null rather than an empty picture', () => {
+    // A sprite with no pixels is something that can be drawn and never seen, which is worse than one
+    // that is honestly absent — the caller can decide, and the demonstration falls back to its disc.
+    const groups = archive();
+    if (!groups) return expect(existsSync(DAT)).toBe(false);
+
+    expect(readSprite(groups, 'no_such_group')).toBe(null);
+  });
+
+  test('⚠️ drawn CENTRED, because a ball is at a point and a bitmap is at a corner', () => {
+    // `drawLamp` places a sprite by its top-left. The ball's position is its middle, so drawing it
+    // there puts it down and to the right by half its own width — about three pixels at half scale,
+    // which is half a ball and reads as the physics being off rather than the drawing.
+    const dst = createFramebuffer(5, 5);
+    const sprite = {
+      x: 0, y: 0,
+      frames: [{
+        width: 3, height: 3,
+        pixels: new Uint32Array([1, 1, 1, 1, 1, 1, 1, 1, 1]),
+        bytes: new Uint8ClampedArray(36),
+      }],
+    };
+
+    drawSpriteCentred(dst, sprite, 2, 2);
+
+    // A three-wide sprite centred on column two covers columns one to three.
+    expect([...dst.pixels.subarray(0, 5)], 'the top row is clear').toEqual([0, 0, 0, 0, 0]);
+    expect([...dst.pixels.subarray(5, 10)]).toEqual([0, 1, 1, 1, 0]);
   });
 });

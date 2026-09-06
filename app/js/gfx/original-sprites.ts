@@ -1,0 +1,240 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// gfx/original-sprites — the table's own pictures: the lamps, the ball, and anything else the archive
+// draws.
+//
+// Every part of this table already exists as a COMPONENT with state; almost none of them had a picture,
+// so nothing the control layer decides has ever been visible. This reads the one the archive ships
+// beside each group.
+//
+// ⚠️ EVERY GROUP IN THIS FILE CARRIES EXACTLY ONE BITMAP — all one hundred and thirty-three lamps, both
+// flippers, the twenty-two targets, the ball. Whatever animates in the original does not animate out of
+// the archive, and a port that went looking for frame two would find nothing and quietly draw frame one
+// for ever. Frames are still a LIST, in the archive's order, because that is what `TLight`'s frame
+// index counts in and an authored table is where it will matter.
+//
+// ========================= A BITMAP'S POSITION IS IN THE WINDOW, NOT ON THE TABLE =========================
+// ⚠️ Every bitmap in `PINBALL.DAT` carries where it goes in the 1995 WINDOW — 600x416, the playfield on
+// the left and the side panel on the right — and the playfield's own bitmap sits at (137, 2) in it. So
+// a lamp whose header says (313, 390) belongs at (176, 388) on the picture this port draws.
+//
+// Drawn at the raw number every lamp lands a hundred and thirty-seven pixels to the right of where it
+// goes, and forty of the hundred and thirty-nine fall off the picture entirely — which is the only
+// reason it would be noticed at all rather than looking like a table whose lamps are simply elsewhere.
+//
+// ========================= AND INDEX ZERO IS TRANSPARENT HERE =========================
+// `decodePlayfield` makes every pixel opaque, correctly: it is the background, and the archive's alpha
+// bytes are all zero. A lamp is a SPRITE laid over that background, and `gdrv`'s palette documents
+// index zero as the transparent one. Opaque, each lamp paints its own little black rectangle onto the
+// table and the picture fills with square holes.
+
+import { createFramebuffer, pack, type Framebuffer } from './framebuffer.js';
+import { halve } from './scale.js';
+import { readBitmapHeader, HEADER_SIZE } from '../dat/bitmap8.js';
+import { unpackIndexed } from '../dat/indexed.js';
+import { readPalette } from '../dat/palette.js';
+import { EntryType, type Group } from '../dat/partman.js';
+import { groupNamed } from '../dat/attributes.js';
+
+/** The group whose bitmap says where the playfield sits in the window. Read, never assumed. */
+export const TABLE_ORIGIN_RECORD = 'table';
+/** The palette every indexed bitmap in the archive is drawn through. See `gfx/original-view`. */
+const PALETTE_GROUP = 'background';
+/** `gdrv`: "Color 0: transparent". */
+const TRANSPARENT_INDEX = 0;
+
+export interface LampSprite {
+  /** Left edge on the playfield, the table's own corner already taken off. */
+  readonly x: number;
+  readonly y: number;
+  /** In the archive's order, which is the order `TLight`'s frame index counts in. */
+  readonly frames: readonly Framebuffer[];
+}
+
+export interface LampSpriteOptions {
+  /** 0.5 for the halved playfield. Positions and pictures scale together — see the tests. */
+  readonly scale?: number;
+}
+
+function entriesOfType(group: Group, type: number): Uint8Array[] {
+  return group.entries
+    .filter((entry) => entry.type === type && entry.data)
+    .map((entry) => entry.data!);
+}
+
+/**
+ * Every group whose name begins `lite`, as pictures placed on the playfield.
+ *
+ * A lamp with no bitmap is skipped rather than given an empty one: a sprite with no pixels is a lamp
+ * that can be lit and never seen, which is worse than one that is honestly absent.
+ */
+/**
+ * One group's picture, placed against the table's own corner.
+ *
+ * Answers null rather than an empty sprite when the group or its bitmap is absent: something that can
+ * be drawn and never seen is worse than something honestly missing, and the caller can then decide —
+ * the demonstration falls back to its coloured disc.
+ */
+export function readSprite(
+  groups: readonly Group[], name: string, o: LampSpriteOptions = {},
+): LampSprite | null {
+  const context = spriteContext(groups);
+  if (!context) return null;
+  const group = groupNamed(groups, name);
+  return group ? decodeSprite(group, context, o.scale ?? 1) : null;
+}
+
+interface SpriteContext {
+  readonly palette: ReturnType<typeof readPalette>;
+  readonly origin: { x: number; y: number };
+}
+
+function spriteContext(groups: readonly Group[]): SpriteContext | null {
+  const paletteGroup = groupNamed(groups, PALETTE_GROUP);
+  const paletteData = paletteGroup && entriesOfType(paletteGroup, EntryType.Palette)[0];
+  if (!paletteData) return null;
+
+  const table = groupNamed(groups, TABLE_ORIGIN_RECORD);
+  const tableBitmap = table && entriesOfType(table, EntryType.Bitmap8)[0];
+  if (!tableBitmap) return null;
+  const header = readBitmapHeader(tableBitmap);
+
+  return { palette: readPalette(paletteData), origin: { x: header.x, y: header.y } };
+}
+
+function decodeSprite(group: Group, context: SpriteContext, scale: number): LampSprite | null {
+  const bitmaps = entriesOfType(group, EntryType.Bitmap8);
+  if (!bitmaps.length) return null;
+
+  const frames: Framebuffer[] = [];
+  let x = 0;
+  let y = 0;
+
+  for (const bitmap of bitmaps) {
+    const header = readBitmapHeader(bitmap);
+    const indices = unpackIndexed(bitmap.subarray(HEADER_SIZE), {
+      width: header.width,
+      height: header.height,
+      indexedStride: header.indexedStride ?? header.width,
+    });
+
+    const frame = createFramebuffer(header.width, header.height);
+    for (let i = 0; i < indices.length; i++) {
+      const index = indices[i]!;
+      if (index === TRANSPARENT_INDEX) continue;
+      const { palette } = context;
+      frame.pixels[i] = pack(palette.red(index), palette.green(index), palette.blue(index), 255);
+    }
+
+    // ⚠️ THE CORNER IS TAKEN OFF THE FIRST FRAME'S HEADER, and it is the sprite's. Frames of one
+    // sprite share a position on this archive, and the original moves the sprite as a whole.
+    if (!frames.length) {
+      x = header.x - context.origin.x;
+      y = header.y - context.origin.y;
+    }
+    frames.push(scale === 1 ? frame : halve(frame));
+  }
+
+  return {
+    x: scale === 1 ? x : Math.round(x * scale),
+    y: scale === 1 ? y : Math.round(y * scale),
+    frames,
+  };
+}
+
+export function readLampSprites(
+  groups: readonly Group[], o: LampSpriteOptions = {},
+): Map<string, LampSprite> {
+  const scale = o.scale ?? 1;
+  const sprites = new Map<string, LampSprite>();
+  const context = spriteContext(groups);
+  if (!context) return sprites;
+
+  for (const group of groups) {
+    if (!group?.name?.startsWith('lite')) continue;
+    const sprite = decodeSprite(group, context, scale);
+    if (sprite) sprites.set(group.name, sprite);
+  }
+
+  return sprites;
+}
+
+/**
+ * A lamp painted over the picture, TRANSPARENT PIXELS SKIPPED.
+ *
+ * ⚠️ `copyBitmap` IS THE WRONG TOOL FOR THIS. It moves whole rows with `set`, which is right for a
+ * background and wrong for a sprite: it would stamp the lamp's transparent pixels over the table as
+ * well, and every lamp would sit in its own rectangular hole.
+ *
+ * ⚠️ AND IT CLIPS RATHER THAN TRUSTING THE ARCHIVE. Every lamp on this file lands inside the playfield
+ * once the table's corner is taken off, and a lamp that did not would otherwise wrap onto the opposite
+ * edge of the picture a row at a time — an image that looks torn rather than misplaced.
+ */
+export function drawLamp(dst: Framebuffer, sprite: LampSprite, frameIndex = 0): void {
+  const src = sprite.frames[Math.max(0, Math.min(frameIndex, sprite.frames.length - 1))];
+  if (!src) return;
+
+  for (let y = 0; y < src.height; y++) {
+    const dy = sprite.y + y;
+    if (dy < 0 || dy >= dst.height) continue;
+    const fromRow = y * src.width;
+    const toRow = dy * dst.width;
+    for (let x = 0; x < src.width; x++) {
+      const dx = sprite.x + x;
+      if (dx < 0 || dx >= dst.width) continue;
+      const pixel = src.pixels[fromRow + x]!;
+      if (pixel === 0) continue;
+      dst.pixels[toRow + dx] = pixel;
+    }
+  }
+}
+
+/**
+ * A sprite drawn about a POINT rather than from a corner, which is what a ball needs.
+ *
+ * ⚠️ `drawLamp` PLACES BY THE TOP LEFT, and the ball's position is its middle. Drawn as a corner it
+ * sits down and to the right by half its own width — about three pixels at half scale, which is half a
+ * ball, and reads as the physics being off rather than the drawing.
+ */
+export function drawSpriteCentred(
+  dst: Framebuffer, sprite: LampSprite, cx: number, cy: number, frameIndex = 0,
+): void {
+  const src = sprite.frames[Math.max(0, Math.min(frameIndex, sprite.frames.length - 1))];
+  if (!src) return;
+  drawLamp(dst, {
+    x: Math.round(cx - src.width / 2),
+    y: Math.round(cy - src.height / 2),
+    frames: sprite.frames,
+  }, frameIndex);
+}
+
+/**
+ * The same, but only where the scene behind it is FARTHER AWAY. `zdrv::paint_flat` on a sprite: the
+ * whole ball lies at one depth, which is what "flat" means, and it writes no depth of its own —
+ * the scene it is drawn over is meant to survive it untouched.
+ */
+export function drawSpriteCentredBehind(
+  dst: Framebuffer,
+  scene: { readonly depths: Uint16Array; readonly stride: number },
+  sprite: LampSprite, cx: number, cy: number, depth: number, frameIndex = 0,
+): void {
+  const src = sprite.frames[Math.max(0, Math.min(frameIndex, sprite.frames.length - 1))];
+  if (!src) return;
+  const left = Math.round(cx - src.width / 2);
+  const top = Math.round(cy - src.height / 2);
+
+  for (let y = 0; y < src.height; y++) {
+    const dy = top + y;
+    if (dy < 0 || dy >= dst.height) continue;
+    const fromRow = y * src.width;
+    const toRow = dy * dst.width;
+    const depthRow = dy * scene.stride;
+    for (let x = 0; x < src.width; x++) {
+      const dx = left + x;
+      if (dx < 0 || dx >= dst.width) continue;
+      const pixel = src.pixels[fromRow + x]!;
+      if (pixel === 0) continue;
+      if ((scene.depths[depthRow + dx] ?? 0) <= depth) continue;
+      dst.pixels[toRow + dx] = pixel;
+    }
+  }
+}
