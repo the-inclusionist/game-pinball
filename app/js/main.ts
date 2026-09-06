@@ -595,6 +595,9 @@ const hud = mountHud({
 Object.assign(window as unknown as Record<string, unknown>, {
   __pinball: {
     get camera() { return shell.camera; },
+    // ⚠️ AND THE SIDEWAYS ONE, or the browser gate cannot see half the camera. A table wider than the
+    // window scrolls on both axes and only one of them was in the state the gate reads.
+    get cameraX() { return shell.cameraX; },
     get problems() { return shell.problems; },
     hud: shell.hud,
     table: authored.name,

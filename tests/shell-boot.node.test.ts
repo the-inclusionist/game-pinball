@@ -92,6 +92,9 @@ describe('the camera on a table wider than the window', () => {
     expect(source, 'and so does the ball').toMatch(/drawBall\([^)]*shell\.cameraX\.offset/s);
     expect(source, 'and neither is passed a literal zero any more')
       .not.toMatch(/blitView\(screen, tablePicture, shell\.hud\.playfield, 0,/);
+    // And the browser gate can SEE it: the plan asks for "canvas presente + estado do jogo", and a
+    // camera axis missing from `__pinball` is an axis no boot check can confirm.
+    expect(source, 'the debug surface carries both axes').toMatch(/get cameraX\(\) \{ return shell\.cameraX; \}/);
   });
 
   test('⚠️ and a table NO wider than the window does not move sideways at all', () => {
