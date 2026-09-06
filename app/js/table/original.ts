@@ -141,8 +141,15 @@ export interface OriginalTable {
   spawnBall(): Ball | null;
 }
 
-/** The extent of one wall record, whatever its shape. Used only for the table's own boundary. */
-function boundsOfWall(data: readonly number[]): Bounds {
+/**
+ * The extent of one wall record, whatever its shape, in the table's own float units.
+ *
+ * ⚠️ EXPORTED FOR THE ACCESSIBILITY LAYER, not only for the table's boundary. The engine's declaration
+ * wants a rectangle per component, and every component of the 1995 table carries its shape in exactly
+ * one place: record 600. This is the reader of that record, and duplicating it for the declaration is
+ * how the two would come to disagree about where a bumper is.
+ */
+export function boundsOfWall(data: readonly number[]): Bounds {
   const shape = Math.floor(data[0]!) - 1;
   const points: { x: number; y: number }[] = [];
 

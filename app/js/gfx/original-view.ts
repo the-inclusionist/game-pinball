@@ -81,6 +81,39 @@ function opaque(display: Uint32Array): Uint32Array {
   return display.map((color) => (color | OPAQUE) >>> 0);
 }
 
+/**
+ * A rectangle of the TABLE, in the pixels of the picture the camera draws.
+ *
+ * ⚠️ THE FOUR CORNERS, NOT TWO. `toScreen` is `p * (d / z) + centre` and the table's own axes are not
+ * the screen's — the 1995 camera's matrix rotates as well as scales — so projecting only the minimum
+ * and the maximum corner gives a rectangle that is neither, and is wrong by the amount of the rotation.
+ * The four are projected and the extent of the four is taken.
+ *
+ * ⚠️ AND ON THE PLAYFIELD PLANE, z = 0. A component's record says nothing about height; the ball's own
+ * sprite is the only thing on this table that is drawn at a z of its own, and it is drawn by distance
+ * rather than by this.
+ *
+ * The result is not clamped to the picture. Some records reach past the table's own boundary — the
+ * drain's line runs from x = -10.4 to x = 10.3 on a table that is sixteen wide — and a caller that
+ * wants a rectangle inside the picture has to say so, because whether that is a clamp or a refusal
+ * depends on what the caller is for.
+ */
+export function screenBoundsOf(
+  bounds: { xMin: number; yMin: number; xMax: number; yMax: number }, projection: Projection,
+): { x: number; y: number; width: number; height: number } {
+  const corners = [
+    projection.toScreen({ x: bounds.xMin, y: bounds.yMin, z: 0 }),
+    projection.toScreen({ x: bounds.xMax, y: bounds.yMin, z: 0 }),
+    projection.toScreen({ x: bounds.xMin, y: bounds.yMax, z: 0 }),
+    projection.toScreen({ x: bounds.xMax, y: bounds.yMax, z: 0 }),
+  ];
+  const xs = corners.map((c) => c.x);
+  const ys = corners.map((c) => c.y);
+  const x = Math.min(...xs);
+  const y = Math.min(...ys);
+  return { x, y, width: Math.max(...xs) - x, height: Math.max(...ys) - y };
+}
+
 export interface OriginalCamera {
   readonly projection: Projection;
   /** The twelve floats `camera_info` carries, so a caller can check the depth against row two. */
