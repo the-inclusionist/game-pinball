@@ -169,7 +169,7 @@ describe('the 1995 table, from an ArrayBuffer', () => {
   });
 });
 
-describe('⚠️ and the sixty-eight wired components run their 1995 control function', () => {
+describe('⚠️ and the seventy wired components run their 1995 control function', () => {
   test('the demo says which they are', () => {
     const bytes = archive();
     if (!bytes) return expect(existsSync(DAT)).toBe(false);
@@ -180,7 +180,12 @@ describe('⚠️ and the sixty-eight wired components run their 1995 control fun
     // `plunger` runs `PlungerControl` when a ball is put back into play, and `v_bloc1` runs
     // `DrainBallBlockerControl` when the barrier's own deadline runs out. The other three are the
     // wormhole's holes.
-    expect(demo.wired.size).toBe(68);
+    expect(demo.wired.size).toBe(70);
+    // ⚠️ AND `lite17` IS HERE WITHOUT A COLLISION BEHIND IT. `ExtraBallLightControl` answers
+    // `TLightResetAndTurnOn` and no hit at all; it was written and left unwired because nothing
+    // produced that message. The hyperspace ladder's fourth rung does, and so does its climax.
+    expect(demo.wired.has('a_kout2'), 'the hyperspace hole').toBe(true);
+    expect(demo.wired.has('lite17'), 'the extra-ball pair').toBe(true);
     expect(demo.wired.has('plunger')).toBe(true);
     expect(demo.wired.has('v_bloc1')).toBe(true);
     for (const name of ['v_sink1', 'v_sink2', 'v_sink3']) {

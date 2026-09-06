@@ -12,7 +12,7 @@ import {
   REENTRY_LANES, LAMP_BINDINGS, FUEL_ROLLOVERS, OUT_LANES, BONUS_LANE, SPOT_TARGET_SETS,
   MEDAL_BANK, MULTIPLIER_BANK, BOOSTER_BANK, TABLE_ACTIONS, GATE_LAMPS, KICKERS, SKILL_SHOT,
   LAUNCH_RAMP, FLAGS, DRAIN, PER_BALL_RESET, WORM_HOLE, DRAIN_BLOCKER, PLUNGER_FEED,
-  WORM_HOLE_SINKS,
+  WORM_HOLE_SINKS, HYPERSPACE, KICKOUTS,
 } from '../app/js/control/bindings.js';
 import { createScoreState } from '../app/js/control/score.js';
 import { BASE_BONUS } from '../app/js/control/drain.js';
@@ -116,6 +116,14 @@ function wired(
     drainTable, outcomes, poppedUp, blockers, feedTable, sinks, born,
   };
 }
+
+/** A ball as a hole meets it: captured, then thrown when the hole's timer runs out. */
+const heldBall = (thrown: number[]) => ({
+  position: { x: 0, y: 0, z: 0 }, direction: { x: 0, y: 1 }, speed: 10,
+  collisionDisabled: false, component: null as unknown,
+  memory: { record: () => {} },
+  throwBall: (_d: unknown, _a: number, speed: number) => thrown.push(speed),
+});
 
 describe('a lane crossing reaches the 1995 control function', () => {
   test('the inventory of what runs, which grows deliberately and never quietly', () => {
@@ -1282,13 +1290,6 @@ describe('⚠️ the flags, whose score index IS a lamp', () => {
 
 describe('⚠️ the holes that can let go, and the one that cannot', () => {
   /** A ball object shaped the way a kickout uses one. */
-  const heldBall = (thrown: number[]) => ({
-    position: { x: 0, y: 0, z: 0 }, direction: { x: 0, y: 1 }, speed: 10,
-    collisionDisabled: false, component: null as unknown,
-    memory: { record: () => {} },
-    throwBall: (_d: unknown, _a: number, speed: number) => thrown.push(speed),
-  });
-
   test('the black hole scores, says what it paid, and schedules its own release', () => {
     // Binding the control is what makes a hole safe to stand in: without it the ball never comes back.
     const w = wired({ gates: true });
@@ -1327,15 +1328,16 @@ describe('⚠️ the holes that can let go, and the one that cannot', () => {
     expect(thrown).toHaveLength(1);
   });
 
-  test('⚠️ and the hyperspace hole has no control, so it must never be given the ball', () => {
-    // `HyperspaceKickOutControl` needs the hyperspace ladder, the blocker and the gravity well's
-    // arming. Until then the hole keeps whatever it swallows, so the demonstration does not let it own
-    // its collisions — and this is the check that the dispatcher left it unbound.
+  test('⚠️ and the hyperspace hole IS bound now, which it was not for most of this port', () => {
+    // It was the last hole with no control, and a hole with no control keeps whatever it swallows.
+    // `HyperspaceKickOutControl` needed the ladder, the barrier and the gravity well's arming, and all
+    // three exist — so all three holes can now be given the ball.
     const w = wired({ gates: true });
     if (!w) return expect(existsSync(DAT)).toBe(false);
 
-    expect(w.kickouts!.get('a_kout2')!.control).toBe(null);
-    expect(w.kickouts!.get('a_kout3')!.control).not.toBe(null);
+    for (const name of ['a_kout1', 'a_kout2', 'a_kout3']) {
+      expect(w.kickouts!.get(name)!.control, name).not.toBe(null);
+    }
   });
 });
 
@@ -1541,20 +1543,20 @@ describe('⚠️ the eighteen missions that can run without the holes, and the t
     const runnable = MISSION_TABLE.filter((row) =>
       row.components.every((name) => w.dispatch.wired.has(tagOf.get(name) ?? '')));
 
-    expect(runnable).toHaveLength(18);
+    expect(runnable).toHaveLength(19);
     expect(MISSION_TABLE).toHaveLength(23);
     // ⚠️ AND THE DISPATCHER AGREES, which is the half that can fail. Reading the table alone counts
     // what COULD run; `missionsRun` is what does, and a mutation wiring a half-resolved mission passed
     // until this line existed.
-    expect(w.dispatch.missionsRun.size).toBe(18);
+    expect(w.dispatch.missionsRun.size).toBe(19);
     for (const row of runnable) expect(w.dispatch.missionsRun.has(row.mission), row.name).toBe(true);
     // ⚠️ BUG HUNT USED TO BE THE EXAMPLE HERE and it runs now: `target22` is the wormhole's
     // destination and it is wired. The five still declined need the three sinks and `kickout2`.
     expect(w.dispatch.missionsRun.has(9)).toBe(true);
-    expect(w.dispatch.missionsRun.has(22), 'secret red needs a sink').toBe(false);
+    expect(w.dispatch.missionsRun.has(22), 'secret red still needs a sink').toBe(false);
   });
 
-  test('⚠️ AND WITH THE HOLES, TWENTY-TWO OF THE TWENTY-THREE RUN', () => {
+  test('⚠️ AND WITH THE HOLES, ALL TWENTY-THREE RUN', () => {
     // The three secret missions and the two Maelstrom parts that were declined all wanted the same
     // thing: a sink they could count hits on. With the wormhole's three wired, one row is left —
     // `MaelstromPartEight`, which needs `kickout2`, the hyperspace hole.
@@ -1567,14 +1569,18 @@ describe('⚠️ the eighteen missions that can run without the holes, and the t
     if (!w) return expect(existsSync(DAT)).toBe(false);
     const tagOf = new Map(SCORE_COMPONENTS.map((row) => [row.name, row.tag]));
 
-    expect(w.dispatch.missionsRun.size).toBe(22);
-    for (const mission of [16, 22, 23, 30]) {
+    expect(w.dispatch.missionsRun.size).toBe(23);
+    for (const mission of [16, 22, 23, 30, 31]) {
       expect(w.dispatch.missionsRun.has(mission), `mission ${mission}`).toBe(true);
     }
-    const declined = MISSION_TABLE.filter((row) => !w.dispatch.missionsRun.has(row.mission));
-    expect(declined.map((row) => row.name)).toEqual(['MaelstromPartEight']);
-    expect(declined[0]!.components.filter((name) => !w.dispatch.wired.has(tagOf.get(name) ?? '')))
-      .toEqual(['kickout2']);
+    expect(MISSION_TABLE.filter((row) => !w.dispatch.missionsRun.has(row.mission))).toEqual([]);
+    // And every component every mission names is registered, which is the same claim from the other
+    // side: nothing is declined for want of a part any more.
+    for (const row of MISSION_TABLE) {
+      for (const name of row.components) {
+        expect(w.dispatch.wired.has(tagOf.get(name) ?? ''), `${row.name} needs ${name}`).toBe(true);
+      }
+    }
   });
 
   test('⚠️ and a mission counts hits on ITS OWN components and ignores the rest', () => {
@@ -2032,5 +2038,126 @@ describe('the three holes the ball can travel between', () => {
     expect(w.context.table.multiballCount).toBe(3);
     w.components.advance(3);
     expect(w.born.length, 'and all three holes give their ball back').toBe(3);
+  });
+});
+
+/**
+ * ⚠️ THE HYPERSPACE LADDER, WHICH IS A ROW OF LAMPS AND NO COUNTER.
+ *
+ * `HyperspaceKickOutControl` reads the group's lit count, THEN lights one more, then branches on what
+ * the count WAS. Each visit is worth more than the last and nothing stores a number; reading it the
+ * other way round would skip the bottom rung and start every ball at the jackpot.
+ */
+describe('the hole that pays more every time', () => {
+  test('⚠️ the LADDER IS READ BEFORE IT GROWS: the first visit is a plain score', () => {
+    const w = wired({ gates: true, wormHole: true, feed: true });
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    w.score.jackpotScore = 999999;
+
+    w.kickouts!.get(HYPERSPACE.component)!.control!();
+
+    // Index 0 of the hole's own score row, and the jackpot untouched.
+    expect(w.score.jackpotScore, 'not collected on the first rung').toBe(999999);
+    expect(w.score.curScore).toBeGreaterThan(0);
+    expect(w.components.lightGroups.get(HYPERSPACE.lightGroup)!.onCount, 'one rung climbed').toBe(1);
+  });
+
+  test('⚠️ the SECOND visit collects the jackpot and drops it to twenty thousand', () => {
+    const w = wired({ gates: true, wormHole: true, feed: true });
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    const hole = w.kickouts!.get(HYPERSPACE.component)!;
+    w.score.jackpotScore = 500000;
+
+    hole.control!();
+    hole.control!();
+
+    expect(w.score.jackpotScore, 'taken, and reset to a small number').toBe(20000);
+    expect(w.score.curScore).toBeGreaterThanOrEqual(500000);
+  });
+
+  test('⚠️ the THIRD raises the barrier across the drain', () => {
+    // The hyperspace ladder is the second of the two senders of `TBlockerEnable`, and the only one
+    // that is not the plunger's easy-mode line.
+    const w = wired({ gates: true, wormHole: true, feed: true });
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    const hole = w.kickouts!.get(HYPERSPACE.component)!;
+
+    hole.control!();
+    hole.control!();
+    hole.control!();
+
+    expect(w.blockers!.get(DRAIN_BLOCKER.component)!.active).toBe(true);
+  });
+
+  test('⚠️ and the FIFTH clears the lamps, which is what makes the ladder a cycle', () => {
+    const w = wired({ gates: true, wormHole: true, feed: true });
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    const hole = w.kickouts!.get(HYPERSPACE.component)!;
+    const group = w.components.lightGroups.get(HYPERSPACE.lightGroup)!;
+
+    for (let visit = 0; visit < 5; visit++) hole.control!();
+
+    expect(group.onCount, 'back to nothing, ready to climb again').toBe(0);
+    // And the gravity well is armed by the top rung, which is what makes that hole dangerous.
+    expect(w.components.lights.get(KICKOUTS[1]!.lamp!)!.flashing).toBe(true);
+  });
+
+  test('⚠️ the ladder empties on SIXTY seconds, not the medals’ thirty', () => {
+    // Three groups share one decay statement and differ only in the period. Give the ladder the
+    // medals' and it drains twice as fast as the file says — a difference that reads as the table
+    // being stingy rather than as a wrong number.
+    const w = wired({ gates: true, wormHole: true, feed: true });
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    const group = w.components.lightGroups.get(HYPERSPACE.lightGroup)!;
+    w.kickouts!.get(HYPERSPACE.component)!.control!();
+    expect(group.onCount).toBe(1);
+
+    w.components.advance(31);
+    expect(group.onCount, 'still lit at thirty-one seconds').toBe(1);
+
+    w.components.advance(30);
+    expect(group.onCount, 'and gone at sixty-one').toBe(0);
+  });
+
+  test('⚠️ the reflex lamp pays the REFLEX SHOT SCORE, which is the plunger’s number', () => {
+    // `TableG->ReflexShotScore` is set to 25000 at the start of every new ball and spent, unmultiplied,
+    // by the first bit of the hyperspace flag. A fixed zero pays nothing and lights the same lamp.
+    const w = wired({ gates: true, wormHole: true, feed: true });
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    w.feedTable.reflexShotScore = 77000;
+    w.components.lights.get(HYPERSPACE.reflexLamp)!.turnOn();
+
+    w.kickouts!.get(HYPERSPACE.component)!.control!();
+
+    expect(w.score.curScore).toBeGreaterThanOrEqual(77000);
+    expect(w.shown.some((line) => line.startsWith(`text:${HYPERSPACE.textIds.reflex}`))).toBe(true);
+  });
+
+  test('⚠️ and the ball is held exactly as long as the noise it made', () => {
+    // `TSound::Play` returns the sound's length and the hole's release timer IS that length. A flat
+    // number holds every ball the same time whatever happened, and the fanfare would end long before
+    // the ball came back.
+    const w = wired({ gates: true, wormHole: true, feed: true });
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    const kickout = w.kickouts!.get(HYPERSPACE.component)!;
+    const thrown: number[] = [];
+
+    kickout.collision(heldBall(thrown), { x: 0, y: 0 }, { x: 0, y: 1 }, 0, null);
+
+    // `plain`, the first rung's voice, is 0.12 long.
+    w.components.advance(0.1);
+    expect(thrown, 'still held').toEqual([]);
+    w.components.advance(0.05);
+    expect(thrown, 'and out again as the sound ends').toHaveLength(1);
+  });
+
+  test('⚠️ AND WITH IT, ALL TWENTY-THREE MISSIONS RUN', () => {
+    // `MaelstromPartEight` was the last row declined, and it wanted `kickout2` — the hyperspace hole,
+    // whose control needed the ladder. Nothing is declined for want of a component any more.
+    const w = wired({ gates: true, wormHole: true, feed: true });
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+
+    expect(w.dispatch.wired.has(HYPERSPACE.component)).toBe(true);
+    expect(w.dispatch.missionsRun.size).toBe(23);
   });
 });

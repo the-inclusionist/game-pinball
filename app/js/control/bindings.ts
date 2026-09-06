@@ -511,6 +511,51 @@ export const WORM_HOLE_SINKS = {
   ballLockedTextId: 'STRING102',
 } as const;
 
+/**
+ * `HyperspaceKickOutControl`: the largest single control function in the game, and the third hole.
+ *
+ * ⚠️ THE LADDER IS THE LAMP COUNT AND THERE IS NO COUNTER. Read the group's lit count, light one more,
+ * then branch on what the count WAS. Reading it the other way round skips the bottom rung and starts
+ * every ball at the jackpot.
+ *
+ * ⚠️ AND SCORE INDEX 1 IS NEVER USED, because rung 1 pays the JACKPOT rather than a table score. A
+ * transcription that walked the indices 0,1,2,3,4 would pay the wrong amount on three rungs out of
+ * five and look like nothing worse than a generous table.
+ *
+ * ⚠️ THE SOUND ROLES ARE THIS PORT'S OWN, as `audio/voices` says they must be: the archive's waves have
+ * no names, only indices. Named here by what the moment IS. Rungs 0 and 2 share one on purpose —
+ * upstream they are `soundwave35_1` and `soundwave35_2`, two emitters of the same wave.
+ */
+export const HYPERSPACE = {
+  control: 'HyperspaceKickOutControl',
+  component: 'a_kout2',
+  lightGroup: 'hyperspace_lights',
+  /** `lite25`, whose flash is the whole of what the hole says afterwards. */
+  reflexLamp: 'lite25',
+  /** `lite26`. Changes nothing but which sound plays. */
+  secondLamp: 'lite26',
+  /** `lite130`. Eleven awards in a straight line. */
+  everythingLamp: 'lite130',
+  /** `lite27` and `lite28`, the return-lane lamps the climax lights. */
+  warpLamps: ['lite27', 'lite28'],
+  bumperTargetLights: 'bumper_target_lights',
+  textIds: {
+    plain: 'STRING113',
+    jackpot: 'STRING115',
+    blocker: 'STRING103',
+    extraBall: 'STRING109',
+    reflex: 'STRING111',
+  },
+  sounds: {
+    reflexOnly: 'reflexOnly',
+    pair: 'hyperspacePair',
+    /** Three at once. The biggest moment in the game is a list, and so is its noise. */
+    fanfare: ['multiball', 'promotion', 'highScore'],
+    ladder: { 0: 'plain', 1: 'collect', 2: 'plain', 3: 'promotion', 4: 'complete' },
+    ladderDefault: 'plain',
+  },
+} as const;
+
 export const RANK = {
   outerCircle: 'outer_circle',
   middleCircle: 'middle_circle',

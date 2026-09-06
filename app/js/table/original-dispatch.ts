@@ -31,7 +31,7 @@
 
 import {
   makeBumperLaneControl, makeBumperGroupControl, makeSpaceWarpRolloverControl, makeReturnLaneControl,
-  makeFuelRolloverControl, makeOutLaneControl, makeBonusLaneControl,
+  makeFuelRolloverControl, makeOutLaneControl, makeBonusLaneControl, makeExtraBallLightControl,
   type LaneGroup, type LaneLight,
 } from '../control/lanes.js';
 import {
@@ -53,14 +53,17 @@ import {
   FUEL_REFUEL_TEXT_ID, OUT_LANES, BONUS_LANE, SPOT_TARGET_SETS, MEDAL_BANK, MULTIPLIER_BANK,
   BOOSTER_BANK, TABLE_ACTIONS, FLIPPER_REBOUNDERS, GATE_LAMPS, KICKERS, SKILL_SHOT,
   LAUNCH_RAMP, FLAGS, KICKOUTS, DRAIN, PER_BALL_RESET, MISSIONS, RANK, WORM_HOLE,
-  DRAIN_BLOCKER, PLUNGER_FEED, WORM_HOLE_SINKS,
+  DRAIN_BLOCKER, PLUNGER_FEED, WORM_HOLE_SINKS, HYPERSPACE,
   type BumperLaneBinding,
 } from '../control/bindings.js';
 import { addExtraBall, createTableActions } from '../control/table-actions.js';
+import { makeHyperspaceKickOutControl, awardEverything } from '../control/hyperspace.js';
+import { VOICES } from '../audio/voices.js';
 import {
   makeFlagControl, makeBlackHoleKickoutControl, makeGravityWellKickoutControl,
   makeWormHoleDestinationControl, advanceWormHoleDestination, makeWormHoleControl,
-  type AdvanceOptions, type ArrowLamp, type WormholeSink,
+  announceGravityWell,
+  type AdvanceOptions, type ArrowLamp, type WormholeSink, type GravityWellOptions,
 } from '../control/wormhole.js';
 import { drainBall, type DrainTable } from '../control/drain.js';
 import {
@@ -636,21 +639,39 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
   // `MultiplierLightGroupControl(TLightGroupResetAndTurnOn, top_target_lights)` — a control function
   // calling another control function — and that call is what starts the clock. Lighting the lamp
   // directly leaves the group lit for ever, which is what this port did until now.
-  const groupControlFor = (name: string, text?: string): ((code: MessageCode) => void) | null => {
+  const groupControlFor = (
+    name: string, text?: string, period: number = DECAY_PERIODS.medal,
+  ): ((code: MessageCode) => void) | null => {
     let restart: (seconds: number) => void = () => {};
     const group = decayingAdapter(o.components, name, (seconds) => restart(seconds));
     if (!group) return null;
     const caller: ControlledComponent = { name, scores: [], control: null };
     const control = text !== undefined
       ? makeMultiplierLightGroupControl({ group, enableText: text })
-      : makeDecayingLightGroupControl({ group, period: DECAY_PERIODS.medal });
+      : makeDecayingLightGroupControl({ group, period });
     restart = (seconds) => o.components.restartGroupTimer(
       name, seconds, () => control('ControlNotifyTimerExpired', caller, ctx),
     );
     return (code) => control(code, caller, ctx);
   };
 
+  /**
+   * ⚠️ `TSound::Play` RETURNS THE SOUND'S LENGTH, AND THE BALL IS HELD EXACTLY THAT LONG. Upstream the
+   * hole's release timer is the noise's own duration; this port's effects are its own, so the length
+   * is the one `audio/voices` gives that role. A flat number here would hold every ball the same time
+   * and the fanfare would end long before the ball came back.
+   */
+  const playVoice = (name: string): number => {
+    ctx.playSound(name);
+    return VOICES[name]?.duration ?? 0;
+  };
+
   const medalGroup = groupControlFor(MEDAL_BANK.lightGroup);
+  // ⚠️ SIXTY SECONDS, NOT THIRTY. The three groups that decay share one statement and differ only in
+  // the period; giving the hyperspace ladder the medals' would empty it twice as fast as the file says.
+  const hyperspaceGroup = groupControlFor(
+    HYPERSPACE.lightGroup, undefined, DECAY_PERIODS.hyperspace,
+  );
   const multiplierGroup = groupControlFor(
     MULTIPLIER_BANK.lightGroup, o.textFor(MULTIPLIER_BANK.textIds[3]!),
   );
@@ -716,6 +737,9 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
   // Declared here because `control/table-actions` needs to reach the plunger — a locked ball is
   // answered by sending another one out — and the plunger is built at the end, once the feed is known.
   let plunger: OriginalDispatch['plunger'] = null;
+  // ⚠️ AND THE BARRIER'S ARMING, WHICH HAS TWO SENDERS. The plunger's easy-mode line is one; the
+  // hyperspace ladder's third rung is the other, and it runs long before the feed block below.
+  let raiseDrainBlocker: (() => void) | undefined;
 
   // ⚠️ THE BOOSTER BANK, WHICH REACHES THE TABLE-LEVEL AWARDS. `control/table-actions` is the single
   // implementation of all of them — a flag, a lamp and a line — and it is built here rather than having
@@ -1039,6 +1063,12 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
   //
   // The gravity well also SWITCHES ITSELF OFF as it takes the ball, which is why it is a `Kickout2`:
   // it is dormant until a mission arms it and goes back to dormant the moment it pays.
+  //
+  // ⚠️ AND THE GRAVITY WELL'S ARMING LEAVES THIS LOOP, because the hyperspace ladder is what arms it:
+  // the top rung hands the well the score it just paid, and in the original that arrives as an integer
+  // cast to a component pointer. Captured here rather than rebuilt there, so both callers drive the
+  // same control object.
+  let armGravityWell: ((points: number) => void) | undefined;
   for (const binding of KICKOUTS) {
     const kickout = o.kickouts?.get(binding.component);
     if (!kickout) continue;
@@ -1052,7 +1082,7 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
     if (binding.lamp && binding.armedTextId && binding.unknownTextId) {
       const lamp = o.components.lights.get(binding.lamp);
       if (!lamp) continue;
-      control = makeGravityWellKickoutControl({
+      const wellOptions: GravityWellOptions = {
         lamp: lamp as unknown as LaneLight,
         kickout,
         // ⚠️ THE HOLD IS THE SOUND'S OWN LENGTH — `soundwave7->Play` returns it upstream. This port's
@@ -1062,7 +1092,13 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
         scoreText: (points) => o.textFor(binding.textId, { points }),
         armedText: (points) => o.textFor(binding.armedTextId!, { points }),
         unknownText: o.textFor(binding.unknownTextId),
-      });
+      };
+      const wellControl = makeGravityWellKickoutControl(wellOptions);
+      control = wellControl;
+      armGravityWell = (points: number) => {
+        wellControl('ControlEnableMultiplier', caller, ctx);
+        announceGravityWell(wellOptions, points, (text, seconds) => ctx.showInfo(text, seconds));
+      };
     } else {
       control = makeBlackHoleKickoutControl({
         kickout,
@@ -1071,6 +1107,103 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
     }
 
     kickout.control = () => control('ControlCollision', caller, ctx);
+  }
+
+  // ⚠️ THE HYPERSPACE LADDER, WHICH IS A ROW OF LAMPS AND NO COUNTER. Read the lit count, light one
+  // more, then branch on what the count WAS: each visit is worth more than the last and nothing stores
+  // a number. Reading it the other way round skips the bottom rung and starts every ball at the
+  // jackpot — and nothing about that reads as a defect, only as a generous table.
+  //
+  // ⚠️ AND THIS IS THE SECOND FACTORY THE LAMP BINDINGS WERE WAITING FOR. `ExtraBallLightControl`
+  // answers `TLightResetAndTurnOn` and no collision, so it was written and left unwired because
+  // nothing produced that message. The ladder's fourth rung produces it, and so does the climax.
+  {
+    const group = o.components.lightGroups.get(HYPERSPACE.lightGroup);
+    const members = group ? o.components.membersOf(group) : [];
+    const kickout = o.kickouts?.get(HYPERSPACE.component);
+    const reflex = o.components.lights.get(HYPERSPACE.reflexLamp);
+    const second = o.components.lights.get(HYPERSPACE.secondLamp);
+    const everything = o.components.lights.get(HYPERSPACE.everythingLamp);
+    const warpLamps = HYPERSPACE.warpLamps
+      .map((name) => o.components.lights.get(name))
+      .filter((lamp): lamp is NonNullable<typeof lamp> => Boolean(lamp));
+    const bumperTargets = feedAdapter(o.components, HYPERSPACE.bumperTargetLights);
+    const extraBallBinding = LAMP_BINDINGS.find((b) => b.control === 'ExtraBallLightControl');
+    const extraBallLamps = (extraBallBinding?.lamps ?? [])
+      .map((name) => o.components.lights.get(name))
+      .filter((lamp): lamp is NonNullable<typeof lamp> => Boolean(lamp));
+
+    if (group && hyperspaceGroup && kickout && reflex && second && everything && bumperTargets
+      && armGravityWell && multiplierGroup && extraBallBinding
+      && warpLamps.length === HYPERSPACE.warpLamps.length
+      && extraBallLamps.length === extraBallBinding.lamps.length) {
+      const extraBallCaller: ControlledComponent = {
+        name: extraBallBinding.component, scores: [], control: null,
+      };
+      const extraBallControl = makeExtraBallLightControl({
+        lamps: extraBallLamps as unknown as LaneLight[],
+      });
+      const armExtraBallLamp = (): void =>
+        extraBallControl('TLightResetAndTurnOn', extraBallCaller, ctx);
+      byName.set(extraBallBinding.component, extraBallCaller);
+
+      const caller: ControlledComponent = {
+        name: HYPERSPACE.component, scores: scoreRows.get(HYPERSPACE.component)?.scores ?? [],
+        control: null,
+      };
+      const armWell = armGravityWell;
+      const control = makeHyperspaceKickOutControl({
+        lights: {
+          get onCount() { return group.onCount; },
+          // `TLightTurnOff` sent to the group: every member off, which is what restarts the ladder.
+          turnOff: () => { for (let i = members.length - 1; i >= 0; i--) members[i]!.turnOff(); },
+        },
+        // Through the group's OWN control, which is what arms the sixty-second decay.
+        lightOneMore: () => hyperspaceGroup('TLightGroupResetAndTurnOn'),
+        table: ctx.score,
+        reflexScore: () => o.feed?.table.reflexShotScore ?? 0,
+        lamps: {
+          reflex: reflex as unknown as LaneLight,
+          second: second as unknown as LaneLight,
+          everything: everything as unknown as LaneLight,
+        },
+        raiseBlocker: () => raiseDrainBlocker?.(),
+        armExtraBallLamp,
+        armGravityWell: (points) => armWell(points),
+        awardEverything: () => awardEverything({
+          table: { get jackpotScore() { return ctx.score.jackpotScore; },
+            set jackpotScore(value: number) { ctx.score.jackpotScore = value; },
+            get multiballFlag() { return ctx.table.multiballFlag; } },
+          score: ctx.score,
+          warpLamps: warpLamps as unknown as LaneLight[],
+          enableMultiplier: () => multiplierGroup('ControlEnableMultiplier'),
+          lightBumperTargets: () => bumperTargets.lightsResetAndTurnOn(),
+          setJackpot: () => actions.setJackpot(),
+          setBonus: () => actions.setBonus(),
+          setFlagLights: () => actions.setFlagLights(),
+          setBonusHold: () => actions.setBonusHold(),
+          armExtraBallLamp,
+          raiseBlocker: () => raiseDrainBlocker?.(),
+          setMultiball: (seconds) => actions.setMultiball(seconds),
+          multiballSound: () => playVoice(HYPERSPACE.sounds.fanfare[0]!),
+          armGravityWell: () => armWell(0),
+        }),
+        kickout,
+        texts: {
+          plain: (points) => o.textFor(HYPERSPACE.textIds.plain, { points }),
+          jackpot: (points) => o.textFor(HYPERSPACE.textIds.jackpot, { points }),
+          blocker: (points) => o.textFor(HYPERSPACE.textIds.blocker, { points }),
+          extraBall: (points) => o.textFor(HYPERSPACE.textIds.extraBall, { points }),
+          reflex: (points) => o.textFor(HYPERSPACE.textIds.reflex, { points }),
+        },
+        sounds: HYPERSPACE.sounds,
+        playSound: playVoice,
+      });
+
+      byName.set(HYPERSPACE.component, caller);
+      controls.set(HYPERSPACE.component, (component) => control('ControlCollision', component, ctx));
+      kickout.control = () => control('ControlCollision', caller, ctx);
+    }
   }
 
   // ⚠️ THE DRAIN, WHICH IS THE ONLY COMPONENT THAT CAN END A GAME. Four questions in order — is the
@@ -1335,7 +1468,6 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
   // calling another — so the multiplier is switched off THROUGH its own control, which is what stops
   // its thirty-second clock. Clearing the number directly would leave the clock running and the lamps
   // coming down one at a time over a multiplier that was already zero.
-  let raiseDrainBlocker: (() => void) | undefined;
   if (o.feed) {
     const isEasyMode = o.isEasyMode ?? (() => false);
     const blocker = o.feed.blockers.get(DRAIN_BLOCKER.component);
