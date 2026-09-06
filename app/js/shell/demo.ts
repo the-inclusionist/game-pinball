@@ -106,8 +106,15 @@ export interface Demo {
   readonly tripwires: ReadonlyMap<string, unknown>;
   /** The two ramps, which are triangles with their own gravity rather than walls. */
   readonly ramps: ReadonlyMap<string, unknown>;
-  /** The playfield's depth map, read from the archive. See `render` for why nothing draws against it. */
+  /** The playfield's depth map, read from the archive. */
   readonly playfieldDepth: { readonly depths: Uint16Array; readonly stride: number } | null;
+  /**
+   * ⚠️ WHICH OF THE BALL'S SEVEN PICTURES IS BEING DRAWN, which is the only perspective this port has.
+   * Zero at the far end of the table and six at the near one. Exposed because the size is chosen by a
+   * comparison that cannot be seen in the pixels: the ball is nine across against a table that is
+   * already busy, and counting changed pixels answers noise.
+   */
+  readonly ballFrame: number;
   /** The archive names whose 1995 control function actually runs. */
   readonly wired: ReadonlySet<string>;
   /**
@@ -537,6 +544,25 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
   const flipperSprites = table.flipperGroups.map(
     (name) => readSprite(groups, name, { scale: PLAYFIELD_SCALE }),
   );
+  /**
+   * ⚠️ `VisualZArray`: HOW BIG THE BALL IS DRAWN, BY HOW FAR AWAY IT IS. Each of the ball's seven
+   * pictures carries the table position at which its size is right, and `TBall::Repaint` takes the
+   * first whose distance is at or below the ball's own. Nine pixels across at the top of the table,
+   * fifteen at the bottom — which is the only perspective this port draws at all.
+   *
+   * ⚠️ AND IT IS THE UNNORMALISED DISTANCE. `NormalizeDepth` answers zero for anything nearer than
+   * `zmin`, and the bottom of this table is nearer than `zmin`: comparing normalised depths would make
+   * every threshold down there equal and the ball would stop growing halfway.
+   */
+  const ballFrameDistances = (ballSprite?.frames ?? []).map(
+    (frame) => (frame.at ? camera.projection.distanceOf(frame.at) : Number.POSITIVE_INFINITY),
+  );
+  const ballFrameFor = (distance: number): number => {
+    for (let index = 0; index < ballFrameDistances.length - 1; index++) {
+      if (ballFrameDistances[index]! <= distance) return index;
+    }
+    return Math.max(0, ballFrameDistances.length - 1);
+  };
   const fullDepth = readPlayfieldDepth(groups);
   const playfieldDepth = fullDepth ? halveDepth(fullDepth) : null;
 
@@ -576,6 +602,12 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
     wired: dispatch.wired,
     paidFlat,
     get playfieldDepth() { return playfieldDepth; },
+    get ballFrame() {
+      const z = (ball.position as { z?: number }).z ?? table.ballRadius;
+      return ballFrameFor(camera.projection.distanceOf({
+        x: ball.position.x, y: ball.position.y, z,
+      }));
+    },
     get info() { return info; },
     get music() { return music; },
 
@@ -662,9 +694,15 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
       // as the ball crosses on. Using the radius always would put a ball riding a ramp at the height
       // of one on the floor, and it would disappear under the very arch it is on top of.
       const z = (ball.position as { z?: number }).z ?? table.ballRadius;
-      const depth = camera.projection.depthOf({ x: ball.position.x, y: ball.position.y, z });
-      if (ballSprite) drawSpriteCentredBehind(frame, playfieldDepth, ballSprite, at.x, at.y, depth);
-      else fillCircleBehind(frame, playfieldDepth, at.x, at.y, radius, depth, DEMO_BALL_COLOR);
+      const here = { x: ball.position.x, y: ball.position.y, z };
+      const depth = camera.projection.depthOf(here);
+      const pose = ballFrameFor(camera.projection.distanceOf(here));
+      if (ballSprite) {
+        drawSpriteCentredBehind(frame, playfieldDepth, ballSprite, at.x, at.y, depth, pose);
+      }
+      if (!ballSprite) {
+        fillCircleBehind(frame, playfieldDepth, at.x, at.y, radius, depth, DEMO_BALL_COLOR);
+      }
       return frame;
     },
 

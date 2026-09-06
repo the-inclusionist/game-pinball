@@ -71,6 +71,24 @@ function ballColours(demo: ReturnType<typeof createDemo>): Set<number> {
   return colours;
 }
 
+/** How many PIXEL ROWS the ball covers, found the same way as `ballPixels`. */
+function ballRows(demo: ReturnType<typeof createDemo>, at: { x: number; y: number }): number {
+  const position = demo.ball.position;
+  position.x = at.x;
+  position.y = at.y;
+  const here = [...demo.render().pixels];
+  position.x = -100;
+  position.y = -100;
+  const without = [...demo.render().pixels];
+  position.x = at.x;
+  position.y = at.y;
+
+  const width = demo.playfield.width;
+  const rows = new Set<number>();
+  here.forEach((pixel, i) => { if (pixel !== without[i]) rows.add(Math.floor(i / width)); });
+  return rows.size;
+}
+
 const DAT = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/PINBALL.DAT';
 const archive = (): ArrayBuffer | null => {
   if (!existsSync(DAT)) return null;
@@ -461,6 +479,40 @@ describe('⚠️ and a ball can be lost, which the demonstration counts', () => 
     expect([...new Set(crossed)].sort()).toEqual(['a_roll1', 'a_roll2']);
     expect(demo.paidFlat.filter((name) => name.startsWith('a_roll')), 'never flat').toEqual([]);
     expect(demo.scored.filter((name) => name.startsWith('roll')).length).toBe(crossed.length);
+  });
+
+  test('⚠️ the ball is drawn BIGGER when it is nearer, which is the only perspective here', () => {
+    // Seven pictures, nine pixels across to fifteen, each carrying the table position at which its
+    // size is right. `TBall::Repaint` takes the first whose distance is at or below the ball's own —
+    // so the ball grows as it comes down the table, and that is the whole of the depth this port draws.
+    const bytes = archive();
+    if (!bytes) return expect(existsSync(DAT)).toBe(false);
+    const demo = createDemo(bytes, { random: seeded() });
+
+    // ⚠️ ASKED OF THE CHOICE, NOT OF THE PIXELS. The ball is nine across on a busy table, so counting
+    // changed pixels answers how many of them happened to differ from the picture underneath — which
+    // passes whichever frame is drawn. Three mutations survived that test before this one replaced it.
+    const position = demo.ball.position;
+    const frameAt = (y: number): number => { position.x = 0; position.y = y; return demo.ballFrame; };
+
+    // The thresholds are at y = -13.5, -1.5, 0.3, 7.5, 10.5, 12.5 and 13.5.
+    expect(frameAt(-14), 'past the far threshold: the smallest picture').toBe(0);
+    expect(frameAt(14), 'past the near one: the largest').toBe(6);
+    // And it never goes backwards on the way down the table.
+    let previous = -1;
+    for (let y = -14; y <= 14; y += 0.5) {
+      const frame = frameAt(y);
+      expect(frame, `at y ${y}`).toBeGreaterThanOrEqual(previous);
+      previous = frame;
+    }
+    // ⚠️ AND THE PICTURE THAT IS DRAWN IS THE ONE THAT WAS CHOSEN. Rows rather than pixels: a whole
+    // row of the ball would have to match the table underneath to disappear, where single pixels do it
+    // often enough that counting them answers noise.
+    // ⚠️ AND NOT AGAINST THE FAR END OF THE TABLE, where the ball is hidden under scenery and covers
+    // no rows at all: anything beats nothing, and the mutation that always draws the smallest picture
+    // survived that comparison. y = -8 is the ball in the open at the top; y = 13 is the near end.
+    expect(ballRows(demo, { x: 0, y: 13 }), 'the near picture is taller')
+      .toBeGreaterThan(ballRows(demo, { x: 0, y: -8 }));
   });
 
   test('⚠️ the PAS are drawn, and raising one changes the picture', () => {

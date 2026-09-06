@@ -44,6 +44,15 @@ export interface Projection {
    * all: it is nine parts in ten out at the top of the bitmap.
    */
   depthOf(v: Vector3): number;
+  /**
+   * `proj::z_distance` on its own, UNNORMALISED: the raw distance to the camera.
+   *
+   * ⚠️ `depthOf` CLAMPS AND `distanceOf` DOES NOT, which matters wherever depths are COMPARED rather
+   * than written into a buffer. `NormalizeDepth` answers zero for anything nearer than `zmin`, so two
+   * different distances at the near end of the table come out equal — and the ball's own size, which
+   * is chosen by comparing its distance against seven thresholds, would stop changing there.
+   */
+  distanceOf(v: Vector3): number;
 }
 
 export interface ProjectionOptions {
@@ -88,9 +97,13 @@ export function createProjection(o: ProjectionOptions): Projection {
      *   x0 =  x2 * (A*z0 - B*y0 + G)
      * with A = matrix[1][1], B = matrix[1][2], F = matrix[1][3], G = matrix[2][3].
      */
-    depthOf(v: Vector3): number {
+    distanceOf(v: Vector3): number {
       const p = multiply(o.matrix, v);
-      return this.normalizeDepth(Math.hypot(p.x, p.y, p.z));
+      return Math.hypot(p.x, p.y, p.z);
+    },
+
+    depthOf(v: Vector3): number {
+      return this.normalizeDepth(this.distanceOf(v));
     },
 
     toTable(point: { x: number; y: number }): Vector3 {

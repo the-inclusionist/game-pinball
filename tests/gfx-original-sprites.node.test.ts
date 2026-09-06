@@ -137,7 +137,7 @@ describe('the lamps, as pictures', () => {
     const sprite = {
       x: 1, y: 0,
       frames: [{
-        x: 1, y: 0, width: 2, height: 1,
+        at: null, x: 1, y: 0, width: 2, height: 1,
         pixels: new Uint32Array([0, 0xff445566]), bytes: new Uint8ClampedArray(8),
       }],
     };
@@ -156,7 +156,7 @@ describe('the lamps, as pictures', () => {
     const sprite = {
       x: 2, y: 0,
       frames: [{
-        x: 2, y: 0, width: 2, height: 1,
+        at: null, x: 2, y: 0, width: 2, height: 1,
         pixels: new Uint32Array([0xff445566, 0xff778899]), bytes: new Uint8ClampedArray(8),
       }],
     };
@@ -230,7 +230,7 @@ describe('a frame’s own corner', () => {
     const sprite = {
       x: 0, y: 0,
       frames: [{
-        x: 2, y: 1, width: 1, height: 1,
+        at: null, x: 2, y: 1, width: 1, height: 1,
         pixels: new Uint32Array([0xff334455]), bytes: new Uint8ClampedArray(4),
       }],
     };
@@ -293,6 +293,37 @@ describe('the ball’s own picture', () => {
     expect([ball.x, ball.y]).toEqual([-137, -2]);
   });
 
+  test('⚠️ and each frame carries the POINT at which its size is right, in record 501', () => {
+    // `TBall::Repaint` walks `VisualZArray` for the first threshold at or below the ball's own
+    // distance, and the thresholds are the distances to these points. The archive stores them as
+    // table positions — (0, y, 0.3), the ball's radius above the playfield — running from the far end
+    // of the table to the near one, which is why the pictures run from nine pixels to fifteen.
+    const groups = archive();
+    if (!groups) return expect(existsSync(DAT)).toBe(false);
+
+    const ball = readSprite(groups, 'ball')!;
+
+    const thresholds = [-13.5, -1.5, 0.3, 7.5, 10.5, 12.5, 13.5];
+    ball.frames.forEach((frame, i) => expect(frame.at?.y, `frame ${i}`).toBeCloseTo(thresholds[i]!, 5));
+    // ⚠️ AND THEY RUN FROM THE FAR END OF THE TABLE TO THE NEAR ONE, which is the order the loop in
+    // `TBall::Repaint` depends on: it takes the FIRST threshold at or below the ball's own distance.
+    for (let i = 1; i < ball.frames.length; i++) {
+      expect(ball.frames[i]!.at!.y).toBeGreaterThan(ball.frames[i - 1]!.at!.y);
+    }
+    for (const frame of ball.frames) expect(frame.at?.z).toBeCloseTo(0.3, 6);
+  });
+
+  test('⚠️ and a sprite whose frames say nothing about depth answers null for it', () => {
+    // Only the ball is drawn by distance. A lamp's frames carry no 501 and must not be given one — a
+    // threshold invented for them would pick a brightness by how far away the lamp is.
+    const groups = archive();
+    if (!groups) return expect(existsSync(DAT)).toBe(false);
+
+    for (const frame of readLampSprites(groups).get('lite2')!.frames) {
+      expect(frame.at).toBe(null);
+    }
+  });
+
   test('⚠️ and its seven frames are SIZES, not poses: the ball is bigger when it is nearer', () => {
     // Nine pixels across up to fifteen, one per step. Every other component's frames are a pose or a
     // brightness; the ball's are perspective, and `TBall::Repaint` picks by depth. This build draws
@@ -323,7 +354,7 @@ describe('the ball’s own picture', () => {
     const sprite = {
       x: 0, y: 0,
       frames: [{
-        x: 0, y: 0, width: 3, height: 3,
+        at: null, x: 0, y: 0, width: 3, height: 3,
         pixels: new Uint32Array([1, 1, 1, 1, 1, 1, 1, 1, 1]),
         bytes: new Uint8ClampedArray(36),
       }],

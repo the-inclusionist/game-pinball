@@ -40,7 +40,10 @@ import { readBitmapHeader, HEADER_SIZE } from '../dat/bitmap8.js';
 import { unpackIndexed } from '../dat/indexed.js';
 import { readPalette } from '../dat/palette.js';
 import { EntryType, type Group } from '../dat/partman.js';
-import { groupNamed } from '../dat/attributes.js';
+import { floatAttribute, groupNamed } from '../dat/attributes.js';
+
+/** `VisualZArray`'s source: the table position at which a frame's size is right. Only the ball has it. */
+const FRAME_POSITION_RECORD = 501;
 
 /** The group whose bitmap says where the playfield sits in the window. Read, never assumed. */
 export const TABLE_ORIGIN_RECORD = 'table';
@@ -61,6 +64,18 @@ const TRANSPARENT_INDEX = 0;
 export interface SpriteFrame extends Framebuffer {
   readonly x: number;
   readonly y: number;
+  /**
+   * ⚠️ THE POINT AT WHICH THIS FRAME'S SIZE IS RIGHT — record 501, and only the ball has it.
+   *
+   * `TBall::Repaint` walks `VisualZArray` for the first threshold at or below the ball's own distance
+   * to the camera, and the thresholds are the distances to these points. The archive stores them as
+   * table positions, (0, y, 0.3), running from the far end of the table to the near one — which is why
+   * the ball's pictures run from nine pixels across to fifteen.
+   *
+   * Null for everything else. A threshold invented for a lamp would pick its brightness by how far
+   * away the lamp is.
+   */
+  readonly at: { readonly x: number; readonly y: number; readonly z: number } | null;
 }
 
 export interface LampSprite {
@@ -126,14 +141,25 @@ function spriteContext(groups: readonly Group[]): SpriteContext | null {
  * The bitmaps of a component: its own group's, then those of every ANONYMOUS group that follows it.
  * See this module's header — the anonymous run belongs to the named group before it.
  */
-function framesOf(groups: readonly Group[], index: number): Uint8Array[] {
-  const bitmaps = entriesOfType(groups[index]!, EntryType.Bitmap8);
+function framesOf(
+  groups: readonly Group[], index: number,
+): { bitmap: Uint8Array; at: { x: number; y: number; z: number } | null }[] {
+  const positionOf = (group: Group): { x: number; y: number; z: number } | null => {
+    const point = floatAttribute(group, FRAME_POSITION_RECORD);
+    return point && point.length >= 3 ? { x: point[0]!, y: point[1]!, z: point[2]! } : null;
+  };
+
+  const own = groups[index]!;
+  const frames = entriesOfType(own, EntryType.Bitmap8)
+    .map((bitmap) => ({ bitmap, at: positionOf(own) }));
   for (let next = index + 1; next < groups.length; next++) {
     const group = groups[next];
     if (!group || group.name) break;
-    bitmaps.push(...entriesOfType(group, EntryType.Bitmap8));
+    for (const bitmap of entriesOfType(group, EntryType.Bitmap8)) {
+      frames.push({ bitmap, at: positionOf(group) });
+    }
   }
-  return bitmaps;
+  return frames;
 }
 
 function decodeSprite(
@@ -146,7 +172,7 @@ function decodeSprite(
   let x = 0;
   let y = 0;
 
-  for (const bitmap of bitmaps) {
+  for (const { bitmap, at } of bitmaps) {
     const header = readBitmapHeader(bitmap);
     const indices = unpackIndexed(bitmap.subarray(HEADER_SIZE), {
       width: header.width,
@@ -171,6 +197,9 @@ function decodeSprite(
     frames.push(Object.assign(image, {
       x: scale === 1 ? fx : Math.round(fx * scale),
       y: scale === 1 ? fy : Math.round(fy * scale),
+      // ⚠️ NOT SCALED. It is a place on the TABLE, in the table's own units, and the picture getting
+      // smaller does not move the ball.
+      at,
     }));
   }
 
