@@ -33,13 +33,24 @@ export interface DemoPageOptions {
    * and holds not one byte; they are Microsoft's like the table and the tune. Answers how many of the
    * table's sounds the files covered, so the panel can say so instead of vanishing on a silent guess.
    */
-  readonly onSounds?: (files: readonly File[]) => Promise<number> | number;
+  readonly onSounds?: (files: readonly File[]) => Promise<SoundsLoaded> | SoundsLoaded;
   /**
    * ⚠️ THE ARCHIVE'S OWN SOUND INDEX, which is a different thing from `onSound`'s role name. A
    * component reports the index of a group in the `.DAT`, and that group names a WAV. The caller plays
    * the file if the player gave it and does nothing if they did not — the role voice covers that case.
    */
   readonly onSoundId?: (id: number) => void;
+}
+
+/** What the caller answers after reading the player's WAVs. */
+export interface SoundsLoaded {
+  readonly loaded: number;
+  /**
+   * ⚠️ THE COMPONENTS WHOSE SOUND TIMES A HOLE. A missing file among these is not a quieter table, it
+   * is a ball that never comes back — `loader::load_sound` stores minus one, and minus one is this
+   * game's "never". Empty is the ordinary answer and the player is told when it is not.
+   */
+  readonly stranding: readonly string[];
 }
 
 export interface DemoPage {
@@ -134,10 +145,20 @@ export function mountDemoPage(o: DemoPageOptions): DemoPage {
   soundsInput.addEventListener('change', () => {
     const files = [...(soundsInput.files ?? [])];
     if (!files.length || !o.onSounds) return;
-    void Promise.resolve(o.onSounds(files)).then((loaded) => {
+    void Promise.resolve(o.onSounds(files)).then(({ loaded, stranding }) => {
       // It says how many it took rather than disappearing: a player who handed over the wrong folder
       // learns it here instead of wondering why the table is still quiet.
       soundsLabel.textContent = o.t('pinball.demo.soundsLoaded', { n: loaded });
+      // ⚠️ AND IT SAYS WHEN A MISSING FILE WILL STICK THE BALL, which is a different thing from a
+      // quieter table and the player cannot tell them apart by playing.
+      if (stranding.length) {
+        const warn = o.doc.createElement('p');
+        warn.textContent = o.t('pinball.demo.soundsStranding', {
+          n: stranding.length, names: stranding.join(', '),
+        });
+        Object.assign(warn.style, { margin: '2px 0 0', color: '#ffd479' });
+        soundsPanel.appendChild(warn);
+      }
       if (loaded > 0) soundsInput.remove();
     });
   });

@@ -533,22 +533,26 @@ const demoPage = demoRequested
     onSounds: async (files) => {
       ensureAudio();
       const context = ensureAC();
-      if (!context || !demo) return 0;
+      if (!context || !demo) return { loaded: 0, stranding: [] };
       const byName = new Map(files.map((file) => [file.name.toLowerCase(), file]));
 
+      const taken: string[] = [];
       let loaded = 0;
       for (const [groupIndex, fileName] of demo.soundFiles) {
         const file = byName.get(fileName.toLowerCase());
         if (!file) continue;
         try {
           archiveSounds.set(groupIndex, await context.decodeAudioData(await file.arrayBuffer()));
+          taken.push(fileName);
           loaded++;
         } catch {
           // A file the browser cannot decode is skipped and counted as missing, which is what the
           // original does with one it cannot open: the game is quieter, not broken.
         }
       }
-      return loaded;
+      // ⚠️ AND THE PLAYER IS TOLD WHICH KIND OF SILENCE THEY BOUGHT. A missing file among the seven
+      // that time a hole holds the ball for ever; anywhere else it is only quieter.
+      return { loaded, stranding: demo.soundReport(taken).stranding };
     },
     onMusic: (bytes) => {
       ensureAudio();

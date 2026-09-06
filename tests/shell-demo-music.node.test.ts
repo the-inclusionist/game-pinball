@@ -131,3 +131,51 @@ describe('the demonstration can be given the real sounds', () => {
     expect(report.silent.length, 'they only make it quieter').toBeGreaterThan(0);
   });
 });
+
+/**
+ * ⚠️ AND A MISSING SOUND CAN HOLD A BALL FOR EVER.
+ *
+ * `loader::load_sound` stores MINUS ONE for a file it cannot open, and minus one is this game's
+ * "never" — the same value that switches a timer off. Seven components hand their sound's DURATION
+ * straight to a kickout's release timer, so a missing file among THOSE is not a quieter table, it is a
+ * ball that never comes back. The player has to be told which case they are in.
+ */
+describe('which missing sounds matter', () => {
+  test('a table given every file strands nothing', () => {
+    const dat = bytesOf(DAT);
+    if (!dat) return expect(existsSync(DAT)).toBe(false);
+    const demo = createDemo(dat);
+
+    const report = demo.soundReport([...demo.soundFiles.values()]);
+
+    expect(report.stranding).toEqual([]);
+    expect(report.silent).toEqual([]);
+  });
+
+  test('⚠️ a table given NONE of them says which seven would hold a ball', () => {
+    const dat = bytesOf(DAT);
+    if (!dat) return expect(existsSync(DAT)).toBe(false);
+    const demo = createDemo(dat);
+
+    const report = demo.soundReport([]);
+
+    expect(report.silent.length, 'everything with a sound goes quiet').toBeGreaterThan(20);
+    expect(report.stranding.length, 'and these are the ones that stick').toBeGreaterThan(0);
+    expect(report.stranding).toContain('soundwave7');
+  });
+
+  test('⚠️ and the six this machine lacks are all in the harmless list', () => {
+    const dat = bytesOf(DAT);
+    if (!dat) return expect(existsSync(DAT)).toBe(false);
+    const here = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/';
+    if (!existsSync(`${here}SOUND1.WAV`)) return expect(existsSync(`${here}SOUND1.WAV`)).toBe(false);
+    const demo = createDemo(dat);
+    const present = [...demo.soundFiles.values()]
+      .filter((name) => existsSync(here + name) || existsSync(here + name.toUpperCase()));
+
+    const report = demo.soundReport(present);
+
+    expect(report.silent.length, 'some components go quiet').toBeGreaterThan(0);
+    expect(report.stranding, 'and not one of them holds a ball').toEqual([]);
+  });
+});

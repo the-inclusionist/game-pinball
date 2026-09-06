@@ -112,6 +112,7 @@ const es: Record<string, string> = {
   'pinball.demo.music': 'Música (opcional): elige tu PINBALL.MID.',
   'pinball.demo.sounds': 'Sonidos (opcional): elige tus SOUND*.WAV — todos a la vez.',
   'pinball.demo.soundsLoaded': '{n} sonidos de la mesa cargados.',
+  'pinball.demo.soundsStranding': '⚠ {n} de estos sonidos cronometran un agujero. Sin ellos la bola puede quedar retenida para siempre: {names}.',
   'pinball.demo.notMidi': 'Ese archivo no es MIDI estándar. PINBALL2.MID no sirve.',
   'pinball.demo.failed': 'No pude leer ese archivo: {n}',
   'pinball.event.attackBumpersRaised': 'Los bumpers del centro valen más.',

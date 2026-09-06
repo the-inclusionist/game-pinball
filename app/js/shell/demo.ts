@@ -59,6 +59,7 @@ import { pack, type Framebuffer } from '../gfx/framebuffer.js';
 import { kindOf } from '../i18n/names.js';
 import { soundForKind } from '../audio/voices.js';
 import { findSoundGroups } from '../audio/sound-table.js';
+import { findSoundLinks, strandingRisks, type StrandingReport } from '../audio/sound-links.js';
 
 /**
  * ⚠️ HOW MUCH MUSIC IS HANDED TO THE AUDIO THREAD AT ONCE, and how far ahead of the playhead the
@@ -122,6 +123,15 @@ export interface Demo {
    * Exposed because a sprite the size of a target on a table this busy cannot be found in the pixels.
    */
   readonly spriteFrames: ReadonlyMap<string, number>;
+  /**
+   * ⚠️ WHICH COMPONENTS GO QUIET, AND WHICH ONES HOLD A BALL. `loader::load_sound` stores MINUS ONE for
+   * a file it cannot open, and minus one is this game's "never". Seven components hand their sound's
+   * DURATION straight to a kickout's release timer, so a missing file among THOSE is not a quieter
+   * table — it is a ball that never comes back.
+   *
+   * Given the file names the player actually handed over, this says which case they are in.
+   */
+  soundReport(loadedFiles: readonly string[]): StrandingReport;
   /** The playfield's depth map, read from the archive. */
   readonly playfieldDepth: { readonly depths: Uint16Array; readonly stride: number } | null;
   /**
@@ -711,6 +721,13 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
     paidFlat,
     soundFiles,
     spriteFrames: spriteFrame,
+    soundReport(loadedFiles) {
+      const given = new Set(loadedFiles.map((name) => name.toUpperCase()));
+      const missing = [...soundFiles.values()].filter((name) => !given.has(name.toUpperCase()));
+      return strandingRisks(
+        findSoundLinks(groups), (group) => soundFiles.get(group) ?? null, missing,
+      );
+    },
     get playfieldDepth() { return playfieldDepth; },
     get ballFrame() {
       const z = (ball.position as { z?: number }).z ?? table.ballRadius;
