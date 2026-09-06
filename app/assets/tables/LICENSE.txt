@@ -1,0 +1,52 @@
+The six playfield pictures in this directory
+============================================
+
+    low-orbit.png   ion-storm.png   crater-run.png
+    slipstream.png  long-climb.png  ring-belt.png
+
+are dedicated to the public domain under
+
+    CC0 1.0 Universal (CC0 1.0) Public Domain Dedication
+    https://creativecommons.org/publicdomain/zero/1.0/legalcode
+
+and NO COPYRIGHT IS CLAIMED OVER THEM.
+
+Provenance
+----------
+
+    tool          Google Gemini ("Nano Banana")
+    prompted by   José Rocha
+    when          September 2026
+    derived by    reduction to the playfield's own size, dimming, and
+                  quantisation to 128 colours. The masters are not versioned;
+                  see .gitignore and art/README.md.
+
+Why CC0 and not a share-alike licence
+-------------------------------------
+
+The first choice was CC BY-SA 4.0, to match the reason the code is AGPL: work
+that stays open when someone reuses it. It was changed on one fact — the
+pictures are machine-generated.
+
+A Creative Commons licence operates ON A COPYRIGHT. It grants permissions a
+rights-holder has and attaches conditions to them; where there is no copyright
+there is nothing for it to act on. A copyright needs a human author: Lei
+9.610/98 art. 11, "Autor é a pessoa física criadora de obra literária, artística
+ou científica", and the United States Copyright Office has reached the same
+conclusion for material without human authorship.
+
+So ShareAlike here would assert a restriction nobody would have standing to
+enforce. CC0 works whether or not a copyright exists: it dedicates any rights
+that may exist, and carries a permissive fallback licence for the jurisdictions
+where a dedication is not possible. It asserts nothing that might turn out to be
+false.
+
+Using the output was never the same question. Google's terms for Gemini do not
+claim ownership of output and permit its use. That is PERMISSION, and only the
+copyright question decides what licence can be applied.
+
+The full argument, and what would change the answer, is in docs/LICENSES.md §4.1.
+
+Note that this dedication covers THESE FILES. The code that draws them is
+AGPL-3.0-or-later like the rest of the repository; the two travel together as an
+aggregate, each under its own terms.

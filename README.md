@@ -98,11 +98,16 @@ npm run data:extract
 Code: **AGPL-3.0-or-later** (see `LICENSE`), and not by preference — the engine this consumes is AGPL, and
 copyleft travels one way. The upstream decompilation is MIT.
 
-Art follows its own author's terms, and the tree holds exactly one piece of it: **Press Start 2P** in
-`app/assets/fonts`, under the SIL Open Font License 1.1, copied verbatim beside the file. Everything the
-tables are drawn with is code — `gfx/table-view` strokes each component as the shape it is — so it is
-AGPL like the rest. This paragraph said there was no art here until the font landed and went on saying
-it afterwards; a test now reads it against `git ls-files` rather than against anybody's memory.
+Art follows its own author's terms and the tree holds two kinds of it. **Press Start 2P** in
+`app/assets/fonts`, under the SIL Open Font License 1.1, copied verbatim beside the file. And six
+playfield pictures in `app/assets/tables`, generated with Google Gemini and dedicated **CC0 1.0 with no
+copyright claimed** — because a Creative Commons licence operates on a copyright and a copyright needs
+a human author. `app/assets/tables/LICENSE.txt` carries the argument beside the files.
+
+Everything else the tables are drawn with is still code — `gfx/table-view` strokes each component as
+the shape it is — so it is AGPL like the rest. This paragraph said there was no art here until the font
+landed and went on saying it afterwards; a test now reads it against `git ls-files` rather than against
+anybody's memory, and it fired again the day the pictures arrived.
 
 Both are set out in **[`docs/LICENSES.md`](docs/LICENSES.md)**, with the attribution itself in
 [`docs/CREDITS.md`](docs/CREDITS.md). Read the first before adding anything that is not code.

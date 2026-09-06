@@ -56,11 +56,27 @@ describe('⚠️ the original game data never enters the history', () => {
     const credits = readFileSync(resolve(ROOT, 'docs', 'CREDITS.md'), 'utf8');
     const files = new Set(tracked());
 
+    /**
+     * ⚠️ BESIDE IT MEANS BESIDE IT, AND THAT USED TO MEAN "SHARING ITS FILE NAME". One font needs one
+     * `press-start-2p.OFL.txt`; six pictures under one dedication need ONE `LICENSE.txt` in the
+     * directory they live in, which is what every project in the world does and what the rule refused.
+     * A licence per asset would have been six copies of the same text — the shape this repository
+     * spends most of its comments warning about.
+     *
+     * ⚠️ AND THE CREDIT IS CHECKED AGAINST THE ASSET, WHICH IT WAS NOT. The third clause read
+     * `credits.includes('Press Start 2P')` for EVERY asset, so the font's own credit satisfied the
+     * ledger for anything that might arrive later. It is a test that reads by the same link twice: the
+     * font was both the subject and the evidence. Six pictures landed and it went on passing that
+     * clause.
+     */
     const unaccounted = assets.filter((asset) => {
       const base = asset.replace(/\.[^.]+$/, '');
-      const hasLicence = [...files].some((f) => f.startsWith(base) && /(licen[cs]e|OFL|COPYING)/i.test(f));
+      const directory = asset.slice(0, asset.lastIndexOf('/'));
+      const licence = /(licen[cs]e|OFL|COPYING)/i;
+      const hasLicence = [...files].some((f) => licence.test(f)
+        && (f.startsWith(base) || f.slice(0, f.lastIndexOf('/')) === directory));
       const name = asset.split('/').pop()!;
-      return !hasLicence || !note.includes(name) || !credits.includes('Press Start 2P');
+      return !hasLicence || !note.includes(name) || !credits.includes(name);
     });
 
     expect(unaccounted, 'tracked assets with no licence beside them or no record of their terms')

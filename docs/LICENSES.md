@@ -162,7 +162,7 @@ only the second one decides what licence can be applied.
 
 | | |
 |---|---|
-| files | `art/low-orbit.png`, `ion-storm`, `crater-run`, `slipstream`, `long-climb`, `ring-belt` |
+| files | `low-orbit.png`, `ion-storm.png`, `crater-run.png`, `slipstream.png`, `long-climb.png`, `ring-belt.png` in `app/assets/tables/`, beside their `LICENSE.txt` |
 | tool | Google Gemini ("Nano Banana") |
 | prompted by | José Rocha |
 | when | September 2026 |
@@ -185,8 +185,14 @@ the honest record is CC BY-SA over the arrangement, saying what it covers and wh
 was asked and accepted CC0; if the working method turns out to have been the other one, this section is
 where it gets corrected.
 
-**The provenance line travels with the files**, in `art/README.md`, because a dedication with no record
-of what was dedicated is not much of a record.
+**The provenance line travels with the files**, in `app/assets/tables/LICENSE.txt` and in
+`art/README.md`, because a dedication with no record of what was dedicated is not much of a record.
+
+⚠️ **AND WHAT IS VERSIONED IS THE DERIVED PICTURE, NOT THE MASTER.** `art/*.jpg` are seven to ten times
+the size the game uses — eighteen megabytes for six — and are gitignored with the reason written there.
+What ships is each one reduced to its playfield's own size, DIMMED so its brightest pixel sits under
+ADR-0007's ceiling, and quantised to 128 colours: 343 KB for the set. The dedication covers those
+files, which are the ones in the tree.
 
 ⚠️ AND THAT CHANGES WHICH PROBLEM PILLAR 10 IS SOLVING HERE. The pillar exists to stop AGPL being
 extended over **somebody else's economic rights** — in the engine there is an artist who holds them in

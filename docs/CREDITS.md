@@ -70,9 +70,28 @@ nothing about it should be read as permission to redistribute one.
 ## Press Start 2P
 
 The title screen is set in **Press Start 2P** by CodeMan38 (cody@zone38.net), under the
-**SIL Open Font License 1.1**. The licence is copied verbatim beside the font at
-`app/assets/fonts/press-start-2p.OFL.txt`.
+**SIL Open Font License 1.1**. The file is `app/assets/fonts/press-start-2p.woff2` and the licence is
+copied verbatim beside it at `app/assets/fonts/press-start-2p.OFL.txt`.
+
+⚠️ The FILE NAME is written out because `tests/licence-note` reads this document for it. That gate used
+to check every asset against the string "Press Start 2P", so this entry vouched for anything that might
+arrive later — the font was both the subject and the evidence, and six pictures landed without it
+noticing. It checks each asset by its own name now, which is what made this line necessary.
 
 The font is bundled unmodified. "Press Start 2P" is a Reserved Font Name under the OFL, which means a
 modified copy may not be shipped under that name — so if it is ever subset or patched, it is renamed
 first.
+
+## The table art — public domain, no copyright claimed
+
+`app/assets/tables/low-orbit.png`, `ion-storm.png`, `crater-run.png`, `slipstream.png`,
+`long-climb.png` and `ring-belt.png` are the six playfields, generated with **Google Gemini
+("Nano Banana")**, prompted by **José Rocha**, September 2026.
+
+They are dedicated under **CC0 1.0 Universal** and **no copyright is claimed** over them — because a
+Creative Commons licence operates on a copyright and a copyright needs a human author. There is
+nothing to attribute in the legal sense and this entry does not pretend otherwise; it records who
+made them and how, which is what a credits file is for.
+
+The reasoning is in [`docs/LICENSES.md` §4.1](LICENSES.md) and beside the files in
+`app/assets/tables/LICENSE.txt`.
