@@ -47,7 +47,9 @@
 import type { Role } from '@the-inclusionist/engine/core/contract.js';
 import { createFramebuffer, pack, type Framebuffer } from './framebuffer.js';
 import type { AuthoredTable } from '../table/authored.js';
-import { paletteFor, sceneOf, type Rgb, type TablePalette } from './table-palette.js';
+import {
+  paletteFor, sceneOf, shade, SHADE_HEADROOM, type Rgb, type TablePalette,
+} from './table-palette.js';
 import type { Rect } from '../shell/hud.js';
 
 /** A palette colour as the framebuffer wants it. Opaque: nothing on the table is see-through. */
@@ -78,6 +80,70 @@ export const PLAYFIELD_COLOR = packRgb(paletteFor('slate', { cbSafe: false }).gr
  */
 export const EDGE_THICKNESS = 2;
 export const BALL_COLOR = packRgb(paletteFor('slate', { cbSafe: false }).ball);
+
+/**
+ * ⚠️ WHERE THE LIGHT COMES FROM, and it is one answer for the whole table.
+ *
+ * Lighter along the top edge, darker along the bottom, which is what makes a flat rectangle read as a
+ * raised bumper rather than a hole cut in the floor. One direction for everything, because a table lit
+ * from two directions reads as a table with two of something rather than as a table with depth.
+ *
+ * ⚠️ AND THE AMOUNT IS THE ROLE'S OWN. See `SHADE_HEADROOM`: a single amount for every colour was tried
+ * first and failed at every value, because `free` and `structure` clear this palette's threshold by a
+ * fraction and a highlight is a colour like any other. The signals end up with real depth and the
+ * world nearly flat, which was a measurement before it was a look.
+ */
+export interface Lit {
+  readonly body: number;
+  readonly top: number;
+  readonly bottom: number;
+}
+
+export function litColors(colour: Rgb, role: Role): Lit {
+  const amount = SHADE_HEADROOM[role];
+  return {
+    body: packRgb(colour),
+    top: packRgb(shade(colour, amount)),
+    bottom: packRgb(shade(colour, -amount)),
+  };
+}
+
+/**
+ * A rectangle with the light on it. The edges are ONE pixel: at this size a component is a handful of
+ * pixels across, and a two-pixel edge on a four-pixel shape is not shading, it is a stripe.
+ */
+export function fillLitRect(fb: Framebuffer, rect: Rect, lit: Lit): void {
+  fillRect(fb, rect, lit.body);
+  if (rect.height < 3) return;
+  fillRect(fb, { ...rect, height: 1 }, lit.top);
+  fillRect(fb, { ...rect, y: rect.y + rect.height - 1, height: 1 }, lit.bottom);
+}
+
+/**
+ * A ball or a bumper with the light on it: the top third catches it, the bottom quarter loses it.
+ * Fractions of the radius rather than pixel counts, so a 3-pixel ball and a 12-pixel bumper are lit
+ * the same way instead of the small one being all edge.
+ */
+export function fillLitCircle(
+  fb: Framebuffer, cx: number, cy: number, radius: number, lit: Lit,
+): void {
+  fillCircle(fb, cx, cy, radius, lit.body);
+  if (radius < 2) return;
+  const r2 = radius * radius;
+  const y0 = Math.max(0, Math.floor(cy - radius));
+  const y1 = Math.min(fb.height, Math.ceil(cy + radius) + 1);
+  for (let y = y0; y < y1; y++) {
+    const dy = y + 0.5 - cy;
+    const above = dy < -radius * 0.45;
+    const below = dy > radius * 0.55;
+    if (!above && !below) continue;
+    const row = y * fb.width;
+    for (let x = Math.max(0, Math.floor(cx - radius)); x < Math.min(fb.width, Math.ceil(cx + radius) + 1); x++) {
+      const dx = x + 0.5 - cx;
+      if (dx * dx + dy * dy <= r2) fb.pixels[row + x] = above ? lit.top : lit.bottom;
+    }
+  }
+}
 
 /** Fills a rectangle, clipped to the buffer. Nothing here draws outside its target. */
 export function fillRect(fb: Framebuffer, rect: Rect, color: number): void {
@@ -169,24 +235,31 @@ export function drawTable(o: TableViewOptions): Framebuffer {
     // mission is counting is drawn as a goal, and goes back to furniture when it stops counting.
     const role = targets.has(component.name) ? 'goal' : component.role;
     const color = roleColor[role];
+    const lit = litColors(palette.roles[role], role);
 
     // ⚠️ A FLIPPER DECLARES ITS GEOMETRY SOMEWHERE ELSE, and falling through to the bounds fill for it
     // brought back the very defect this branch was written to remove — a rectangle painted over space
     // the ball flies through. Drawn at REST, because that is where it is until the player moves it.
     if (component.kind === 'flipper' && component.flipper) {
       const f = component.flipper;
+      // ⚠️ A LINE IS NOT LIT, AND THE FIRST VERSION OF THIS LIT IT. `EDGE_THICKNESS` is two pixels —
+      // the thinnest honest width for a wall the ball bounces off — and there is no room in two pixels
+      // for a body and an edge. Stamping the highlight half a pixel up covered the body AND widened
+      // the stroke: on screen the walls and the ramp turned pale, and the drawing began claiming area
+      // the physics does not have, which is the exact defect this module was fixed for once already.
       strokeLine(fb, f.pivot.x, f.pivot.y, f.tipAtRest.x, f.tipAtRest.y, color);
       continue;
     }
 
     if (!component.collision?.length) {
       // Nothing solid was declared, so the bounds is the whole claim and there is nothing to overstate.
-      fillRect(fb, component.bounds, color);
+      fillLitRect(fb, component.bounds, lit);
       continue;
     }
 
     for (const shape of component.collision) {
-      if (shape.kind === 'circle') fillCircle(fb, shape.at.x, shape.at.y, shape.radius, color);
+      if (shape.kind === 'circle') fillLitCircle(fb, shape.at.x, shape.at.y, shape.radius, lit);
+      // See the flipper above: a two-pixel stroke has no room for light and shade.
       else strokeLine(fb, shape.from.x, shape.from.y, shape.to.x, shape.to.y, color);
     }
   }

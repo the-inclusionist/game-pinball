@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, test, expect } from 'vitest';
 import { drawTable, paletteOf, packRgb, EDGE_THICKNESS } from '../app/js/gfx/table-view.js';
+import { CATALOG as TABLES } from '../app/js/table/catalog.js';
 
 /**
  * The colour of nothing, on THIS table.
@@ -136,5 +137,60 @@ describe('⚠️ the drawing tells the truth about what the ball can touch', () 
     const fb = drawTable({ table: wideArc });
 
     expect(fb.pixels[170 * fb.width + 328]).toBe(groundOf(wideArc));
+  });
+});
+
+/**
+ * ⚠️ HOW MUCH OF THE TABLE IS PAINTED, PINNED TO A NUMBER.
+ *
+ * A golden count is a blunt instrument and it is here because the sharp ones did not work. Lighting the
+ * components introduced a highlight stamped half a pixel above each two-pixel line: it covered the body,
+ * turned the walls and the ramp pale on screen, and WIDENED every stroke — the drawing claiming area
+ * the ball cannot touch, which is the defect this whole file was written for.
+ *
+ * Nothing caught it. The check above tolerates half a pixel; the shading tests cover the fill helpers
+ * and not the stroke path; every other assertion in the repository stayed green. It was found by
+ * opening the PNG, and then confirmed by putting the mutation back and watching seventeen tests pass.
+ *
+ * A count catches it exactly, because widening a line cannot help but change one. The cost is that a
+ * deliberate change to a table's geometry or to `EDGE_THICKNESS` must come here and update the number
+ * ON PURPOSE — which is the point: area is not something to change by accident.
+ */
+const PAINTED = {
+  'low-orbit': 7479,
+  'wide-arc': 4801,
+  'narrow-tower': 4037,
+  'four-flippers': 3239,
+  'bare-minimum': 744,
+};
+
+describe('⚠️ and the drawing never grows', () => {
+  test('every table paints exactly the area it painted before', () => {
+    const counted: Record<string, number> = {};
+    for (const table of TABLES) {
+      const fb = drawTable({ table });
+      const ground = packRgb(paletteOf(table, false).ground);
+      let painted = 0;
+      for (const pixel of fb.pixels) if (pixel !== ground) painted++;
+      counted[table.name] = painted;
+    }
+
+    expect(counted).toEqual(PAINTED);
+  });
+
+  test('and the CB-Safe palette paints the same area, because it is a colour and not a shape', () => {
+    for (const table of TABLES) {
+      const normal = drawTable({ table });
+      const safe = drawTable({ table, cbSafe: true });
+      const groundNormal = packRgb(paletteOf(table, false).ground);
+      const groundSafe = packRgb(paletteOf(table, true).ground);
+      const count = (fb: { pixels: Uint32Array }, ground: number) => {
+        let n = 0;
+        for (const p of fb.pixels) if (p !== ground) n++;
+        return n;
+      };
+
+      expect(count(safe, groundSafe), table.name).toBe(count(normal, groundNormal));
+    }
   });
 });

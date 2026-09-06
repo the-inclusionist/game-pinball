@@ -174,6 +174,52 @@ const CB_SAFE: Readonly<Record<Role, Rgb>> = {
   free: rgb(73, 83, 96),
 };
 
+/**
+ * ⚠️ HOW FAR EACH COLOUR MAY BE SHADED BEFORE ITS EDGE READS AS ANOTHER ROLE.
+ *
+ * A lit edge is what makes a flat rectangle look like a raised bumper, and phase 8 wants that. But a
+ * highlight IS a colour, drawn on a table where every colour already means something — and the first
+ * attempt used ONE amount for every role and failed at every value tried. Eighteen per cent put
+ * `free`'s highlight nearer `structure` than `free`, because those two clear this palette's threshold
+ * by a fraction and nothing else.
+ *
+ * So the amount is per role: as much as that colour's own neighbours allow, and no more. What falls
+ * out is a rule nobody set out to write — THE SIGNALS GET DEPTH AND THE WORLD STAYS NEARLY FLAT. The
+ * two neutrals take a sixth; hazard, goal, key and climb take two fifths and more.
+ *
+ * ⚠️ SOLVED OFFLINE, STORED HERE, CHECKED ELSEWHERE. Deriving these at run time with a distance
+ * function would put the same function on both sides of the gate: `tests/gfx-table-shading` measures
+ * them with its own, so a wrong constant fails instead of moving the check with it.
+ *
+ * The same fact, seen from the other side, is why the GROUND cannot have a gradient: any lift big
+ * enough to read as depth walks the ground into `free`. That one is an open question for the Dev.
+ */
+export const SHADE_HEADROOM: Readonly<Record<Role, number>> = {
+  hazard: 0.40,
+  goal: 0.48,
+  key: 0.44,
+  gate: 0.36,
+  // The world. See above: this is a measurement, not a preference for flat scenery.
+  structure: 0.20,
+  climb: 0.40,
+  water: 0.30,
+  free: 0.16,
+};
+
+/**
+ * Moves a colour toward white (`t > 0`) or toward black (`t < 0`).
+ *
+ * Toward WHITE rather than by a multiplier, because multiplying a near-black colour by 1.4 is still
+ * near-black: the `space` ground moves 1.1 in lightness that way, and a highlight nobody can see is
+ * not a highlight. Toward black on the other side, where multiplying is exactly right.
+ */
+export function shade(c: Rgb, t: number): Rgb {
+  const clamp = (v: number): number => Math.max(0, Math.min(255, Math.round(v)));
+  return t >= 0
+    ? rgb(clamp(c.r + (255 - c.r) * t), clamp(c.g + (255 - c.g) * t), clamp(c.b + (255 - c.b) * t))
+    : rgb(clamp(c.r * (1 + t)), clamp(c.g * (1 + t)), clamp(c.b * (1 + t)));
+}
+
 export interface PaletteOptions {
   /** Whether to use the alternative that survives the colour-blindness simulations. */
   readonly cbSafe: boolean;
