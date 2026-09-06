@@ -19,6 +19,57 @@ The port runs in two configurations:
 The validation configuration exists for one reason: physics and table are two variables, and changing both
 at once leaves no way to isolate a bug.
 
+## Running it
+
+```
+npm install
+npm run build
+npm run preview
+```
+
+The preview serves `dist`, and that is deliberate rather than incidental: the Vite dev server does not
+come up in the sandbox this was written in, so `npm run build` first is the path that is known to work.
+
+```
+npm run validate
+```
+
+is the one command that has to pass: `npm run typecheck` (zero errors, no tolerated debt), then every
+test, then the build. The tests run in two projects and both are part of it:
+
+| | what it is | when to reach for it |
+|---|---|---|
+| `npm run test:node` | pure logic — the parser, the physics, the mission machine, and every decision this port deliberately lifted out of an event handler so it could be tested without a browser | almost always: it is faster, and a failure names one function |
+| `npm run test:browser` | real Chromium, via Playwright | only what node cannot make: real layout, real focus, real key events |
+
+The split is not a preference. A `focus()` on a hidden element does nothing at all, and no hand-written
+fake models that — which is how a dialog ships whose Escape key never arrives.
+
+## Playing it
+
+| key | what it does |
+|---|---|
+| `←` / `Z` | left flipper |
+| `→` / `.` | right flipper |
+| `Space` / `Enter` | plunger — **held**, not pressed: holding draws it back and letting go launches |
+| `B` | blind mode |
+| `S` | sweep the sonar |
+| `C` | switch between the normal and CB-Safe palettes |
+
+Two keys per flipper because one hand is not everybody's, and the accessibility switches are KEYS
+rather than menu entries — a player who needs blind mode is not the player who will find it three
+screens into a settings panel. The palette also has a menu, because it was asked for by name.
+
+### Query parameters
+
+| | |
+|---|---|
+| `?table=<name>` | opens one of the authored tables instead of the default |
+| `?demo=original` | the 1995 table, which asks you for `PINBALL.DAT` through a file picker |
+
+⚠️ **`?demo=original` reads the file you hand it and nothing else.** The archive is never fetched, never
+bundled and never served — see below.
+
 ## Original game data
 
 `PINBALL.DAT`, the ~60 WAV files and the 2 MIDI files are third-party work and are listed in
