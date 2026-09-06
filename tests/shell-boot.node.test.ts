@@ -4,6 +4,8 @@ import { readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { conformanceProblems } from '@the-inclusionist/engine/core/contract.js';
+import { WIDE_ARC } from '../app/js/table/catalog.js';
+import { layoutHud, DEFAULT_HUD } from '../app/js/shell/hud.js';
 import {
   bootPinball, createPinballOptions, createPinballWorld, pinballDeclines, REQUIRED_MARKUP,
   type BootOptions, type LiveTable, type PinballGameOptions,
@@ -67,9 +69,36 @@ describe('the camera on a table wider than the window', () => {
     balls: [{ active: true, position: { x, y: 120 }, direction: { x: 1, y: 0 }, speed }],
   });
 
-  // 360 of table against a 320 window — `layoutHud` clamps the playfield to the screen — so the window
-  // can start anywhere from 0 to 40. Forty columns of `wide-arc` were unreachable.
-  const TRAVEL = 360 - 320;
+  /**
+   * The width the fixture above is built at, and `wide-arc`'s own — pinned to each other by the first
+   * test below rather than by two people remembering the same number.
+   */
+  const WIDE = 360;
+
+  /**
+   * How far the view can slide sideways.
+   *
+   * ⚠️ THE SECOND HALF IS DERIVED, not written down, and that is the whole reason the paragraph at the
+   * top of this file was wrong for months. It said the window is 183; it is 320, because `layoutHud`
+   * clamps a playfield to the screen. `360 - 320` is a sum by somebody who looked both up once, and it
+   * goes on saying 40 however the clamp changes.
+   *
+   * ⚠️ AND IT IS DERIVED FROM THE FIXTURE, NOT FROM THE CATALOGUE, which is a correction to the first
+   * attempt at this. Reading `WIDE_ARC.size.width` here couples the camera's arithmetic to a table
+   * these tests do not use: narrowing `wide-arc` would then fail this describe with "expected 40 to be
+   * 20" while nothing about the camera had changed. The test below is where the two are tied together,
+   * and it says so in one line instead of failing four in riddles.
+   */
+  const TRAVEL = WIDE - layoutHud({ ...DEFAULT_HUD, playfieldWidth: WIDE }).playfield.width;
+
+  test('⚠️ and the fixture is the width of the REAL wide-arc, or this describe tests nothing', () => {
+    // Every claim in this describe is about a synthetic table. It is worth having — the camera should
+    // be tested at a width, not at a catalogue entry — but it is only worth reading if that width is
+    // the one the game actually ships. This is the single line that makes the paragraph at the top of
+    // the file a statement about `wide-arc` rather than about a number somebody chose.
+    expect(WIDE_ARC.size.width, 'the fixture matches the table it is named for').toBe(WIDE);
+    expect(TRAVEL, 'and forty columns are what need scrolling to reach').toBe(40);
+  });
 
   test('⚠️ it follows the ball sideways, and the offset is what the renderer reads', () => {
     // ⚠️ AND IT STARTS AT THE FAR END, which is `createCamera`'s rule for both axes: "the view starts
