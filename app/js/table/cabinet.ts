@@ -81,6 +81,29 @@ export function cabinet(o: CabinetOptions): AuthoredComponent[] {
      * wound right-to-left-and-up so its normal points DOWN into the lane, which is the side a rising
      * ball arrives from: a single slope, steep enough to redirect and shallow enough not to stop the
      * ball dead.
+     *
+     * ⚠️ AND THE DEV ASKED FOR A CURVE HERE, WHICH IS NOT DONE. His words: "o lançador é um túnel que
+     * vai retamente pra cima, mas ele deve acabar com uma curva (topo deve ser curvado) de modo que
+     * uma bola lançada com força total ande por uma curva até a parede da esquerda."
+     *
+     * Three shapes were tried and all three broke tables, which is why the straight line is still here
+     * rather than a half-working arc:
+     *
+     *   · AN ARC CENTRED ON THE LANE never touched the ball. Its lowest point sits at the lane's own
+     *     column with a VERTICAL tangent, so a rising ball meets the end of the arc travelling
+     *     parallel to it — no collision — and passes above into the ceiling. Five tables failed "the
+     *     ball leaves the plunger lane" at once.
+     *   · AN ARC ON THE CORNER AT RADIUS 34 reached down to y = 38 against a divider that starts at
+     *     34, so its lower half hung inside the lane. `crater-run` lost balls through the geometry.
+     *   · AT RADIUS 20, with and without a straight run out of it, `crater-run` and `long-climb`
+     *     stopped answering the flippers: the ball entered the play at a different angle and never
+     *     reached a paddle.
+     *
+     * ⚠️ THE SHAPE IS NOT THE DIFFICULTY. This bend is shared by five tables whose routes were tuned
+     * under the straight one, so changing it changes five layouts at once — and it wants the treatment
+     * the density and reachability work got: a measurement of where the ball ENTERS the play, and what
+     * that does to each table, BEFORE a line moves. Guessing at it three times is what this comment is
+     * for.
      */
     { name: 'wall.laneReturn', kind: 'wall', role: WALL,
       bounds: { x: divider - 14, y: 4, width: w - divider + 14, height: 18 },

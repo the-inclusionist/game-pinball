@@ -115,7 +115,9 @@ export function titleScreen(o: TitleOptions = {}): TitleScreen {
       // a runtime guarantee: this game boots from a `<script>` and anything that reached this with the
       // wrong string would start a table nobody had chosen. A test presses on it with @ts-expect-error,
       // which is how the missing check was found — the type refused the call and the code ran it.
-      if (screen === 'playing') return;
+      // The cast is the point: the type already refuses `playing`, so TypeScript calls this comparison
+      // unintentional — and the guard exists for the caller the compiler is not watching.
+      if ((screen as Screen) === 'playing') return;
       current = screen;
     },
   };
