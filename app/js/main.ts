@@ -580,6 +580,27 @@ function step(frames: number): void {
       ball.speed = 0;
       // The ball is only put back if there is one to put back. `launch` refuses on a finished game.
       phase = 'title';
+
+      /**
+       * ⚠️ AND THE VIEW COMES BACK DOWN WITH IT.
+       *
+       * The camera cannot bring itself back. Its step is capped at a fraction of the BALL'S OWN
+       * SPEED — that cap is the rule that stops the view outrunning what the player is watching —
+       * and a ball waiting at the plunger has a speed of nought, so the cap is nought and the offset
+       * stays wherever the lost ball dragged it. The player was left looking at a stretch of empty
+       * mid-table with no flippers and no plunger in the window, holding a key that appeared to do
+       * nothing, until the launch scrolled them somewhere they had not asked to go.
+       *
+       * A new ball is a new start, and `createCamera` puts the view where a start belongs: on the
+       * flippers. This is also what the Dev asked for in general terms after seeing `crater-run` and
+       * `long-climb` cut off at the base — "a base sempre apareça".
+       *
+       * ⚠️ AND IT IS DELIBERATELY NOT `shell.advance` MOVED OUT OF THIS BRANCH, which was the first
+       * attempt and was wrong twice over: the camera still could not move on a still ball, so it
+       * changed nothing at all — and `paused` is not `playing` either, so it would have let the view
+       * drift on while the game was stopped.
+       */
+      shell.resetCamera();
     }
 
     shell.advance(frames);

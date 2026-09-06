@@ -214,6 +214,22 @@ export interface PinballShell<E extends EngineLike> {
   readonly cameraX: CameraState;
   /** ⚠️ `frames`, not seconds. See this module's header. */
   advance(frames: number): void;
+  /**
+   * Puts both views back where a game starts: on the flippers, and at the left.
+   *
+   * ⚠️ THE CAMERA CANNOT DO THIS BY ITSELF, and that is not an oversight in `shell/camera` — it is
+   * that module's speed cap, which holds each step to a fraction of the BALL'S OWN SPEED so the view
+   * can never outrun the thing the player is watching. A ball waiting in the plunger lane has a speed
+   * of nought, so the cap is nought, so the offset stays exactly where the LAST ball left it.
+   *
+   * Which is the defect: a ball that drains from high on the table leaves the window up there, and
+   * the next one is placed at the plunger — off the bottom of the view, with the flippers off it too.
+   * Nothing in the picture then belongs to the ball the player is holding.
+   *
+   * Called by the drain, where a new ball is put on the table. Not called by `advance`: while a ball
+   * is in play the camera's own rules are the ones that should decide where the view goes.
+   */
+  resetCamera(): void;
   /** What the host document failed to provide. Empty is the good case. */
   readonly problems: readonly string[];
 }
@@ -271,6 +287,12 @@ export function bootPinball<E extends EngineLike>(
           cameraX, cameraXConfig, ball.position.x, Math.abs(ball.direction.x) * ball.speed,
         );
       }
+    },
+    resetCamera(): void {
+      // The same call the boot made. `createCamera` is where "a view starts on the flippers" is
+      // written down, and a new ball is a new start — so this asks it again rather than restating 55.
+      camera = createCamera(cameraConfig);
+      cameraX = createCamera(cameraXConfig);
     },
     problems: engine.problems,
   };

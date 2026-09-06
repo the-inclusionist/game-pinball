@@ -450,3 +450,92 @@ describe('⚠️ advance counts FRAMES, not seconds', () => {
     expect(shell.camera.offset).toBe(55);
   });
 });
+
+/**
+ * ⚠️ THE VIEW A LOST BALL LEAVES BEHIND.
+ *
+ * The camera's step is capped at a fraction of the BALL'S OWN SPEED — the rule that stops the view
+ * outrunning the thing the player is watching, and `shell/camera`'s own header states the consequence
+ * plainly: "with the ball still, the cap is zero and the camera cannot move". That consequence was
+ * written down and never followed to where it bites.
+ *
+ * It bites between balls. A ball drains from high on the table with the view up there following it;
+ * the next ball is placed at the plunger with a speed of nought; the cap is nought; the offset never
+ * comes back. The player is looking at a stretch of empty mid-table — no flippers, no plunger — and
+ * the plunger key looks broken because the lane it works in is off the bottom of the window. The
+ * launch then scrolls them somewhere they did not ask to go.
+ *
+ * ⚠️ AND THE FIRST FIX WAS FOR THE WRONG CAUSE. `main.ts` advances the camera inside its
+ * `phase === 'playing'` block, and after the plunger's charge and the pad poll turned out to be
+ * stranded in that same block, this looked like the third of a set. Moving it out would have changed
+ * NOTHING — a still ball caps the step at nought either way — and would have broken pause, which is
+ * also not `playing` and is supposed to hold the picture still. The browser test written to prove the
+ * move failed, which is the only reason any of that was found before it was committed.
+ */
+describe('a new ball gets the view back', () => {
+  const highAndFast = () => table({
+    balls: [{ active: true, position: { x: 90, y: 40 }, direction: { x: 0, y: -1 }, speed: 6 }],
+  });
+
+  test('⚠️ resetting puts the view back on the flippers, whatever the last ball did to it', () => {
+    const shell = bootPinball(options({ table: highAndFast() }), fakeEngine());
+    shell.advance(120);
+    expect(shell.camera.offset, 'the ball dragged the view up first').toBeLessThan(55);
+
+    shell.resetCamera();
+
+    expect(shell.camera.offset, 'and a new ball starts where a start belongs').toBe(55);
+  });
+
+  test('⚠️ and the camera CANNOT do it on its own, which is why this exists at all', () => {
+    // The evidence for the paragraph above rather than a restatement of it, and the exact sequence the
+    // player lives through: a ball drags the view up, drains, and is replaced by a still one at the
+    // plunger. Two seconds of frames later the view has not moved a pixel, because the cap is a
+    // fraction of a speed of nought. Without `resetCamera` this is what a new ball looks like.
+    // Declared here rather than read back out of the table, because `LiveTable`'s balls are readonly
+    // to their reader — which is the shell. The entry point holds the mutable one, as this does.
+    const climbing = { active: true, position: { x: 90, y: 40 }, direction: { x: 0, y: -1 }, speed: 6 };
+    const shell = bootPinball(options({ table: table({ balls: [climbing] }) }), fakeEngine());
+    shell.advance(120);
+    const stranded = shell.camera.offset;
+    expect(stranded, 'the view is up the table').toBeLessThan(55);
+
+    // `physics.spawnBall` puts the next ball in the lane at rest, and `main.ts` copies exactly this.
+    climbing.position = { x: 176, y: 225 };
+    climbing.speed = 0;
+    shell.advance(120);
+
+    expect(shell.camera.offset, 'and it stays there, for ever').toBe(stranded);
+  });
+
+  test('both axes come back, because a wide table scrolls sideways too', () => {
+    // ⚠️ AND THE HORIZONTAL AXIS RESTS AT THE FAR END, not at the left, which is what this test
+    // claimed until it was run. `createCamera` starts every axis at `maxOffsetOf` — for the vertical
+    // that is the bottom, where the flippers are, and for a 360-wide table against a 320 window it is
+    // the 40 columns on the right, where the plunger lane is. Both are "the corner a ball starts in",
+    // which is the rule; "the left" was my paraphrase of it and was wrong.
+    const wide = table({
+      playfieldWidth: 360,
+      balls: [{ active: true, position: { x: 40, y: 40 }, direction: { x: -1, y: -1 }, speed: 6 }],
+    });
+    const shell = bootPinball(options({ table: wide }), fakeEngine());
+    shell.advance(120);
+    expect(shell.cameraX.offset, 'the view followed it left').toBeLessThan(40);
+
+    shell.resetCamera();
+
+    expect(shell.cameraX.offset, 'and comes back to the lane the next ball starts in').toBe(40);
+  });
+
+  test('⚠️ and the DRAIN is where it is called — the half no camera test can see', () => {
+    // The pattern this repository keeps paying for: a capability that exists, is tested, and is never
+    // reached. `resetCamera` with no caller is a method that passes its own tests for ever while the
+    // player still stares at empty table.
+    const source = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../app/js/main.ts'), 'utf8');
+    const drainBlock = source.slice(source.indexOf('const drained = drainedBy('));
+
+    expect(drainBlock.slice(0, drainBlock.indexOf('shell.advance(')),
+      'the lost ball puts the view back before the next frame is composed')
+      .toMatch(/shell\.resetCamera\(\)/);
+  });
+});
