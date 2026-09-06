@@ -160,6 +160,7 @@ const PAINTED = {
   'low-orbit': 7479,
   'ion-storm': 7187,
   'crater-run': 7221,
+  'long-climb': 8153,
   'wide-arc': 4801,
   'narrow-tower': 4037,
   'four-flippers': 3239,

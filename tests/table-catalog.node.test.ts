@@ -36,7 +36,7 @@ describe('all five tables open', () => {
     // The count stays pinned rather than becoming `>= 5`, because a table appearing in the catalogue is
     // a decision: it goes in the selector, it needs a world in the palette, and it has to survive the
     // playability gates. Updating this line is the cheapest possible way to be made to notice.
-    expect(CATALOG).toHaveLength(7);
+    expect(CATALOG).toHaveLength(8);
     expect(new Set(CATALOG.map((t) => t.name)).size, 'and no two share a name').toBe(CATALOG.length);
   });
 

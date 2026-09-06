@@ -23,17 +23,18 @@
 import type { AuthoredTable } from './authored.js';
 import { LOW_ORBIT } from './low-orbit.js';
 import { ION_STORM } from './ion-storm.js';
+import { LONG_CLIMB } from './long-climb.js';
 import { CRATER_RUN } from './crater-run.js';
 import { WIDE_ARC } from './wide-arc.js';
 import { NARROW_TOWER } from './narrow-tower.js';
 import { FOUR_FLIPPERS } from './four-flippers.js';
 import { BARE_MINIMUM } from './bare-minimum.js';
 
-export { LOW_ORBIT, ION_STORM, CRATER_RUN, WIDE_ARC, NARROW_TOWER, FOUR_FLIPPERS, BARE_MINIMUM };
+export { LOW_ORBIT, ION_STORM, LONG_CLIMB, CRATER_RUN, WIDE_ARC, NARROW_TOWER, FOUR_FLIPPERS, BARE_MINIMUM };
 
 /** Every authored table. The first is the default. */
 export const CATALOG: readonly AuthoredTable[] = [
-  LOW_ORBIT, ION_STORM, CRATER_RUN, WIDE_ARC, NARROW_TOWER, FOUR_FLIPPERS, BARE_MINIMUM,
+  LOW_ORBIT, ION_STORM, LONG_CLIMB, CRATER_RUN, WIDE_ARC, NARROW_TOWER, FOUR_FLIPPERS, BARE_MINIMUM,
 ];
 
 /** The one the game opens with. */

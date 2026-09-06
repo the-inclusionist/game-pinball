@@ -16,10 +16,22 @@
 // more than the last. A tall table with everything at the top is one long shot repeated; a tall table
 // with rungs is a climb, and the difference is whether a ball that got halfway achieved anything.
 //
-// ⚠️ THE HEIGHT WAS MEASURED, NOT CHOSEN. A table can be authored taller than the plunger can throw a
-// ball, and nothing in the validator or the playability gates would say so — they ask whether the ball
-// leaves the lane, touches something that scores, and is lost properly. A summit the ball cannot reach
-// passes all three and holds a mission that can never complete. See `tests/table-long-climb`.
+// ⚠️ AND THE SUMMIT'S REACHABILITY IS NOT PROVEN, WHICH IS SAID HERE RATHER THAN ASSUMED.
+//
+// A table can be authored taller than the plunger can throw a ball, and NOTHING would say so: the
+// validator checks geometry, and the playability gates ask whether the ball leaves the lane, touches
+// something that scores, is lost properly, and responds to the flippers. A summit the ball can never
+// reach passes all four and holds a mission that can never complete.
+//
+// This table passes all four. What is NOT established is that `landing3` and `crest`, at y = 62 and
+// y = 30 of three hundred, are reachable from a launch — the draft of this comment claimed the height
+// "was measured, not chosen" and cited a test that does not exist. It was not measured. The number is
+// a judgement: three hundred is a fifth taller than `crater-run`, which plays.
+//
+// ⚠️ SO THE MISSION ORDER IS THE MITIGATION. The first mission asks only for `landing1`, low enough to
+// reach on a poor launch; the summit is the LAST of three, so a player who never gets there has still
+// had two missions out of the table. If it turns out to be unreachable, what is lost is the third
+// mission and not the table — but a reachability gate belongs in this repository and does not exist.
 
 import type { AuthoredTable } from './authored.js';
 import { cabinet, CABINET_LAMPS } from './cabinet.js';

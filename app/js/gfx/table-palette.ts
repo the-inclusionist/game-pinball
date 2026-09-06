@@ -119,6 +119,7 @@ const SCENE_OF_TABLE: Readonly<Record<string, string>> = {
   // The storm is lit by what it is made of: an electrical blue-violet, closest to `sky` of the five.
   'ion-storm': 'sky',
   'crater-run': 'mars',
+  'long-climb': 'ice',
   'wide-arc': 'space',
   // Two hundred and forty pixels of climb. Red earth for a table that is all ascent.
   'narrow-tower': 'mars',
