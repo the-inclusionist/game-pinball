@@ -29,6 +29,7 @@ import { buildOriginalKickouts, kickoutGeometry } from '../table/original-kickou
 import { buildOriginalPopupTargets } from '../table/original-popup-targets.js';
 import { buildOriginalSoloTargets } from '../table/original-solo-targets.js';
 import { buildOriginalOneways, onewayNames } from '../table/original-oneways.js';
+import { buildOriginalRollovers, rolloverNames } from '../table/original-rollovers.js';
 import { flipperSides } from '../table/original-flippers.js';
 import { blockerNames, buildOriginalBlockers } from '../table/original-blockers.js';
 import { buildOriginalSinks } from '../table/original-sinks.js';
@@ -169,6 +170,7 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
   const sides = flipperSides(manifest);
   const blockers = blockerNames(manifest);
   const oneways = onewayNames(manifest);
+  const rollovers = rolloverNames(manifest);
   const components = buildOriginalComponents(manifest, {
     // ⚠️ THE BUMPER SAYS WHEN IT FIRED, and that is when it is paid — see `payFor` and the wrapper it
     // is called from. A bumper reached through the wall wrapper alone is paid for every graze.
@@ -304,7 +306,9 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
     // ⚠️ A ONE-WAY IS TWO LINES AND NEITHER IS THE ONE THIS LOOP WOULD BUILD — see
     // `table/original-oneways`. Installing the plain wall as well puts a solid line across a gate the
     // ball is supposed to pass through, which is what this table had: nine gates, all shut.
-    skipWall: (name) => oneways.has(name),
+    // ⚠️ AND A ROLLOVER IS TWO RECORDS AND NEITHER IS THIS ONE. Eighteen lanes the ball is meant to
+    // roll ACROSS were being built as walls it bounced OFF — see `table/original-rollovers`.
+    skipWall: (name) => oneways.has(name) || rollovers.has(name),
     // ⚠️ WITHOUT THIS THERE ARE NO FLIPPERS AT ALL. A flipper has no wall record; its shape is three
     // points and two times, and the table builds one only for a group it is told the side of.
     flipperSideFor: (name) => sides.get(name),
@@ -397,6 +401,22 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
   })) soloTargets.set(name, target);
 
   const gates = buildOriginalGates(manifest, table);
+  buildOriginalRollovers(manifest, {
+    table: { tiltLocked: false },
+    grid: table.grid,
+    timer: components.timer,
+    // The lane's own edges carry its component, so the wall wrapper never sees these crossings: this
+    // is the only place a lane can be reported, paid or HEARD from. `TRollover::Collision` plays the
+    // soft-hit sound going in and says nothing coming out, which is the same rule the wall wrapper
+    // applied by kind — but only entering reaches this callback, so the rule is already kept.
+    onEnter: (name) => {
+      touched.push(name);
+      const kind = kindOf(name);
+      const voice = kind ? soundForKind(kind) : undefined;
+      if (voice) o.onSound?.(voice);
+      payFor(name);
+    },
+  });
   for (const [name, sink] of buildOriginalSinks(manifest, {
     table: {
       tiltLocked: false,

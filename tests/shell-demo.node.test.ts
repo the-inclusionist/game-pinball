@@ -50,11 +50,14 @@ describe('the 1995 table, from an ArrayBuffer', () => {
     const demo = createDemo(bytes, { random: seeded() });
 
     expect([demo.playfield.width, demo.playfield.height]).toEqual([365, 470]);
-    // ⚠️ ONE HUNDRED AND THIRTY-FOUR, AND IT WAS A HUNDRED AND FORTY-THREE. The nine one-way gates are
-    // no longer installed by this loop: a one-way is TWO lines on the same two points, wound opposite
-    // ways, and neither of them is the plain wall this count is of. Installing that wall as well put a
-    // solid line across every gate the ball was supposed to pass through.
-    expect(demo.table.wallCount).toBe(134);
+    // ⚠️ ONE HUNDRED AND SIXTEEN, AND IT WAS A HUNDRED AND FORTY-THREE. Twenty-seven groups build
+    // their own geometry and none of them wants the plain wall this count is of:
+    //
+    //   · the NINE one-ways — two lines on the same two points, wound opposite ways, so that the ball
+    //     can cross from one side only. The plain wall put a solid line across every gate.
+    //   · the EIGHTEEN lanes — one polygon wound both ways, the second half live only while the ball
+    //     is on the lane. The plain wall made every lane something the ball bounced off.
+    expect(demo.table.wallCount).toBe(116);
   });
 
   test('⚠️ the ball lands INSIDE the picture, which is what ties the physics to the pixels', () => {
@@ -383,6 +386,23 @@ describe('⚠️ and a ball can be lost, which the demonstration counts', () => 
 
     expect(demo.table.balls.length).toBe(1);
     expect(demo.table.balls.filter((b) => b.active).length).toBe(1);
+  });
+
+  test('⚠️ the ball ROLLS ACROSS the launch lanes, and each crossing is scored once', () => {
+    // Eighteen lanes were installed as plain walls until now, so the ball BOUNCED off every one of
+    // them. Six hundred frames of the default run cross two of the launch lanes three times between
+    // them — and the crossings are paid by `ReentryLanesRolloverControl`, never flat, because the
+    // lane's own edges carry its component and the wall wrapper never sees them at all.
+    const bytes = archive();
+    if (!bytes) return expect(existsSync(DAT)).toBe(false);
+    const demo = createDemo(bytes, { random: seeded() });
+
+    demo.step(600);
+
+    const crossed = demo.touched.filter((name) => name.startsWith('a_roll'));
+    expect([...new Set(crossed)].sort()).toEqual(['a_roll1', 'a_roll2']);
+    expect(demo.paidFlat.filter((name) => name.startsWith('a_roll')), 'never flat').toEqual([]);
+    expect(demo.scored.filter((name) => name.startsWith('roll')).length).toBe(crossed.length);
   });
 
   test('⚠️ only the three holes the wormhole runs own their collisions', () => {
