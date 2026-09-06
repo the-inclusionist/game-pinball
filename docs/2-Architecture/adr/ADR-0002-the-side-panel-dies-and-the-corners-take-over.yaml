@@ -94,6 +94,40 @@ decision-outcome:
     reported still has to be a layout. Blocks with negative width would satisfy every other rule and
     show nothing.
 
+amendment-2026-09-06-dawn: |
+  BOTH OF THIS RECORD'S FIRST TWO PARAGRAPHS WERE FALSE IN THE DEMONSTRATION, and had been for months.
+  Not in the layout — the layout was always right — but on the screen, which is the only place a HUD
+  decision can be true or false.
+
+  § 1 SAID "THE PANEL IS GONE ... its artwork is not reproduced anywhere". It was being drawn. The
+  demonstration's sprite loop took every named group in the archive that carried a bitmap, skipping only
+  the lamps, the ball and the table, and `background` — the 203x394 side panel — passes that filter. It
+  was halved to 102x197 and painted at (125, 5) of a 183x235 picture: the right-hand third of the
+  playfield, under the 1995 logo, every frame since component sprites existed. Fixed by filtering on the
+  archive's own object list, because "not a component" is the property that matters and `background`,
+  `font1`, the sounds and the text boxes all share it.
+
+  § 2 SAID "THE PLAYFIELD IS CENTERED AND NOTHING COVERS IT ... there is a test that walks every block
+  against the playfield rectangle and fails on a single shared pixel". The test is real and it passes.
+  It was not enough, and the reason is worth more than the defect: IT CHECKS THE BLOCKS AGAINST THE
+  RECTANGLE, AND NOBODY CHECKED THAT THE TABLE WAS IN THE RECTANGLE. `mountDemoPage` blitted into the
+  whole screen — `{ 0, 0, 320, 180 }` — so the table began at column 0 while the layout put it at 69.
+  The player's name and the ball count printed over the table's left edge and the score floated in the
+  137 empty columns on the right. Every block was exactly where this record says, and the table was not.
+
+  ⚠️ NEITHER WAS FOUND BY A TEST. Both were found by composing the frame, writing it to a PNG and
+  opening it — which nothing in this project had ever done. Every render gate here asks about a part: a
+  lamp, a corner, a palette entry, a count of changed pixels. None asked what the screen looks like, and
+  a HUD record is exactly the kind of claim that only a picture can falsify.
+
+  What guards it now: `tests/gfx-original-shot` writes the 1995 table, its 320x180 screen and each of
+  the five authored screens on every run; `shell-demo` asserts that nothing outside the table's own
+  object list is drawn and that the pixel at (170, 20) — inside the panel's old footprint and inside no
+  component's — is the playfield; and the screen test asserts the inset BEFORE using it, because the
+  first version read `layout.playfield.x` on both sides and passed over a table drawn flush left.
+
+  The decision in this record did not change. What changed is that it is now true.
+
 consequences:
   good:
     - "The play area is inviolable, and a test enforces it rather than a convention."
