@@ -83,6 +83,29 @@ describe('the 1995 plunger', () => {
     expect(built.plungerPosition!.y).toBeCloseTo(10.085, 3);
   });
 
+  test('⚠️ AND THE BALL WAITING ON IT IS NOT STUCK, which needs a box with height', () => {
+    // `CheckBallInControlBounds` asks whether the ball is inside the flippers' or the plunger's box
+    // before deciding it needs rescuing. The plunger's box was the extent of its own wall record — and
+    // that record is a LINE, `[2, -8.00, 11.97, -6.38, 11.97]`, so the box was 1.6 wide and ZERO high.
+    //
+    // No ball can be inside a box with no height. So the ball dropped onto the plunger settled for a
+    // hundred and fifty frames, was declared stuck, and was thrown back to the spawn point at speed
+    // zero — over and over, for ever. Of sixty-one hold durations swept from 100 to 400 frames, exactly
+    // ONE launched the ball: the release has to land in the 0.025-second window while the ball is still
+    // in contact, and the rescue kept snatching it out of contact.
+    //
+    // The box has to hold the whole of the ball's wait: from where record 601 puts it down to where it
+    // comes to rest on the line, and the ball's own radius on every side.
+    const table = manifest();
+    if (!table) return expect(existsSync(DAT)).toBe(false);
+    const built = buildOriginalTable(table.groups);
+    const inside = (y: number): boolean => built.controlBounds.some((box) =>
+      -7.02 >= box.xMin && -7.02 <= box.xMax && y >= box.yMin && y <= box.yMax);
+
+    expect(inside(10.085), 'where record 601 puts the ball').toBe(true);
+    expect(inside(11.667), 'and where it comes to rest on the line').toBe(true);
+  });
+
   test('⚠️ the material is the constructor’s 0.5, NOT the visual’s', () => {
     // Every other collision component on this table takes its bounce from the file. The plunger reads
     // the visual for its sound indices and then overwrites the material — so taking it from the file

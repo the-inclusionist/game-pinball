@@ -383,9 +383,25 @@ export function buildOriginalTable(groups: readonly Group[], o: OriginalOptions 
     if (!at) continue;
     plungerAt = at;
     plunger = o.plungerFor?.(groups, object.group) ?? null;
-    // The plunger's own extent, so a ball waiting on it is never mistaken for a stuck one.
+    // ⚠️ THE WHOLE OF THE BALL'S WAIT, NOT JUST THE WALL. `CheckBallInControlBounds` asks whether the
+    // ball is inside the plunger's box before deciding it is stuck, and the plunger's wall record is a
+    // LINE — so the box this pushed was 1.6 wide and ZERO high, and no ball could ever be inside it.
+    //
+    // A ball dropped onto the plunger settled for a hundred and fifty frames, was declared stuck, and
+    // was thrown back to the spawn point at rest, over and over. Of sixty-one hold durations swept from
+    // 100 to 400 frames exactly ONE launched the ball: the release must land in the 0.025-second window
+    // while the ball is still touching, and the rescue kept snatching it out of contact.
+    //
+    // So the box spans from where record 601 puts the ball down to the line it comes to rest on, and
+    // the ball's own radius on every side.
     const shape = floatAttribute(group, WALL_RECORD);
-    if (shape?.length) controlBounds.push(boundsOfWall(shape));
+    const wall = shape?.length ? boundsOfWall(shape) : null;
+    controlBounds.push({
+      xMin: Math.min(at.x, wall?.xMin ?? at.x) - ballRadius,
+      xMax: Math.max(at.x, wall?.xMax ?? at.x) + ballRadius,
+      yMin: Math.min(at.y, wall?.yMin ?? at.y) - ballRadius,
+      yMax: Math.max(at.y, wall?.yMax ?? at.y) + ballRadius,
+    });
     break;
   }
 
