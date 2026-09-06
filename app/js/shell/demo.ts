@@ -57,7 +57,7 @@ import {
   readLampSprites, readSprite, drawLamp, drawSpriteCentred, drawSpriteCentredBehind,
   type LampSprite,
 } from '../gfx/original-sprites.js';
-import { pack, type Framebuffer } from '../gfx/framebuffer.js';
+import { createFramebuffer, pack, type Framebuffer } from '../gfx/framebuffer.js';
 import { kindOf } from '../i18n/names.js';
 import { soundForKind } from '../audio/voices.js';
 import { findSoundGroups } from '../audio/sound-table.js';
@@ -779,14 +779,20 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
   const fullDepth = readPlayfieldDepth(groups);
   const playfieldDepth = fullDepth ? halveDepth(fullDepth) : null;
 
-  // The frame the ball is drawn into. Copied from the playfield each frame rather than redrawn,
-  // because the playfield is a still picture and the ball is the only thing that moves.
-  const frame: Framebuffer = {
-    width: playfield.width,
-    height: playfield.height,
-    pixels: new Uint32Array(playfield.pixels.length),
-    bytes: new Uint8ClampedArray(playfield.pixels.length * 4),
-  };
+  /**
+   * The frame the ball is drawn into. Copied from the playfield each frame rather than redrawn,
+   * because the playfield is a still picture and the ball is the only thing that moves.
+   *
+   * ⚠️ AND THROUGH `createFramebuffer`, WHICH IS NOT A CONVENIENCE. This was built by hand from two
+   * separate allocations, so `bytes` was a hundred and seventy kilobytes that nothing ever wrote and
+   * that read zero for every pixel — while `gfx/framebuffer`'s whole point is that the two are ONE
+   * buffer seen two ways, so `new ImageData(bytes, width)` costs no copy.
+   *
+   * It was invisible because `blitView` moves `pixels` into the screen's `pixels`, and the screen is a
+   * real framebuffer whose views do share memory. What was waiting was the first reader of this
+   * frame's `bytes` — `gfx/scale.halve` is one — which would have averaged a field of zeros.
+   */
+  const frame = createFramebuffer(playfield.width, playfield.height);
 
   // The first ball of the game, and the only `spawnBall` that cannot come back empty: the pool is
   // still empty, so there is always room to make one.

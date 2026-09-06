@@ -315,6 +315,28 @@ describe('the 1995 table, from an ArrayBuffer', () => {
     }
   });
 
+  test('⚠️ the frame’s two views are ONE buffer, which is the whole point of a `Framebuffer`', () => {
+    // `gfx/framebuffer` says it in its own header: "TWO VIEWS ON THE SAME MEMORY, and that is
+    // deliberate" — `pixels` is what you compose into, `bytes` is what goes straight into
+    // `new ImageData(bytes, width)` with no copy. The demonstration built its frame by hand with two
+    // separate allocations, so `bytes` was a hundred and seventy kilobytes that nothing ever wrote and
+    // read zero for every pixel.
+    //
+    // ⚠️ AND IT WAS NOT VISIBLE, which is why it survived. `blitView` copies `pixels` to the screen's
+    // `pixels`, and the screen is a real `createFramebuffer` whose two views DO share memory — so the
+    // canvas showed the table correctly the whole time. What was waiting was the first reader of
+    // `frame.bytes`: `gfx/scale.halve` is one, and it would have averaged a field of zeros.
+    const bytes = archive();
+    if (!bytes) return expect(existsSync(DAT)).toBe(false);
+    const demo = createDemo(bytes, { random: seeded() });
+
+    const frame = demo.render();
+
+    // Not "are they equal" — whether they are the SAME memory, which is what a caller relies on.
+    frame.pixels[7] = 0x01020304;
+    expect([...frame.bytes.slice(28, 32)], 'the bytes follow the word').toEqual([4, 3, 2, 1]);
+  });
+
   test('⚠️ THE 1995 SIDE PANEL IS NOT DRAWN, which decision 6 of the plan turns on', () => {
     // The sprite loop took every named group that had a bitmap, and two of the fifty-seven it drew are
     // not components of the table at all. One is `background`: the side panel, 203x394, halved to
