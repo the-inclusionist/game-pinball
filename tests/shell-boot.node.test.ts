@@ -411,6 +411,23 @@ describe('booting', () => {
       .toMatch(/setComponentActive\([^)]*live\.downTargets\(\)/s);
   });
 
+  /**
+   * ⚠️ THE PLUNGER ASKS WHERE THE BALL IS, AND IT USED TO ASK WHAT PHASE THE GAME WAS IN.
+   *
+   * `inPlungerLane` is unit-tested on all six tables and `main.ts` is the only place it can be
+   * consulted from — the plunger lives in the entry point's cabinet, which no unit drives. A guard
+   * that goes back to reading the phase is exactly the defect the Dev reported, and it would leave
+   * every test green.
+   */
+  test('⚠️ the plunger is guarded on the lane, not on the phase', () => {
+    const source = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../app/js/main.ts'), 'utf8');
+    const from = source.indexOf('setPlunger: (pressed: boolean)');
+    const block = source.slice(from, source.indexOf('launch: ()', from));
+
+    expect(block, 'it asks where the ball is').toMatch(/inPlungerLane\(authored, ball\)/);
+    expect(block, 'and not what phase the game is in').not.toMatch(/phase === 'playing'/);
+  });
+
   test('the camera starts on the flippers', () => {
     expect(bootPinball(options(), fakeEngine()).camera.offset).toBe(55);
   });

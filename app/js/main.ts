@@ -21,7 +21,9 @@ import { createFramebuffer } from './gfx/framebuffer.js';
 import {
   drawTable, blitView, drawBall, drawFlipper, drawLitRect, litColors, paletteOf, ROLE_COLORS,
 } from './gfx/table-view.js';
-import { buildPhysics, drainedBy, launchSpeedFor, FRAME_SECONDS } from './table/physics-build.js';
+import {
+  buildPhysics, drainedBy, inPlungerLane, launchSpeedFor, FRAME_SECONDS,
+} from './table/physics-build.js';
 import { advanceFrame } from './physics/step.js';
 import { bindPinballControls } from './shell/controls.js';
 import {
@@ -765,9 +767,22 @@ const cabinet = {
    *
    * The demonstration keeps its own plunger, which has worked all along.
    */
+  /**
+   * ⚠️ AND IT ASKS WHERE THE BALL IS, NOT WHAT PHASE THE GAME IS IN.
+   *
+   * The Dev: "após lançar a bolinha o lançador deve continuar funcionando, visto que a bolinha pode
+   * continuar acima dele." The guard was `if (phase === 'playing') return`, which is a question about
+   * the GAME — and a plunger does not retract when the game starts. A launch that fails to clear the
+   * return bend leaves the ball rolling back down the lane, which is the exact case the plunger's own
+   * face was added for last week, and there was then no way to launch it again: the player watched it
+   * settle onto the launcher with a key that had stopped answering.
+   *
+   * `inPlungerLane` is the question that should have been asked, and it is a position test for the
+   * same reason `drainedBy` is one.
+   */
   setPlunger: (pressed: boolean) => {
     if (demo) { demo.plunge(pressed); return; }
-    if (phase === 'playing') return;
+    if (!inPlungerLane(authored, ball)) return;
     if (pressed) plunger.press();
     else {
       const speed = plunger.release();
@@ -1214,6 +1229,8 @@ Object.assign(window as unknown as Record<string, unknown>, {
     tables: CATALOG.map((t) => t.name),
     declaration: shell.declaration,
     setPhase(next: Phase) { phase = next; },
+    /** Which phase the game is in. Read by the browser gate for the pause key the Dev reported. */
+    get phase() { return phase; },
     /** Exposed so the browser gate can look at the pixels rather than at a screenshot. */
     get screen() { return screen; },
     get picture() { return tablePicture; },

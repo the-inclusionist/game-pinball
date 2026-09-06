@@ -29,7 +29,7 @@ const DOCUMENTED_AS: Readonly<Record<PinballAction, string>> = {
   left: '`A` / `J`',
   right: '`D` / `K`',
   plunger: '`U`',
-  pause: '`Enter`',
+  pause: '`Enter` / `H`',
   blindMode: '`B`',
   sweep: '`S`',
   palette: '`C`',
@@ -63,6 +63,32 @@ describe('⚠️ the keys it lists, against the keys that exist', () => {
       .filter((action) => !page.includes(DOCUMENTED_AS[action]));
 
     expect(undocumented, 'actions the README does not mention').toEqual([]);
+  });
+
+  /**
+   * ⚠️ AND EVERY KEY, NOT JUST EVERY ACTION, which is the direction that just escaped.
+   *
+   * `KeyH` was added to `pause` because the Dev pressed it and nothing happened — the engine's keyboard
+   * has migrated to `action1`..`action4` but carries no `start` yet, so H reached nothing. The whole
+   * suite stayed green: the ledger below asks whether each ACTION is documented, and `pause` already
+   * was. A second key on an action nobody had to touch went unrecorded, and the README went on
+   * offering a player one of the two ways to pause.
+   *
+   * A ledger that counts rows and not their contents is half a ledger.
+   */
+  test('⚠️ every KEY the game binds appears in the README, not just every action', () => {
+    const text = readme();
+    const missing: string[] = [];
+
+    for (const [action, codes] of Object.entries(DEFAULT_BINDINGS)) {
+      for (const code of codes) {
+        // As a player reads it off the keyboard, which is how the README writes it: `A`, not `KeyA`.
+        const label = code.replace(/^(Key|Digit)/, '');
+        if (!text.includes(`\`${label}\``)) missing.push(`${action}: ${label}`);
+      }
+    }
+
+    expect(missing, 'keys bound and not written down').toEqual([]);
   });
 
   test('and nothing is written down that the game does not bind', () => {

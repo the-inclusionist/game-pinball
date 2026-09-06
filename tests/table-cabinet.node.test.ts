@@ -27,7 +27,7 @@ import { describe, test, expect } from 'vitest';
 import { buildPhysics, FRAME_SECONDS } from '../app/js/table/physics-build.js';
 import { advanceFrame } from '../app/js/physics/step.js';
 import { PLAYABLE_TABLES } from '../app/js/table/catalog.js';
-import { launchSpeedFor } from '../app/js/table/physics-build.js';
+import { launchSpeedFor, inPlungerLane } from '../app/js/table/physics-build.js';
 
 const withPlunger = PLAYABLE_TABLES.map((table) => [
   table.name, table, table.components.find((c) => c.kind === 'plunger')!,
@@ -177,5 +177,58 @@ describe('⚠️ switching a component out of the table', () => {
     }
 
     expect(ball.position.y).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * ⚠️ THE PLUNGER IS STILL THERE WHILE A BALL IS IN PLAY.
+ *
+ * The Dev, playing: "após lançar a bolinha o lançador deve continuar funcionando, visto que a bolinha
+ * pode continuar acima dele." He is describing a real machine: the plunger does not retract when the
+ * game starts. A ball that rolls back down the lane can be launched again, and on these tables that
+ * happens whenever a launch fails to clear the return bend — which is the very case the plunger's own
+ * face was added for.
+ *
+ * `main.ts` guarded the plunger on the PHASE — `if (phase === 'playing') return` — which is a guard
+ * about the game rather than about where the ball is. This is the question it should have been asking,
+ * and it is a POSITION test for the same reason `drainedBy` is: nothing collides to report that a ball
+ * is sitting in a lane.
+ */
+describe('⚠️ is the ball in the plunger lane', () => {
+  test.each(withPlunger)('%s: a ball resting on the launcher is', (_name, table, plunger) => {
+    const physics = buildPhysics(table);
+    const ball = physics.spawnBall();
+
+    expect(inPlungerLane(table, ball)).toBe(true);
+    expect(plunger.bounds.width, 'and the lane is the plunger’s own width').toBeGreaterThan(0);
+  });
+
+  test.each(withPlunger)('%s: a ball up the lane still is', (_name, table, plunger) => {
+    const physics = buildPhysics(table);
+    const ball = physics.spawnBall();
+    // Halfway up the lane, which is where a weak launch leaves it.
+    ball.position = { x: plunger.bounds.x + plunger.bounds.width / 2, y: plunger.bounds.y - 80 };
+
+    expect(inPlungerLane(table, ball)).toBe(true);
+  });
+
+  test.each(withPlunger)('%s: and a ball out in the play is NOT', (_name, table) => {
+    const physics = buildPhysics(table);
+    const ball = physics.spawnBall();
+    ball.position = { x: 40, y: 120 };
+
+    expect(inPlungerLane(table, ball)).toBe(false);
+  });
+
+  test('⚠️ and a ball ABOVE the lane’s top is not, or the plunger reaches the whole table', () => {
+    // The lane ends where the divider does — above that the ball is in the play, travelling left
+    // across the head of the table. A plunger that could still shove it there would be a second pair
+    // of flippers nobody asked for.
+    const [, table, plunger] = withPlunger[0]!;
+    const physics = buildPhysics(table);
+    const ball = physics.spawnBall();
+    ball.position = { x: plunger.bounds.x + plunger.bounds.width / 2, y: 10 };
+
+    expect(inPlungerLane(table, ball)).toBe(false);
   });
 });

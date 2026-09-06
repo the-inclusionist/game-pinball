@@ -192,6 +192,42 @@ export function drainedBy(table: AuthoredTable, ball: { position: { x: number; y
 }
 
 /**
+ * Is the ball in the plunger's lane, where the plunger can still reach it?
+ *
+ * ⚠️ THE PLUNGER DOES NOT RETRACT WHEN THE GAME STARTS. The Dev, playing: "após lançar a bolinha o
+ * lançador deve continuar funcionando, visto que a bolinha pode continuar acima dele." He is
+ * describing a real machine, and `main.ts` was guarding the plunger on the PHASE — a question about
+ * the game rather than about where the ball is. A launch that fails to clear the return bend leaves
+ * the ball rolling back down the lane, which is the very case the plunger's own face was added for,
+ * and there was then no way to launch it again.
+ *
+ * ⚠️ A POSITION TEST, FOR THE SAME REASON `drainedBy` IS ONE. Nothing collides to report that a ball
+ * is sitting in a lane; the lane is a region and the question is geometric.
+ *
+ * The lane is the plunger's own column, from the top of the divider down. Above the divider the ball
+ * is in the PLAY, travelling left across the head of the table — a plunger that could still shove it
+ * there would be a second pair of flippers nobody asked for.
+ */
+export function inPlungerLane(
+  table: AuthoredTable, ball: { position: { x: number; y: number } },
+): boolean {
+  const plunger = table.components.find((c) => c.kind === 'plunger');
+  if (!plunger) return false;
+  const divider = table.components.find((c) => c.name === 'wall.laneDivider');
+
+  const b = plunger.bounds;
+  // A margin of the ball's own radius: a ball touching the lane's wall is still in the lane, and the
+  // alternative is a plunger that stops working when the ball leans on something.
+  const margin = table.ballRadius;
+  const { x, y } = ball.position;
+  if (x < b.x - margin || x > b.x + b.width + margin) return false;
+  // Down from the top of the divider. A table without one has no lane to speak of, so the plunger
+  // reaches its own column and no further up than the ball can be launched from.
+  const top = divider ? divider.bounds.y : b.y;
+  return y >= top && y <= table.size.height;
+}
+
+/**
  * ⚠️ HOW HARD THE PLUNGER HAS TO PUSH, WHICH IS NOT A CONSTANT.
  *
  * A fixed launch speed worked on `low-orbit` and failed on `narrow-tower`, and the reason is

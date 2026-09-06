@@ -72,7 +72,24 @@ export const DEFAULT_BINDINGS: Readonly<Record<PinballAction, readonly string[]>
    * `bootPinball` has always told the engine `isNavigable: () => phase === 'paused'` — so the engine's
    * own menus have been waiting on a state nothing could ever enter. This is the key that enters it.
    */
-  pause: ['Enter'],
+  /**
+   * ⚠️ AND `KeyH` BESIDE IT, BECAUSE THE ENGINE'S KEYBOARD HAS NO `start` YET AND THE DEV PRESSED IT.
+   *
+   * His report: "botão enter/H não está pausando." Measured in a real browser rather than reasoned
+   * about — `tests/frame-follows-state` presses both — and the two halves came apart: Enter paused,
+   * H did nothing at all.
+   *
+   * The engine's #103 migration has reached its keyboard, whose solo scheme is now
+   * `action1: ['KeyU'], action2: ['KeyJ','Space'], action3: ['KeyK'], action4: ['KeyI']` — the
+   * fourteen positions arriving exactly as ADR-0086 describes. What it does NOT yet carry is `start`,
+   * although `input/default-bindings` declares it as `['KeyH','Enter']`: that table is the migration's
+   * destination and the transport has not read it yet.
+   *
+   * So H is bound here, in this port's own table, which is where a key lives until the engine owns it.
+   * When `start` reaches the transport, `actionOf` will answer first and this line becomes the floor
+   * beneath it — the arrangement `DEFAULT_BINDINGS`'s header already describes for every other key.
+   */
+  pause: ['Enter', 'KeyH'],
   /**
    * ⚠️ THE ACCESSIBILITY KEYS ARE NOT IN THE DEV'S LIST AND ARE KEPT ANYWAY. Blind mode, the sonar
    * sweep and the palette are not controls of the cabinet — they are switches for how the game is

@@ -34,6 +34,8 @@ interface PinballDebug {
   flippers: readonly { pivot: { x: number; y: number }; tip: { x: number; y: number } }[];
   playfieldX: number;
   cameraY: number;
+  /** Which phase the game is in. Added for the pause tests. */
+  phase: string;
   /** How far the plunger is drawn back, 0 to 1. Added for the charge test at the foot of this file. */
   plungerPull: number;
 }
@@ -259,6 +261,43 @@ describe('the frame follows the simulation', () => {
 
     expect(drawn, 'the plunger drew back while the key was down').toBeGreaterThan(0.2);
     expect(held, `tapped launched at ${tapped.toFixed(0)}`).toBeGreaterThan(tapped * 1.2);
+  });
+
+  /**
+   * ⚠️ THE DEV, PLAYING: "botão enter/H não está pausando." Measured here rather than reasoned about,
+   * because the pause key has two possible owners — this game binds `Enter` in `DEFAULT_BINDINGS` and
+   * the ENGINE has had `PAUSE_KEYS = {Escape, Enter}` in `input/keydown` since before this port
+   * existed. Two handlers on one key is a question a test can answer and a reading of the source
+   * cannot.
+   */
+  test('⚠️ Enter pauses the game', async () => {
+    await stopTheWorld();
+    key('KeyU', 'keydown');
+    key('KeyU', 'keyup');
+    await frames(4);
+    expect(debug().phase, 'a ball is in play first').toBe('playing');
+
+    key('Enter', 'keydown');
+    key('Enter', 'keyup');
+    await frames(2);
+
+    expect(debug().phase).toBe('paused');
+  });
+
+  test('⚠️ and H pauses it too, which is the engine’s own start key', async () => {
+    // ADR-0085 gave `start` a keyboard binding for the first time and ADR-0086's default is
+    // `['KeyH', 'Enter']`. `CABINET_OF_ENGINE_ACTION` maps `start` to this cabinet's pause, so H
+    // should arrive through the engine's remapper the way every other key does.
+    await stopTheWorld();
+    key('KeyU', 'keydown');
+    key('KeyU', 'keyup');
+    await frames(4);
+
+    key('KeyH', 'keydown');
+    key('KeyH', 'keyup');
+    await frames(2);
+
+    expect(debug().phase).toBe('paused');
   });
 
   test('nothing fell over while doing any of that', () => {

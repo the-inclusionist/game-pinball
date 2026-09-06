@@ -61,7 +61,7 @@ The controls are a **cabinet**, and the keyboard is one mapping of it:
 | `A` / `J` | left flipper |
 | `D` / `K` | right flipper |
 | `U` | launch the ball — **held**, not pressed: holding draws the plunger back and letting go launches |
-| `Enter` | pause |
+| `Enter` / `H` | pause |
 | `B` | blind mode |
 | `S` | sweep the sonar |
 | `C` | switch between the normal and CB-Safe palettes |
