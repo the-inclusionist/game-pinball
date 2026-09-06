@@ -31,6 +31,8 @@ import { mountTitle } from './shell/title-dom.js';
 import { createLiveControls } from './table/live-controls.js';
 import { createRolloverWatch } from './table/rollovers.js';
 import { objectiveOf, AUTHORED_OBJECTIVE_ID } from './table/objective.js';
+import { runMissions } from './table/missions.js';
+import { addScore } from './control/score.js';
 import { mountHud } from './shell/hud-dom.js';
 import { mountDemoPage } from './shell/demo-page.js';
 import { demoWorld, groupsOf } from './shell/demo-world.js';
@@ -102,12 +104,30 @@ let state: TableState = {
  * contract answers "no targets, nought of nought" to anything that asks between boot and the first
  * `step` — and a player who turns blind mode on at the title screen is exactly that reader.
  */
+/**
+ * The table's own campaign, or nothing on a table that declares none.
+ *
+ * ⚠️ AND `objectiveOf` IS NOT REPLACED BY IT. A table with no missions still needs something for the
+ * sonar to point at, which is what that module derives from the `goal` and `key` roles — `bare-minimum`
+ * exists to be the floor of the format and will never have a campaign. The two answer the same
+ * question for different tables, and which one answers is the table's declaration, not a preference.
+ */
+const missions = runMissions(authored.missions ?? []);
+
 function refreshObjective(force = false): void {
-  const objective = objectiveOf(authored, live);
+  // A table with missions is asked about its mission; one without is asked about its roles.
+  const objective = missions.current
+    ? {
+      targets: missions.remaining,
+      have: missions.current.targets.length - missions.remaining.length,
+      need: missions.current.targets.length,
+    }
+    : objectiveOf(authored, live);
   if (!force && objective.have === state.missionHave
     && objective.targets.length === state.missionTargets.length) return;
   state = {
     ...state,
+    missionTextId: missions.current?.id ?? AUTHORED_OBJECTIVE_ID,
     missionHave: objective.have,
     missionNeed: objective.need,
     missionTargets: objective.targets,
@@ -372,6 +392,14 @@ function step(frames: number): void {
     for (const hit of physics.takeHits()) {
       hits.push(hit.name);
       live.hit(hit.name);
+      // ⚠️ THE MISSION IS TOLD BEFORE THE OBJECTIVE IS REFRESHED, so the hit that finishes one shows
+      // the NEXT mission's targets rather than an empty list for a frame. The award is paid through
+      // the same score state every other point goes through.
+      const progress = missions.hit(hit.name);
+      if (progress.completed) {
+        addScore(live.score, progress.award);
+        hint = shell.t(missions.current?.id ?? AUTHORED_OBJECTIVE_ID);
+      }
     }
     // Crossings are polled rather than reported, because nothing collides to report them.
     if (phase === 'playing') {

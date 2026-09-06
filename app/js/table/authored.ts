@@ -44,6 +44,7 @@
 
 import type { Role } from '@the-inclusionist/engine/core/contract.js';
 import type { ComponentKind } from '../i18n/names.js';
+import type { AuthoredMission } from './missions.js';
 import type { Rect } from '../shell/hud.js';
 import type { DeclaredBall, DeclaredComponent } from '../shell/declaration.js';
 import type { LiveTable } from '../shell/boot.js';
@@ -143,6 +144,14 @@ export interface AuthoredTable {
   readonly components: readonly AuthoredComponent[];
   /** Every lamp the table has, by name. */
   readonly lamps: readonly string[];
+  /**
+   * What the player is asked to do, in order, cycling.
+   *
+   * ⚠️ OPTIONAL, AND AN ABSENT LIST IS NOT AN EMPTY GAME. `table/objective` still derives something to
+   * aim at from the `goal` and `key` roles for a table that declares none, which is what `bare-minimum`
+   * needs — it exists to be the floor of the format and giving it a campaign would stop it being that.
+   */
+  readonly missions?: readonly AuthoredMission[];
 }
 
 export interface ValidationOptions {
@@ -284,6 +293,27 @@ export function validateTable(table: AuthoredTable, o: ValidationOptions): strin
   const lampNames = new Set(table.lamps);
   if (lampNames.size !== table.lamps.length) {
     problems.push('lamps: a name is declared twice');
+  }
+
+  /**
+   * ⚠️ A MISSION THAT NAMES NOTHING NEVER COMPLETES, AND NOTHING SAYS WHY.
+   *
+   * The same failure every other rule in this validator exists for, arriving by a new road: the
+   * mission runs, the sonar points at a component that is not on the table, the player hits everything
+   * they can find, and the mission stays where it is for ever. It is the exact shape of the defects
+   * this port keeps finding — a declaration nothing reaches — so it is refused before the table opens
+   * rather than discovered by somebody playing it.
+   */
+  const placed = new Set(table.components.map((c) => c.name));
+  for (const mission of table.missions ?? []) {
+    if (mission.targets.length === 0) {
+      problems.push(`mission "${mission.id}": no targets, so it can never be completed`);
+    }
+    for (const target of mission.targets) {
+      if (!placed.has(target)) {
+        problems.push(`mission "${mission.id}": names "${target}", which the table does not have`);
+      }
+    }
   }
 
   return problems;

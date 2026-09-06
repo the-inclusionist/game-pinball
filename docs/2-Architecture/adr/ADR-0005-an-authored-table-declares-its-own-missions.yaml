@@ -1,0 +1,117 @@
+---
+metadata:
+  status: "accepted"
+  date: 2026-09-06
+  decision-makers: [Dev]
+  consulted:
+    - "The Dev's instruction of 2026-09-06, verbatim: '2. Crie uma máquina de missão para cada mesa.'"
+    - "`app/js/table/objective.ts` (this repository) — which argues the opposite, correctly, about a
+       different question. This record supersedes its CONCLUSION for tables that declare missions and
+       leaves its reasoning intact for tables that do not"
+    - "`control/mission-runner` and `control/mission-table` — the 1995 machine, and why it is not reused"
+  informed: []
+
+title: An authored table declares its own missions, and the 1995 machine is not bent into serving them
+
+context-and-problem-statement: |
+  `table/objective.ts` says, in capitals: "THE ANSWER IS NOT A MISSION — an authored table has none,
+  and inventing some to fill the field would be worse than the silence."
+
+  ⚠️ THAT WAS RIGHT, AND IT IS NOT WHAT IS BEING REVERSED. The question it answered was how to fill
+  `targetsOf`, the accessibility contract's field, which had been declared and left empty: the sonar
+  swept a table full of things to hit and named none of them. Inventing missions to populate that
+  would have been a lie told to a blind player about a table that had no campaign.
+
+  The Dev has now asked for missions as a feature of the GAME. A mission a table DECLARES is not an
+  invented one, and the two statements do not contradict each other — but the file's conclusion, read
+  on its own, argues against what has just been asked for. Under the engine's ADR-0057 a reversal is a
+  new record that supersedes, never an edit in place, and this is that record.
+
+decision-drivers:
+  - "The Dev asked for one per table, and four of the five tables have nothing for a player to pursue."
+  - "`bare-minimum` exists to be the floor of the format and must not acquire a campaign."
+  - "Whatever answers `targetsOf` has to keep answering it — the accessibility promise is not traded
+     for a game feature."
+
+considered-options:
+  - &reuse "Reuse `control/mission-runner`, the transcribed 1995 machine"
+  - &derive "Extend `objectiveOf` to sequence the roles it already derives"
+  - &declare "A small declarative format the table file holds"
+
+pros-and-cons-of-the-options:
+  reuse:
+    description: |
+      The 1995 machine already runs twenty-three missions with texts, awards and progression.
+    pros:
+      - "It exists, it is tested, and it is the real thing."
+    cons:
+      - "⚠️ IT KEEPS ITS PROGRESS IN `lite56`'s MESSAGE FIELD and selects with `lite198`. Those are
+         lamps in an archive an authored table does not have and cannot fake."
+      - "It dispatches through hand-written argument lists naming groups that exist only in
+         `PINBALL.DAT`. Bending it would put a second meaning on numbers transcribed for one, which is
+         how a transcription stops being one."
+  derive:
+    description: |
+      `objectiveOf` already finds the `goal` and `key` components whose lamps are unlit. Sequencing
+      them would produce missions with no new format at all.
+    pros:
+      - "No new concept, and every table gets missions for free."
+    cons:
+      - "⚠️ IT IS EXACTLY WHAT `objective.ts` REFUSED TO DO. A mission derived from roles is a mission
+         nobody authored: the order would be the order somebody happened to write the components in,
+         and the text could only be generic."
+      - "`bare-minimum` would acquire a campaign, which stops it being the floor of the format."
+  declare:
+    description: |
+      `AuthoredMission` — an id, a list of target names, an award — held in an ordered, optional list
+      on the table itself. `table/missions` runs it.
+    pros:
+      - "A table with no missions declares none, and `objectiveOf` goes on answering for it unchanged."
+      - "A mission is reviewable by reading the table file, which is the property the whole authored
+         format was built for."
+      - "It says what it is, rather than resembling the 1995 machine without being it."
+    cons:
+      - "A second mission concept exists in the repository, and somebody will one day ask why there are
+         two. The answer is this record."
+
+decision-outcome:
+  chosen: [*declare]
+  because: |
+    § 1 — A TABLE DECLARES ITS OWN, OR DECLARES NONE. `missions` is optional on `AuthoredTable`.
+    `low-orbit` has three; `bare-minimum` will never have any, and that is the format working rather
+    than a gap in it.
+
+    § 2 — A SET, NOT A COUNT. Every target must be hit once. Counting hits would let a player rattle
+    one target until a three-target mission completed without ever finding the other two — the mission
+    would be a counter rather than a route round the table, and the sonar would go on pointing at
+    something already satisfied.
+
+    § 3 — AND THE LIST WRAPS. A pinball table is played until the ball is lost, not until a story ends;
+    the 1995 game cycles its missions too. Stopping would leave a live ball with nothing for the sonar
+    to point at, which is precisely the silence `objective.ts` was written to prevent — so the reversal
+    does not reintroduce the defect that record was about.
+
+consequences:
+  good:
+    - "The sonar points at the current mission's remaining targets, which is a better answer than the
+       role-derived one: it is what the player is being asked for right now."
+    - "`objectiveOf` is untouched and still covers every table that declares nothing."
+    - "A mission is data, so a table's campaign can be reviewed in the diff that adds it."
+  bad:
+    - "Two mission mechanisms now exist. The 1995 one runs the 1995 table and this one runs authored
+       tables, and nothing shares code between them — deliberately, but it is still two."
+    - "⚠️ THE AWARDS ARE INVENTED. 5000, 10000 and 20000 on `low-orbit` are chosen to climb with the
+       difficulty of the route, and no calibration stands behind them the way it does behind every
+       number in `control/score-table`. They are a first draft and should be played before they are
+       trusted."
+  ugly:
+    - "⚠️ WRITTEN AS A GAP AND CLOSED BEFORE THIS RECORD SHIPPED. The draft of this section said a
+       mission naming a component the table does not have was 'not yet refused by validateTable — it
+       would simply never complete, and nothing would say why'. That is the exact shape of defect this
+       port keeps finding, so it was refused instead: `validateTable` now rejects an unknown target and
+       an empty target list. The line is kept because the reasoning is worth more than the tidiness." 
+
+more-information: |
+  Implemented in `app/js/table/missions.ts`, held by `tests/table-missions.node.test.ts`. Wired in
+  `main.ts`, where `refreshObjective` asks the mission machine on a table that has one and
+  `objectiveOf` on a table that does not.

@@ -57,6 +57,22 @@ export const LOW_ORBIT: AuthoredTable = {
   size: { width: 183, height: 235 },
   ballRadius: BALL_RADIUS,
 
+  /**
+   * ⚠️ THREE, AND THEY ARE A ROUTE ROUND THE TABLE RATHER THAN A LIST OF THINGS.
+   *
+   * Each one sends the player somewhere different: the bumper nest at the top, the target bank down
+   * the left, then the reentry lanes across the head of the table. A mission whose targets are all in
+   * one place is a mission the ball satisfies by accident, and the sonar would point at a single spot
+   * for the whole of it.
+   *
+   * The awards climb because the routes get harder, not because the last one is worth more in itself:
+   * the lanes are at the top of the table, which is the furthest a ball has to be kept alive to reach.
+   */
+  missions: [
+    { id: 'pinball.mission.lowOrbit.bumpers', targets: ['bumper1', 'bumper2', 'bumper3'], award: 5000 },
+    { id: 'pinball.mission.lowOrbit.targets', targets: ['target1', 'target2', 'target3'], award: 10000 },
+    { id: 'pinball.mission.lowOrbit.lanes', targets: ['lane1', 'lane2', 'lane3'], award: 20000 },
+  ],
   lamps: [
     'lamp.mission', 'lamp.jackpot',
     'lamp.bumper1', 'lamp.bumper2', 'lamp.bumper3',
