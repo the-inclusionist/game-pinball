@@ -136,7 +136,10 @@ describe('the lamps, as pictures', () => {
     dst.pixels.fill(0xff112233);
     const sprite = {
       x: 1, y: 0,
-      frames: [{ width: 2, height: 1, pixels: new Uint32Array([0, 0xff445566]), bytes: new Uint8ClampedArray(8) }],
+      frames: [{
+        x: 1, y: 0, width: 2, height: 1,
+        pixels: new Uint32Array([0, 0xff445566]), bytes: new Uint8ClampedArray(8),
+      }],
     };
 
     drawLamp(dst, sprite);
@@ -152,7 +155,10 @@ describe('the lamps, as pictures', () => {
     const dst = createFramebuffer(3, 2);
     const sprite = {
       x: 2, y: 0,
-      frames: [{ width: 2, height: 1, pixels: new Uint32Array([0xff445566, 0xff778899]), bytes: new Uint8ClampedArray(8) }],
+      frames: [{
+        x: 2, y: 0, width: 2, height: 1,
+        pixels: new Uint32Array([0xff445566, 0xff778899]), bytes: new Uint8ClampedArray(8),
+      }],
     };
 
     drawLamp(dst, sprite);
@@ -183,6 +189,98 @@ describe('the lamps, as pictures', () => {
  * real one: a 9x9 sprite at (0, 0), the origin standing for "wherever the ball is" rather than for a
  * place on the table — it is the one bitmap in the file whose position is not its position.
  */
+/**
+ * ⚠️ AND A FRAME HAS ITS OWN CORNER, WHICH THE FLIPPER IS THE PROOF OF.
+ *
+ * A lamp's three brightnesses sit at one place and so do the ball's seven sizes, so a sprite with one
+ * position for all its frames looks right on both. The flipper's eight poses do not: they run from
+ * (261, 378) up to (261, 358) as the pas sweeps, because a rotating shape's bounding box moves. Drawn
+ * from the first frame's corner the flipper swings in the wrong place by up to twenty pixels — and it
+ * still swings, which is what makes it hard to see.
+ */
+describe('a frame’s own corner', () => {
+  test('the flipper’s eight poses are at eight different places', () => {
+    const groups = archive();
+    if (!groups) return expect(existsSync(DAT)).toBe(false);
+
+    const flipper = readSprite(groups, 'a_flip1')!;
+
+    expect(flipper.frames.length).toBe(8);
+    const ys = new Set(flipper.frames.map((f) => f.y));
+    expect(ys.size, 'and not all at one').toBeGreaterThan(1);
+    // The first is the flipper at rest and the last is the flipper up.
+    expect(flipper.frames[0]!.y).toBeGreaterThan(flipper.frames[7]!.y);
+  });
+
+  test('⚠️ and a lamp’s frames DO share one, which is why one position looked right', () => {
+    const groups = archive();
+    if (!groups) return expect(existsSync(DAT)).toBe(false);
+
+    const lamp = readLampSprites(groups).get('lite2')!;
+
+    expect(new Set(lamp.frames.map((f) => `${f.x},${f.y}`)).size).toBe(1);
+  });
+
+  test('⚠️ and the FRAME’S corner is what places it, not the sprite’s', () => {
+    // Stated on a fixture rather than on the art: the sprite says (0, 0) and the frame says (2, 1), and
+    // the pixel must land where the FRAME says. Measured on the flipper's own pictures this cannot be
+    // seen — the poses have different silhouettes, so the topmost lit row moves even when the corner
+    // does not, and the mutation survived a test that looked right.
+    const dst = createFramebuffer(4, 3);
+    const sprite = {
+      x: 0, y: 0,
+      frames: [{
+        x: 2, y: 1, width: 1, height: 1,
+        pixels: new Uint32Array([0xff334455]), bytes: new Uint8ClampedArray(4),
+      }],
+    };
+
+    drawLamp(dst, sprite, 0);
+
+    expect(dst.pixels[1 * 4 + 2], 'at the frame’s corner').toBe(0xff334455);
+    expect(dst.pixels[0], 'and not at the sprite’s').toBe(0);
+  });
+
+  test('⚠️ and a frame’s corner scales with the picture', () => {
+    // The sprite's own corner scaled and the frames' did not, which is right for every sprite whose
+    // frames share one place and wrong for the flipper — its poses would all be drawn at full-size
+    // coordinates on a half-size table, off the bottom of the picture.
+    const groups = archive();
+    if (!groups) return expect(existsSync(DAT)).toBe(false);
+
+    const full = readSprite(groups, 'a_flip1')!;
+    const half = readSprite(groups, 'a_flip1', { scale: 0.5 })!;
+
+    expect(half.frames[7]!.y).toBe(Math.round(full.frames[7]!.y / 2));
+    expect(half.frames[0]!.y).toBe(Math.round(full.frames[0]!.y / 2));
+    expect(half.frames[7]!.x).toBe(Math.round(full.frames[7]!.x / 2));
+    expect(half.frames[0]!.x, 'and a hundred and twenty-four, not two hundred and forty-eight')
+      .toBe(Math.round(full.frames[0]!.x / 2));
+  });
+
+  test('⚠️ and drawing frame seven puts it where frame seven says, not where frame zero does', () => {
+    const groups = archive();
+    if (!groups) return expect(existsSync(DAT)).toBe(false);
+    const flipper = readSprite(groups, 'a_flip1')!;
+    const rest = createFramebuffer(365, 470);
+    const up = createFramebuffer(365, 470);
+
+    drawLamp(rest, flipper, 0);
+    drawLamp(up, flipper, 7);
+
+    const rowsOf = (fb: typeof rest) => {
+      const rows = new Set<number>();
+      fb.pixels.forEach((pixel, i) => { if (pixel !== 0) rows.add(Math.floor(i / fb.width)); });
+      return rows;
+    };
+    const restRows = [...rowsOf(rest)];
+    const upRows = [...rowsOf(up)];
+
+    expect(Math.min(...upRows), 'the raised pose reaches higher up the table')
+      .toBeLessThan(Math.min(...restRows));
+  });
+});
+
 describe('the ball’s own picture', () => {
   test('it is read like any other sprite, and its recorded corner is the origin', () => {
     const groups = archive();
@@ -225,7 +323,7 @@ describe('the ball’s own picture', () => {
     const sprite = {
       x: 0, y: 0,
       frames: [{
-        width: 3, height: 3,
+        x: 0, y: 0, width: 3, height: 3,
         pixels: new Uint32Array([1, 1, 1, 1, 1, 1, 1, 1, 1]),
         bytes: new Uint8ClampedArray(36),
       }],

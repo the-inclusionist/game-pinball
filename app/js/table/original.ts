@@ -94,6 +94,12 @@ export interface OriginalTable {
    * flipper only ever gets asked the first — which is why they are on the context as well.
    */
   readonly flippers: readonly Flipper[];
+  /**
+   * The archive name of each flipper, in the same order. Exposed so a caller can find the pictures
+   * that belong to it: a flipper's pose is chosen from its own group's eight, and nothing else on the
+   * table can say which eight those are.
+   */
+  readonly flipperGroups: readonly string[];
   /** Both flippers of one side, by the archive's object type rather than by the sign of x. */
   setFlippers(side: 'left' | 'right', extended: boolean): void;
   /**
@@ -373,6 +379,7 @@ export function buildOriginalTable(groups: readonly Group[], o: OriginalOptions 
     bounds,
     controlBounds,
     flippers,
+    flipperGroups: flippers.map((flipper) => flipperName.get(flipper) ?? ''),
     plunger,
     plungerPosition: plungerAt,
     setFlippers(side, extended) {

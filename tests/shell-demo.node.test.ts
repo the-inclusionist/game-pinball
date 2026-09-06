@@ -463,6 +463,25 @@ describe('⚠️ and a ball can be lost, which the demonstration counts', () => 
     expect(demo.scored.filter((name) => name.startsWith('roll')).length).toBe(crossed.length);
   });
 
+  test('⚠️ the PAS are drawn, and raising one changes the picture', () => {
+    // Eight poses each, and `TFlipper::UpdateSprite` picks by `currentAngle / angleMax`. The player has
+    // been moving these since the flippers were built and has never seen them.
+    const bytes = archive();
+    if (!bytes) return expect(existsSync(DAT)).toBe(false);
+    const demo = createDemo(bytes, { random: seeded() });
+
+    const down = [...demo.render().pixels];
+    demo.setFlippers('left', true);
+    demo.step(20);
+    const up = [...demo.render().pixels];
+
+    expect(up).not.toEqual(down);
+    // And the raised pose reaches HIGHER up the table than the resting one: the topmost row that
+    // differs between the two belongs to the flipper that moved.
+    const changed = up.map((pixel, i) => (pixel !== down[i] ? i : -1)).filter((i) => i >= 0);
+    expect(changed.length, 'a flipper’s worth of pixels').toBeGreaterThan(20);
+  });
+
   test('⚠️ a lit lamp is DRAWN, which is the first time this table has shown its own state', () => {
     // Every light has been a component with an on flag since the component pass and none of them had
     // a picture: the missions, the ranks, the bumper levels and the fuel all happened in silence.

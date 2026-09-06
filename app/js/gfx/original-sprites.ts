@@ -49,12 +49,26 @@ const PALETTE_GROUP = 'background';
 /** `gdrv`: "Color 0: transparent". */
 const TRANSPARENT_INDEX = 0;
 
-export interface LampSprite {
-  /** Left edge on the playfield, the table's own corner already taken off. */
+/**
+ * One picture of a component, with ITS OWN corner on the playfield.
+ *
+ * ⚠️ THE CORNER IS PER FRAME, AND THE FLIPPER IS THE PROOF. A lamp's brightnesses share one place and
+ * so do the ball's seven sizes, so a sprite carrying one position for all its frames looks right on
+ * both. The flipper's eight poses run from y 378 up to 358 as the pas sweeps, because a rotating
+ * shape's bounding box moves with it. Drawn from the first frame's corner the flipper swings in the
+ * wrong place by twenty pixels — and it still swings, which is what makes it hard to see.
+ */
+export interface SpriteFrame extends Framebuffer {
   readonly x: number;
   readonly y: number;
-  /** In the archive's order, which is the order `TLight`'s frame index counts in. */
-  readonly frames: readonly Framebuffer[];
+}
+
+export interface LampSprite {
+  /** The FIRST frame's corner, which is the sprite's own. Drawing uses each frame's. */
+  readonly x: number;
+  readonly y: number;
+  /** In the archive's order, which is the order a component's frame index counts in. */
+  readonly frames: readonly SpriteFrame[];
 }
 
 export interface LampSpriteOptions {
@@ -128,7 +142,7 @@ function decodeSprite(
   const bitmaps = framesOf(groups, index);
   if (!bitmaps.length) return null;
 
-  const frames: Framebuffer[] = [];
+  const frames: SpriteFrame[] = [];
   let x = 0;
   let y = 0;
 
@@ -148,13 +162,16 @@ function decodeSprite(
       frame.pixels[i] = pack(palette.red(index), palette.green(index), palette.blue(index), 255);
     }
 
-    // ⚠️ THE CORNER IS TAKEN OFF THE FIRST FRAME'S HEADER, and it is the sprite's. Frames of one
-    // sprite share a position on this archive, and the original moves the sprite as a whole.
-    if (!frames.length) {
-      x = header.x - context.origin.x;
-      y = header.y - context.origin.y;
-    }
-    frames.push(scale === 1 ? frame : halve(frame));
+    // Every frame's own corner, the table's taken off. The first frame's is also the sprite's.
+    const fx = header.x - context.origin.x;
+    const fy = header.y - context.origin.y;
+    if (!frames.length) { x = fx; y = fy; }
+
+    const image = scale === 1 ? frame : halve(frame);
+    frames.push(Object.assign(image, {
+      x: scale === 1 ? fx : Math.round(fx * scale),
+      y: scale === 1 ? fy : Math.round(fy * scale),
+    }));
   }
 
   return {
@@ -198,12 +215,13 @@ export function drawLamp(dst: Framebuffer, sprite: LampSprite, frameIndex = 0): 
   if (!src) return;
 
   for (let y = 0; y < src.height; y++) {
-    const dy = sprite.y + y;
+    // ⚠️ THE FRAME'S OWN CORNER, not the sprite's. See `SpriteFrame`.
+    const dy = src.y + y;
     if (dy < 0 || dy >= dst.height) continue;
     const fromRow = y * src.width;
     const toRow = dy * dst.width;
     for (let x = 0; x < src.width; x++) {
-      const dx = sprite.x + x;
+      const dx = src.x + x;
       if (dx < 0 || dx >= dst.width) continue;
       const pixel = src.pixels[fromRow + x]!;
       if (pixel === 0) continue;
@@ -224,11 +242,13 @@ export function drawSpriteCentred(
 ): void {
   const src = sprite.frames[Math.max(0, Math.min(frameIndex, sprite.frames.length - 1))];
   if (!src) return;
-  drawLamp(dst, {
+  // The centred draw ignores the frame's recorded corner, because the ball's is (0, 0) — the one
+  // position in the file that is not a position.
+  const placed = Object.assign(Object.create(Object.getPrototypeOf(src) as object) as object, src, {
     x: Math.round(cx - src.width / 2),
     y: Math.round(cy - src.height / 2),
-    frames: sprite.frames,
-  }, frameIndex);
+  }) as SpriteFrame;
+  drawLamp(dst, { x: placed.x, y: placed.y, frames: [placed] }, 0);
 }
 
 /**

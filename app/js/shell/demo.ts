@@ -529,6 +529,14 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
    * whose position is not a position, because the ball is wherever it is.
    */
   const ballSprite = readSprite(groups, 'ball', { scale: PLAYFIELD_SCALE });
+  /**
+   * ⚠️ THE PAS, WHICH THE PLAYER MOVES AND HAS NEVER SEEN. Eight poses each, and the one to draw is
+   * `floor(currentAngle / angleMax * (frames - 1) + 0.5)` — `TFlipper::UpdateSprite`, entire. The two
+   * angles have the same sign whichever side the flipper is, so the ratio runs zero to one either way.
+   */
+  const flipperSprites = table.flipperGroups.map(
+    (name) => readSprite(groups, name, { scale: PLAYFIELD_SCALE }),
+  );
   const fullDepth = readPlayfieldDepth(groups);
   const playfieldDepth = fullDepth ? halveDepth(fullDepth) : null;
 
@@ -628,6 +636,17 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
         const light = components.lights.get(name);
         if (light?.lit) drawLamp(frame, sprite, light.onFrame);
       }
+
+      // ⚠️ AFTER THE LAMPS AND BEFORE THE BALL. A flipper stands above the lamps under it and below a
+      // ball resting on it, which is the order the original composites them in.
+      table.flippers.forEach((flipper, index) => {
+        const sprite = flipperSprites[index];
+        if (!sprite || !sprite.frames.length) return;
+        const last = sprite.frames.length - 1;
+        const ratio = flipper.angleMax === 0 ? 0 : flipper.currentAngle / flipper.angleMax;
+        const poseIndex = Math.max(0, Math.min(Math.floor(ratio * last + 0.5), last));
+        drawLamp(frame, sprite, poseIndex);
+      });
 
       const at = this.ballOnScreen();
       const radius = table.ballRadius * pixelsPerUnit;
