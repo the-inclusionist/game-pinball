@@ -123,7 +123,10 @@ describe('⚠️ the keyboard is bound to #game-region and NOT to the window', (
     // the only test that pressed it had decided in advance not to look at the result.
     //
     // A key that is "consumed" is not a key that works.
-    const before = debug().ball;
+    // ⚠️ FROM A KNOWN PHASE, because this suite runs in a RANDOM ORDER and a sibling test launches
+    // too. Whichever ran first left a ball in flight, and `launch` refuses while the phase is already
+    // `playing` — so this asserted a moving ball had got faster, and it was slowing.
+    debug().setPhase('title');
     // ⚠️ `u`, NOT SPACE. The Dev respecified the controls as a cabinet — directions, three buttons and
     // a start — and button 1 is the plunger. This test pressed Space and failed the moment the mapping
     // changed, which is the gate working: a control test naming a key that is no longer bound is
@@ -131,7 +134,9 @@ describe('⚠️ the keyboard is bound to #game-region and NOT to the window', (
     await userEvent.keyboard('u');
 
     expect(debug().problems, 'and nothing fell over doing it').toEqual([]);
-    expect(debug().ball.speed, 'the plunger launched the ball').toBeGreaterThan(before.speed);
+    // The launch speed for this table is around 273; a ball drifting from a previous test is far
+    // slower. Asserting the LAUNCH rather than "faster than it was" is what makes this independent.
+    expect(debug().ball.speed, 'the plunger launched the ball').toBeGreaterThan(200);
   });
 
   test('and the region is reachable by keyboard at all, or none of that matters', () => {
@@ -163,5 +168,25 @@ describe('⚠️ and the game is CONTROLLABLE once it starts, not merely visible
     document.querySelector<HTMLElement>('[data-table]')!.click();
 
     expect(region.contains(document.activeElement), 'the focus is inside the game region').toBe(true);
+  });
+});
+
+describe('⚠️ the running mission is on screen, not only in the declaration', () => {
+  // Found by auditing rather than by playing: `missionTextId` reaches the engine's declaration, so
+  // blind mode could speak the mission — and the HUD has no mission block, so on screen the text
+  // appeared only at the moment one was COMPLETED, when the hint was set to the next. The first
+  // mission of every game went unannounced.
+  test('launching a ball puts the current mission in the hint', async () => {
+    const hint = () => document.querySelector('.pinball-hud-hint')?.textContent ?? '';
+    document.getElementById('game-region')!.focus();
+    // Same reason as the plunger test above: a known phase, or the launch this depends on is refused.
+    debug().setPhase('title');
+
+    await userEvent.keyboard('u');
+
+    // `low-orbit`'s first mission is the bumper nest. What matters is that SOMETHING describing it is
+    // there — asserting the sentence would be asserting the i18n file, which has its own gate.
+    expect(hint().length, 'the player is told what to do').toBeGreaterThan(0);
+    expect(hint(), 'and it is a sentence, not a key').not.toMatch(/^pinball\./);
   });
 });

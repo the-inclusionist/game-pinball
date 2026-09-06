@@ -170,6 +170,27 @@ function launch(): void {
   ball.direction = { x: 0, y: -1 };
   ball.speed = launchSpeedFor(authored);
   phase = 'playing';
+  announceMission();
+}
+
+/**
+ * Puts the running mission where a player can read it.
+ *
+ * ⚠️ WITHOUT THIS A SIGHTED PLAYER NEVER SAW THE FIRST ONE. `missionTextId` reaches the engine's
+ * declaration, so blind mode could speak it — and the HUD has no mission block, so the only time the
+ * text appeared on screen was the moment one was COMPLETED, when the hint was set to the next. The
+ * first mission of every game went unannounced, and a lost ball or a pause overwrote whatever was
+ * there.
+ *
+ * The hint block is the right home: it is where the HUD already puts what the player should do next,
+ * and ADR-0002 gave it four lines for exactly this kind of sentence.
+ *
+ * A table with no missions says nothing rather than something empty — `bare-minimum` has none by
+ * design, and "objective: " with a blank after it is worse than a quiet HUD.
+ */
+function announceMission(): void {
+  if (!missions.current) return;
+  hint = shell.t(missions.current.id);
 }
 
 const authoredTable = toLiveTable(authored, () => state);
@@ -472,7 +493,8 @@ function step(frames: number): void {
       const progress = missions.hit(hit.name);
       if (progress.completed) {
         addScore(live.score, progress.award);
-        hint = shell.t(missions.current?.id ?? AUTHORED_OBJECTIVE_ID);
+        // The same announcement the launch makes, so a mission is described one way and not two.
+        announceMission();
       }
     }
     // Crossings are polled rather than reported, because nothing collides to report them.
