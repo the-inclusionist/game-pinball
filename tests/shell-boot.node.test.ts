@@ -432,6 +432,25 @@ describe('booting', () => {
     expect(block, 'and not what phase the game is in').not.toMatch(/phase === 'playing'/);
   });
 
+  /**
+   * ⚠️ A TRAVELLING BODY HAS TO BE ADVANCED AND DRAWN, and each half is useless alone.
+   *
+   * This is the fourth body in this game with the same requirement and the third time the requirement
+   * has had to be discovered: the flippers were stroked into a composition made once per change and
+   * stayed at their resting angle for weeks, the plunger never slid, and the lamps lit in the control
+   * layer and reached no pixel. `drawTable` skips anything with a `mover`, so a drone that the frame
+   * loop does not draw is INVISIBLE rather than merely stale — and one it does not advance sits at the
+   * start of its path for ever while the ball bounces off it there.
+   *
+   * No unit can see either line. This is the gate written before the fourth instance instead of after.
+   */
+  test('⚠️ the frame loop advances the movers AND draws them', () => {
+    const source = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../app/js/main.ts'), 'utf8');
+
+    expect(source, 'they are advanced with the world').toMatch(/mover\.advance\(frames \* FRAME_SECONDS\)/);
+    expect(source, 'and drawn where they are').toMatch(/drawMover\(\s*screen, mover\.at/);
+  });
+
   test('the camera starts on the flippers', () => {
     expect(bootPinball(options(), fakeEngine()).camera.offset).toBe(55);
   });

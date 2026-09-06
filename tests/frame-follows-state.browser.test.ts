@@ -300,6 +300,30 @@ describe('the frame follows the simulation', () => {
     expect(debug().phase).toBe('paused');
   });
 
+  /**
+   * ⚠️ A DRONE MOVES ON SCREEN WITH NOBODY TOUCHING ANYTHING, which is a new claim for this file.
+   *
+   * Every other body here changes because the PLAYER changed it — a flipper because a key went down,
+   * the ball because it was launched. A travelling body changes on its own, and that is exactly the
+   * kind of thing a composition made once per change cannot hold: `drawTable` skips anything with a
+   * `mover`, so a drone the frame loop fails to draw is INVISIBLE rather than stale, and one it fails
+   * to advance sits at the start of its path while the ball bounces off it there.
+   *
+   * The world is stopped first, so nothing else in the frame can be moving: no ball, no keys down.
+   * Whatever differs is the drone.
+   */
+  test('⚠️ a travelling body moves the picture with no input at all', async () => {
+    await stopTheWorld();
+    await frames(2);
+    const before = frame();
+
+    // `low-orbit`'s high drone crosses in 2.4 seconds, so half a second is a quarter of its path.
+    await frames(30);
+
+    expect(differingIn(before, frame(), { left: 0, right: 320, top: 0, bottom: 180 }),
+      'something moved while the game was stopped and no key was down').toBeGreaterThan(0);
+  });
+
   test('nothing fell over while doing any of that', () => {
     expect(debug().problems).toEqual([]);
   });

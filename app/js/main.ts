@@ -19,7 +19,8 @@ import { DEFAULT_CAMERA } from './shell/camera.js';
 import { DEFAULT_HUD } from './shell/hud.js';
 import { createFramebuffer } from './gfx/framebuffer.js';
 import {
-  drawTable, blitView, drawBall, drawFlipper, drawLitRect, litColors, paletteOf, ROLE_COLORS,
+  drawTable, blitView, drawBall, drawFlipper, drawMover, drawLitRect, litColors, packRgb,
+  paletteOf, ROLE_COLORS,
 } from './gfx/table-view.js';
 import {
   buildPhysics, drainedBy, inPlungerLane, launchSpeedFor, FRAME_SECONDS,
@@ -536,6 +537,14 @@ function step(frames: number): void {
    */
   pad.poll();
   plunger.advance(frames * FRAME_SECONDS);
+  /**
+   * ⚠️ AND THE TRAVELLING BODIES MOVE WHETHER OR NOT A BALL IS IN PLAY, which is why they are here and
+   * not in the playing-only block below. A drone that stopped between balls would be a table holding
+   * its breath while the player reads the score — and it is the same reasoning that moved the
+   * flippers' own step out of that branch, after a player pressing a button on the title screen got
+   * nothing back at all.
+   */
+  for (const { mover } of physics.movers) mover.advance(frames * FRAME_SECONDS);
 
   // ⚠️ THE FLIPPERS MOVE WHETHER OR NOT A BALL IS IN PLAY, and this used to run only while playing.
   // A player pressing the button on the title screen got nothing back — no movement, no sound, no way
@@ -696,6 +705,21 @@ function step(frames: number): void {
   for (const flipper of physics.flippers) {
     drawFlipper(
       screen, flipper.rotOrigin, flipper.t1, ROLE_COLORS.structure,
+      shell.hud.playfield, shell.cameraX.offset, shell.camera.offset,
+    );
+  }
+
+  /**
+   * ⚠️ THE TRAVELLING BODIES, DRAWN WHERE THEY ARE. The fourth body in this game that a composition
+   * made once per change cannot hold: the flippers were stroked in at their resting angle for weeks,
+   * the plunger never slid, the lamps never reached a pixel. `drawTable` skips anything declaring a
+   * `mover`, so a drone this loop does not draw is INVISIBLE rather than merely stale.
+   */
+  for (const { name, mover } of physics.movers) {
+    const component = authored.components.find((c) => c.name === name)!;
+    drawMover(
+      screen, mover.at, mover.radius,
+      packRgb(paletteOf(authored, isCbSafe(palette)).roles[component.role]),
       shell.hud.playfield, shell.cameraX.offset, shell.camera.offset,
     );
   }

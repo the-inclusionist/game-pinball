@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, test, expect } from 'vitest';
 import {
-  drawTable, blitView, drawBall, drawFlipper, fillRect, fillCircle, paletteOf, packRgb,
+  drawTable, blitView, drawBall, drawFlipper, drawMover, fillRect, fillCircle, paletteOf, packRgb,
   ROLE_COLORS, PLAYFIELD_COLOR, BALL_COLOR,
 } from '../app/js/gfx/table-view.js';
 import { createFramebuffer } from '../app/js/gfx/framebuffer.js';
@@ -378,5 +378,76 @@ describe('⚠️ hiding a component from the picture', () => {
     }
 
     expect(outside, 'the rest of the table is untouched').toBe(0);
+  });
+});
+
+/**
+ * ⚠️ A BODY THAT TRAVELS MUST BE DRAWN WHERE IT IS, AND NOT WHERE IT STARTED.
+ *
+ * `drawTable` composes the table ONCE per change and the camera slides a window over it — which is
+ * what makes a software compositor affordable at this size, and what makes it wrong for anything that
+ * moves. The flippers were stroked into that composition at their resting angle for weeks and the Dev
+ * found it by playing: "as pás não movem!" The plunger followed. A drone is the third body with the
+ * same requirement, and this is the gate written BEFORE the third instance rather than after it.
+ */
+describe('⚠️ a travelling body', () => {
+  const path = { from: { x: 40, y: 60 }, to: { x: 90, y: 60 }, seconds: 1, radius: 5 };
+  const withDrone = {
+    ...LOW_ORBIT,
+    components: [...LOW_ORBIT.components, {
+      name: 'drone', kind: 'rebounder' as const, role: 'goal' as const,
+      bounds: { x: 35, y: 55, width: 60, height: 10 },
+      scores: [1000], control: 'RebounderControl', mover: path,
+    }],
+  };
+
+  test('it is NOT in the static picture, for the reason the flippers are not', () => {
+    const without = drawTable({ table: LOW_ORBIT });
+    const with_ = drawTable({ table: withDrone });
+
+    let differing = 0;
+    for (let i = 0; i < without.pixels.length; i++) {
+      if (without.pixels[i] !== with_.pixels[i]) differing++;
+    }
+
+    expect(differing, 'the composition is unchanged by a body that moves').toBe(0);
+  });
+
+  test('⚠️ and drawing it puts pixels where the body IS', () => {
+    const screen = createFramebuffer(320, 180);
+    const into = { x: 0, y: 0, width: 320, height: 180 };
+
+    drawMover(screen, { x: 40, y: 60 }, 5, 0x00ff00ff, into, 0, 0);
+
+    expect(screen.pixels[60 * 320 + 40], 'its centre').toBe(0x00ff00ff);
+    expect(screen.pixels[60 * 320 + 40 + 4], 'and its edge').toBe(0x00ff00ff);
+    expect(screen.pixels[60 * 320 + 40 + 9], 'and nothing beyond it').not.toBe(0x00ff00ff);
+  });
+
+  test('⚠️ and it MOVES when the body does, which is the whole point', () => {
+    const a = createFramebuffer(320, 180);
+    const b = createFramebuffer(320, 180);
+    const into = { x: 0, y: 0, width: 320, height: 180 };
+
+    drawMover(a, { x: 40, y: 60 }, 5, 0x00ff00ff, into, 0, 0);
+    drawMover(b, { x: 90, y: 60 }, 5, 0x00ff00ff, into, 0, 0);
+
+    expect(a.pixels[60 * 320 + 40]).toBe(0x00ff00ff);
+    expect(b.pixels[60 * 320 + 40], 'the first position is empty in the second frame').not.toBe(0x00ff00ff);
+    expect(b.pixels[60 * 320 + 90]).toBe(0x00ff00ff);
+  });
+
+  test('⚠️ and it is clipped to the WINDOW, not to the screen', () => {
+    // The rule ADR-0002 exists for: the HUD's blocks sit outside `into` on every table with columns,
+    // and a body drawn across them would be the one thing that draws after the blit painting over the
+    // score. `drawFlipper` learnt this; a second body must not learn it again.
+    const screen = createFramebuffer(320, 180);
+    const into = { x: 100, y: 0, width: 120, height: 180 };
+
+    drawMover(screen, { x: -20, y: 60 }, 6, 0x00ff00ff, into, 0, 0);
+
+    for (let x = 0; x < 100; x++) {
+      expect(screen.pixels[60 * 320 + x], `column ${x} is outside the window`).not.toBe(0x00ff00ff);
+    }
   });
 });

@@ -295,6 +295,14 @@ export function drawTable(o: TableViewOptions): Framebuffer {
      * flippers' defect, and the one the Dev found next: "o lançador de bola não se mexe".
      */
     if (component.kind === 'plunger') continue;
+    /**
+     * ⚠️ AND NOR IS A BODY THAT TRAVELS, WHICH IS THE THIRD OF THESE. A component declaring a `mover`
+     * is somewhere different every frame, so stroking it into a composition made once per change
+     * paints it where it STARTED and leaves it there — the flippers' defect, which the Dev found by
+     * playing ("as pás não movem!"), and then the plunger's. `drawMover` draws it per frame from the
+     * position `table/mover` keeps, the same arrangement the other two ended up with.
+     */
+    if (component.mover) continue;
 
     if (!component.collision?.length) {
       // Nothing solid was declared, so the bounds is the whole claim and there is nothing to overstate.
@@ -382,6 +390,37 @@ export function drawLitRect(
       // The same light the static picture puts on a raised thing: top edge bright, bottom edge dark.
       const shade = y === y0 ? lit.top : (y === y1 - 1 ? lit.bottom : lit.body);
       screen.pixels[y * screen.width + x] = rect.height < 3 ? lit.body : shade;
+    }
+  }
+}
+
+/**
+ * A travelling body, drawn where it is now.
+ *
+ * ⚠️ TAKES A POSITION RATHER THAN A COMPONENT, for the reason `drawFlipper` takes two ends: the live
+ * position lives in `table/mover`, and this module has no business knowing how a path is walked.
+ *
+ * ⚠️ AND IT IS CLIPPED TO THE WINDOW, NOT TO THE SCREEN. The HUD's blocks sit outside `into` on every
+ * table with columns, and a body drawn across them would be ADR-0002's defect arriving from the one
+ * thing that draws AFTER the blit rather than into it.
+ */
+export function drawMover(
+  screen: Framebuffer, at: { x: number; y: number }, radius: number,
+  color: number, into: Rect, offsetX: number, offsetY: number,
+): void {
+  const cx = into.x + at.x - Math.floor(offsetX);
+  const cy = into.y + at.y - Math.floor(offsetY);
+  const r = Math.max(1, Math.round(radius));
+
+  for (let dy = -r; dy <= r; dy++) {
+    for (let dx = -r; dx <= r; dx++) {
+      if (dx * dx + dy * dy > r * r) continue;
+      const px = Math.round(cx + dx);
+      const py = Math.round(cy + dy);
+      if (px < into.x || px >= into.x + into.width) continue;
+      if (py < into.y || py >= into.y + into.height) continue;
+      if (px < 0 || px >= screen.width || py < 0 || py >= screen.height) continue;
+      screen.pixels[py * screen.width + px] = color;
     }
   }
 }

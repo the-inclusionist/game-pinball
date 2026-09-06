@@ -132,6 +132,7 @@ export const LOW_ORBIT: AuthoredTable = {
     // module, and nobody reconciled the copies because nothing compared them.
     'lamp.ramp',
     'lamp.drop1', 'lamp.drop2', 'lamp.drop3',
+    'lamp.droneHigh', 'lamp.droneLow',
   ],
 
   components: [
@@ -177,6 +178,28 @@ export const LOW_ORBIT: AuthoredTable = {
     { name: 'target3', kind: 'target', role: 'key', bounds: { x: 12, y: 140, width: 10, height: 12 },
       scores: [500, 5000], control: 'TargetControl', lamps: ['lamp.target3'],
       collision: [{ kind: 'line', from: { x: 22, y: 140 }, to: { x: 22, y: 152 } }] },
+
+    /* ===================== THE DRONES ===================== */
+    //
+    // ⚠️ THE FIRST BODIES ON ANY TABLE THAT MOVE WITHOUT THE PLAYER MOVING THEM. The Dev's theme for
+    // this table: "satélites, estação espacial, com drones indo de satélite em satélite que interagem
+    // com a bolinha."
+    //
+    // Two of them, crossing the open water between the bumper nest and the target wall — the part of
+    // the table a ball falls through without meeting anything. They travel at right angles to each
+    // other so the pair is never a single moving wall, and they are REBOUNDERS: a drone should throw a
+    // ball somewhere, and a bumper that also moves would be two sources of speed in one body.
+    //
+    // ⚠️ AND A MOVER DECLARES NO `collision`. Its body is the disc it carries; a shape as well would be
+    // geometry left standing where the drone used to be.
+    { name: 'drone.high', kind: 'rebounder', role: 'goal',
+      bounds: { x: 30, y: 82, width: 80, height: 12 },
+      scores: [3000], control: 'RebounderControl', lamps: ['lamp.droneHigh'],
+      mover: { from: { x: 36, y: 88 }, to: { x: 104, y: 88 }, seconds: 2.4, radius: 5 } },
+    { name: 'drone.low', kind: 'rebounder', role: 'goal',
+      bounds: { x: 122, y: 150, width: 12, height: 46 },
+      scores: [3000], control: 'RebounderControl', lamps: ['lamp.droneLow'],
+      mover: { from: { x: 128, y: 156 }, to: { x: 128, y: 190 }, seconds: 1.8, radius: 5 } },
 
     /* ===================== THE DROP BANK ===================== */
     //
