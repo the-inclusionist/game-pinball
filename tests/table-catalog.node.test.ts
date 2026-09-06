@@ -125,13 +125,21 @@ describe('low-orbit — the conventional table', () => {
     expect(wells).toHaveLength(3);
   });
 
-  test('and a bank of exactly three targets', () => {
+  test('three standing targets against the left wall, and three DROP targets on the right', () => {
     // Counted by KIND, not by control name. Counting `control === 'BoosterTargetControl'` was counting
     // the wrong thing twice over: the name has been replaced by one an authored table can actually be
     // wired to, and the flag now shares it — so the old count would have said four and meant nothing.
-    const bank = LOW_ORBIT.components.filter((c) => c.kind === 'target');
+    //
+    // ⚠️ AND THIS SAID "A BANK OF EXACTLY THREE TARGETS" WHEN THERE WAS NO BANK. Six targets now, and
+    // the word means something: three ordinary ones down the left wall, worth more the second time,
+    // and three DROP targets on the right that sink when hit and pay together. Counting all six as one
+    // number would have gone on passing while the table's most interesting half was untested.
+    const standing = LOW_ORBIT.components.filter((c) => c.kind === 'target' && c.bank === undefined);
+    const dropping = LOW_ORBIT.components.filter((c) => c.kind === 'target' && c.bank !== undefined);
 
-    expect(bank).toHaveLength(3);
+    expect(standing, 'the left wall').toHaveLength(3);
+    expect(dropping, 'the drop bank').toHaveLength(3);
+    expect(new Set(dropping.map((c) => c.bank)).size, 'and they are one bank, not three').toBe(1);
   });
 });
 

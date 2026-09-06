@@ -88,8 +88,19 @@ describe('⚠️ a flipper sends the ball to the top', () => {
     // its job, and a gate that failed for that reason would be measuring the layout. `low-orbit` has a
     // clear column above the paddle, so here the energy is visible as height. The tables' own shots
     // are covered by the speed gate below, which no geometry can interfere with.
+    /**
+     * ⚠️ DROPPED FROM HALFWAY, AND IT USED TO BE A THIRD OF THE WAY DOWN. `low-orbit` gained a
+     * three-target DROP BANK under its bumper nest, at y = 92, which is squarely in the column above
+     * the left paddle — so the shot now meets the bank instead of open air, rises to 92 and stops.
+     *
+     * That is the bank doing its job rather than a regression: a drop bank exists to be in the ball's
+     * way, and after the first pass the column opens. What it costs is this test's original drop
+     * height, because rising past y = 78 is no longer possible from that paddle however hard it is
+     * hit. Halfway is still a real claim — the ball comes back higher than it fell from, which no
+     * elasticity below one can fake — and it is now measured against the table that exists.
+     */
     const table = PLAYABLE_TABLES[0]!;
-    const from = table.size.height / 3;
+    const from = table.size.height / 2;
 
     const shot = shoot(table, from);
 

@@ -167,7 +167,14 @@ describe('⚠️ the drawing tells the truth about what the ball can touch', () 
  * from the live geometry — so the area they used to occupy here is the area the counts lost.
  */
 const PAINTED = {
-  'low-orbit': 6991,
+  // ⚠️ 6991 UNTIL THE TABLE WAS AUTHORED UP TO THE 1995 DENSITY. `tests/table-density` measures the
+  // archive at 5.25 scoring components per ten thousand pixels and this table at 4.19, which is what
+  // the Dev's "mesas tão simples" means once somebody counts. It gained a three-target DROP BANK on
+  // the right — the half of the table where nothing was worth hitting — and the two RETURN LANES it
+  // had never had, so the lower third pays for good play and not only for bad luck. +528 painted
+  // pixels — 7519 with the bank against the lane divider, 7555 once it was moved under the bumpers
+  // where it is reachable. This number is a golden: it moves when somebody says why.
+  'low-orbit': 7555,
   'ion-storm': 6685,
   'crater-run': 6719,
   'long-climb': 7651,

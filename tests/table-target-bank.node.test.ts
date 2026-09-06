@@ -113,9 +113,12 @@ describe('a bank of three', () => {
  * that drops out of a bank nothing else belongs to.
  */
 describe('⚠️ a table declaring a bank', () => {
+  // ⚠️ `low-orbit`'s OWN bank is kept, and leaving it out is what these fixtures did first: overriding
+  // `banks` with just this one orphaned the table's three drop targets and every case here failed with
+  // somebody else's error. A fixture built by spreading a real table inherits its promises too.
   const withBanks = (over: Partial<AuthoredTable>): AuthoredTable => ({
     ...LOW_ORBIT,
-    banks: [{ name: 'bank.north', award: 15000 }],
+    banks: [...(LOW_ORBIT.banks ?? []), { name: 'bank.north', award: 15000 }],
     ...over,
   });
 
@@ -198,7 +201,7 @@ describe('⚠️ TargetBankControl, through the live control layer', () => {
 
   const banked = (): AuthoredTable => ({
     ...LOW_ORBIT,
-    banks: [{ name: 'bank.north', award: 15000 }],
+    banks: [...(LOW_ORBIT.banks ?? []), { name: 'bank.north', award: 15000 }],
     components: [...LOW_ORBIT.components, member('t1'), member('t2')],
   });
 

@@ -68,6 +68,20 @@ export const LOW_ORBIT: AuthoredTable = {
    * The awards climb because the routes get harder, not because the last one is worth more in itself:
    * the lanes are at the top of the table, which is the furthest a ball has to be kept alive to reach.
    */
+  /**
+   * ⚠️ A DROP BANK ON THE RIGHT, AND IT IS HERE BECAUSE THE TABLE WAS MEASURABLY THIN.
+   *
+   * The 1995 playfield carries 90 components with a score row over 365x470 — 5.25 per ten thousand
+   * pixels. This table measured 4.19, and `tests/table-density` is where that comparison lives. The
+   * Dev asked why the authored tables are simpler than the original; four of the six are much thinner
+   * than that and this one was the closest, which is why it is the first to be authored up.
+   *
+   * The bank sits UNDER THE BUMPER NEST, which is where every machine puts one: the ball falls out of
+   * the bumpers onto it. The first attempt put it against the lane divider on the right and it was
+   * unhittable — see the note beside the targets themselves.
+   */
+  banks: [{ name: 'bank.orbit', award: 12000 }],
+
   missions: [
     /**
      * ⚠️ EACH ONE IS TWO ACTS NOW, WHICH IS THE SHAPE THE 1995 CAMPAIGN HAS. Its missions read
@@ -108,6 +122,8 @@ export const LOW_ORBIT: AuthoredTable = {
     'lamp.lane1', 'lamp.lane2', 'lamp.lane3',
     'lamp.well1', 'lamp.well2', 'lamp.well3',
     'lamp.ramp', 'lamp.outlaneLeft', 'lamp.outlaneRight',
+    'lamp.drop1', 'lamp.drop2', 'lamp.drop3',
+    'lamp.returnLeft', 'lamp.returnRight',
   ],
 
   components: [
@@ -219,6 +235,44 @@ export const LOW_ORBIT: AuthoredTable = {
     { name: 'target3', kind: 'target', role: 'key', bounds: { x: 12, y: 140, width: 10, height: 12 },
       scores: [500, 5000], control: 'TargetControl', lamps: ['lamp.target3'],
       collision: [{ kind: 'line', from: { x: 22, y: 140 }, to: { x: 22, y: 152 } }] },
+
+    /* ===================== THE DROP BANK ===================== */
+    //
+    // Three drop targets stacked against the lane divider, above the ramp's mouth. A hit sinks one and
+    // the ball then passes over where it was; the last one standing pays the bank and stands all three
+    // back up. See `table/target-bank` for why that is a route rather than a rattle.
+    //
+    // ⚠️ AND THE FIRST PLACEMENT WAS UNHITTABLE, WHICH LOOKING AT THE PICTURE IS WHAT SHOWED.
+    //
+    // They went in a column against the lane divider at x=138, faces pointing LEFT. The ball enters
+    // the play from the return bend at the top RIGHT, travelling left — so it approaches that column
+    // from behind and passes over three one-sided faces that answer nothing. Worse, a column there
+    // that DID face the other way would have blocked the only way into the table.
+    //
+    // Under the bumper nest is where a drop bank belongs and where every machine puts one: the ball
+    // falls out of the bumpers onto it. The faces run LEFT TO RIGHT, so the normal is `(dy, -dx)` with
+    // dy = 0 and dx positive — pointing up the screen, at the thing falling onto them.
+    { name: 'drop1', kind: 'target', role: 'key', bounds: { x: 40, y: 92, width: 16, height: 8 },
+      scores: [1500], control: 'TargetBankControl', bank: 'bank.orbit', lamps: ['lamp.drop1'],
+      collision: [{ kind: 'line', from: { x: 40, y: 92 }, to: { x: 56, y: 92 } }] },
+    { name: 'drop2', kind: 'target', role: 'key', bounds: { x: 62, y: 92, width: 16, height: 8 },
+      scores: [1500], control: 'TargetBankControl', bank: 'bank.orbit', lamps: ['lamp.drop2'],
+      collision: [{ kind: 'line', from: { x: 62, y: 92 }, to: { x: 78, y: 92 } }] },
+    { name: 'drop3', kind: 'target', role: 'key', bounds: { x: 84, y: 92, width: 16, height: 8 },
+      scores: [1500], control: 'TargetBankControl', bank: 'bank.orbit', lamps: ['lamp.drop3'],
+      collision: [{ kind: 'line', from: { x: 84, y: 92 }, to: { x: 100, y: 92 } }] },
+
+    /* ===================== THE RETURN LANES ===================== */
+    //
+    // Inside each guide, where a ball that survives the funnel comes back down to the paddle. Every
+    // pinball has these and this table had only the OUTLANES — so the lower third paid the player for
+    // bad luck and nothing for good play, which is the wrong way round.
+    { name: 'return.left', kind: 'lane', role: 'free',
+      bounds: { x: 36, y: 198, width: 12, height: 20 },
+      scores: [1500], control: 'LaneControl', lamps: ['lamp.returnLeft'] },
+    { name: 'return.right', kind: 'lane', role: 'free',
+      bounds: { x: 134, y: 198, width: 12, height: 20 },
+      scores: [1500], control: 'LaneControl', lamps: ['lamp.returnRight'] },
 
     /* ===================== THE REENTRY LANES ===================== */
     { name: 'lane1', kind: 'lane', role: 'free', bounds: { x: 40, y: 16, width: 12, height: 14 },
