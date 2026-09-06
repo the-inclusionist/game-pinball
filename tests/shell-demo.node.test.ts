@@ -410,6 +410,44 @@ describe('⚠️ and a ball can be lost, which the demonstration counts', () => 
     expect(demo.scored.filter((name) => name.startsWith('roll')).length).toBe(crossed.length);
   });
 
+  test('⚠️ a lit lamp is DRAWN, which is the first time this table has shown its own state', () => {
+    // Every light has been a component with an on flag since the component pass and none of them had
+    // a picture: the missions, the ranks, the bumper levels and the fuel all happened in silence.
+    const bytes = archive();
+    if (!bytes) return expect(existsSync(DAT)).toBe(false);
+    const demo = createDemo(bytes, { random: seeded() });
+    const lamp = demo.components.lights.get('lite1')!;
+
+    lamp.turnOff();
+    const dark = [...demo.render().pixels];
+    lamp.turnOn();
+    const lit = [...demo.render().pixels];
+
+    expect(lit).not.toEqual(dark);
+    // And what changed is a lamp's worth of pixels, not the whole picture.
+    const changed = lit.filter((pixel, i) => pixel !== dark[i]).length;
+    expect(changed).toBeGreaterThan(0);
+    expect(changed).toBeLessThan(80);
+  });
+
+  test('⚠️ and LIT means `light_on()`, which is three flags and not the persistent one', () => {
+    // An award lights its lamp with `TLightTurnOnTimed`, which sets the TOGGLED flag; a lamp mid-flash
+    // sets the FLASHER one. Asking the persistent flag alone leaves every timed award dark on screen
+    // while the control layer believes it is showing.
+    const bytes = archive();
+    if (!bytes) return expect(existsSync(DAT)).toBe(false);
+    const demo = createDemo(bytes, { random: seeded() });
+    const lamp = demo.components.lights.get('lite1')!;
+    lamp.turnOff();
+    const dark = [...demo.render().pixels];
+
+    lamp.turnOnTimed(5);
+
+    expect(lamp.on, 'the persistent flag is still down').toBe(false);
+    expect(lamp.lit, 'and the lamp is lit all the same').toBe(true);
+    expect([...demo.render().pixels]).not.toEqual(dark);
+  });
+
   test('⚠️ the ball is drawn BEHIND what the table has standing above it', () => {
     // Now that the ramps exist there is something to go under, and the playfield's own depth map is
     // what says where. At (3.27, -12.45) the map holds 52979 and a ball resting on the table there is

@@ -50,6 +50,7 @@ import { advanceFrame, type Ball } from '../physics/step.js';
 import { checkStuckBall, unstuckBall, type StuckBall } from '../physics/stuck.js';
 import { fillCircle, fillCircleBehind } from '../gfx/table-view.js';
 import { halve, halveDepth } from '../gfx/scale.js';
+import { readLampSprites, drawLamp } from '../gfx/original-lamps.js';
 import { pack, type Framebuffer } from '../gfx/framebuffer.js';
 import { kindOf } from '../i18n/names.js';
 import { soundForKind } from '../audio/voices.js';
@@ -513,6 +514,13 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
    * number per pixel saying how far away the thing drawn there is. Until the ramps existed the ball
    * had nothing to go under; now it has two of them.
    */
+  /**
+   * ⚠️ THE LAMPS, WHICH ARE THE ONLY THING ON THIS TABLE THE PLAYER CAN READ. Every light has been a
+   * component with an on flag since the component pass and not one of them had a picture, so nothing
+   * the control layer decides has ever been visible: the missions, the ranks, the bumper levels and
+   * the fuel all happened in silence. See `gfx/original-lamps`.
+   */
+  const lampSprites = readLampSprites(groups, { scale: PLAYFIELD_SCALE });
   const fullDepth = readPlayfieldDepth(groups);
   const playfieldDepth = fullDepth ? halveDepth(fullDepth) : null;
 
@@ -604,6 +612,15 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
 
     render(): Framebuffer {
       frame.pixels.set(playfield.pixels);
+
+      // ⚠️ LIT MEANS `light_on()`, WHICH IS THREE FLAGS. A lamp lit by an award is `ToggledOnFlag` and
+      // a lamp mid-flash is `FlasherOnFlag`; asking the persistent flag alone leaves every timed award
+      // dark on screen while the control layer believes it is showing.
+      for (const [name, sprite] of lampSprites) {
+        const light = components.lights.get(name);
+        if (light?.lit) drawLamp(frame, sprite, light.onFrame);
+      }
+
       const at = this.ballOnScreen();
       const radius = table.ballRadius * pixelsPerUnit;
       // An archive without a depth map gets the ball flat on top, which is what this had before.
