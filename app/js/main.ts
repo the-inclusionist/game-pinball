@@ -370,9 +370,15 @@ function step(frames: number): void {
     hint,
   });
 
-  blitView(screen, tablePicture, shell.hud.playfield, 0, shell.camera.offset);
+  blitView(screen, tablePicture, shell.hud.playfield, shell.cameraX.offset, shell.camera.offset);
+  // ⚠️ BOTH AXES, AND THE HORIZONTAL ONE WAS A LITERAL ZERO. `wide-arc` is 360 wide against a window
+  // of 320, so forty columns of it could never be looked at — the ball rolled off the right of the
+  // screen and came back. The camera has always been able to do this; nothing asked it to.
   for (const ball of state.balls) {
-    drawBall(screen, ball, authored.ballRadius, shell.hud.playfield, 0, shell.camera.offset);
+    drawBall(
+      screen, ball, authored.ballRadius, shell.hud.playfield,
+      shell.cameraX.offset, shell.camera.offset,
+    );
   }
   paint();
 }

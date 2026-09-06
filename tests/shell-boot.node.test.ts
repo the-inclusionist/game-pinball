@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, test, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { conformanceProblems } from '@the-inclusionist/engine/core/contract.js';
 import {
   bootPinball, createPinballOptions, createPinballWorld, pinballDeclines, REQUIRED_MARKUP,
@@ -33,6 +36,80 @@ function options(over: Partial<BootOptions> = {}): BootOptions {
 /** Stands in for the engine's `createGame`, which the entry point supplies for real. */
 const fakeEngine = (problems: readonly string[] = []) =>
   (o: PinballGameOptions) => ({ problems, received: o });
+
+/**
+ * ⚠️ A TABLE WIDER THAN THE VIEW SCROLLS SIDEWAYS TOO, which phase 8 of the plan asks for in one line:
+ * "mesas mais largas que 320 passam a rolar também na horizontal, pelo mesmo algoritmo de câmera".
+ *
+ * `wide-arc` is 360 wide against a playfield window of 183, so a hundred and seventy-seven columns of
+ * it — nearly half the table — could never be looked at. `shell/camera` was built for this from the
+ * start: `stepAxis` knows nothing about vertical, and its own header says the horizontal axis calls it
+ * "with a different `anchor` and a different pair of sizes". Nothing ever called it.
+ */
+describe('the camera on a table wider than the window', () => {
+  const wideTable = (x: number, speed = 20) => table({
+    playfieldWidth: 360,
+    balls: [{ active: true, position: { x, y: 120 }, direction: { x: 1, y: 0 }, speed }],
+  });
+
+  // 360 of table against a 320 window — `layoutHud` clamps the playfield to the screen — so the window
+  // can start anywhere from 0 to 40. Forty columns of `wide-arc` were unreachable.
+  const TRAVEL = 360 - 320;
+
+  test('⚠️ it follows the ball sideways, and the offset is what the renderer reads', () => {
+    // ⚠️ AND IT STARTS AT THE FAR END, which is `createCamera`'s rule for both axes: "the view starts
+    // at the far end of its travel". On the vertical that is the flippers, where the ball is; on the
+    // horizontal it is the right-hand edge and it settles onto the ball over the first frames.
+    const shell = bootPinball(options({ table: wideTable(20) }), fakeEngine());
+    expect(shell.cameraX.offset, 'the far end of its travel').toBe(TRAVEL);
+
+    shell.advance(120);
+
+    expect(shell.cameraX.offset, 'and comes back to a ball on the left').toBeLessThan(TRAVEL);
+  });
+
+  test('⚠️ and it NEVER shows past either edge of the table', () => {
+    // The whole point of a maximum: a window that ran past the world would show whatever is in memory
+    // after the last column, which on a 32-bit buffer is the next row of the table.
+    const right = bootPinball(options({ table: wideTable(359) }), fakeEngine());
+    const left = bootPinball(options({ table: wideTable(1) }), fakeEngine());
+
+    right.advance(600);
+    left.advance(600);
+
+    expect(right.cameraX.offset).toBeLessThanOrEqual(TRAVEL);
+    expect(left.cameraX.offset).toBeGreaterThanOrEqual(0);
+  });
+
+  test('⚠️ and the RENDERER is handed it, which is the half a camera test cannot see', () => {
+    // An inventory rather than a run, and the reason is the same one the sound-player inventory in
+    // `shell-demo` gives: `main.ts` is the browser entry point and no unit test drives it. The
+    // horizontal offset was a literal `0` in both draw calls for as long as the camera could have
+    // supplied one, and a camera that scrolls into a renderer that ignores it changes nothing at all.
+    const source = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../app/js/main.ts'), 'utf8');
+
+    expect(source, 'the table window takes it').toMatch(/blitView\([^)]*shell\.cameraX\.offset/s);
+    expect(source, 'and so does the ball').toMatch(/drawBall\([^)]*shell\.cameraX\.offset/s);
+    expect(source, 'and neither is passed a literal zero any more')
+      .not.toMatch(/blitView\(screen, tablePicture, shell\.hud\.playfield, 0,/);
+  });
+
+  test('⚠️ and a table NO wider than the window does not move sideways at all', () => {
+    // Which is every other authored table and the 1995 one. The horizontal camera is built for all of
+    // them and is a no-op on all but `wide-arc`; a table that jittered sideways with nothing to show
+    // would be worse than one that never scrolled.
+    const shell = bootPinball(options({
+      table: table({
+        playfieldWidth: 183,
+        balls: [{ active: true, position: { x: 180, y: 120 }, direction: { x: 1, y: 0 }, speed: 20 }],
+      }),
+    }), fakeEngine());
+
+    shell.advance(600);
+
+    expect(shell.cameraX.offset).toBe(0);
+  });
+});
 
 describe('the world the declaration reads is LIVE, not a copy', () => {
   test('REPLACING the ball list changes what the declaration answers', () => {

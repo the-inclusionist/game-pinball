@@ -49,7 +49,7 @@
 import type { GameDeclaration, Speakable } from '@the-inclusionist/engine/core/contract.js';
 import { createDeclaration, type DeclaredBall, type DeclaredComponent } from './declaration.js';
 import {
-  createCamera, stepCamera, DEFAULT_CAMERA, type CameraConfig, type CameraState,
+  createCamera, stepCamera, stepAxis, DEFAULT_CAMERA, type CameraConfig, type CameraState,
 } from './camera.js';
 import { layoutHud, DEFAULT_HUD, type HudConfig, type HudLayout } from './hud.js';
 import { createTranslator, type Locale, type Translate } from '../i18n/index.js';
@@ -197,8 +197,21 @@ export interface PinballShell<E extends EngineLike> {
   readonly declaration: GameDeclaration;
   readonly t: Translate;
   readonly hud: HudLayout;
-  /** Where the view is. Read by the renderer every frame. */
+  /** Where the view is, up and down the table. Read by the renderer every frame. */
   readonly camera: CameraState;
+  /**
+   * ⚠️ AND SIDEWAYS, WHICH ONLY MOVES ON A TABLE WIDER THAN THE WINDOW. Phase 8 of the plan asks for it
+   * in one line — a table wider than the screen scrolls horizontally by the same algorithm — and
+   * `shell/camera` was built for it: `stepAxis` knows nothing about vertical and its own header says
+   * the horizontal axis calls it "with a different `anchor` and a different pair of sizes".
+   *
+   * `wide-arc` is 360 wide against a window of 183. Without this, a hundred and seventy-seven columns
+   * of it could never be looked at, and nothing said so.
+   *
+   * On every other table the maximum offset is zero and this stays at zero for ever, which is what
+   * makes it safe to read unconditionally.
+   */
+  readonly cameraX: CameraState;
   /** ⚠️ `frames`, not seconds. See this module's header. */
   advance(frames: number): void;
   /** What the host document failed to provide. Empty is the good case. */
@@ -222,12 +235,29 @@ export function bootPinball<E extends EngineLike>(
 
   let camera = createCamera(cameraConfig);
 
+  /**
+   * ⚠️ THE SAME RULE ON THE OTHER AXIS, and only the sizes and the anchor differ. The window is the
+   * HUD's playfield rect, the world is the table's own width, and the anchor is the MIDDLE of the
+   * window rather than the vertical's — a player following a ball sideways is not looking ahead of it
+   * the way they look up the table, and an off-centre anchor would swing the view every time the ball
+   * changed direction.
+   */
+  const hud = layoutHud(hudConfig);
+  const cameraXConfig: CameraConfig = {
+    ...cameraConfig,
+    viewHeight: hud.playfield.width,
+    worldHeight: o.table.playfieldWidth,
+    anchor: hud.playfield.width / 2,
+  };
+  let cameraX = createCamera(cameraXConfig);
+
   return {
     engine,
     declaration: options.declaration,
     t: createTranslator(o.locale),
-    hud: layoutHud(hudConfig),
+    hud,
     get camera() { return camera; },
+    get cameraX() { return cameraX; },
     advance(frames: number): void {
       const ball = o.table.balls.find((b) => b.active);
       if (!ball) return;
@@ -237,6 +267,9 @@ export function bootPinball<E extends EngineLike>(
           y: ball.position.y,
           speedY: Math.abs(ball.direction.y) * ball.speed,
         });
+        cameraX = stepAxis(
+          cameraX, cameraXConfig, ball.position.x, Math.abs(ball.direction.x) * ball.speed,
+        );
       }
     },
     problems: engine.problems,
