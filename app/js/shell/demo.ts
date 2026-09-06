@@ -178,6 +178,16 @@ export interface DemoOptions {
    */
   readonly onSound?: (name: string) => void;
   /**
+   * ⚠️ THE ARCHIVE'S OWN SOUND INDEX, which is a different thing from the role above. A component
+   * carries the INDEX of a group the table declares as a sound — record 1100, 1101, 304 or 406 — and
+   * that index names a WAV file this repository will never hold. `onSound` names a ROLE, chosen from a
+   * component's kind, and is answered by the synthesised voices in `audio/voices`.
+   *
+   * Both exist on purpose: the roles let the port be played by somebody who does not own the original,
+   * and the indices let somebody who does hear the real thing.
+   */
+  readonly onSoundId?: (id: number) => void;
+  /**
    * ⚠️ `RandFloat` IN THE FIELD EFFECT, AND THE ONLY REASON TWO BALLS TAKE DIFFERENT PATHS. The
    * table's gravity carries a jitter on X, so a demonstration left to `Math.random` is a different
    * game every time — which is right for a player and wrong for a test. A test that asks whether the
@@ -201,6 +211,18 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
   const oneways = onewayNames(manifest);
   const rollovers = rolloverNames(manifest);
   const flags = flagNames(manifest);
+  /**
+   * ⚠️ THE SOUND EVERY COMPONENT ALREADY KNEW ABOUT AND NOBODY WAS LISTENING TO. Twelve builders have
+   * taken this player since they were written and the demonstration handed one to none of them, so
+   * every archive-indexed noise on this table was silent: the gates, the holes, the lanes, the trip
+   * lines, the flags, the ramps, the one-ways, the targets, the barrier and the plunger.
+   */
+  const archiveSound = {
+    // ⚠️ ZERO AND BELOW ARE NOT SOUNDS. `loader::play_sound` returns immediately for them, and the
+    // first group the archive marks as a sound is a sentinel named `...` that is not a file at all.
+    // Several components pass their id straight in without that guard, so it belongs here too.
+    play: (id: number) => { if (id > 0) o.onSoundId?.(id); },
+  };
   const components = buildOriginalComponents(manifest, {
     // ⚠️ THE BUMPER SAYS WHEN IT FIRED, and that is when it is paid — see `payFor` and the wrapper it
     // is called from. A bumper reached through the wall wrapper alone is paid for every graze.
@@ -325,7 +347,9 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
    * difference is that the ball goes THROUGH. Left to the default component they are five walls across
    * the skill shot's own run, which nothing reports.
    */
-  const tripwires = buildOriginalTripwires(manifest, { table: { tiltLocked: false } });
+  const tripwires = buildOriginalTripwires(manifest, {
+    table: { tiltLocked: false }, sound: archiveSound,
+  });
   /**
    * ⚠️ THE NINE THAT DROP. A popup target reports only a hard hit and disables its own edges before it
    * does — so the payment comes from the component, like the bumper's, and the ball stops being able
@@ -427,9 +451,11 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
   }
 
   for (const [name, target] of buildOriginalPopupTargets(manifest, table, {
+    sound: archiveSound,
     table: { tiltLocked: false }, timer: components.timer, onStruck: (struck) => payFor(struck),
   })) popupTargets.set(name, target);
   buildOriginalOneways(manifest, {
+    sound: archiveSound,
     table: { tiltLocked: false },
     grid: table.grid,
     ballRadius: table.ballRadius,
@@ -439,10 +465,11 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
   });
 
   for (const [name, target] of buildOriginalSoloTargets(manifest, table, {
+    sound: archiveSound,
     table: { tiltLocked: false }, timer: components.timer, onStruck: (struck) => payFor(struck),
   })) soloTargets.set(name, target);
 
-  const gates = buildOriginalGates(manifest, table);
+  const gates = buildOriginalGates(manifest, table, { sound: archiveSound });
   /**
    * ⚠️ THE TWO RAMPS, WHICH WERE NOT GEOMETRY AT ALL. Neither carries a wall record, so the wall loop
    * never saw them and the ball could not ride either one. Their field goes into the grid over the
@@ -450,12 +477,14 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
    * tells them apart. See `table/original-ramps`.
    */
   const ramps = buildOriginalRamps(manifest, {
+    sound: archiveSound,
     table: { tiltLocked: false },
     grid: table.grid,
     gravityMult: table.gravityMult,
     onEnter: (name) => { touched.push(name); payFor(name); },
   });
   buildOriginalFlags(manifest, {
+    sound: archiveSound,
     table: { tiltLocked: false },
     grid: table.grid,
     timer: components.timer,
@@ -463,6 +492,7 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
     onSpin: (name) => { touched.push(name); payFor(name); },
   });
   buildOriginalRollovers(manifest, {
+    sound: archiveSound,
     table: { tiltLocked: false },
     grid: table.grid,
     timer: components.timer,
@@ -479,6 +509,7 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
     },
   });
   for (const [name, sink] of buildOriginalSinks(manifest, {
+    sound: archiveSound,
     table: {
       tiltLocked: false,
       // `TableG->CollisionCompOffset`, which this port has treated as the ball's radius since the
@@ -499,8 +530,11 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
       sinks.set(name, sink);
     }
   }
-  const drainBlockers = buildOriginalBlockers(manifest, table, { timer: components.timer });
+  const drainBlockers = buildOriginalBlockers(manifest, table, {
+    timer: components.timer, sound: archiveSound,
+  });
   for (const [name, kickout] of buildOriginalKickouts(manifest, table, {
+    sound: archiveSound,
     table: { tiltLocked: false }, timer: components.timer,
   })) kickouts.set(name, kickout);
 

@@ -3,6 +3,8 @@ import { describe, test, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
 import { createDemo, DEMO_BALLS } from '../app/js/shell/demo.js';
 import { SCORE_COMPONENTS } from '../app/js/control/score-table.js';
+import { findSoundGroups } from '../app/js/audio/sound-table.js';
+import { readGroups } from '../app/js/dat/partman.js';
 import { VOICES, SILENT_KINDS, soundForKind } from '../app/js/audio/voices.js';
 import { kindOf, COMPONENT_KINDS } from '../app/js/i18n/names.js';
 import { resolve, dirname } from 'node:path';
@@ -426,6 +428,71 @@ describe('⚠️ and a ball can be lost, which the demonstration counts', () => 
 
     expect(demo.ballsLeft).toBe(DEMO_BALLS);
     expect(demo.gameOver).toBe(false);
+  });
+
+  test('⚠️ every part of the table reports the sound the ARCHIVE gives it, by index', () => {
+    // Twelve builders have taken a sound player since they were written and the demonstration handed
+    // one to none of them, so every archive-indexed noise on this table was silent: the gates, the
+    // holes, the lanes, the trip lines, the flags, the ramps, the one-ways, the targets, the barrier
+    // and the plunger. What could be heard was the ROLE voices this port synthesises, chosen by the
+    // kind of a component's name — which is a different thing and covers a different set.
+    const bytes = archive();
+    if (!bytes) return expect(existsSync(DAT)).toBe(false);
+    const heard: number[] = [];
+    const demo = createDemo(bytes, { random: seeded(6), onSoundId: (id) => heard.push(id) });
+    demo.plunge(true);
+    demo.step(45);
+    demo.plunge(false);
+    demo.step(1800);
+
+    expect(heard.length, 'something was heard').toBeGreaterThan(0);
+    // ⚠️ AND ZERO IS NEVER ONE OF THEM. `play_sound` rejects anything at or below zero, and the first
+    // group the archive marks as a sound is a sentinel that is not a file at all.
+    for (const id of heard) expect(id).toBeGreaterThan(0);
+  });
+
+  test('⚠️ and EVERY builder that can make a noise is given the player', () => {
+    // An inventory rather than a run: a seeded minute crosses some of the table and not all of it, so
+    // a builder left silent is invisible to any test that waits for the ball to reach it. This reads
+    // the wiring instead — the same shape as the scan that found two sound roles nothing was asking
+    // for. Twelve builders take a sound player, and for months the demonstration passed none.
+    const source = readFileSync(resolve(dirname(DAT), '../app/js/shell/demo.ts'), 'utf8');
+    const builders = [
+      'buildOriginalGates', 'buildOriginalFlags', 'buildOriginalRollovers', 'buildOriginalRamps',
+      'buildOriginalSinks', 'buildOriginalOneways', 'buildOriginalBlockers', 'buildOriginalKickouts',
+      'buildOriginalPopupTargets', 'buildOriginalSoloTargets', 'buildOriginalTripwires',
+    ];
+
+    for (const builder of builders) {
+      const at = source.indexOf(`${builder}(manifest`);
+      expect(at, `${builder} is called`).toBeGreaterThan(0);
+      const call = source.slice(at, at + 400);
+      expect(call.includes('sound: archiveSound'), `${builder} is given the sound player`).toBe(true);
+    }
+  });
+
+  test('⚠️ and every index it reports names a GROUP the archive marks as a sound', () => {
+    // ⚠️ IT IS A GROUP INDEX, NOT A POSITION IN THE LIST OF SOUNDS. The record a component carries is
+    // `[1100, G]` where G is the index of a group in the `.DAT`, and that group's String field is the
+    // WAV's file name. Reading it as a position among the forty-eight declared sounds is off by
+    // everything: this table asks for group 56, and there is no forty-eighth sound to be had.
+    const bytes = archive();
+    if (!bytes) return expect(existsSync(DAT)).toBe(false);
+    const heard = new Set<number>();
+    const demo = createDemo(bytes, { random: seeded(6), onSoundId: (id) => heard.add(id) });
+    demo.plunge(true);
+    demo.step(45);
+    demo.plunge(false);
+    demo.step(1800);
+
+    const sounds = findSoundGroups(readGroups(new Uint8Array(bytes)));
+    const byGroup = new Map(sounds.map((sound) => [sound.groupIndex, sound.fileName]));
+
+    expect(heard.size, 'several different noises').toBeGreaterThan(1);
+    for (const id of heard) {
+      expect(byGroup.has(id), `sound group ${id}`).toBe(true);
+      expect(byGroup.get(id), `sound group ${id} names a file`).toMatch(/\.wav$/i);
+    }
   });
 
   test('⚠️ AND IT DOES NOT PARK IN THE MIDDLE OF THE TABLE', () => {
