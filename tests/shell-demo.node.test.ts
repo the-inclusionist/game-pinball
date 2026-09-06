@@ -470,6 +470,36 @@ describe('⚠️ and a ball can be lost, which the demonstration counts', () => 
     expect(demo.gameOver).toBe(false);
   });
 
+  test('⚠️ AND A FINISHED GAME STAYS FINISHED, which the ball count is the proof of', () => {
+    // The end of a game was a boolean that gated nothing: the ball went on rolling, went on draining,
+    // and went on being counted. A full game finished with `ballsLeft` at -6, and mission 32's
+    // take-over ran once per drain instead of once.
+    //
+    // `pb::mode_change(GameModes::GameOver)` stops the table. Here that is the ball being disabled —
+    // `TBall::Disable`, which clears the active flag AND the collisions, so nothing it is resting
+    // against can wake it.
+    const bytes = archive();
+    if (!bytes) return expect(existsSync(DAT)).toBe(false);
+    const demo = createDemo(bytes, { random: seeded() });
+    const at = demo.ball.position as { x: number; y: number };
+    let waiting = 0;
+    launch(demo);
+    for (let f = 0; f < 6000 && !demo.gameOver; f++) {
+      const before = { x: at.x, y: at.y };
+      demo.step(1);
+      waiting = Math.abs(at.x - before.x) + Math.abs(at.y - before.y) < 0.01 ? waiting + 1 : 0;
+      if (waiting > 40 && at.y > 8) { launch(demo); waiting = 0; }
+    }
+    expect(demo.gameOver, 'the seeded game does end').toBe(true);
+    const left = demo.ballsLeft;
+
+    demo.step(1200);
+
+    expect(demo.ballsLeft, 'and nothing is counted after it').toBe(left);
+    expect(left, 'which is zero, not a negative number').toBe(0);
+    expect(demo.ball.active, 'the ball is off the table').toBe(false);
+  });
+
   test('⚠️ and the END of a game is handed to mission 32, with the parts only this file has', () => {
     // `control/drain` sets the mission lamp to 32 when the last ball of the last player is lost —
     // `BallDrainControl` does exactly that — and until `GameoverController` was wired the machine
