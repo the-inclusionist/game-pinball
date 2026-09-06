@@ -34,6 +34,14 @@ export interface Projection {
   /** Unprojects a pixel back onto the table, ALWAYS on the z = 0 plane. */
   toTable(p: { x: number; y: number }): Vector3;
   normalizeDepth(depth: number): number;
+  /**
+   * `proj::z_distance` and then `normalizeDepth`, which is how deep a thing is to the z-buffer.
+   *
+   * ⚠️ IT IS ROW TWO OF THE MATRIX — the same dot product `toScreen` divides by — and NOT the point's
+   * own z, nor its distance to the camera. Either of those is a number in the wrong units: the ball
+   * would come out always in front of the scene or always behind it, and never sometimes.
+   */
+  depthOf(v: Vector3): number;
 }
 
 export interface ProjectionOptions {
@@ -78,6 +86,11 @@ export function createProjection(o: ProjectionOptions): Projection {
      *   x0 =  x2 * (A*z0 - B*y0 + G)
      * with A = matrix[1][1], B = matrix[1][2], F = matrix[1][3], G = matrix[2][3].
      */
+    depthOf(v: Vector3): number {
+      const row2 = o.matrix.row2;
+      return this.normalizeDepth(row2.x * v.x + row2.y * v.y + row2.z * v.z + row2.w);
+    },
+
     toTable(point: { x: number; y: number }): Vector3 {
       const a = o.matrix.row1.y, b = o.matrix.row1.z, f = o.matrix.row1.w, g = o.matrix.row2.w;
       const x2 = (point.x - o.centerX) / o.d;

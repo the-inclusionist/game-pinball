@@ -20,7 +20,8 @@ import { createFramebuffer, pack, type Framebuffer } from './framebuffer.js';
 import { readBitmapHeader, HEADER_SIZE } from '../dat/bitmap8.js';
 import { unpackIndexed } from '../dat/indexed.js';
 import { readPalette } from '../dat/palette.js';
-import { GAME_MATRIX, createProjection, type Projection } from '../maths/proj.js';
+import { GAME_MATRIX, createProjection, type Matrix, type Projection } from '../maths/proj.js';
+import { readZMap, type ZMap } from '../dat/zmap.js';
 import { EntryType, type Group } from '../dat/partman.js';
 import { floatAttribute, groupNamed } from '../dat/attributes.js';
 
@@ -74,6 +75,8 @@ export function decodePlayfield(groups: readonly Group[]): Framebuffer {
 
 export interface OriginalCamera {
   readonly projection: Projection;
+  /** The twelve floats `camera_info` carries, so a caller can check the depth against row two. */
+  readonly matrix: Matrix;
   readonly centre: { readonly x: number; readonly y: number };
   readonly d: number;
 }
@@ -107,9 +110,23 @@ export function readCamera(groups: readonly Group[]): OriginalCamera {
   return {
     centre,
     d,
+    matrix,
     projection: createProjection({ matrix, d, centerX: centre.x, centerY: centre.y, zMin, zScaler }),
   };
 }
 
 /** The matrix the archive carries, for a test that wants to know it is the one `maths/proj` documents. */
 export const DOCUMENTED_MATRIX = GAME_MATRIX;
+
+/**
+ * The playfield's own DEPTH MAP, beside its bitmap in the same group.
+ *
+ * ⚠️ THE WHOLE OF THE ORIGINAL'S OCCLUSION IS A COMPARISON AGAINST THIS. One 16-bit number per pixel,
+ * the same 365x470 as the picture, saying how far away the thing drawn there is. The ramps stand above
+ * the table in it, which is what a ball riding under an arch is drawn behind.
+ */
+export function readPlayfieldDepth(groups: readonly Group[]): ZMap | null {
+  const table = groupNamed(groups, TABLE_GROUP);
+  const entry = table && entryOfType(table, EntryType.ZMap);
+  return entry ? readZMap(entry) : null;
+}

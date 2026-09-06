@@ -42,7 +42,9 @@ import { loadTable } from '../dat/loader.js';
 import { readMidiFile } from '../audio/midi.js';
 import { scheduleMidi, scheduleLength, type ScheduledNote } from '../audio/midi-synth.js';
 import { createScoreState, addScore, type ScoreState } from '../control/score.js';
-import { decodePlayfield, readCamera, type OriginalCamera } from '../gfx/original-view.js';
+import {
+  decodePlayfield, readCamera, readPlayfieldDepth, type OriginalCamera,
+} from '../gfx/original-view.js';
 import { readGroups, type Group } from '../dat/partman.js';
 import { advanceFrame, type Ball } from '../physics/step.js';
 import { checkStuckBall, unstuckBall, type StuckBall } from '../physics/stuck.js';
@@ -97,6 +99,8 @@ export interface Demo {
   readonly tripwires: ReadonlyMap<string, unknown>;
   /** The two ramps, which are triangles with their own gravity rather than walls. */
   readonly ramps: ReadonlyMap<string, unknown>;
+  /** The playfield's depth map, read from the archive. See `render` for why nothing draws against it. */
+  readonly playfieldDepth: { readonly depths: Uint16Array; readonly stride: number } | null;
   /** The archive names whose 1995 control function actually runs. */
   readonly wired: ReadonlySet<string>;
   /**
@@ -491,6 +495,12 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
 
   const camera = readCamera(groups);
   const playfield = decodePlayfield(groups);
+  /**
+   * ⚠️ THE PLAYFIELD'S OWN DEPTH MAP, READ AND NOT YET USED. One 16-bit number per pixel saying how
+   * far away the thing drawn there is, and the whole of the original's occlusion is a comparison
+   * against it. See `render` below for the disagreement that stops it being used, measured.
+   */
+  const playfieldDepth = readPlayfieldDepth(groups);
 
   // The frame the ball is drawn into. Copied from the playfield each frame rather than redrawn,
   // because the playfield is a still picture and the ball is the only thing that moves.
@@ -527,6 +537,7 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
     ramps,
     wired: dispatch.wired,
     paidFlat,
+    get playfieldDepth() { return playfieldDepth; },
     get info() { return info; },
     get music() { return music; },
 
@@ -577,6 +588,19 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
       return camera.projection.toScreen({ x: ball.position.x, y: ball.position.y, z: table.ballRadius });
     },
 
+    /**
+     * ⚠️ STILL FLAT ON TOP, AND THE DEPTH MAP IS READ AND NOT USED. Everything the occlusion needs is
+     * built and tested — `readPlayfieldDepth`, `Projection.depthOf`, `fillCircleBehind` — and the two
+     * numbers do not agree: measured across the playfield, `depthOf` FALLS from 39449 at the top of
+     * the bitmap to 0 at the bottom, and the shipped depth map RISES from 4506 to 57476 over the same
+     * pixels. Both are monotonic and clean, so neither is noise: they simply count from opposite ends.
+     *
+     * `zdrv::paint` keeps the SMALLER value, so the buffer the game composites into holds smaller as
+     * nearer, and `depthOf` agrees with it (the near plane is `zMin`, and the bottom of the table sits
+     * just below it). The shipped map does not, so something converts it, and this port has not read
+     * what. Drawing the ball against it as it stands hides the ball everywhere — which is what the
+     * test that caught this says.
+     */
     render(): Framebuffer {
       frame.pixels.set(playfield.pixels);
       const at = this.ballOnScreen();

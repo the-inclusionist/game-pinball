@@ -209,3 +209,38 @@ export function drawBall(
   if (y + radius < into.y || y - radius > into.y + into.height) return;
   fillCircle(screen, x, y, radius, BALL_COLOR);
 }
+
+/**
+ * The ball, drawn only where the scene behind it is FARTHER AWAY. `zdrv::paint_flat`'s comparison, on
+ * a circle instead of a bitmap.
+ *
+ * ⚠️ SMALLER IS NEARER. Turn the test round and the ball is drawn only where it is hidden: it would
+ * vanish on the open table and show through the ramps it is under.
+ *
+ * ⚠️ AND THE DEPTH MAP IS READ BY ITS STRIDE, NOT BY THE PICTURE'S WIDTH. The two are different
+ * numbers — the surplus cells are padding at the end of each row — and reading one for the other
+ * drifts a pixel further off with every row down the table.
+ */
+export function fillCircleBehind(
+  fb: Framebuffer,
+  scene: { readonly depths: Uint16Array; readonly stride: number },
+  cx: number, cy: number, radius: number, depth: number, color: number,
+): void {
+  const r2 = radius * radius;
+  const y0 = Math.max(0, Math.floor(cy - radius));
+  const y1 = Math.min(fb.height, Math.ceil(cy + radius) + 1);
+
+  for (let y = y0; y < y1; y++) {
+    const dy = y + 0.5 - cy;
+    const row = y * fb.width;
+    const depthRow = y * scene.stride;
+    const x0 = Math.max(0, Math.floor(cx - radius));
+    const x1 = Math.min(fb.width, Math.ceil(cx + radius) + 1);
+    for (let x = x0; x < x1; x++) {
+      const dx = x + 0.5 - cx;
+      if (dx * dx + dy * dy > r2) continue;
+      if ((scene.depths[depthRow + x] ?? 0) <= depth) continue;
+      fb.pixels[row + x] = color;
+    }
+  }
+}
