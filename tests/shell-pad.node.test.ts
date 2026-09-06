@@ -48,6 +48,58 @@ describe('translating the engine’s actions into the cabinet', () => {
   test('⚠️ and a pad at rest asks for NOTHING, or the game plays itself', () => {
     expect(cabinetFromPad(NOTHING)).toEqual({ left: false, right: false, launch: false, pause: false });
   });
+
+  /**
+   * ⚠️ THE ENGINE IS RENAMING ITS BUTTONS UNDER THIS GAME, and the Dev said so while the migration is
+   * still ahead of it. ADR-0085 replaced the nine platformer actions with FOURTEEN positions and
+   * ADR-0086 named the last four for the hand:
+   *
+   *     up · down · left · right
+   *     action1 · action2 · action3 · action4
+   *     leftShoulder · leftTrigger · rightShoulder · rightTrigger
+   *     start · select
+   *
+   * ⚠️ AND NOTHING SPEAKS THEM YET. Both records say it in their own consequences: "nothing in the
+   * running game changes: no transport reads `core/actions.ts`". `input/gamepad.js` still returns
+   * `jump`/`run`/`especial`/`_pause`, and the engine's issue #103 is the migration. The tests above
+   * are that vocabulary and must keep passing until it lands.
+   *
+   * So this table holds BOTH, which costs nothing: `cabinetFromPad` asks whether ANY action bound to a
+   * control is pressed, so a name nobody emits contributes `false` for ever. What it buys is that the
+   * day #103 lands, the pad keeps working instead of going silent — and going silent is exactly what
+   * it did before this module existed, for the same reason: a vocabulary nobody had connected.
+   *
+   * ⚠️ THE CORRESPONDENCE IS EXACT, and it is ADR-0086 §2 that makes it so. The corrected platformer
+   * preset is `action1`→run, `action2`→jump, `action3`→especial, and the Dev's own table gives the
+   * same keys and buttons this cabinet already uses: U/X launches, J/A is the left flipper, K/B the
+   * right, Enter/Menu pauses. Nothing moves. That is the measurement ADR-0086 makes for the
+   * platformer, holding for the pinball as well.
+   */
+  describe('and the fourteen positions the engine is moving to', () => {
+    test('⚠️ button 1 launches under BOTH names', () => {
+      expect(cabinetFromPad({ ...NOTHING, run: true }).launch, 'today').toBe(true);
+      expect(cabinetFromPad({ ...NOTHING, action1: true }).launch, 'after #103').toBe(true);
+    });
+
+    test('and buttons 2 and 3 are the flippers under both', () => {
+      expect(cabinetFromPad({ ...NOTHING, action2: true }).left).toBe(true);
+      expect(cabinetFromPad({ ...NOTHING, action3: true }).right).toBe(true);
+    });
+
+    test('⚠️ `start` pauses, which is the name replacing `_pause`', () => {
+      // The one place the two vocabularies genuinely differ for this cabinet: pause arrives as the
+      // engine's private `_pause` today and as the ACTION `start` afterwards. ADR-0085 kept `start` a
+      // name rather than a number precisely because it is a system function.
+      expect(cabinetFromPad({ ...NOTHING, start: true }).pause).toBe(true);
+    });
+
+    test('⚠️ and `action4` does NOTHING, because this cabinet has three buttons', () => {
+      // The Dev's table has four (`I` / Y), and a pinball uses three. Binding the fourth to something
+      // because it is there is how a cabinet grows a control nobody asked for.
+      expect(cabinetFromPad({ ...NOTHING, action4: true }))
+        .toEqual({ left: false, right: false, launch: false, pause: false });
+    });
+  });
 });
 
 function reader(events: Partial<PadReaderEvents> = {}) {

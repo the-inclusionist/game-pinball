@@ -33,10 +33,42 @@
 // other's slots, so a player remapping the keyboard through the engine's settings panel would have
 // found the pad disagreeing with it. The mapping is one table now, used by both.
 //
-// ⚠️ `start` IS NOT IN THE ENGINE'S KEYBOARD VOCABULARY — its `KeyScheme` is left/right/up/down/run/
-// jump/swap/especial, with no start — so pause stays a binding of this port's own on the keyboard,
-// while the pad reads the engine's `_pause`. That asymmetry is the platform's and is named rather than
-// smoothed over.
+// ⚠️ `start` WAS NOT IN THE ENGINE'S KEYBOARD VOCABULARY — its `KeyScheme` was left/right/up/down/run/
+// jump/swap/especial, with no start — so pause was a binding of this port's own on the keyboard while
+// the pad read the engine's `_pause`. That asymmetry is closing; see below.
+//
+// ========================= AND THE VOCABULARY IS BEING REPLACED UNDER THIS GAME =========================
+// ⚠️ THE DEV SAID SO WHILE THE MIGRATION IS STILL AHEAD OF THE ENGINE. ADR-0085 replaces the nine
+// platformer actions with FOURTEEN positions, and ADR-0086 names the last four for the hand:
+//
+//     up · down · left · right
+//     action1 · action2 · action3 · action4
+//     leftShoulder · leftTrigger · rightShoulder · rightTrigger
+//     start · select
+//
+// The Dev's table gives each one a key and a button: action1 U/X(b2), action2 J/A(b0), action3 K/B(b1),
+// action4 I/Y(b3), the shoulders and triggers on 7/Y/8/O and b4–b7, start on H or Enter and b9, select
+// on F and b8. It is `input/default-bindings.ts` in the engine, verbatim.
+//
+// ⚠️ AND NOTHING SPEAKS THEM YET, which both records state in their own consequences: "nothing in the
+// running game changes: no transport reads `core/actions.ts`". `input/gamepad.js` still returns
+// `jump`/`run`/`especial`/`_pause`; the migration is the engine's issue #103.
+//
+// So the table below holds BOTH vocabularies, which costs nothing — `cabinetFromPad` asks whether ANY
+// action bound to a control is pressed, so a name nobody emits contributes `false` for ever. What it
+// buys is that the day #103 lands, this cabinet keeps working instead of going silent. Going silent is
+// precisely what it did before this module existed, for precisely this reason.
+//
+// ⚠️ THE CORRESPONDENCE IS EXACT, AND ADR-0086 §2 IS WHY. The corrected platformer preset is
+// action1→run, action2→jump, action3→especial — so the pinball's three buttons are the same three
+// physical buttons under either name, and the launch stays on U and X. Nothing a player has learnt
+// moves. That is the zero-movement measurement ADR-0086 makes for the platformer, holding here too.
+//
+// ⚠️ ONE THING THAT DOES MOVE, and it is ADR-0086's own asterisk: `padActions` reads
+// `run: b(2) || b(5) || b(7)`, so R1 and R2 launch the ball today and will stop when they become
+// `rightShoulder` and `rightTrigger`. That is the engine's line to change and #103's to resolve; this
+// game reads the transport rather than second-guessing it, and the loss is named here so it is not
+// discovered as a regression.
 
 import { padActions, type PadActions, type PadLike, type PadMap } from '@the-inclusionist/engine/input/gamepad.js';
 
@@ -54,14 +86,31 @@ export interface CabinetState {
  * (`KeyboardRuntime.actionOf`) and the pad through `padActions`; two copies of "button 1 is the
  * launch" is how a game ends up remapping on one device and not the other.
  */
-export const CABINET_OF_ENGINE_ACTION: Readonly<Record<string, 'left' | 'right' | 'plunger'>> = {
+export const CABINET_OF_ENGINE_ACTION: Readonly<Record<string, 'left' | 'right' | 'plunger' | 'pause'>> = {
   left: 'left',
   right: 'right',
+
+  // ---- The platformer's nine, which is what every transport emits TODAY ----
   // Button 2 and button 3 are the flippers again, which is what the Dev's cabinet says they are.
   jump: 'left',
   especial: 'right',
   // Button 1.
   run: 'plunger',
+
+  // ---- The fourteen positions the engine is moving to. See this module's header ----
+  action1: 'plunger',
+  action2: 'left',
+  action3: 'right',
+  /**
+   * ⚠️ AND `start` IS AN ACTION NOW, WHICH IT WAS NOT. This module's header used to record that pause
+   * was a binding of this port's own on the keyboard because "`start` is not in the engine's keyboard
+   * vocabulary" — its `KeyScheme` had no slot for it. ADR-0085 gives it one, and ADR-0086's default
+   * puts it on `Enter`, which is the key this cabinet already pauses with. The asymmetry closes.
+   */
+  start: 'pause',
+  // ⚠️ `action4` IS DELIBERATELY ABSENT. The Dev's table has a fourth button (`I` / Y) and a pinball
+  // has three. Binding it to something because it is there is how a cabinet grows a control nobody
+  // asked for, and a test says so rather than leaving the gap to be read as an omission.
 };
 
 /** The engine's actions, read as this game's controls. Pure, so the mapping is checkable on its own. */
@@ -74,7 +123,11 @@ export function cabinetFromPad(actions: PadActions): CabinetState {
     left: controls('left'),
     right: controls('right'),
     launch: controls('plunger'),
-    pause: actions._pause === true,
+    // ⚠️ TWO ROADS TO ONE CONTROL, AND ONLY ONE OF THEM IS AN ACTION. `_pause` is the engine's
+    // private field — a pad's Menu button, read by `padActions` itself — and `start` is the ACTION
+    // that ADR-0085 gives the same button once the transports speak the fourteen. The table above
+    // carries the action, this line carries the field, and a pad works either way round.
+    pause: controls('pause') || actions._pause === true,
   };
 }
 

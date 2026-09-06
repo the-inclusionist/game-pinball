@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, test, expect } from 'vitest';
 import { bindPinballControls, DEFAULT_BINDINGS } from '../app/js/shell/controls.js';
+import { CABINET_OF_ENGINE_ACTION } from '../app/js/shell/pad.js';
 
 /**
  * ⚠️ THE GAME HAD NO INPUT AT ALL, AND NOTHING SAID SO.
@@ -153,6 +154,76 @@ describe('what the keys are', () => {
     const all = Object.values(DEFAULT_BINDINGS).flat();
 
     expect(new Set(all).size).toBe(all.length);
+  });
+});
+
+/**
+ * ⚠️ THE ENGINE IS RENAMING ITS ACTIONS UNDER THIS GAME, AND THE KEYBOARD READS THEM THROUGH A SEAM.
+ *
+ * `actionOf` is the engine's remapper: `main.ts` hands it `KeyboardRuntime.actionOf`, whose answers are
+ * in the ENGINE's vocabulary and are translated by `CABINET_OF_ENGINE_ACTION`. ADR-0085 and ADR-0086
+ * replace the nine platformer names with fourteen positions — `action1`..`action4`, the shoulders and
+ * triggers, `start` and `select` — and the migration (the engine's #103) has not run.
+ *
+ * These tests come through the SEAM rather than reading the table, which is the difference between
+ * checking that a mapping exists and checking that a key does something. Both vocabularies have to
+ * work: the old one until #103 lands, the new one the day it does.
+ */
+describe('⚠️ both of the engine’s action vocabularies drive this cabinet', () => {
+  const through = (engineAction: string) => {
+    const fired: string[] = [];
+    const region = fakeRegion();
+    bindPinballControls({
+      region: region as never,
+      // Exactly what `main.ts` hands in — the engine's answer, translated by the one table both
+      // devices read. Composed here rather than imported because the entry point boots a whole game;
+      // that the entry point does this and not something else is gated on its source separately.
+      actionOf: () => CABINET_OF_ENGINE_ACTION[engineAction] ?? null,
+      setFlipper: (side, extended) => fired.push(`${side}:${extended ? 'up' : 'down'}`),
+      launch: () => fired.push('launch'),
+      togglePause: () => fired.push('pause'),
+    });
+    // The code is arbitrary: `actionOf` answers before the binding table is consulted, which is the
+    // whole point of the seam — a player who remaps in the engine's panel is not pressing our key.
+    region.send('keydown', { code: 'Numpad9' });
+    return fired;
+  };
+
+  test('the platformer names still work, because that is what the transports emit today', () => {
+    expect(through('run'), 'button 1').toEqual(['launch']);
+    expect(through('jump'), 'button 2').toEqual(['left:up']);
+    expect(through('especial'), 'button 3').toEqual(['right:up']);
+  });
+
+  test('⚠️ and the fourteen positions work too, so #103 does not silence the keyboard', () => {
+    expect(through('action1'), 'button 1').toEqual(['launch']);
+    expect(through('action2'), 'button 2').toEqual(['left:up']);
+    expect(through('action3'), 'button 3').toEqual(['right:up']);
+  });
+
+  test('⚠️ `start` pauses, which is the slot the engine’s KeyScheme did not have', () => {
+    // `shell/pad`'s header recorded the asymmetry: pause was a binding of this port's own because the
+    // engine's keyboard vocabulary had no `start`. ADR-0085 gives it one and puts it on `Enter` —
+    // the key this cabinet already pauses with — so the asymmetry closes rather than moving.
+    expect(through('start')).toEqual(['pause']);
+  });
+
+  test('and an action this cabinet does not use falls through to the key itself', () => {
+    // ⚠️ FALLS THROUGH, NOT SWALLOWED. `actionFor` consults `DEFAULT_BINDINGS` when the engine's
+    // answer is not one of ours, so a fourth button the pinball has no use for leaves the key
+    // working. Without it, remapping in the engine's panel could quietly disable a key here.
+    const fired: string[] = [];
+    const region = fakeRegion();
+    bindPinballControls({
+      region: region as never,
+      actionOf: () => CABINET_OF_ENGINE_ACTION['action4'] ?? null,
+      setFlipper: (side) => fired.push(side),
+      launch: () => fired.push('launch'),
+    });
+
+    region.send('keydown', { code: 'KeyA' });
+
+    expect(fired, 'A is still the left flipper').toEqual(['left']);
   });
 });
 
