@@ -110,7 +110,7 @@ const en: Record<string, string> = {
   'pinball.a11y.blindOn': 'Blind mode on. Press S to sweep the table.',
   'pinball.a11y.blindOff': 'Blind mode off.',
   'pinball.demo.ask': 'Demonstration mode: choose your PINBALL.DAT. The file never leaves this machine.',
-  'pinball.demo.caveat': 'Shows the 1995 table and its physics. It does not score, light lamps or run missions yet.',
+  'pinball.demo.caveat': 'The 1995 table: its physics, its lamps, its ramps and all twenty-three of its missions. The side panel and the sprites of its targets are not drawn yet.',
   'pinball.demo.gameOver': 'No balls left.',
   'pinball.demo.music': 'Music (optional): choose your PINBALL.MID.',
   'pinball.demo.notMidi': 'That file is not standard MIDI. PINBALL2.MID will not do.',

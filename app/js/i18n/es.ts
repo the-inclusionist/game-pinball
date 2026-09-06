@@ -107,7 +107,7 @@ const es: Record<string, string> = {
   'pinball.a11y.blindOn': 'Modo ciego activado. Pulsa S para barrer la mesa.',
   'pinball.a11y.blindOff': 'Modo ciego desactivado.',
   'pinball.demo.ask': 'Modo demostración: elige tu PINBALL.DAT. El archivo no sale de esta máquina.',
-  'pinball.demo.caveat': 'Muestra la mesa y la física de 1995. Todavía no puntúa, no enciende luces ni ejecuta misiones.',
+  'pinball.demo.caveat': 'La mesa de 1995: su física, sus luces, sus rampas y las veintitrés misiones. El panel lateral y los sprites de los objetivos aún no se dibujan.',
   'pinball.demo.gameOver': 'Sin bolas.',
   'pinball.demo.music': 'Música (opcional): elige tu PINBALL.MID.',
   'pinball.demo.notMidi': 'Ese archivo no es MIDI estándar. PINBALL2.MID no sirve.',
