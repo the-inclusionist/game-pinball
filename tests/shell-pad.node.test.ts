@@ -28,16 +28,21 @@ describe('translating the engine’s actions into the cabinet', () => {
     expect(cabinetFromPad({ ...NOTHING, right: true }).right).toBe(true);
   });
 
-  test('and the face buttons are the same two flippers again, as buttons 2 and 3', () => {
-    // The cabinet gives a player two ways to work each flipper. On a pad that is a direction and a
-    // button, so a player using a stick and a player using their thumb both have a full set.
-    expect(cabinetFromPad({ ...NOTHING, especial: true }).left).toBe(true);
-    expect(cabinetFromPad({ ...NOTHING, swap: true }).right).toBe(true);
+  test('⚠️ and the buttons are the slots the Dev\u2019s own keys sit in', () => {
+    // Discovered rather than chosen: a/d/u/j/k are the engine's solo defaults for
+    // left/right/run/jump/especial, action for action. So button 2 is `jump` and button 3 is
+    // `especial` — both flippers again — and button 1, the launch, is `run`.
+    expect(cabinetFromPad({ ...NOTHING, jump: true }).left, 'button 2 works the left flipper').toBe(true);
+    expect(cabinetFromPad({ ...NOTHING, especial: true }).right, 'button 3 works the right').toBe(true);
+    expect(cabinetFromPad({ ...NOTHING, run: true }).launch, 'button 1 launches').toBe(true);
+    expect(cabinetFromPad({ ...NOTHING, _pause: true }).pause).toBe(true);
   });
 
-  test('button 1 launches and start pauses', () => {
-    expect(cabinetFromPad({ ...NOTHING, jump: true }).launch).toBe(true);
-    expect(cabinetFromPad({ ...NOTHING, _pause: true }).pause).toBe(true);
+  test('⚠️ and `jump` is NOT the launch, which is what the first version had', () => {
+    // It mapped `jump` to the launch because `jump` is the A button and launching felt primary. That
+    // put buttons 1 and 2 on each other's slots, so a player who remapped the keyboard through the
+    // engine's panel would have found the pad disagreeing with it.
+    expect(cabinetFromPad({ ...NOTHING, jump: true }).launch).toBe(false);
   });
 
   test('⚠️ and a pad at rest asks for NOTHING, or the game plays itself', () => {
@@ -57,7 +62,7 @@ function reader(events: Partial<PadReaderEvents> = {}) {
       ...events,
     },
   });
-  /** Buttons by standard-mapping index: 0 = A (jump), 9 = start. */
+  /** Standard mapping: 0 = A (jump), 1 = B (especial), 2 = X (run), 9 = start. */
   const press = (...indices: number[]) => {
     pad = {
       id: 'fake', index: 0, mapping: 'standard',
@@ -79,7 +84,7 @@ describe('polling a pad', () => {
   test('holding a flipper button raises it, and releasing drops it', () => {
     const { fired, press, none } = reader();
 
-    press(3);   // Y → swap → right flipper
+    press(1);   // B → especial → right flipper
     none();
 
     expect(fired).toEqual(['right:on', 'right:off']);
@@ -91,9 +96,9 @@ describe('polling a pad', () => {
     // the defect `shell/controls` documents for held keys, arriving by a different road.
     const { fired, press } = reader();
 
-    press(3);
-    press(3);
-    press(3);
+    press(1);
+    press(1);
+    press(1);
 
     expect(fired).toEqual(['right:on']);
   });
@@ -104,9 +109,9 @@ describe('polling a pad', () => {
     // things to get wrong, and a test that exercises one of them proves one of them.
     const { fired, press } = reader();
 
-    press(1);   // B → especial → left flipper
-    press(1);
-    press(1);
+    press(0);   // A → jump → left flipper
+    press(0);
+    press(0);
 
     expect(fired).toEqual(['left:on']);
   });
@@ -116,9 +121,9 @@ describe('polling a pad', () => {
     // loop. It is an edge, like the key it mirrors.
     const { fired, press } = reader();
 
-    press(0);
-    press(0);
-    press(0);
+    press(2);
+    press(2);
+    press(2);
 
     expect(fired).toEqual(['launch']);
   });
@@ -126,9 +131,9 @@ describe('polling a pad', () => {
   test('and pressing it again after a release fires again', () => {
     const { fired, press, none } = reader();
 
-    press(0);
+    press(2);
     none();
-    press(0);
+    press(2);
 
     expect(fired).toEqual(['launch', 'launch']);
   });

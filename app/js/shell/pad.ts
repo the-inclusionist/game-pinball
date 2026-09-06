@@ -13,14 +13,30 @@
 // its actions are this game's cabinet. Every reason an analog stick counts as "left" past one
 // threshold and not another stays where it was written.
 //
-// ========================= THE VOCABULARY IS PLATFORMER-SHAPED =========================
-// `jump`, `run`, `swap`, `especial` — there is no "left shoulder" among them. That is a constraint and
-// not a complaint: on a pad the flippers are driven by the DIRECTIONS, which is exactly how the Dev
-// specified the cabinet ("esquerda - move pá da esquerda"), with two face buttons as the alternates
-// that buttons 2 and 3 are.
+// ========================= AND THE DEV'S SCHEME IS THE ENGINE'S OWN DEFAULT =========================
+// ⚠️ THIS WAS DISCOVERED, NOT DESIGNED, and it decides the mapping. The Dev specified the cabinet and
+// then its keys: a, d, u, j, k. `input/keyboard`'s SOLO DEFAULT is:
 //
-//     esquerda → left  or  especial (B)        botão 1 → jump (A)
-//     direita  → right or  swap     (Y)        start   → _pause (Start)
+//     left: KeyA, ArrowLeft    run: KeyU     jump: KeyJ, Space    especial: KeyK
+//     right: KeyD, ArrowRight
+//
+// Action for action, those are the same five. So the cabinet is not being bolted onto a foreign
+// vocabulary — it already IS one, and the correspondence is exact:
+//
+//     esquerda → left       botão 1 (launch)       → run
+//     direita  → right      botão 2 (left flipper) → jump
+//                           botão 3 (right flipper)→ especial
+//                           start                  → _pause  (pad only; see below)
+//
+// ⚠️ AND THE FIRST VERSION OF THIS FILE GUESSED WRONG. It mapped `jump` to the launch because `jump`
+// is the A button and launching felt like the primary action. That put button 1 and button 2 on each
+// other's slots, so a player remapping the keyboard through the engine's settings panel would have
+// found the pad disagreeing with it. The mapping is one table now, used by both.
+//
+// ⚠️ `start` IS NOT IN THE ENGINE'S KEYBOARD VOCABULARY — its `KeyScheme` is left/right/up/down/run/
+// jump/swap/especial, with no start — so pause stays a binding of this port's own on the keyboard,
+// while the pad reads the engine's `_pause`. That asymmetry is the platform's and is named rather than
+// smoothed over.
 
 import { padActions, type PadActions, type PadLike, type PadMap } from '@the-inclusionist/engine/input/gamepad.js';
 
@@ -31,12 +47,33 @@ export interface CabinetState {
   readonly pause: boolean;
 }
 
+/**
+ * Which pinball control each of the engine's actions is.
+ *
+ * ⚠️ ONE TABLE, READ BY BOTH DEVICES. The keyboard reaches it through the engine's remapper
+ * (`KeyboardRuntime.actionOf`) and the pad through `padActions`; two copies of "button 1 is the
+ * launch" is how a game ends up remapping on one device and not the other.
+ */
+export const CABINET_OF_ENGINE_ACTION: Readonly<Record<string, 'left' | 'right' | 'plunger'>> = {
+  left: 'left',
+  right: 'right',
+  // Button 2 and button 3 are the flippers again, which is what the Dev's cabinet says they are.
+  jump: 'left',
+  especial: 'right',
+  // Button 1.
+  run: 'plunger',
+};
+
 /** The engine's actions, read as this game's controls. Pure, so the mapping is checkable on its own. */
 export function cabinetFromPad(actions: PadActions): CabinetState {
+  const is = (name: string): boolean => actions[name] === true;
+  const controls = (control: string): boolean =>
+    Object.entries(CABINET_OF_ENGINE_ACTION).some(([action, c]) => c === control && is(action));
+
   return {
-    left: actions.left || actions.especial,
-    right: actions.right || actions.swap,
-    launch: actions.jump,
+    left: controls('left'),
+    right: controls('right'),
+    launch: controls('plunger'),
     pause: actions._pause === true,
   };
 }

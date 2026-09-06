@@ -28,7 +28,7 @@ import {
 import { mountOptionsDialog } from './shell/options-dialog.js';
 import { titleScreen } from './shell/title.js';
 import { integerScale } from './shell/present.js';
-import { createPadReader } from './shell/pad.js';
+import { createPadReader, CABINET_OF_ENGINE_ACTION } from './shell/pad.js';
 import { mountTitle } from './shell/title-dom.js';
 import { createLiveControls } from './table/live-controls.js';
 import { createRolloverWatch } from './table/rollovers.js';
@@ -602,6 +602,26 @@ const pad = createPadReader({
 });
 
 const unbindControls = bindPinballControls({
+  /**
+   * ⚠️ THE ENGINE'S REMAPPER, WHICH THIS SEAM WAS BUILT FOR AND NOTHING HAD EVER PASSED.
+   *
+   * `ControlOptions.actionOf` is documented as "the engine's remapper, when the pinball's scheme is
+   * registered with it", and it was never given one — so the settings panel could rebind the keyboard
+   * and the pinball would go on reading its own table, which is a remap that does nothing.
+   *
+   * `KeyboardRuntime.actionOf` answers in the ENGINE's vocabulary, so it goes through the same table
+   * the pad uses. Player 0: this game has one player, and the engine's per-player schemes are for a
+   * game that does not.
+   *
+   * ⚠️ AND `DEFAULT_BINDINGS` IS STILL CONSULTED, because the engine's scheme has no room for the
+   * three keys that are not cabinet controls. Blind mode, the sweep and the palette are switches for
+   * how the game is PERCEIVED — `KeyScheme` has no slot for them, and inventing one in a shared
+   * vocabulary to hold a pinball's accessibility keys would be the wrong place to put them.
+   */
+  actionOf: (code) => {
+    const engineAction = shell.engine.keyboard?.actionOf(code, 0);
+    return engineAction ? CABINET_OF_ENGINE_ACTION[engineAction] ?? null : null;
+  },
   region,
   // ⚠️ THE DEMONSTRATION HAS ITS OWN FLIPPERS, and one key binding serves both tables. Routing to the
   // authored physics while the 1995 table is on screen leaves the player pressing a key that moves
