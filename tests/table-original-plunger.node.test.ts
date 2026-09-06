@@ -47,7 +47,7 @@ describe('the 1995 plunger', () => {
     if (!table) return expect(existsSync(DAT)).toBe(false);
     const built = buildOriginalTable(table.groups);
 
-    const ball = built.spawnBall();
+    const ball = built.spawnBall()!;
 
     expect(ball.position.x).toBeCloseTo(built.plungerPosition!.x, 3);
     expect(ball.position.y).toBeCloseTo(built.plungerPosition!.y, 3);

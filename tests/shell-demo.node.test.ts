@@ -355,6 +355,38 @@ describe('⚠️ and a ball can be lost, which the demonstration counts', () => 
     // A ball in play touches things; a ball rattling in a corner touches thousands.
     expect(demo.touched.length - before).toBeLessThan(600);
   });
+
+  test('⚠️ and feeding a ball does not leave the old one on the table', () => {
+    // `addBall` revives an inactive ball before it makes a new one, so the pool is the high-water mark
+    // of balls in play. A demonstration that abandoned its ball without deactivating it would grow the
+    // pool by one every feed, and every abandoned ball would go on being moved — rattling in whatever
+    // corner it was left in, touching things, for the rest of the game.
+    const bytes = archive();
+    if (!bytes) return expect(existsSync(DAT)).toBe(false);
+    const demo = createDemo(bytes, { random: seeded() });
+
+    demo.drop();
+    demo.drop();
+    demo.drop();
+
+    expect(demo.table.balls.length).toBe(1);
+    expect(demo.table.balls.filter((b) => b.active).length).toBe(1);
+  });
+
+  test('⚠️ and EVERY ball in the pool is moved, not the one the demonstration watches', () => {
+    // Nothing gives a second ball back yet — the sinks are built and not wired — so this is what
+    // stands between the pool existing and multiball working. A second ball advanced by nobody would
+    // hang in the air exactly where it was born.
+    const bytes = archive();
+    if (!bytes) return expect(existsSync(DAT)).toBe(false);
+    const demo = createDemo(bytes, { random: seeded() });
+    const second = demo.table.addBall({ x: 0, y: 0 })!;
+    const startedAt = { x: second.position.x, y: second.position.y };
+
+    demo.step(30);
+
+    expect(second.position, 'gravity reached it').not.toEqual(startedAt);
+  });
 });
 
 describe('⚠️ a bumper scores when it FIRES, not when it is grazed', () => {

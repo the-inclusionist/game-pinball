@@ -36,6 +36,9 @@ import type { Plunger } from './plunger.js';
 import { readVisual } from '../dat/visual.js';
 import { basicCollision } from '../physics/collision.js';
 import { createBall, type Ball, type StepContext } from '../physics/step.js';
+
+/** `TPinballTable::AddBall` refuses past this many. The original's own literal. */
+export const MAX_BALLS = 20;
 import type { Vector2 } from '../maths/maths.js';
 import type { Component } from '../physics/edges.js';
 import { EntryType, type Group } from '../dat/partman.js';
@@ -104,7 +107,25 @@ export interface OriginalTable {
    * plunger's is the extent of its own wall record.
    */
   readonly controlBounds: readonly Bounds[];
-  spawnBall(): Ball;
+  /**
+   * ⚠️ EVERY BALL THE TABLE HAS EVER MADE, ACTIVE OR NOT. `TPinballTable::BallList`. It is the
+   * high-water mark of balls simultaneously in play, not a count of balls fed — because `addBall`
+   * revives a dead one before it makes a new one.
+   */
+  readonly balls: readonly Ball[];
+  /**
+   * `TPinballTable::AddBall`. Reuses the first inactive ball, resetting it to rest and letting go of
+   * whatever was holding it; makes a new one only when every ball is still in play; and past twenty
+   * returns null rather than growing for ever, which is the original's own refusal.
+   */
+  addBall(at: Vector2): Ball | null;
+  /**
+   * `TPinballTable::BallCountInRect`, the `(position, margin)` overload. ACTIVE balls only, and the
+   * region is a SQUARE of `pos ± margin` tested on each axis — not a circle.
+   */
+  ballCountInRect(at: Vector2, margin: number): number;
+  /** A ball on the plunger, THROUGH the pool — see `addBall`. Null when twenty are already in play. */
+  spawnBall(): Ball | null;
 }
 
 /** The extent of one wall record, whatever its shape. Used only for the table's own boundary. */
@@ -207,6 +228,8 @@ export function buildOriginalTable(groups: readonly Group[], o: OriginalOptions 
   const radiusRecord = ballGroup && floatAttribute(ballGroup, BALL_RADIUS_RECORD);
   if (!radiusRecord?.length) throw new Error('[original] the archive does not say how big the ball is');
   const ballRadius = radiusRecord[0]!;
+  /** `TPinballTable::BallList`. See `addBall`: it is a pool, not a history. */
+  const balls: Ball[] = [];
 
   const angle = floatAttribute(tableGroup, GRAVITY_RECORD);
   const mult = angle?.[0] ?? GRAVITY_DEFAULTS.mult;
@@ -385,6 +408,50 @@ export function buildOriginalTable(groups: readonly Group[], o: OriginalOptions 
         }
       },
     },
+    balls,
+
+    addBall(at) {
+      const spare = balls.find((ball) => !ball.active);
+      if (!spare) {
+        if (balls.length >= MAX_BALLS) return null;
+        const made = createBall({
+          radius: ballRadius,
+          position: { x: at.x, y: at.y },
+          direction: { x: 0, y: 0 },
+          speed: 0,
+          ...(o.random ? { random: o.random } : {}),
+        });
+        balls.push(made);
+        return made;
+      }
+
+      // ⚠️ BROUGHT BACK AT REST AND LET GO OF. A ball revived still carrying the speed it drained at
+      // would leave its new hole like a shot, and one still pointing at its old holding component
+      // would be moved by that component instead of by the table.
+      spare.active = true;
+      spare.position = { x: at.x, y: at.y };
+      spare.direction = { x: 0, y: 0 };
+      spare.speed = 0;
+      spare.timeDelta = 0;
+      spare.collisionDisabled = false;
+      spare.collisionMask = 1;
+      spare.component = null;
+      spare.prevPosition = { x: at.x, y: at.y };
+      spare.stuckCounter = 0;
+      return spare;
+    },
+
+    ballCountInRect(at, margin) {
+      let count = 0;
+      for (const ball of balls) {
+        if (!ball.active) continue;
+        if (ball.position.x < at.x - margin || ball.position.x > at.x + margin) continue;
+        if (ball.position.y < at.y - margin || ball.position.y > at.y + margin) continue;
+        count++;
+      }
+      return count;
+    },
+
     spawnBall() {
       // ⚠️ ON THE PLUNGER, WHERE THE FILE SAYS. Record 601 is `table->PlungerPosition` and it is the
       // only thing `TPlunger`'s constructor reads. Before the plunger existed this dropped the ball
@@ -393,12 +460,11 @@ export function buildOriginalTable(groups: readonly Group[], o: OriginalOptions 
         x: (bounds.xMin + bounds.xMax) / 2,
         y: bounds.yMin + (bounds.yMax - bounds.yMin) * 0.2,
       };
-      return createBall({
-        radius: ballRadius,
-        position: { x: at.x, y: at.y },
-        direction: { x: 0, y: 1 },
-        speed: 0,
-      });
+      const ball = this.addBall(at);
+      // The plunger's ball points DOWN the lane rather than nowhere, which is the one thing it does
+      // not share with a ball a sink gives back.
+      if (ball) ball.direction = { x: 0, y: 1 };
+      return ball;
     },
   };
 }

@@ -125,7 +125,7 @@ describe('⚠️ and the walls actually hold a ball', () => {
     if (!groups) return expect(existsSync(DAT)).toBe(false);
 
     const table = buildOriginalTable(groups);
-    const ball = table.spawnBall();
+    const ball = table.spawnBall()!;
 
     let escaped = false;
     for (let i = 0; i < 1000 && !escaped; i++) {
@@ -143,7 +143,7 @@ describe('⚠️ and the walls actually hold a ball', () => {
     if (!groups) return expect(existsSync(DAT)).toBe(false);
 
     const table = buildOriginalTable(groups);
-    const ball = table.spawnBall();
+    const ball = table.spawnBall()!;
     const from = { x: ball.position.x, y: ball.position.y };
 
     for (let i = 0; i < 300; i++) advanceFrame([ball], table.context, 1 / 60);

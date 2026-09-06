@@ -197,7 +197,16 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
    * lists it leaves behind are the record of it.
    */
   const feedBall = (): void => {
-    ball = table.spawnBall();
+    // ⚠️ THE BALL GOING OUT IS DEACTIVATED BEFORE THE ONE COMING IN IS ASKED FOR, and that is not
+    // bookkeeping: `addBall` revives an inactive ball before it makes a new one, so without this the
+    // pool grows by one every feed and every abandoned ball goes on being moved — rattling in the
+    // corner it was left in, touching things, for the rest of the game. The stuck watch's rescue found
+    // it within one test.
+    ball.active = false;
+    // ⚠️ AND THROUGH THE TABLE'S POOL, so a hole waiting for room can see the ball on the plunger.
+    // Null means twenty balls are already in play, which this demonstration cannot reach and which the
+    // original answers with a failed assertion rather than a ball.
+    ball = table.spawnBall() ?? ball;
     // ⚠️ AND THE CONTROL LAYER IS TOLD, which is what makes a new ball different from a saved one and
     // the only thing in the game that ever raises the barrier across the drain. Spawning alone leaves
     // the launch chute dark, the treks as the last ball left them and the multiplier still running.
@@ -402,7 +411,9 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
     bytes: new Uint8ClampedArray(playfield.pixels.length * 4),
   };
 
-  let ball = table.spawnBall();
+  // The first ball of the game, and the only `spawnBall` that cannot come back empty: the pool is
+  // still empty, so there is always room to make one.
+  let ball = table.spawnBall()!;
   let music: { notes: readonly ScheduledNote[]; length: number } | null = null;
 
   /**
@@ -441,7 +452,9 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
 
     step(frames: number): void {
       for (let i = 0; i < frames; i++) {
-        advanceFrame([ball], table.context, 1 / 60);
+        // ⚠️ EVERY BALL IN THE POOL, NOT THE ONE THE DEMONSTRATION IS WATCHING. `advanceFrame` skips
+        // the inactive ones itself, and a ball a sink gave back has to be moved by something.
+        advanceFrame(table.balls, table.context, 1 / 60);
         // The components keep their own time: a bumper's lit period is what stops it firing again,
         // and a lane group's flash is what clears it.
         components.advance(1 / 60);
@@ -488,7 +501,8 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
       else table.plunger?.release();
     },
     drop(): void {
-      ball = table.spawnBall();
+      ball.active = false;
+      ball = table.spawnBall() ?? ball;
       touched.length = 0;
       scored.length = 0;
       paidFlat.length = 0;
