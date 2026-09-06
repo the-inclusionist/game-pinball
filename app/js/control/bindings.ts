@@ -556,6 +556,23 @@ export const HYPERSPACE = {
   },
 } as const;
 
+/**
+ * ⚠️ THE TWO GATES `easy mode` OPENS, AND ONLY THESE TWO. The upstream's branch is
+ *
+ *     DrainBallBlockerControl(TBlockerEnable, block1);
+ *     gate1->Message(TGateDisable, 0.0);
+ *     gate2->Message(TGateDisable, 0.0);
+ *
+ * with `component_tag<TGate> control_gate1_tag = {"v_gate1"}` and `control_gate2_tag = {"v_gate2"}`.
+ *
+ * ⚠️ AND THE 1995 TABLE DECLARES EXACTLY TWO GATES, WHICH ARE THESE TWO. So on this archive "the two
+ * the cheat names" and "every gate there is" are the same set, and a rule written either way would
+ * pass every test here. It is written by NAME because an authored table (phase 8) may have gates that
+ * easy mode must not open, and the difference would then be a ball passing through a wall — which
+ * reads as a physics defect rather than as a mis-transcribed cheat.
+ */
+export const CHEAT_GATES: readonly string[] = ['v_gate1', 'v_gate2'];
+
 export const RANK = {
   outerCircle: 'outer_circle',
   middleCircle: 'middle_circle',

@@ -25,6 +25,8 @@ import { SCORE_COMPONENTS } from '../control/score-table.js';
 import { buildOriginalComponents, type OriginalComponents } from '../table/original-components.js';
 import { createOriginalDispatch, type OriginalDispatch } from '../table/original-dispatch.js';
 import { buildOriginalGates } from '../table/original-gates.js';
+import type { Gate } from '../table/gate.js';
+import { makeCheatController } from '../control/cheats.js';
 import { buildOriginalKickouts, kickoutGeometry } from '../table/original-kickouts.js';
 import { buildOriginalPopupTargets } from '../table/original-popup-targets.js';
 import { buildOriginalSoloTargets } from '../table/original-solo-targets.js';
@@ -110,6 +112,25 @@ export interface Demo {
   readonly tripwires: ReadonlyMap<string, unknown>;
   /** The two ramps, which are triangles with their own gravity rather than walls. */
   readonly ramps: ReadonlyMap<string, unknown>;
+  /** The nine gates. `easy mode` opens two of them by name — see `CHEAT_GATES`. */
+  readonly gates: ReadonlyMap<string, Gate>;
+  /**
+   * ⚠️ THE BACK DOOR, ONE CHARACTER AT A TIME. `pbctrl_bdoor_controller` is fed WM_CHAR and holds an
+   * eleven-character rolling buffer — the length of `hidden test`, which is the longest code — and
+   * every code is a SUFFIX comparison, so any amount of nonsense before one is simply forgotten.
+   * Returns whether that character completed a cheat.
+   */
+  typeCheat(character: string): boolean;
+  /** `pb::cheat_mode`. Nothing in this port reads it yet; the original showed a debug overlay. */
+  readonly cheatMode: boolean;
+  /** `TableG->CheatsUsed`. Every code sets it, and nothing ever clears it. */
+  readonly cheatsUsed: boolean;
+  /** `table_unlimited_balls`: a drained ball simply comes back. */
+  readonly unlimitedBalls: boolean;
+  /** `TableG->ExtraBalls`, which `1max` adds one to. */
+  readonly extraBalls: number;
+  /** The option that leaves an outlane open, and the only thing that switches it is the cheat. */
+  readonly easyMode: boolean;
   /**
    * ⚠️ WHICH FILE EACH SOUND INDEX WANTS, keyed by GROUP INDEX — which is what a component's record
    * carries, and not a position in the list of sounds. The archive declares the names and holds none
@@ -593,8 +614,18 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
     table: { tiltLocked: false }, timer: components.timer,
   })) kickouts.set(name, kickout);
 
+  /**
+   * ⚠️ EASY MODE IS A CHEAT AND NOTHING ELSE SWITCHES IT. `PlungerControl` reads it to decide whether
+   * to raise the barrier on a fed ball, and until the back door was wired the answer was always no —
+   * `isEasyMode` was not even passed, so the dispatcher's own default stood.
+   */
+  let easyMode = false;
+  let cheatMode = false;
+  let cheatsUsed = false;
+
   dispatch = createOriginalDispatch({
     components, context, gates, kickouts, popupTargets, sinks,
+    isEasyMode: () => easyMode,
     feed: { table: drainTable, blockers: drainBlockers },
     drain: {
       table: drainTable,
@@ -617,6 +648,25 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
    * between a ramp at 100 and the table at 500 there is nothing at 300, and an edge of averaged depths
    * would put the ball inside the ramp across half its pixels. See `gfx/scale`.
    */
+  /**
+   * ⚠️ THE HANDS ARE THE DISPATCHER'S AND THE FLAGS ARE THIS FILE'S. `control/cheats` knows the codes
+   * and the buffer and nothing about a table; five of the ten actions are messages only the control
+   * layer can send, and the other five are state the demonstration owns. Split any other way and one
+   * half of the back door reaches into the other.
+   */
+  const typeCheat = makeCheatController({
+    toggleCheatMode: () => { cheatMode = !cheatMode; },
+    armGravityWell: () => dispatch.cheats.armGravityWell(),
+    addExtraBall: (seconds: number) => dispatch.cheats.addExtraBall(seconds),
+    toggleUnlimitedBalls: () => { drainTable.unlimitedBalls = !drainTable.unlimitedBalls; },
+    bumpRank: () => dispatch.cheats.bumpRank(),
+    toggleEasyMode: () => { easyMode = !easyMode; return easyMode; },
+    raiseBlocker: () => dispatch.cheats.raiseBlocker(),
+    expireBlocker: () => dispatch.cheats.expireBlocker(),
+    disableGates: () => dispatch.cheats.disableGates(),
+    markCheatsUsed: () => { cheatsUsed = true; },
+  });
+
   const camera = readCamera(groups, { scale: PLAYFIELD_SCALE });
   const playfield = halve(decodePlayfield(groups));
   /**
@@ -717,6 +767,13 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
     sinks,
     tripwires,
     ramps,
+    gates,
+    typeCheat,
+    get cheatMode() { return cheatMode; },
+    get cheatsUsed() { return cheatsUsed; },
+    get unlimitedBalls() { return drainTable.unlimitedBalls; },
+    get extraBalls() { return drainTable.extraBalls; },
+    get easyMode() { return easyMode; },
     wired: dispatch.wired,
     paidFlat,
     soundFiles,

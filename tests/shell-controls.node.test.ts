@@ -219,3 +219,95 @@ describe('⚠️ a table with a plunger holds it, and one without still launches
     expect(launched).toEqual([1]);
   });
 });
+
+/**
+ * ⚠️ A CHEAT IS TYPED, AND A KEY CODE IS NOT A CHARACTER.
+ *
+ * `control/cheats` is fed one character at a time — `pbctrl_bdoor_controller` reads WM_CHAR — and the
+ * flipper bindings are read off `event.code`, which says `KeyB` where the buffer needs `b`. Both come
+ * off the same event and neither can stand in for the other: a layout where `KeyZ` types `y` flips the
+ * left flipper on Z and spells the cheat with y, which is exactly right.
+ */
+describe('the back door’s characters', () => {
+  function typing() {
+    const region = fakeRegion();
+    const typed: string[] = [];
+    const blind: number[] = [];
+    bindPinballControls({
+      region: region as never,
+      setFlipper: () => {},
+      launch: () => {},
+      toggleBlindMode: () => blind.push(1),
+      typeCharacter: (c) => typed.push(c),
+    });
+    return { region, typed, blind };
+  }
+
+  test('a printable key is one character', () => {
+    const t = typing();
+
+    t.region.send('keydown', { code: 'KeyB', key: 'b' });
+    t.region.send('keydown', { code: 'Space', key: ' ' });
+
+    expect(t.typed).toEqual(['b', ' ']);
+  });
+
+  test('⚠️ and Tab is a TAB, which is the second spelling of `hidden test`', () => {
+    // `hidden	test` is in `CHEAT_CODES` because of the character the original's handler reports
+    // between the two words. The browser calls that key `Tab` and gives no character for it, so the
+    // one place that can put the tab back is here.
+    const t = typing();
+
+    t.region.send('keydown', { code: 'Tab', key: 'Tab' });
+
+    expect(t.typed).toEqual(['	']);
+  });
+
+  test('⚠️ and the CASE is not folded, though every code is lowercase', () => {
+    // The original compares raw characters against lowercase literals, so `HIDDEN TEST` does not open
+    // the back door there. Folding the case here would open it — a kindness that changes the game,
+    // and the kind of change nobody would think to look for.
+    //
+    // This test exists because a mutant survived without it: `demo.typeCheat` is fed characters
+    // directly by the demonstration's own tests, so nothing they assert ever passes through this
+    // function, and lowercasing here was invisible to all of them.
+    const t = typing();
+
+    t.region.send('keydown', { code: 'KeyB', key: 'B' });
+
+    expect(t.typed).toEqual(['B']);
+  });
+
+  test('a named key is not a character, and never enters the buffer', () => {
+    const t = typing();
+
+    t.region.send('keydown', { code: 'ArrowLeft', key: 'ArrowLeft' });
+    t.region.send('keydown', { code: 'ShiftLeft', key: 'Shift' });
+
+    expect(t.typed).toEqual([]);
+  });
+
+  test('⚠️ a HELD key repeats into the buffer, though it does not repeat a flipper', () => {
+    // The flippers return on `repeat` because re-extending an extended flipper leaves it still. The
+    // buffer has the opposite need: the original is fed every WM_CHAR the system sends, repeats and
+    // all, and a player holding a letter is typing that letter.
+    const t = typing();
+
+    t.region.send('keydown', { code: 'KeyA', key: 'a', repeat: true });
+
+    expect(t.typed).toEqual(['a']);
+  });
+
+  test('⚠️ and the accessibility key still fires — the cheat does not take the letter away', () => {
+    // `bmax` starts with the blind-mode key and `easy mode` contains the sweep key. A back door that
+    // swallowed them would trade a feature this project exists for against an easter egg, so both
+    // happen: the character reaches the buffer AND the action runs. Typing `bmax` toggles blind mode
+    // on the way past, which is the price and is worth naming.
+    const t = typing();
+
+    t.region.send('keydown', { code: 'KeyB', key: 'b' });
+
+    expect(t.typed).toEqual(['b']);
+    expect(t.blind, 'blind mode still answers its own key').toEqual([1]);
+  });
+});

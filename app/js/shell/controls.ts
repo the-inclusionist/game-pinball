@@ -51,7 +51,7 @@ export const DEFAULT_BINDINGS: Readonly<Record<PinballAction, readonly string[]>
  * its own: the handlers stay assignable to a DOM listener, so `#game-region` needs no cast, and a test
  * still only has to supply three fields.
  */
-type KeyLikeEvent = Pick<KeyboardEvent, 'code' | 'repeat' | 'preventDefault'>;
+type KeyLikeEvent = Pick<KeyboardEvent, 'code' | 'key' | 'repeat' | 'preventDefault'>;
 
 /** The subset of an element this module uses. Narrow on purpose — see the header. */
 export interface KeyTarget {
@@ -79,6 +79,18 @@ export interface ControlOptions {
    */
   readonly actionOf?: (code: string) => string | null;
   readonly bindings?: Readonly<Record<PinballAction, readonly string[]>>;
+  /**
+   * ⚠️ THE BACK DOOR IS TYPED, AND A KEY CODE IS NOT A CHARACTER. `control/cheats` is fed one character
+   * at a time — the original reads WM_CHAR — while every binding above is read off `event.code`, which
+   * says `KeyB` where the buffer needs `b`. Neither can stand in for the other: on a layout where
+   * `KeyZ` types `y`, the left flipper answers Z and the cheat is spelled with y, and both are right.
+   *
+   * ⚠️ AND THE CHARACTER DOES NOT TAKE THE KEY AWAY. `bmax` begins with the blind-mode key and
+   * `easy mode` contains the sweep key. A back door that swallowed them would trade a feature this
+   * project exists for against an easter egg, so both happen and typing `bmax` toggles blind mode on
+   * the way past. That is the price, and it is named rather than hidden.
+   */
+  readonly typeCharacter?: (character: string) => void;
 }
 
 /** Binds the keys. Returns the undo, because a game that cannot be unbound cannot be torn down. */
@@ -94,6 +106,14 @@ export function bindPinballControls(o: ControlOptions): () => void {
   };
 
   const onDown = (event: KeyLikeEvent): void => {
+    // ⚠️ BEFORE THE ACTION LOOKUP, AND BEFORE THE REPEAT GUARD. A character with no binding would
+    // otherwise leave on the `!action` line and never reach the buffer, and a held letter IS that
+    // letter typed again — the guard below exists for flippers, which re-extending leaves still.
+    if (o.typeCharacter) {
+      const character = characterOf(event.key);
+      if (character !== null) o.typeCharacter(character);
+    }
+
     const action = actionFor(event.code);
     if (!action) return;
     // Swallowed so the arrows and space do not scroll the document out from under the table.
@@ -135,4 +155,20 @@ export function bindPinballControls(o: ControlOptions): () => void {
     o.region.removeEventListener('keydown', onDown);
     o.region.removeEventListener('keyup', onUp);
   };
+}
+
+/**
+ * The character a key event typed, or null when it typed none.
+ *
+ * `event.key` is one character for anything printable and a NAME — `ArrowLeft`, `Shift`, `Tab` — for
+ * anything else, so the length is the test. Tab is the exception: `CHEAT_CODES` carries `hidden	test`
+ * as well as `hidden test`, because of the character the original's handler reports between the two
+ * words, and this is the only place that can put the tab back.
+ *
+ * ⚠️ AND THE CASE IS LEFT ALONE. The codes are lowercase and the original compares raw characters, so
+ * `HIDDEN TEST` does not open the back door there and must not open it here.
+ */
+function characterOf(key: string): string | null {
+  if (key === 'Tab') return '	';
+  return [...key].length === 1 ? key : null;
 }

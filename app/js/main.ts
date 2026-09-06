@@ -463,6 +463,16 @@ const unbindControls = bindPinballControls({
    * so nobody chases it a third time.
    */
   sweep: () => shell.engine.sonar.sonar(sonarPlayer),
+  /**
+   * ⚠️ THE BACK DOOR, AND ONLY THE 1995 TABLE HAS ONE. `bmax`, `rmax`, `gmax`, `1max`, `easy mode` and
+   * `hidden test` are the Space Cadet's own codes and mean nothing on an authored table, so a
+   * character typed while the authored one is on screen goes nowhere rather than somewhere wrong.
+   *
+   * ⚠️ AND THE LETTER STILL WORKS ITS OWN KEY. `b` is blind mode and `s` is the sweep, so typing
+   * `bmax` toggles blind mode on the way past — the accessibility keys keep their letters and the
+   * cheat is spelled around them. See `shell/controls`.
+   */
+  typeCharacter: (character) => { demo?.typeCheat(character); },
 });
 
 /**

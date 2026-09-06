@@ -53,7 +53,7 @@ import {
   FUEL_REFUEL_TEXT_ID, OUT_LANES, BONUS_LANE, SPOT_TARGET_SETS, MEDAL_BANK, MULTIPLIER_BANK,
   BOOSTER_BANK, TABLE_ACTIONS, FLIPPER_REBOUNDERS, GATE_LAMPS, KICKERS, SKILL_SHOT,
   LAUNCH_RAMP, FLAGS, KICKOUTS, DRAIN, PER_BALL_RESET, MISSIONS, RANK, WORM_HOLE,
-  DRAIN_BLOCKER, PLUNGER_FEED, WORM_HOLE_SINKS, HYPERSPACE,
+  DRAIN_BLOCKER, PLUNGER_FEED, WORM_HOLE_SINKS, HYPERSPACE, CHEAT_GATES,
   type BumperLaneBinding,
 } from '../control/bindings.js';
 import { addExtraBall, createTableActions } from '../control/table-actions.js';
@@ -73,6 +73,7 @@ import {
 import { makeMissionController } from '../control/mission-runner.js';
 import { MISSION_TABLE } from '../control/mission-table.js';
 import { addRankProgress as advanceRank } from '../control/rank.js';
+import { cheatBumpRank } from '../control/cheats.js';
 import {
   makePlungerControl, makeDrainBallBlockerControl, NEW_BALL_REFLEX_SCORE,
   type FeedGroup, type FeedTable,
@@ -182,6 +183,28 @@ export interface OriginalDispatch {
    * the original a hyperspace award raises the barrier too, and that control is not wired yet.
    */
   raiseDrainBlocker?(): void;
+  /**
+   * ⚠️ THE BACK DOOR'S HANDS. `control/cheats` holds the buffer and the codes and knows nothing about
+   * this table; these are the five things only the dispatcher can do, and each is the message the
+   * upstream's branch sends rather than an effect written to look like it. A piece that was never
+   * wired answers with nothing rather than with something approximate — the same rule every declined
+   * block in this file follows.
+   */
+  readonly cheats: DispatchCheats;
+}
+
+/** What `CheatActions` needs from the control layer. The rest are flags and belong to the caller. */
+export interface DispatchCheats {
+  /** `GravityWellKickoutControl(ControlEnableMultiplier, nullptr)`. */
+  armGravityWell(): void;
+  addExtraBall(seconds: number): void;
+  bumpRank(): void;
+  /** `DrainBallBlockerControl(TBlockerEnable, block1)`. */
+  raiseBlocker(): void;
+  /** `DrainBallBlockerControl(ControlTimerExpired, block1)` — see `control/cheats`' header. */
+  expireBlocker(): void;
+  /** `gate1->Message(TGateDisable)` and `gate2->Message(TGateDisable)`, and no other gate. */
+  disableGates(): void;
 }
 
 /**
@@ -740,6 +763,10 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
   // ⚠️ AND THE BARRIER'S ARMING, WHICH HAS TWO SENDERS. The plunger's easy-mode line is one; the
   // hyperspace ladder's third rung is the other, and it runs long before the feed block below.
   let raiseDrainBlocker: (() => void) | undefined;
+  /** The blocker's own timeout, which is what switching easy mode OFF sends it. */
+  let expireDrainBlocker: (() => void) | undefined;
+  /** `ControlEnableMultiplier` on the gravity well with NO caller — see `cheats.armGravityWell`. */
+  let armWellForCheat: (() => void) | undefined;
 
   // ⚠️ THE BOOSTER BANK, WHICH REACHES THE TABLE-LEVEL AWARDS. `control/table-actions` is the single
   // implementation of all of them — a flag, a lamp and a line — and it is built here rather than having
@@ -1095,6 +1122,11 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
       };
       const wellControl = makeGravityWellKickoutControl(wellOptions);
       control = wellControl;
+      // ⚠️ THE CHEAT ARMS IT WITH NO CALLER AT ALL. `GravityWellKickoutControl(..., nullptr)` is what
+      // `gmax` sends, so nothing is scored and nothing is announced — the well simply becomes armed.
+      // The null is passed rather than the real caller so that a future branch which starts reading
+      // the caller fails loudly here instead of quietly reading a component the original never gave it.
+      armWellForCheat = () => wellControl('ControlEnableMultiplier', null as unknown as ControlledComponent, ctx);
       armGravityWell = (points: number) => {
         wellControl('ControlEnableMultiplier', caller, ctx);
         announceGravityWell(wellOptions, points, (text, seconds) => ctx.showInfo(text, seconds));
@@ -1401,6 +1433,27 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
     }).promoted;
   };
 
+  /**
+   * `cheat_bump_rank`, which is a promotion without the progress that earns one. The rank is read
+   * BEFORE the lamp is lit, so the line names the rank whose lamp is being turned on.
+   */
+  const bumpRankByCheat = (): void => {
+    if (!middleCircle) return;
+    const circle = middleCircle;
+    cheatBumpRank({
+      middleCircle: {
+        // `TLightGroup::Message(TLightResetAndTurnOn)` under this port's name for it.
+        get onCount() { return circle.onCount; },
+        resetAndTurnOn: (period: number) => { circle.groupResetAndTurnOn(period); },
+      },
+      rankText: (index: number) => o.textFor(RANK.promotionTextId, { rank: rankNames[index] ?? '' }),
+      showMission: (text: string, seconds: number) => ctx.showMission(text, seconds),
+      playSound: (name: string) => ctx.playSound(name),
+      // The role `audio/voices` gives a promotion. The upstream plays a WAV this repository never holds.
+      promotionSound: 'promotion',
+    });
+  };
+
   const missionLamp = o.components.lights.get(MISSIONS.lamp);
   const counterLamp = o.components.lights.get(MISSIONS.counterLamp);
   const tagOf = new Map(SCORE_COMPONENTS.map((row) => [row.name, row.tag]));
@@ -1521,6 +1574,7 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
       blocker.control = () => blockerControl('ControlTimerExpired', blockerCaller, ctx);
       byName.set(DRAIN_BLOCKER.component, blockerCaller);
       raiseDrainBlocker = () => blockerControl('TBlockerEnable', blockerCaller, ctx);
+      expireDrainBlocker = () => blockerControl('ControlTimerExpired', blockerCaller, ctx);
 
       const plungerCaller: ControlledComponent = {
         name: PLUNGER_FEED.component, scores: [], control: null,
@@ -1572,6 +1626,16 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
     missions,
     plunger,
     ...(raiseDrainBlocker ? { raiseDrainBlocker } : {}),
+    cheats: {
+      armGravityWell: () => armWellForCheat?.(),
+      addExtraBall: (seconds) => addExtraBall(ctx, o.textFor(OUT_LANES.extraBallTextId), seconds),
+      bumpRank: () => bumpRankByCheat(),
+      raiseBlocker: () => raiseDrainBlocker?.(),
+      expireBlocker: () => expireDrainBlocker?.(),
+      disableGates: () => {
+        for (const name of CHEAT_GATES) o.gates?.get(name)?.openGate();
+      },
+    },
     get rankPoints() { return rankPoints; },
     missionsRun: new Set(Object.keys(controllers).map(Number)),
     wired: new Set(byName.keys()),
