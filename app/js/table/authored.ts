@@ -46,6 +46,7 @@ import type { Role } from '@the-inclusionist/engine/core/contract.js';
 import type { ComponentKind } from '../i18n/names.js';
 import type { AuthoredMission } from './missions.js';
 import type { MoverPath } from './mover.js';
+import type { AuthoredStorm } from './storm.js';
 // ⚠️ A VALUE IMPORT INTO A MODULE THAT `rollovers` ITSELF IMPORTS, and it is not a cycle: the
 // import going the other way is `import type`, which erases. The alternative was a third copy of
 // the list, and two copies of a rule is how this repository's last four defects were held open.
@@ -199,6 +200,16 @@ export interface AuthoredTable {
    * once and is paid for, with no state outliving the touch. A bank is the first that remembers.
    */
   readonly banks?: readonly AuthoredBank[];
+  /**
+   * The solar flare that sweeps this table, if one does.
+   *
+   * ⚠️ IT IS A PROPERTY OF THE TABLE AND NOT OF THE SCENE, though the scene is where it will be SEEN.
+   * The flare changes how the ball moves, and a mechanic declared in `gfx/table-palette` would be a
+   * physics whose source of truth is a colour file — which is exactly the join this repository keeps
+   * getting wrong in the other direction, with capabilities declared in one place and connected in
+   * none. The picture reads the table; the table does not read the picture.
+   */
+  readonly storm?: AuthoredStorm;
 }
 
 export interface ValidationOptions {
@@ -419,6 +430,24 @@ export function validateTable(table: AuthoredTable, o: ValidationOptions): strin
       const inside = point.x - m.radius >= 0 && point.x + m.radius <= table.size.width
         && point.y - m.radius >= 0 && point.y + m.radius <= table.size.height;
       if (!inside) problems.push(`${component.name}: its mover's "${label}" leaves the table`);
+    }
+  }
+
+  /**
+   * ⚠️ A STORM THE PHYSICS CANNOT MAKE SENSE OF. Each of these produces a table that opens and plays
+   * wrong rather than one that refuses: a band of no thickness grips nothing, a sweep of no duration
+   * divides by a time that is not there, and a NEGATIVE drag turns `-k·v` into acceleration along the
+   * ball's own heading — a field that adds energy every frame the ball is inside it, whose only
+   * symptom is "the ball is always at maximum speed on this table" because `physics/step`'s clamp
+   * catches what the field produces and nothing points back here.
+   */
+  if (table.storm) {
+    if (!(table.storm.thickness > 0)) {
+      problems.push('storm: needs a thickness — a flare of none is a band nothing can be inside');
+    }
+    if (!(table.storm.seconds > 0)) problems.push('storm: needs a time for its sweep');
+    if (!(table.storm.drag > 0)) {
+      problems.push('storm: needs a positive drag — a negative one adds energy instead of taking it');
     }
   }
 

@@ -545,6 +545,9 @@ function step(frames: number): void {
    * nothing back at all.
    */
   for (const { mover } of physics.movers) mover.advance(frames * FRAME_SECONDS);
+  // ⚠️ AND THE FLARE, for the same reason and one more: it is the BACKGROUND. A storm that stopped
+  // between balls would be a sky frozen mid-sweep while the player reads the score.
+  physics.flare?.advance(frames * FRAME_SECONDS);
 
   // ⚠️ THE FLIPPERS MOVE WHETHER OR NOT A BALL IS IN PLAY, and this used to run only while playing.
   // A player pressing the button on the title screen got nothing back — no movement, no sound, no way

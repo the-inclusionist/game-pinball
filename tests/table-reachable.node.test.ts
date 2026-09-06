@@ -61,6 +61,11 @@ function visits(table: AuthoredTable, balls: number): Map<string, number> {
        * them; a survey that does not is surveying a different table from the one that ships.
        */
       for (const { mover } of physics.movers) mover.advance(FRAME_SECONDS);
+      // ⚠️ AND THE FLARE, which is the same lesson this line already records for the movers: a survey
+      // that steps the ball and leaves the table's own moving parts at the start of their paths is
+      // measuring a table nobody plays. A flare parked at the top of the table would drag the ball
+      // exactly where it is launched and nowhere else.
+      physics.flare?.advance(FRAME_SECONDS);
       advanceFrame([ball], physics.context, FRAME_SECONDS);
       physics.takeHits();
       const { x, y } = ball.position;

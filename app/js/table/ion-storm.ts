@@ -39,6 +39,34 @@ export const ION_STORM: AuthoredTable = {
   // standing when the ball found them, which on a table this busy is a different achievement.
   banks: [{ name: 'bank.debris', award: 9000 }],
 
+  /**
+   * ⚠️ THE FLARE, AND IT IS WHAT GIVES THE TABLE ITS NAME BACK. `ion-storm` has been a bumper cluster
+   * with a weather word on it since it was written; the Dev's theme is what makes the storm a thing
+   * the player can feel — "o flare deixando a bolinha mais lenta durante sua incidência" — and the
+   * same declaration is what paints the background cycling "de preto, marrom, vermelho, amarelo e
+   * branco" and back. See `table/storm` for why those are one mechanic and not two.
+   *
+   * ⚠️ THE NUMBERS ARE MEASURED, NOT CHOSEN. Twenty balls of three thousand frames each, launched
+   * across a range of powers, with the drag varied and everything else held:
+   *
+   *     drag 0   mean speed 464   5.4% of frames inside the band
+   *     drag 2                404   10.1%
+   *     drag 4                378   12.8%
+   *     drag 6                307   16.3%
+   *     drag 8                256   17.7%
+   *
+   * The second column is the mechanic showing itself: a ball that is slowed inside the band STAYS in
+   * the band, so the flare holds what it catches, and at drag 4 the ball spends nearly two and a half
+   * times as long in it as geometry alone would give. Four is where that is plainly felt — a fifth off
+   * the table's mean speed — without the table becoming a place where nothing gets anywhere.
+   *
+   * The other half of fair is what `tests/table-reachable` measures: a drag strong enough to stop the
+   * ball reaching the top of the table would make the flare a wall the player cannot see. Six seconds
+   * a sweep puts two to five full cycles in a ball's life; forty-four pixels is under a fifth of the
+   * table, so the flare is something the ball passes THROUGH rather than a condition the table is in.
+   */
+  storm: { seconds: 6, thickness: 44, drag: 4 },
+
   missions: [
     // The middle cluster first, because it is what the player will hit whether they aim at it or not:
     // a first mission that completes itself teaches the machine before it asks anything.

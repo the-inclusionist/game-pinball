@@ -39,6 +39,7 @@ import {
 } from '../physics/flipper.js';
 import { extendedTipOf, type AuthoredComponent, type AuthoredTable } from './authored.js';
 import { createMover, type Mover } from './mover.js';
+import { flareGrip, stormPath } from './storm.js';
 import { createStuckWatch, type StuckWatch } from './stuck-watch.js';
 
 /** How a surface answers a ball. One per kind, because a bumper is not a wall. */
@@ -271,6 +272,13 @@ export interface TablePhysics {
    * which holds a static disc covering the whole path rather than the body itself.
    */
   readonly movers: readonly { readonly name: string; readonly mover: Mover }[];
+  /**
+   * The solar flare sweeping the table, if it declares one. Absent on every table that does not.
+   *
+   * The frame loop advances it and the backdrop is painted from where it is; the physics reads it
+   * through `fieldEffects`. It is a `Mover` and not in the grid — see where it is built.
+   */
+  readonly flare?: Mover;
   /** By name, because the control layer and the keyboard both address them that way. */
   flipperNamed(name: string): Flipper | undefined;
   /**
@@ -452,6 +460,14 @@ export function buildPhysics(table: AuthoredTable, o: PhysicsOptions = {}): Tabl
   const movers: { readonly name: string; readonly mover: Mover }[] = [];
 
   /**
+   * ⚠️ THE FLARE IS A TRAVELLING BODY THAT DOES NOT COLLIDE, so it is a `Mover` and it is NOT in the
+   * grid. Everything above about registering a moving body over its whole path is about bodies the
+   * ball bounces off; this one the ball passes through, and what it meets there is a force rather
+   * than an edge. Putting it in the grid would make the storm a wall across the table.
+   */
+  const flare = table.storm ? createMover(stormPath(table.storm, table.size)) : undefined;
+
+  /**
    * ⚠️ A BODY THAT TRAVELS, REGISTERED OVER EVERYWHERE IT CAN GO.
    *
    * `physics/grid` places an edge into cells ONCE, by its bounding box, so a moving body registered
@@ -556,6 +572,7 @@ export function buildPhysics(table: AuthoredTable, o: PhysicsOptions = {}): Tabl
     grid,
     flippers,
     movers,
+    flare,
     stuck: createStuckWatch(table, { relaunch: o.relaunch ?? (() => {}) }),
     flipperNamed: (name) => flipperByName.get(name),
     /**
@@ -586,10 +603,28 @@ export function buildPhysics(table: AuthoredTable, o: PhysicsOptions = {}): Tabl
       onFlipperHit(flipper, _ball) {
         hits.push({ name: nameOfFlipper.get(flipper) ?? 'flipper', reboundSpeed: 0 });
       },
-      fieldEffects(_ball, destination) {
+      fieldEffects(ball, destination) {
         // Down the table. `y` grows downward, so gravity is positive.
         destination.x = 0;
         destination.y = gravity;
+
+        /**
+         * ⚠️ AND THE FLARE DRAGS, WHICH IS THE FIRST THING BESIDES GRAVITY EVER TO USE THIS HOOK.
+         * `StepContext.fieldEffects` has existed since the physics was ported and has answered the
+         * same constant for every ball at every point on every table since — a seam with one user,
+         * which is how a seam stops being one.
+         *
+         * The force is `-k·v`: opposed to the way the ball is going, and proportional to how fast it
+         * is going. `physics/step` multiplies by the frame time and adds it to the velocity, so the
+         * ball loses a FRACTION of its speed per second rather than a fixed amount — which is what a
+         * medium does, and is stable at any frame rate. See `table/storm`.
+         */
+        if (!flare || !table.storm) return;
+        const grip = flareGrip(ball.position.y, flare.at.y, table.storm.thickness);
+        if (grip === 0) return;
+        const k = grip * table.storm.drag;
+        destination.x -= k * ball.direction.x * ball.speed;
+        destination.y -= k * ball.direction.y * ball.speed;
       },
     },
     takeHits() {
