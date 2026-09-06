@@ -32,6 +32,7 @@ import { buildOriginalOneways, onewayNames } from '../table/original-oneways.js'
 import { buildOriginalRollovers, rolloverNames } from '../table/original-rollovers.js';
 import { buildOriginalTripwires } from '../table/original-tripwires.js';
 import { buildOriginalRamps } from '../table/original-ramps.js';
+import { buildOriginalFlags, flagNames } from '../table/original-flags.js';
 import { flipperSides } from '../table/original-flippers.js';
 import { blockerNames, buildOriginalBlockers } from '../table/original-blockers.js';
 import { buildOriginalSinks } from '../table/original-sinks.js';
@@ -199,6 +200,7 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
   const blockers = blockerNames(manifest);
   const oneways = onewayNames(manifest);
   const rollovers = rolloverNames(manifest);
+  const flags = flagNames(manifest);
   const components = buildOriginalComponents(manifest, {
     // ⚠️ THE BUMPER SAYS WHEN IT FIRED, and that is when it is paid — see `payFor` and the wrapper it
     // is called from. A bumper reached through the wall wrapper alone is paid for every graze.
@@ -343,7 +345,10 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
     // ball is supposed to pass through, which is what this table had: nine gates, all shut.
     // ⚠️ AND A ROLLOVER IS TWO RECORDS AND NEITHER IS THIS ONE. Eighteen lanes the ball is meant to
     // roll ACROSS were being built as walls it bounced OFF — see `table/original-rollovers`.
-    skipWall: (name) => oneways.has(name) || rollovers.has(name),
+    // ⚠️ AND THE TWO FLAGS ARE SPINNERS THE BALL GOES THROUGH — see `table/flag-spinner`. Installed as
+    // the wall this loop would build, `a_flag1` is a horizontal shelf at y = -4.74 and the ball comes
+    // to REST on it: two of six seeded minutes of play ended with the ball sitting there for ever.
+    skipWall: (name) => oneways.has(name) || rollovers.has(name) || flags.has(name),
     // ⚠️ WITHOUT THIS THERE ARE NO FLIPPERS AT ALL. A flipper has no wall record; its shape is three
     // points and two times, and the table builds one only for a group it is told the side of.
     flipperSideFor: (name) => sides.get(name),
@@ -449,6 +454,13 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
     grid: table.grid,
     gravityMult: table.gravityMult,
     onEnter: (name) => { touched.push(name); payFor(name); },
+  });
+  buildOriginalFlags(manifest, {
+    table: { tiltLocked: false },
+    grid: table.grid,
+    timer: components.timer,
+    // The spinner's own edges carry it, so the wall wrapper never sees these crossings.
+    onSpin: (name) => { touched.push(name); payFor(name); },
   });
   buildOriginalRollovers(manifest, {
     table: { tiltLocked: false },

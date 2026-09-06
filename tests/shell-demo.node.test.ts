@@ -117,14 +117,16 @@ describe('the 1995 table, from an ArrayBuffer', () => {
     // and the table keeps its own float units throughout. Rounding is UP — 365/2 is 182.5, and 182
     // would cut a strip off the right of the table.
     expect([demo.playfield.width, demo.playfield.height]).toEqual([183, 235]);
-    // ⚠️ ONE HUNDRED AND SIXTEEN, AND IT WAS A HUNDRED AND FORTY-THREE. Twenty-seven groups build
+    // ⚠️ ONE HUNDRED AND FOURTEEN, AND IT WAS A HUNDRED AND FORTY-THREE. Twenty-nine groups build
     // their own geometry and none of them wants the plain wall this count is of:
     //
     //   · the NINE one-ways — two lines on the same two points, wound opposite ways, so that the ball
     //     can cross from one side only. The plain wall put a solid line across every gate.
     //   · the EIGHTEEN lanes — one polygon wound both ways, the second half live only while the ball
     //     is on the lane. The plain wall made every lane something the ball bounced off.
-    expect(demo.table.wallCount).toBe(116);
+    //   · the TWO flags, which are spinners: one segment wound both ways, and the ball goes through.
+    //     The plain wall made `a_flag1` a shelf the ball came to rest on and never left.
+    expect(demo.table.wallCount).toBe(114);
   });
 
   test('⚠️ the ball lands INSIDE the picture, which is what ties the physics to the pixels', () => {
