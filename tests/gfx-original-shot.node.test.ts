@@ -22,6 +22,8 @@ import { createDemo } from '../app/js/shell/demo.js';
 import { createFramebuffer } from '../app/js/gfx/framebuffer.js';
 import { drawDemoInto } from '../app/js/shell/demo-page.js';
 import { layoutHud, DEFAULT_HUD } from '../app/js/shell/hud.js';
+import { drawTable, blitView } from '../app/js/gfx/table-view.js';
+import { CATALOG } from '../app/js/table/catalog.js';
 
 const DAT = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/PINBALL.DAT';
 const MAGNIFY = 3;
@@ -172,4 +174,57 @@ describe('the frame the demonstration draws', () => {
     expect(layout.playfield.x, 'the table is inset, not flush left').toBeGreaterThan(0);
     expect(leftEdge, 'and nothing is drawn in the HUD column beside it').toBe(0);
   });
+});
+
+describe('the frames the AUTHORED tables draw', () => {
+  // ⚠️ ONE SHOT PER TABLE, because the catalogue is where phase 8 lives and nobody had looked at any of
+  // them either. The 1995 table hid a side panel over a third of its playfield and a table 69 columns
+  // out of place; there is no reason to believe five tables drawn from scratch are in better shape just
+  // because their geometry validates.
+  test.each(CATALOG.map((table) => [table.name, table] as const))(
+    '%s: composed onto the screen, and written to shots/',
+    (name, table) => {
+      const picture = drawTable({ table });
+      const screen = createFramebuffer(320, 180);
+      const layout = layoutHud({ ...DEFAULT_HUD, playfieldWidth: table.size.width });
+      // The camera starts at the far end of its travel — on the flippers — which is what a player sees
+      // when the table opens. `shell/camera` says so; this is that state, drawn.
+      const offsetY = Math.max(0, table.size.height - layout.playfield.height);
+      const offsetX = Math.max(0, table.size.width - layout.playfield.width);
+      blitView(screen, picture, layout.playfield, offsetX, offsetY);
+
+      mkdirSync('shots', { recursive: true });
+      writeFileSync(
+        `shots/authored-${name}.png`,
+        png(screen.width * MAGNIFY, screen.height * MAGNIFY,
+          magnify(new Uint8Array(screen.bytes.buffer, screen.bytes.byteOffset, screen.bytes.length),
+            screen.width, screen.height, MAGNIFY)),
+      );
+
+      // The same weak-on-purpose claims as the 1995 shot: that this is a picture in the right place.
+      let drawn = 0;
+      for (let y = 0; y < layout.playfield.height; y++) {
+        for (let x = 0; x < layout.playfield.width; x++) {
+          if (screen.pixels[y * screen.width + layout.playfield.x + x] !== 0) drawn++;
+        }
+      }
+      expect(drawn / (layout.playfield.height * layout.playfield.width), `${name} fills its window`)
+        .toBeGreaterThan(0.95);
+
+      // ⚠️ THE INSET IS ASSERTED BEFORE IT IS USED, or the loop below reads by the same link the blit
+      // did and passes over a table drawn flush left. Half the width the table does not use, rounded
+      // up, and zero when the table is at least as wide as the screen.
+      const spare = Math.max(0, screen.width - table.size.width);
+      expect(layout.playfield.x, `${name} is inset by half of what it does not use`)
+        .toBe(Math.ceil(spare / 2));
+
+      let outside = 0;
+      for (let y = 0; y < screen.height; y++) {
+        for (let x = 0; x < layout.playfield.x; x++) {
+          if (screen.pixels[y * screen.width + x] !== 0) outside++;
+        }
+      }
+      expect(outside, `${name} leaves the HUD column clear`).toBe(0);
+    },
+  );
 });
