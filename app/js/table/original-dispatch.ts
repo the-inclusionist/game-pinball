@@ -53,13 +53,14 @@ import {
   FUEL_REFUEL_TEXT_ID, OUT_LANES, BONUS_LANE, SPOT_TARGET_SETS, MEDAL_BANK, MULTIPLIER_BANK,
   BOOSTER_BANK, TABLE_ACTIONS, FLIPPER_REBOUNDERS, GATE_LAMPS, KICKERS, SKILL_SHOT,
   LAUNCH_RAMP, FLAGS, KICKOUTS, DRAIN, PER_BALL_RESET, MISSIONS, RANK, WORM_HOLE,
-  DRAIN_BLOCKER, PLUNGER_FEED,
+  DRAIN_BLOCKER, PLUNGER_FEED, WORM_HOLE_SINKS,
   type BumperLaneBinding,
 } from '../control/bindings.js';
 import { addExtraBall, createTableActions } from '../control/table-actions.js';
 import {
   makeFlagControl, makeBlackHoleKickoutControl, makeGravityWellKickoutControl,
-  makeWormHoleDestinationControl, advanceWormHoleDestination, type AdvanceOptions,
+  makeWormHoleDestinationControl, advanceWormHoleDestination, makeWormHoleControl,
+  type AdvanceOptions, type ArrowLamp, type WormholeSink,
 } from '../control/wormhole.js';
 import { drainBall, type DrainTable } from '../control/drain.js';
 import {
@@ -82,6 +83,7 @@ import type { OriginalComponents } from './original-components.js';
 import type { Gate } from './gate.js';
 import type { Kickout } from './kickout.js';
 import type { Blocker } from './blocker.js';
+import type { Sink } from './sink.js';
 
 export interface OriginalDispatchOptions {
   readonly components: OriginalComponents;
@@ -114,6 +116,12 @@ export interface OriginalDispatchOptions {
    * means the two hazard spot sets are declined rather than run with their completion missing.
    */
   readonly gates?: ReadonlyMap<string, Gate>;
+  /**
+   * ⚠️ THE HOLES THAT GIVE THE BALL BACK, AND ONLY THE WORMHOLE'S THREE. A sink does not release
+   * itself: it swallows the ball and waits for a control to reset its timer. `v_sink7` — the escape
+   * chute — runs no control this build has, so a caller must not let it own its collisions either.
+   */
+  readonly sinks?: ReadonlyMap<string, Sink>;
   /**
    * ⚠️ WHAT PUTS A BALL BACK INTO PLAY, AND THE ONLY THING THAT EVER RAISES THE BARRIER. `v_bloc1` is
    * built by `table/original-blockers` and reached from exactly one place in the whole game:
@@ -705,12 +713,15 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
     }
   }
 
+  // Declared here because `control/table-actions` needs to reach the plunger — a locked ball is
+  // answered by sending another one out — and the plunger is built at the end, once the feed is known.
+  let plunger: OriginalDispatch['plunger'] = null;
+
   // ⚠️ THE BOOSTER BANK, WHICH REACHES THE TABLE-LEVEL AWARDS. `control/table-actions` is the single
   // implementation of all of them — a flag, a lamp and a line — and it is built here rather than having
   // four of its rules copied into the chain's grants. Three of its seven actions have no caller yet:
   // multiball and replay belong to the missions, which this build does not run.
-  {
-    const actions = createTableActions({
+  const actions = createTableActions({
       ctx: ctx,
       text: {
         extraBall: o.textFor(TABLE_ACTIONS.textIds.extraBall),
@@ -729,8 +740,20 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
         multiball: TABLE_ACTIONS.lamps.multiball,
         flagLights: TABLE_ACTIONS.lamps.flagLights,
       },
+      // ⚠️ AND MULTIBALL IS THE THREE LOCKED BALLS COMING BACK. `table_set_multiball` resets all three
+      // wormhole sinks' timers, which is what releases what the locks put away — without this the
+      // count would go up by three and no ball would appear.
+      resetSinkTimers: (seconds) => {
+        for (const name of WORM_HOLE_SINKS.sinks) o.sinks?.get(name)?.scheduleRelease(seconds);
+      },
+      // ⚠️ `PlungerRelaunchBall`, WHICH THIS BUILD SPELLS AS A FEED. The original arms the plunger's own
+      // timer and feeds a ball when it expires; here the two messages already arrive together — see
+      // `shell/demo`. Absent when the feed is not wired, and then a locked ball is simply not replaced.
+      relaunchBall: () => plunger?.feedBall(),
+      lockedText: o.textFor(WORM_HOLE_SINKS.ballLockedTextId),
     });
 
+  {
     const grantOf: Readonly<Record<string, () => void>> = {
       flagLights: () => actions.setFlagLights(),
       jackpot: () => actions.setJackpot(),
@@ -1241,6 +1264,68 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
     },
   });
 
+  // ⚠️ THE WORMHOLE, WHICH IS THREE HOLES AND ONE ARRAY INDEX. Every path through `WormHoleControl`
+  // ends by flashing the lamps at index `i` and resetting SINK `i`'s timer — so the ball comes out of a
+  // hole it never went into, and the whole teleport is the choice of `i`.
+  //
+  // ⚠️ AND THE HOLD TIME COMES OFF THE HOLE THE BALL FELL INTO, not the one it leaves from. The arrival
+  // flash lasts exactly as long as that hole would have held the ball, so the lamp going out and the
+  // ball appearing are one event as far as the player can tell.
+  if (o.sinks) {
+    const wormSinks: WormholeSink[] = [];
+    for (const name of WORM_HOLE_SINKS.sinks) {
+      const sink = o.sinks.get(name);
+      if (!sink) break;
+      wormSinks.push({ timerTime: sink.holdTime, resetTimer: (seconds) => sink.scheduleRelease(seconds) });
+    }
+    const arrivalLamps = WORM_HOLE_SINKS.arrivalLamps
+      .map((name) => o.components.lights.get(name))
+      .filter((lamp): lamp is NonNullable<typeof lamp> => Boolean(lamp));
+    const arrowLamps = WORM_HOLE_SINKS.arrowLamps
+      .map((name) => o.components.lights.get(name))
+      .filter((lamp): lamp is NonNullable<typeof lamp> => Boolean(lamp));
+    const destinationLamp = o.components.lights.get(WORM_HOLE.destinationLamp);
+    const targetLamp = o.components.lights.get(WORM_HOLE.targetLamp);
+    // `TLightResetAndTurnOff` sent to a group, which is one message reaching every member —
+    // `feedAdapter` already spells that out, and it is all the wormhole asks of these two.
+    const wormHoleLights = feedAdapter(o.components, WORM_HOLE.wormHoleLights);
+    const arrowLights = feedAdapter(o.components, WORM_HOLE.arrowLights);
+
+    if (wormSinks.length === WORM_HOLE_SINKS.sinks.length
+      && arrivalLamps.length === WORM_HOLE_SINKS.arrivalLamps.length
+      && arrowLamps.length === WORM_HOLE_SINKS.arrowLamps.length
+      && destinationLamp && targetLamp && wormHoleLights && arrowLights) {
+      const callers = WORM_HOLE_SINKS.sinks.map((name): ControlledComponent => ({
+        name, scores: scoreRows.get(name)?.scores ?? [], control: null,
+      }));
+      const control = makeWormHoleControl({
+        sinks: wormSinks,
+        arrivalLamps,
+        arrowLamps: arrowLamps as unknown as ArrowLamp[],
+        destinationLamp,
+        targetLamp: targetLamp as unknown as LaneLight,
+        wormHoleLights,
+        arrowLights,
+        table: ctx.table,
+        lockBall: () => actions.bumpBallSinkLock(),
+        setReplay: (seconds) => actions.setReplay(seconds),
+        arrivalText: o.textFor(WORM_HOLE_SINKS.arrivalTextId),
+        // ⚠️ BY IDENTITY, NOT BY NAME. The control asks which of the three the caller IS, and the
+        // objects it is given are the ones registered below — a lookup by name would work until two
+        // holes were ever registered from different tables.
+        sinkIndexFor: (caller) => {
+          const index = callers.indexOf(caller);
+          return index < 0 ? undefined : index;
+        },
+      });
+
+      for (const caller of callers) {
+        byName.set(caller.name, caller);
+        controls.set(caller.name, (component) => control('ControlCollision', component, ctx));
+      }
+    }
+  }
+
   // ⚠️ THE BALL PUT BACK INTO PLAY, AND THE BARRIER THAT NOTHING COULD RAISE. `table/blocker` and
   // `control/feed` were both written and tested in their own passes and had never met: no path in this
   // port sent `TBlockerEnable`, so `v_bloc1` was a component no running game could reach.
@@ -1250,7 +1335,6 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
   // calling another — so the multiplier is switched off THROUGH its own control, which is what stops
   // its thirty-second clock. Clearing the number directly would leave the clock running and the lamps
   // coming down one at a time over a multiplier that was already zero.
-  let plunger: OriginalDispatch['plunger'] = null;
   let raiseDrainBlocker: (() => void) | undefined;
   if (o.feed) {
     const isEasyMode = o.isEasyMode ?? (() => false);

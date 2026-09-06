@@ -31,7 +31,7 @@ function build() {
 
   const ctx: ControlContext = {
     score: createScoreState(),
-    table: { extraBalls: 0, multiballCount: 0, ballCount: 3, tiltLocked: false },
+    table: { extraBalls: 0, multiballCount: 0, multiballFlag: false, ballCount: 3, tiltLocked: false },
     light: (name) => {
       if (!lights.has(name)) lights.set(name, fakeLight());
       return lights.get(name)!.light;

@@ -58,7 +58,7 @@ function build(rank: number, fuel = 3) {
 
   const ctx: MissionContext = {
     score,
-    table: { extraBalls: 0, multiballCount: 1, ballCount: 3, tiltLocked: false },
+    table: { extraBalls: 0, multiballCount: 1, multiballFlag: false, ballCount: 3, tiltLocked: false },
     light: () => undefined,
     group: () => undefined,
     showInfo: () => {},

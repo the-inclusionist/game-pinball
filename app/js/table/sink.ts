@@ -58,6 +58,13 @@ export interface SinkOptions {
 }
 
 export interface Sink {
+  /**
+   * `TSink::TimerTime`, read from record 407. Exposed because `WormHoleControl` reads it off the sink
+   * the ball fell into and passes it to a DIFFERENT sink and to two lamps: the arrival flash lasts
+   * exactly as long as the hole will hold the ball, so the light going out and the ball coming back
+   * are the same event.
+   */
+  readonly holdTime: number;
   collision(ball: unknown, position: Vector2, direction: Vector2, distance: number, edge: unknown): void;
   /** Schedules the ball's return. `TSinkResetTimer` in the original; a negative value means the default. */
   scheduleRelease(seconds?: number): void;
@@ -82,6 +89,8 @@ export function createSink(o: SinkOptions): Sink {
   }
 
   return {
+    holdTime: o.holdTime,
+
     collision(ball, position, direction, distance, edge): void {
       if (o.table.tiltLocked) {
         o.table.drainCollision(ball, position, direction, distance, edge);

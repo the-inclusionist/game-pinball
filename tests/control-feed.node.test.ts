@@ -44,7 +44,7 @@ function context() {
   const missionCodes: MessageCode[] = [];
   const ctx: ControlContext = {
     score: createScoreState(),
-    table: { extraBalls: 0, multiballCount: 0, ballCount: 3, tiltLocked: false },
+    table: { extraBalls: 0, multiballCount: 0, multiballFlag: false, ballCount: 3, tiltLocked: false },
     light: () => undefined,
     group: () => undefined,
     showInfo: (text, seconds) => info.push({ text, seconds }),

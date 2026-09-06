@@ -7,10 +7,12 @@ import { buildOriginalTable } from '../app/js/table/original.js';
 import { buildOriginalGates } from '../app/js/table/original-gates.js';
 import { buildOriginalKickouts, kickoutGeometry } from '../app/js/table/original-kickouts.js';
 import { blockerNames, buildOriginalBlockers } from '../app/js/table/original-blockers.js';
+import { buildOriginalSinks } from '../app/js/table/original-sinks.js';
 import {
   REENTRY_LANES, LAMP_BINDINGS, FUEL_ROLLOVERS, OUT_LANES, BONUS_LANE, SPOT_TARGET_SETS,
   MEDAL_BANK, MULTIPLIER_BANK, BOOSTER_BANK, TABLE_ACTIONS, GATE_LAMPS, KICKERS, SKILL_SHOT,
   LAUNCH_RAMP, FLAGS, DRAIN, PER_BALL_RESET, WORM_HOLE, DRAIN_BLOCKER, PLUNGER_FEED,
+  WORM_HOLE_SINKS,
 } from '../app/js/control/bindings.js';
 import { createScoreState } from '../app/js/control/score.js';
 import { BASE_BONUS } from '../app/js/control/drain.js';
@@ -34,9 +36,11 @@ const manifest = () => {
   return loadTable(new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength));
 };
 
-function wired(o: { gates?: boolean; easy?: boolean; drain?: boolean; feed?: boolean } = {}) {
+function wired(
+  o: { gates?: boolean; easy?: boolean; drain?: boolean; feed?: boolean; wormHole?: boolean } = {},
+) {
   const drainTable = {
-    tiltLocked: false, multiballCount: 0, extraBalls: 0, ballCount: 3,
+    tiltLocked: false, multiballCount: 0, multiballFlag: false, extraBalls: 0, ballCount: 3,
     currentPlayer: 0, playerCount: 1, unlimitedBalls: false,
   };
   const outcomes: string[] = [];
@@ -65,12 +69,29 @@ function wired(o: { gates?: boolean; easy?: boolean; drain?: boolean; feed?: boo
     : undefined;
   /** `table_unlimited_balls` and `TableG->ReflexShotScore`, which no other option carries. */
   const feedTable = { unlimitedBalls: true, reflexShotScore: 0 };
+  /**
+   * Where a released ball is put. The sinks are real; the TABLE under them is a stand-in, because what
+   * is under test is which hole gives the ball back, not the physics of the ball it hands over.
+   */
+  const born: { x: number; y: number }[] = [];
+  const sinks = o.wormHole
+    ? buildOriginalSinks(table, {
+      table: {
+        tiltLocked: false,
+        collisionCompOffset: 0.25,
+        drainCollision: () => {},
+        ballCountInRect: () => 0,
+        addBall: (at) => { born.push({ x: at.x, y: at.y }); return { collisionDisabled: false, throwBall: () => {} }; },
+      },
+      timer: components.timer,
+    })
+    : undefined;
   const score = createScoreState();
   const shown: string[] = [];
   const sounds: string[] = [];
   const context: ControlContext = {
     score,
-    table: { extraBalls: 0, multiballCount: 1, ballCount: 3, tiltLocked: false },
+    table: { extraBalls: 0, multiballCount: 1, multiballFlag: false, ballCount: 3, tiltLocked: false },
     light: (name) => components.lights.get(name),
     group: () => undefined,
     showInfo: (text) => shown.push(text),
@@ -83,6 +104,7 @@ function wired(o: { gates?: boolean; easy?: boolean; drain?: boolean; feed?: boo
     components, context, popupTargets, ...(gates ? { gates } : {}), ...(kickouts ? { kickouts } : {}),
     ...(o.easy ? { isEasyMode: () => true } : {}),
     ...(o.feed && blockers ? { feed: { table: feedTable, blockers } } : {}),
+    ...(sinks ? { sinks } : {}),
     ...(o.drain ? { drain: {
       table: drainTable,
       onOutcome: (outcome: string, over: boolean) => outcomes.push(over ? `${outcome}:over` : outcome),
@@ -91,7 +113,7 @@ function wired(o: { gates?: boolean; easy?: boolean; drain?: boolean; feed?: boo
   });
   return {
     components, score, shown, sounds, dispatch, context, geometry, gates, kickouts,
-    drainTable, outcomes, poppedUp, blockers, feedTable,
+    drainTable, outcomes, poppedUp, blockers, feedTable, sinks, born,
   };
 }
 
@@ -1862,5 +1884,130 @@ describe('the ball fed back onto the plunger', () => {
 
     expect(w.score.scoreMultiplier).toBe(0);
     expect(multiplierLamps.some((lamp) => lamp.lit), 'the group goes dark with it').toBe(false);
+  });
+});
+
+/**
+ * ⚠️ THE WORMHOLE, WHICH IS THREE HOLES AND ONE ARRAY INDEX.
+ *
+ * Every path through `WormHoleControl` ends the same way — flash the lamps at index `i` and reset SINK
+ * `i`'s timer, which is what releases a ball. The whole teleport is the choice of `i`, and the ball
+ * comes out of a hole it never went into.
+ */
+describe('the three holes the ball can travel between', () => {
+  test('⚠️ the three wormhole sinks are wired and the escape chute is NOT', () => {
+    // `v_sink7` runs no control this build has, and a hole with no control keeps the ball for the rest
+    // of the game — so it must not own its collisions either. Same rule as the unbound kickout.
+    const w = wired({ wormHole: true });
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+
+    for (const name of WORM_HOLE_SINKS.sinks) expect(w.dispatch.wired.has(name), name).toBe(true);
+    expect(w.dispatch.wired.has('v_sink7'), 'the escape chute').toBe(false);
+  });
+
+  test('with no destination armed the ball comes back out of the hole it went into', () => {
+    const w = wired({ wormHole: true });
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+
+    w.dispatch.hit('v_sink2');
+    w.components.advance(3);
+
+    expect(w.born.length).toBe(1);
+    expect(w.born[0]!.x, 'v_sink2’s own exit').toBeCloseTo(3.1718900, 5);
+  });
+
+  test('⚠️ with a destination armed and the WRONG hole, the ball leaves from the one the arrows point at', () => {
+    // This is the teleport. `lite4`'s message field holds the destination as a ONE-BASED index, and a
+    // ball that falls into any other hole is released from that one instead.
+    const w = wired({ wormHole: true });
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    w.components.lights.get(WORM_HOLE.destinationLamp)!.messageField = 3;
+
+    w.dispatch.hit('v_sink1');
+    w.components.advance(3);
+
+    expect(w.born.length).toBe(1);
+    expect(w.born[0]!.x, 'v_sink3’s exit, across the table').toBeCloseTo(-4.7144298, 5);
+  });
+
+  test('⚠️ the ARROW at the arrival hole is set to a frame, and the arrival lamp flashes', () => {
+    // `WormholeLightArray2[i]` is told frame `2 - i` and then flashed, and the two arrays are
+    // different lamps: `lite5/6/7` say where the ball is coming out, `lite4/2/3` are the arrows. Read
+    // one list for the other and the arrows never move while the wrong lamps blink.
+    const w = wired({ wormHole: true });
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    const arrivalLamp = w.components.lights.get(WORM_HOLE_SINKS.arrivalLamps[1]!)!;
+    const arrowLamp = w.components.lights.get(WORM_HOLE_SINKS.arrowLamps[1]!)!;
+
+    w.dispatch.hit('v_sink2');
+
+    expect(arrowLamp.onFrame, 'two minus the index').toBe(1);
+    expect(arrowLamp.flashing, 'the arrow flashes').toBe(true);
+    expect(arrivalLamp.flashing, 'and so does the arrival lamp').toBe(true);
+    // And the lamps of the holes the ball is NOT coming out of are left alone.
+    expect(w.components.lights.get(WORM_HOLE_SINKS.arrivalLamps[0]!)!.flashing).toBe(false);
+  });
+
+  test('⚠️ and the hole holds the ball for the two seconds record 407 gives IT', () => {
+    // The hold time comes off the hole the ball fell INTO, and it is what the arrival flash lasts. A
+    // fixed zero would give the ball straight back and the flash would be over before it began.
+    const w = wired({ wormHole: true });
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+
+    w.dispatch.hit('v_sink2');
+    w.components.advance(1.5);
+    expect(w.born, 'still held').toEqual([]);
+
+    w.components.advance(1);
+    expect(w.born.length).toBe(1);
+  });
+
+  test('⚠️ and the destination is spent by ANY hit, right or wrong', () => {
+    const w = wired({ wormHole: true });
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    const destination = w.components.lights.get(WORM_HOLE.destinationLamp)!;
+    const targetLamp = w.components.lights.get(WORM_HOLE.targetLamp)!;
+    destination.messageField = 3;
+    targetLamp.turnOn();
+
+    w.dispatch.hit('v_sink1');
+
+    expect(destination.messageField, 'spent').toBe(0);
+    expect(targetLamp.lit, 'and the target’s own lamp goes out with it').toBe(false);
+  });
+
+  test('⚠️ the RIGHT hole during multiball LOCKS the ball and gives nothing back', () => {
+    // The one path that does not release. The ball stays in the hole, the count comes down by one, and
+    // three of these start multiball — see `table_bump_ball_sink_lock`.
+    const w = wired({ wormHole: true });
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    w.context.table.multiballFlag = true;
+    w.context.table.multiballCount = 1;
+    w.components.lights.get(WORM_HOLE.destinationLamp)!.messageField = 1;
+
+    w.dispatch.hit('v_sink1');
+    w.components.advance(3);
+
+    expect(w.born, 'nothing came back').toEqual([]);
+    expect(w.context.table.multiballCount, 'and the ball is off the table').toBe(0);
+    expect(w.score.curScore, 'ten thousand, flat').toBe(10000);
+  });
+
+  test('⚠️ and the third lock is what starts multiball, which is the only trigger the game has', () => {
+    const w = wired({ wormHole: true });
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    w.context.table.multiballFlag = true;
+    const destination = w.components.lights.get(WORM_HOLE.destinationLamp)!;
+
+    for (let lock = 0; lock < 3; lock++) {
+      w.context.table.multiballCount = 1;
+      destination.messageField = 1;
+      w.dispatch.hit('v_sink1');
+    }
+
+    // Three balls added on top of the one it was put back to, less the third lock's own step.
+    expect(w.context.table.multiballCount).toBe(3);
+    w.components.advance(3);
+    expect(w.born.length, 'and all three holes give their ball back').toBe(3);
   });
 });

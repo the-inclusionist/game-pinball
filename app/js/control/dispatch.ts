@@ -79,7 +79,14 @@ export interface ControlContext {
 
 export interface TableFlags {
   extraBalls: number;
+  /** How many balls are on the table. ONE ball in play is a count of one; a lock takes it down. */
   multiballCount: number;
+  /**
+   * ⚠️ `TableG->MultiballFlag`, WHICH IS NOT THE COUNT. The count says how many balls are out; the
+   * flag says the table is IN multiball, and the wormhole branches on both — flag set with a count of
+   * one is the moment the last ball of a multiball is about to be locked away again.
+   */
+  multiballFlag: boolean;
   ballCount: number;
   tiltLocked: boolean;
 }

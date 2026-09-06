@@ -187,7 +187,7 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
    * plus `reflexShotScore`, which is the plunger's, and lives on `TPinballTable` in the original.
    */
   const drainTable = {
-    tiltLocked: false, multiballCount: 0, extraBalls: 0, ballCount: DEMO_BALLS,
+    tiltLocked: false, multiballCount: 0, multiballFlag: false, extraBalls: 0, ballCount: DEMO_BALLS,
     currentPlayer: 0, playerCount: 1, unlimitedBalls: false, reflexShotScore: 0,
   };
   let gameOver = false;

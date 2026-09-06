@@ -485,6 +485,32 @@ export const WORM_HOLE = {
   announceTextId: 'STRING194',
 } as const;
 
+/**
+ * `WormHoleControl`: the three holes the ball can travel between, and the arrays that make the teleport
+ * one index.
+ *
+ * ⚠️ `lite4` IS IN TWO OF THESE ROLES AT ONCE. It is `WormholeLightArray2[0]` — the first hole's arrow —
+ * AND it is the lamp whose MESSAGE FIELD holds the armed destination, which `WORM_HOLE.destinationLamp`
+ * names. One lamp, two mechanics, and neither function mentions the other; the same habit as `lite16`
+ * being both the rank's progress lamp and the bonus lane's arming.
+ *
+ * ⚠️ AND THE DESTINATION IS ONE-BASED, because zero has to mean "nothing armed". `lite4Msg == sinkFlag
+ * + 1` is the test for "the ball fell into the hole the arrows were pointing at"; reading the field as
+ * an index would send every correct shot to the hole before the right one.
+ */
+export const WORM_HOLE_SINKS = {
+  control: 'WormHoleControl',
+  /** `WormholeSinkArray`. The order IS the index the destination lamp counts in. */
+  sinks: ['v_sink1', 'v_sink2', 'v_sink3'],
+  /** `WormholeLightArray1` — where the ball is about to come out. */
+  arrivalLamps: ['lite5', 'lite6', 'lite7'],
+  /** `WormholeLightArray2` — the arrows, whose drawn FRAME says which of the three. */
+  arrowLamps: ['lite4', 'lite2', 'lite3'],
+  arrivalTextId: 'STRING150',
+  /** `STRING102`, shown for each of the first two balls locked away. */
+  ballLockedTextId: 'STRING102',
+} as const;
+
 export const RANK = {
   outerCircle: 'outer_circle',
   middleCircle: 'middle_circle',

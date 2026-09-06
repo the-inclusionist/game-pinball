@@ -32,7 +32,7 @@ function build(controllers: Partial<Record<number, MissionController>> = {}) {
 
   const ctx: MissionContext = {
     score: createScoreState(),
-    table: { extraBalls: 0, multiballCount: 0, ballCount: 3, tiltLocked: false },
+    table: { extraBalls: 0, multiballCount: 0, multiballFlag: false, ballCount: 3, tiltLocked: false },
     light: () => undefined,
     group: () => undefined,
     showInfo: () => {},

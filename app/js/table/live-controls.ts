@@ -83,7 +83,7 @@ export const BALLS_PER_GAME = 3;
 export function createLiveControls(table: AuthoredTable, o: LiveControlsOptions = {}): LiveControls {
   const score = createScoreState();
   const flags: TableFlags = {
-    extraBalls: 0, multiballCount: 1, ballCount: BALLS_PER_GAME, tiltLocked: false,
+    extraBalls: 0, multiballCount: 1, multiballFlag: false, ballCount: BALLS_PER_GAME, tiltLocked: false,
   };
 
   // A timer service of our own rather than the game's: lamps are the only thing here that keeps time,

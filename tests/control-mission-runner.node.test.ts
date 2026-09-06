@@ -70,7 +70,7 @@ function build(overrides: Partial<MissionDefinition> = {}, promoted = false) {
 
   const ctx: MissionContext = {
     score,
-    table: { extraBalls: 0, multiballCount: 1, ballCount: 3, tiltLocked: false },
+    table: { extraBalls: 0, multiballCount: 1, multiballFlag: false, ballCount: 3, tiltLocked: false },
     light: () => undefined,
     group: () => undefined,
     showInfo: (text, seconds) => info.push({ text, seconds }),
