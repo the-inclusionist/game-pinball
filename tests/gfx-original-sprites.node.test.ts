@@ -75,26 +75,42 @@ describe('the lamps, as pictures', () => {
     expect(pixels.some((p) => p !== 0), 'and some of it is the lamp').toBe(true);
   });
 
-  test('⚠️ and on THIS file every lamp has exactly one picture, so the frame index chooses nothing', () => {
-    // `TLight` carries a frame index and `setOnFrame` moves it, and the archive gives not one of its
-    // hundred and thirty-nine lamps a second bitmap. So the index is real machinery with nothing to
-    // choose between here, and the frames are kept as a LIST anyway — in the archive's own order,
-    // which is the order the index counts in — because an authored table is where it will matter.
+  test('⚠️ A COMPONENT’S OTHER FRAMES ARE IN THE UNNAMED GROUPS THAT FOLLOW IT', () => {
+    // This is the part I got wrong first, and the file is emphatic about it. `TPinballComponent` asks
+    // `loader::query_visual(groupIndex, i)` for every visual state it has, and the loader walks
+    // FORWARD from the component's own group: the frames sit in the anonymous groups between it and
+    // the next named one.
     //
-    // Asserting that some lamp has several would have been asserting a wish: I wrote that test first
-    // and the file said no.
+    // Reading only the named group's own bitmap gives every component frame zero and nothing else —
+    // which looks like a table whose parts simply do not animate, and there is no error anywhere.
     const groups = archive();
     if (!groups) return expect(existsSync(DAT)).toBe(false);
 
     const lamps = readLampSprites(groups);
 
-    for (const [name, lamp] of lamps) expect(lamp.frames.length, name).toBe(1);
-    // And the picture is the group's own first bitmap, at its own size.
-    const group = groups.find((g) => g?.name === 'lite25')!;
-    const header = readBitmapHeader(
-      group.entries.find((e) => e.type === EntryType.Bitmap8)!.data!,
-    );
-    expect(lamps.get('lite25')!.frames[0]!.width).toBe(header.width);
+    // `lite1` is followed immediately by `lite2`, so it has one picture and no more.
+    expect(lamps.get('lite1')!.frames.length).toBe(1);
+    // `lite2` is followed by two anonymous groups of its own size.
+    expect(lamps.get('lite2')!.frames.length).toBe(3);
+    for (const frame of lamps.get('lite2')!.frames) {
+      expect([frame.width, frame.height]).toEqual([10, 8]);
+    }
+  });
+
+  test('⚠️ and the frames stop at the next NAMED group', () => {
+    // The anonymous run belongs to the component before it. Walking past the next name would give
+    // `lite2` the frames of `lite3` as well, and a lamp would draw a picture from somewhere else on
+    // the table — the right thing in the wrong place, which is the hardest kind of wrong to see.
+    const groups = archive();
+    if (!groups) return expect(existsSync(DAT)).toBe(false);
+    const lamps = readLampSprites(groups);
+
+    const lite2 = lamps.get('lite2')!;
+    const lite3 = lamps.get('lite3')!;
+
+    expect(lite2.frames.length).toBe(3);
+    expect(lite3.frames.length).toBe(3);
+    expect([lite3.frames[0]!.width, lite3.frames[0]!.height], 'and its own size').toEqual([12, 12]);
   });
 
   test('⚠️ at half scale both the picture and the CORNER it sits at halve', () => {
@@ -177,6 +193,19 @@ describe('the ball’s own picture', () => {
     expect([ball.frames[0]!.width, ball.frames[0]!.height]).toEqual([9, 9]);
     // (0,0) in the window is (-137,-2) against the table's corner: the ball is not AT a place.
     expect([ball.x, ball.y]).toEqual([-137, -2]);
+  });
+
+  test('⚠️ and its seven frames are SIZES, not poses: the ball is bigger when it is nearer', () => {
+    // Nine pixels across up to fifteen, one per step. Every other component's frames are a pose or a
+    // brightness; the ball's are perspective, and `TBall::Repaint` picks by depth. This build draws
+    // the first, which is the ball at its farthest — stated here rather than left to be discovered.
+    const groups = archive();
+    if (!groups) return expect(existsSync(DAT)).toBe(false);
+
+    const ball = readSprite(groups, 'ball')!;
+
+    expect(ball.frames.map((f) => f.width)).toEqual([9, 10, 11, 12, 13, 14, 15]);
+    for (const frame of ball.frames) expect(frame.width).toBe(frame.height);
   });
 
   test('⚠️ and a group that does not exist answers null rather than an empty picture', () => {

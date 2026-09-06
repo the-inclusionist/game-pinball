@@ -6,11 +6,18 @@
 // so nothing the control layer decides has ever been visible. This reads the one the archive ships
 // beside each group.
 //
-// ⚠️ EVERY GROUP IN THIS FILE CARRIES EXACTLY ONE BITMAP — all one hundred and thirty-three lamps, both
-// flippers, the twenty-two targets, the ball. Whatever animates in the original does not animate out of
-// the archive, and a port that went looking for frame two would find nothing and quietly draw frame one
-// for ever. Frames are still a LIST, in the archive's order, because that is what `TLight`'s frame
-// index counts in and an authored table is where it will matter.
+// ========================= A COMPONENT'S FRAMES ARE IN THE GROUPS THAT FOLLOW IT =========================
+// ⚠️ EVERY NAMED GROUP CARRIES ONE BITMAP, AND THAT IS NOT ALL THE COMPONENT HAS. `TPinballComponent`
+// asks `loader::query_visual(groupIndex, i)` for each of its visual states, and the loader walks
+// FORWARD: the rest of the frames sit in the ANONYMOUS groups between this one and the next named one.
+//
+// Read the named group alone and every component has exactly one picture — which is what this module
+// did at first. It looks like a table whose parts do not animate, and nothing anywhere errors: the
+// flipper has eight poses, a bumper alternates two, `lite2` has three brightnesses, and the ball has
+// seven SIZES, nine pixels across to fifteen, because a ball nearer the camera is drawn bigger.
+//
+// The run stops at the next NAME. Walking past it would give one lamp the pictures of the next, which
+// is the right thing drawn in the wrong place — the hardest kind of wrong to see.
 //
 // ========================= A BITMAP'S POSITION IS IN THE WINDOW, NOT ON THE TABLE =========================
 // ⚠️ Every bitmap in `PINBALL.DAT` carries where it goes in the 1995 WINDOW — 600x416, the playfield on
@@ -79,8 +86,8 @@ export function readSprite(
 ): LampSprite | null {
   const context = spriteContext(groups);
   if (!context) return null;
-  const group = groupNamed(groups, name);
-  return group ? decodeSprite(group, context, o.scale ?? 1) : null;
+  const index = groups.findIndex((group) => group?.name === name);
+  return index < 0 ? null : decodeSprite(groups, index, context, o.scale ?? 1);
 }
 
 interface SpriteContext {
@@ -101,8 +108,24 @@ function spriteContext(groups: readonly Group[]): SpriteContext | null {
   return { palette: readPalette(paletteData), origin: { x: header.x, y: header.y } };
 }
 
-function decodeSprite(group: Group, context: SpriteContext, scale: number): LampSprite | null {
-  const bitmaps = entriesOfType(group, EntryType.Bitmap8);
+/**
+ * The bitmaps of a component: its own group's, then those of every ANONYMOUS group that follows it.
+ * See this module's header — the anonymous run belongs to the named group before it.
+ */
+function framesOf(groups: readonly Group[], index: number): Uint8Array[] {
+  const bitmaps = entriesOfType(groups[index]!, EntryType.Bitmap8);
+  for (let next = index + 1; next < groups.length; next++) {
+    const group = groups[next];
+    if (!group || group.name) break;
+    bitmaps.push(...entriesOfType(group, EntryType.Bitmap8));
+  }
+  return bitmaps;
+}
+
+function decodeSprite(
+  groups: readonly Group[], index: number, context: SpriteContext, scale: number,
+): LampSprite | null {
+  const bitmaps = framesOf(groups, index);
   if (!bitmaps.length) return null;
 
   const frames: Framebuffer[] = [];
@@ -149,9 +172,10 @@ export function readLampSprites(
   const context = spriteContext(groups);
   if (!context) return sprites;
 
-  for (const group of groups) {
+  for (let index = 0; index < groups.length; index++) {
+    const group = groups[index];
     if (!group?.name?.startsWith('lite')) continue;
-    const sprite = decodeSprite(group, context, scale);
+    const sprite = decodeSprite(groups, index, context, scale);
     if (sprite) sprites.set(group.name, sprite);
   }
 
