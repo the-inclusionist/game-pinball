@@ -41,10 +41,6 @@ const SANCTIONED: Readonly<Record<string, string>> = {
   'gfx/render.ts':
     'the dirty-rectangle compositor. The demonstration repaints all 43005 pixels each frame, which at '
     + 'this size costs less than the bookkeeping that would avoid it',
-  'table/original-roles.ts':
-    'the proposed role of each 1995 component. It is a DECISION waiting for the Dev, and until it is '
-    + 'approved `main.ts` refuses blind mode in the demonstration rather than describing the table '
-    + 'wrongly. Wiring it is one line once the answer comes',
 };
 
 function modulesUnder(directory: string, prefix = ''): string[] {

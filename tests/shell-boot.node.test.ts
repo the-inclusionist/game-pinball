@@ -97,15 +97,17 @@ describe('the camera on a table wider than the window', () => {
     expect(source, 'the debug surface carries both axes').toMatch(/get cameraX\(\) \{ return shell\.cameraX; \}/);
   });
 
-  test('⚠️ and the accessibility keys are REFUSED while the 1995 table is on screen', () => {
-    // The declaration the engine reads is built once at boot from the AUTHORED table, and the
-    // demonstration is an early return through the frame loop: `refreshObjective` is never called
-    // there and `sonarPlayer` is never moved. So in `?demo=original` the contract answers with the
-    // authored table's targets and a ball position that stopped updating at boot — and blind mode and
-    // the sweep would describe a table that is not on screen.
+  test('⚠️ and the accessibility keys are refused only while there is NOTHING to describe', () => {
+    // This test used to say the keys are refused for the whole demonstration, and that was right for
+    // as long as it was true: the declaration was built once at boot from the AUTHORED table, so with
+    // the 1995 table on screen the contract answered about a table that was not there. Blind mode and
+    // the sweep were refused rather than allowed to give a confident wrong answer.
     //
-    // A switch that gives a confident wrong answer is worse than one that says it cannot answer. Both
-    // are refused, and the refusal is announced in the live region rather than being silence.
+    // `shell/demo-world` is the other half, and the refusal narrowed with it. The demonstration now
+    // answers for itself — components, roles, rectangles, the ball where it is drawn, the running
+    // mission's own targets — from the moment the player's archive is read. What survives is the
+    // window BEFORE that: `?demo=original` shows a file picker, and until a file is handed over there
+    // is no table at all. `demoView` is exactly that fact, so the guard reads it.
     //
     // ⚠️ AN INVENTORY, NOT A RUN, and weaker for it: `main.ts` is the browser entry point and no unit
     // test drives it. The same pattern the sound-player and camera checks use, for the same reason.
@@ -113,10 +115,20 @@ describe('the camera on a table wider than the window', () => {
 
     // Two guards and one announcement, as plain text: a regex spanning lines would be a cleverer way
     // of saying the same thing and a worse way of failing.
-    expect(source.match(/if \(demoRequested\) return sayUnavailable\(\);/g) ?? [],
+    expect(source.match(/if \(demoRequested && !demoView\) return sayUnavailable\(\);/g) ?? [],
       'both keys check before they act').toHaveLength(2);
+    // ⚠️ AND THE OLD GUARD IS GONE, not merely joined. A leftover unconditional refusal on either key
+    // would keep saying "not here" over a table the engine can now describe perfectly well, and the
+    // count above would still pass with it sitting there.
+    expect(source.match(/if \(demoRequested\) return sayUnavailable\(\);/g) ?? [],
+      'no key refuses unconditionally any more').toHaveLength(0);
     expect(source, 'and the refusal is spoken, not silent')
       .toContain("shell.t('pinball.a11y.unavailableInDemo')");
+    // ⚠️ AND THE THING THE GUARD READS IS ACTUALLY SET. A `demoView` that stayed null for ever would
+    // make both guards above true, both assertions pass, and the refusal permanent — the test would be
+    // reading the same never-taken branch the code does. It is assigned where the archive arrives.
+    expect(source, 'the declaration is built when the archive is read')
+      .toMatch(/demoView = demoWorld\(\{ demo: ready, groups: groupsOf\(archive\) \}\)/);
   });
 
   test('⚠️ and a table NO wider than the window does not move sideways at all', () => {

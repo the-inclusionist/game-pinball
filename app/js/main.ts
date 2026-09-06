@@ -12,7 +12,7 @@
 // has to prove.
 
 import { createGame } from '@the-inclusionist/engine';
-import { bootPinball, type Phase } from './shell/boot.js';
+import { bootPinball, type LiveTable, type Phase } from './shell/boot.js';
 import { CATALOG, DEFAULT_TABLE, tableNamed } from './table/catalog.js';
 import { toLiveTable, validateTable, type TableState } from './table/authored.js';
 import { DEFAULT_CAMERA } from './shell/camera.js';
@@ -27,6 +27,7 @@ import { createRolloverWatch } from './table/rollovers.js';
 import { objectiveOf, AUTHORED_OBJECTIVE_ID } from './table/objective.js';
 import { mountHud } from './shell/hud-dom.js';
 import { mountDemoPage } from './shell/demo-page.js';
+import { demoWorld, groupsOf } from './shell/demo-world.js';
 import { MUSIC_WINDOW, MUSIC_LOOKAHEAD } from './shell/demo.js';
 import { playSchedule } from './audio/midi-player.js';
 import { createDemo, hintFor, type Demo } from './shell/demo.js';
@@ -120,7 +121,33 @@ function launch(): void {
   phase = 'playing';
 }
 
-const table = toLiveTable(authored, () => state);
+const authoredTable = toLiveTable(authored, () => state);
+
+/**
+ * ⚠️ THE DECLARATION FOLLOWS WHAT IS ON SCREEN, and until now it could not.
+ *
+ * `bootPinball` reads the table once, at boot, and the demonstration arrives later — the player has to
+ * hand over their own archive first. So with the 1995 table showing, every accessibility question was
+ * answered about the AUTHORED table: the sonar's targets, the guide's focus, the name and role under a
+ * point. Blind mode was refused rather than allowed to answer wrongly.
+ *
+ * This is a view over BOTH, and the switch is which one exists. Every field is a getter, which is the
+ * same rule `createPinballWorld` follows one level down: a snapshot taken at boot would answer about
+ * the first frame for ever, and here it would answer about the wrong table for ever.
+ */
+let demoView: ReturnType<typeof demoWorld> | null = null;
+const table: LiveTable = {
+  get playfieldWidth() { return (demoView ?? authoredTable).playfieldWidth; },
+  get playfieldHeight() { return (demoView ?? authoredTable).playfieldHeight; },
+  get ballRadius() { return (demoView ?? authoredTable).ballRadius; },
+  get balls() { return (demoView ?? authoredTable).balls; },
+  get components() { return (demoView ?? authoredTable).components; },
+  kindOfComponent: (name) => (demoView ?? authoredTable).kindOfComponent?.(name) ?? null,
+  get missionTextId() { return (demoView ?? authoredTable).missionTextId; },
+  get missionHave() { return (demoView ?? authoredTable).missionHave; },
+  get missionNeed() { return (demoView ?? authoredTable).missionNeed; },
+  get missionTargets() { return (demoView ?? authoredTable).missionTargets; },
+};
 
 let phase: Phase = 'title';
 
@@ -291,6 +318,13 @@ function step(frames: number): void {
   if (demoRequested) {
     if (demo) {
       demo.step(frames);
+      // ⚠️ AND THE GUIDE FOLLOWS THIS BALL. `sonarPlayer` is the position the engine pings from, and in
+      // the demonstration's early return nothing had ever moved it: the guide pointed from wherever the
+      // authored table left it at boot.
+      const at = demo.ballOnScreen();
+      sonarPlayer.x = at.x;
+      sonarPlayer.y = at.y;
+      shell.engine.sonar.updateGuide();
       topUpMusic();
       demoPage!.blit(demo);
       paint();
@@ -480,7 +514,11 @@ const unbindControls = bindPinballControls({
    * already name. That is a piece of work, not a line.
    */
   toggleBlindMode: () => {
-    if (demoRequested) return sayUnavailable();
+    // ⚠️ REFUSED ONLY WHILE THERE IS NOTHING TO DESCRIBE. The demonstration answers for itself once the
+    // player's archive is loaded and `demoView` exists; before that — and if the file is never handed
+    // over — the contract still holds the authored table, and a guide describing it over a blank
+    // screen is the confident wrong answer this refusal was added for.
+    if (demoRequested && !demoView) return sayUnavailable();
     blind = !blind;
     // Announced through the host's own live region, which is where an EVENT belongs — the HUD blocks
     // are readable on request and deliberately not live. See `shell/hud-dom`.
@@ -496,7 +534,7 @@ const unbindControls = bindPinballControls({
    * so nobody chases it a third time.
    */
   sweep: () => {
-    if (demoRequested) return sayUnavailable();
+    if (demoRequested && !demoView) return sayUnavailable();
     shell.engine.sonar.sonar(sonarPlayer);
   },
   /**
@@ -557,7 +595,12 @@ const demoPage = demoRequested
     screen,
     playfield: shell.hud.playfield,
     t: shell.t,
-    onReady: (ready) => { demo = ready; },
+    onReady: (ready, archive) => {
+      demo = ready;
+      // ⚠️ AND THE DECLARATION SWITCHES HERE, which is the moment the 1995 table becomes describable.
+      // Before it, the contract holds the authored table and the accessibility keys refuse.
+      demoView = demoWorld({ demo: ready, groups: groupsOf(archive) });
+    },
     // ⚠️ THE SAME BOARD THE AUTHORED TABLE USES, so the demonstration is mixed, channel-limited and
     // released like everything else rather than given a second path to the speakers. `ensureAudio` is
     // called per sound because a browser will not start a context before a gesture, and the first

@@ -27,8 +27,16 @@ export interface DemoPageOptions {
    */
   readonly playfield: Rect;
   readonly t: Translate;
-  /** Called once the archive has been read, so the caller can start driving frames. */
-  readonly onReady: (demo: Demo) => void;
+  /**
+   * Called once the archive has been read, so the caller can start driving frames.
+   *
+   * ⚠️ THE BYTES COME BACK TOO, and that is not a convenience. The demonstration keeps the parsed
+   * table to itself; the caller needs the same archive to build the accessibility declaration —
+   * component names, roles and rectangles — and the ONLY moment those bytes exist is here, inside the
+   * file picker's handler. They are the player's own file, never fetched and never served, so there is
+   * no second chance to read them: a caller that does not take them now cannot ask for them later.
+   */
+  readonly onReady: (demo: Demo, archive: ArrayBuffer) => void;
   readonly onError: (message: string) => void;
   /** The player's own `PINBALL.MID`, offered after the table has opened. Optional, like the music. */
   readonly onMusic?: (bytes: ArrayBuffer) => boolean;
@@ -202,7 +210,7 @@ export function mountDemoPage(o: DemoPageOptions): DemoPage {
         panel.remove();
         if (o.onMusic) o.host.appendChild(musicPanel);
         if (o.onSounds) o.host.appendChild(soundsPanel);
-        o.onReady(demo);
+        o.onReady(demo, bytes);
       } catch (error) {
         o.onError(error instanceof Error ? error.message : String(error));
       }
