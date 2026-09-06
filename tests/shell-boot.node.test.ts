@@ -409,10 +409,19 @@ describe('booting', () => {
   test('⚠️ a dropped target leaves the picture AND the table', () => {
     const source = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../app/js/main.ts'), 'utf8');
 
-    expect(source, 'the picture is told which targets are down')
-      .toMatch(/drawTable\(\{[^}]*hidden: live\.downTargets\(\)/s);
+    /**
+     * ⚠️ ONE LIST FOR BOTH, AND IT USED TO BE `live.downTargets()` TWICE. A secret passage is the
+     * second answer to "what is not there right now" — a door that has opened — and the moment there
+     * were two answers, two call sites reading the same expression became two call sites that could
+     * come to differ. `hiddenNow` is built once and handed to the picture and to the physics, which is
+     * what makes them agree by construction rather than by both being edited.
+     */
+    expect(source, 'the two are built from one list')
+      .toMatch(/const hiddenNow = \[\.\.\.live\.downTargets\(\), \.\.\.openSecrets\(/s);
+    expect(source, 'the picture is told what is not there')
+      .toMatch(/drawTable\(\{[^}]*hidden: hiddenNow/s);
     expect(source, 'and so is the physics')
-      .toMatch(/setComponentActive\([^)]*live\.downTargets\(\)/s);
+      .toMatch(/setComponentActive\([^)]*hiddenNow\.includes\(/s);
   });
 
   /**

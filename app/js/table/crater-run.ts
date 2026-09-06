@@ -32,6 +32,12 @@ const HEIGHT = 260;
 /** The name every member of the bank points at, and the table declares once. */
 const BANK_NAME = 'bank.crater';
 
+/** The cabinet's own arithmetic, repeated here because this table splits the divider. */
+const DIVIDER = WIDTH - 21;
+/** The secret passage's mouth, well above the funnel guide's top at y = 193. */
+const PASSAGE_TOP = 160;
+const PASSAGE_BOTTOM = 176;
+
 /**
  * Five DROP targets in a row across the middle, 20 apart: a rattling ball can take more than one.
  *
@@ -99,7 +105,49 @@ export const CRATER_RUN: AuthoredTable = {
   ],
 
   components: [
-    ...cabinet({ width: WIDTH, height: HEIGHT }),
+    // ⚠️ THE DIVIDER IS THIS TABLE'S OWN, because it has a hole in it. Everything else in the shell
+    // is the cabinet's; see the passage below for why this one is not.
+    ...cabinet({ width: WIDTH, height: HEIGHT }).filter((c) => c.name !== 'wall.laneDivider'),
+
+    /* ===================== THE SECRET PASSAGE =====================
+     *
+     * ⚠️ THE DEV, IN TWO SENTENCES: "um ou dois cenários contendo passagens secretas que se abrem caso
+     * na primeira tacada a bola desça", and "mesas que tenham passagem secreta, que permitam que a
+     * bola saia pela lateral baixa ao invés de sair pelo topo."
+     *
+     * The plunger lane delivers the ball over the whole playfield to the top and that is the only way
+     * in. This is a second mouth, sixteen pixels of it, two-thirds of the way down the divider — a
+     * ball with sideways speed in the lane leaves into the play ABOVE the funnel, which is thirty
+     * pixels of table rather than the two hundred and sixty the long way round.
+     *
+     * ⚠️ AND IT IS SIXTY PIXELS ABOVE THE GUIDE'S TOP ON PURPOSE. Lower than y = 193 the far side of
+     * the divider is the right OUTLANE channel, so a passage there would not be a way into the play,
+     * it would be a way into the gutter — a secret that costs the ball is a punishment dressed as a
+     * reward.
+     *
+     * The divider is split into three because of it: the wall above, the wall below, and the door
+     * between them. Each keeps BOTH faces — the fix that made this possible at all.
+     */
+    { name: 'wall.laneDivider', kind: 'wall', role: WALL,
+      bounds: { x: DIVIDER, y: 34, width: 4, height: PASSAGE_TOP - 34 },
+      collision: [
+        { kind: 'line', from: { x: DIVIDER, y: PASSAGE_TOP }, to: { x: DIVIDER, y: 34 } },
+        { kind: 'line', from: { x: DIVIDER + 4, y: 34 }, to: { x: DIVIDER + 4, y: PASSAGE_TOP } },
+      ] },
+    { name: 'wall.laneDividerLow', kind: 'wall', role: WALL,
+      bounds: { x: DIVIDER, y: PASSAGE_BOTTOM, width: 4, height: HEIGHT - PASSAGE_BOTTOM },
+      collision: [
+        { kind: 'line', from: { x: DIVIDER, y: HEIGHT }, to: { x: DIVIDER, y: PASSAGE_BOTTOM } },
+        { kind: 'line', from: { x: DIVIDER + 4, y: PASSAGE_BOTTOM }, to: { x: DIVIDER + 4, y: HEIGHT } },
+      ] },
+    { name: 'passage.crater', kind: 'blocker', role: 'gate',
+      bounds: { x: DIVIDER, y: PASSAGE_TOP, width: 4, height: PASSAGE_BOTTOM - PASSAGE_TOP },
+      // One lost ball, which is his "na primeira tacada a bola desça" exactly.
+      secret: { afterLostBalls: 1 },
+      collision: [
+        { kind: 'line', from: { x: DIVIDER, y: PASSAGE_BOTTOM }, to: { x: DIVIDER, y: PASSAGE_TOP } },
+        { kind: 'line', from: { x: DIVIDER + 4, y: PASSAGE_TOP }, to: { x: DIVIDER + 4, y: PASSAGE_BOTTOM } },
+      ] },
 
     /* ===================== THE BANK: FIVE IN A ROW ===================== */
     ...BANK,
@@ -193,7 +241,7 @@ export const CRATER_RUN: AuthoredTable = {
       scores: [3500], control: 'RebounderControl', lamps: ['lamp.probeHigh'],
       mover: { from: { x: 40, y: 110 }, to: { x: 132, y: 110 }, seconds: 2.8, radius: 5 } },
     { name: 'probe.low', kind: 'rebounder', role: 'goal',
-      bounds: { x: 18, y: 172, width: 60, height: 20 },
+      bounds: { x: 34, y: 144, width: 62, height: 30 },
       scores: [3500], control: 'RebounderControl', lamps: ['lamp.probeLow'],
       // ⚠️ SHORTER AND QUICKER THAN ITS FIRST PATH, which was 96 pixels in 2.2 seconds and met nothing
       // in sixty balls. A long slow body is somewhere the ball is not, almost always.
@@ -210,7 +258,15 @@ export const CRATER_RUN: AuthoredTable = {
       // path whatever its speed — that is geometry — but a faster one makes more independent passes,
       // and the ball's visits to any square of a table are brief and uncorrelated. Slow is not "the
       // same chance, later"; it is fewer chances.
-      mover: { from: { x: 24, y: 178 }, to: { x: 72, y: 186 }, seconds: 0.8, radius: 5 } },
+      //
+      // ⚠️ AND A FOURTH PATH, WHEN THE CRATER LEDGE WAS FIXED. Sloping those five faces released half
+      // the table's ball-time back into the rest of it, which moved the traffic everywhere at once —
+      // this probe was reached again WITHOUT being touched, and then lost again when the secret
+      // passage opened a second way into the play. Four candidates were run against reachability, the
+      // flipper's force and playability together; this diagonal through the middle band passed all
+      // three, as did two others, and it is the one that stays inside the region the probe's own
+      // mission text describes.
+      mover: { from: { x: 40, y: 150 }, to: { x: 90, y: 168 }, seconds: 0.7, radius: 5 } },
 
     /* ===================== THE RIM ===================== */
     { name: 'rim1', kind: 'lane', role: 'goal', bounds: { x: 40, y: 16, width: 12, height: 14 },

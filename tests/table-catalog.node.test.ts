@@ -511,10 +511,58 @@ describe('⚠️ the camera can reach the bottom of every table', () => {
  * survived: does every playable table have exactly the components `cabinet()` produces, with the
  * geometry `cabinet()` gives them?
  */
+/**
+ * ⚠️ AND ONE TABLE MAY REPLACE ONE PIECE OF THE SHELL, NAMED HERE, WITH ITS REASON.
+ *
+ * A ledger like `tests/table-density`'s and `tests/table-reachable`'s, and for the same purpose: the
+ * exception is a line somebody had to write rather than a silence. `crater-run` splits the plunger
+ * lane divider into three — wall, door, wall — because the Dev asked for "passagens secretas que se
+ * abrem caso na primeira tacada a bola desça", and a hole in a wall cannot be expressed by a table
+ * that must have the cabinet's wall unchanged.
+ *
+ * ⚠️ THE PIECES IT PUTS BACK ARE STILL CHECKED, by the rule below rather than by this ledger: together
+ * they must cover the same span with the same two faces, so a table cannot use "I have a passage" to
+ * quietly lose a wall. That is what the drift gate is for and it is not being switched off.
+ */
+const SHELL_OVERRIDES: Readonly<Record<string, readonly string[]>> = {
+  'crater-run': ['wall.laneDivider'],
+};
+
 describe('⚠️ every playable table is built on the one cabinet', () => {
   const shell = (table: AuthoredTable) => new Map(
     cabinet({ width: table.size.width, height: table.size.height }).map((c) => [c.name, c]),
   );
+
+  test('⚠️ a table that replaces part of the shell still walls the same span', () => {
+    // The ledger's own gate. `crater-run`'s three divider pieces must between them run from the
+    // cabinet's `dividerTop` to the floor with no gap other than the door, and the door must BE a
+    // secret — otherwise "I have a passage" is a way to delete a wall.
+    for (const [tableName, names] of Object.entries(SHELL_OVERRIDES)) {
+      const table = PLAYABLE_TABLES.find((t) => t.name === tableName)!;
+      expect(table, `${tableName} is a playable table`).toBeDefined();
+
+      for (const name of names) {
+        const original = shell(table).get(name)!;
+        // Everything of this table that lives in the replaced component's column.
+        const pieces = table.components.filter((c) => c.bounds.x === original.bounds.x
+          && c.bounds.width === original.bounds.width);
+        const top = Math.min(...pieces.map((c) => c.bounds.y));
+        const bottom = Math.max(...pieces.map((c) => c.bounds.y + c.bounds.height));
+
+        expect(top, `${tableName}/${name} starts where the cabinet's does`).toBe(original.bounds.y);
+        expect(bottom, `${tableName}/${name} ends where the cabinet's does`)
+          .toBe(original.bounds.y + original.bounds.height);
+        expect(pieces.filter((c) => c.secret).length, `${tableName}: exactly one of them is a door`)
+          .toBe(1);
+        // Contiguous: sorted by y, each piece starts where the last one ended.
+        const sorted = [...pieces].sort((a, b) => a.bounds.y - b.bounds.y);
+        for (let i = 1; i < sorted.length; i++) {
+          expect(sorted[i]!.bounds.y, `${tableName}: no gap between the pieces`)
+            .toBe(sorted[i - 1]!.bounds.y + sorted[i - 1]!.bounds.height);
+        }
+      }
+    }
+  });
 
   test.each(PLAYABLE_TABLES.map((t) => [t.name, t] as const))('%s has all of it', (_name, table) => {
     const mine = new Map(table.components.map((c) => [c.name, c]));
@@ -532,7 +580,10 @@ describe('⚠️ every playable table is built on the one cabinet', () => {
     // them on the TABLE and the cabinet centres them on the PLAY.
     const mine = new Map(table.components.map((c) => [c.name, c]));
 
+    const excused = new Set(SHELL_OVERRIDES[table.name] ?? []);
+
     for (const [name, expected] of shell(table)) {
+      if (excused.has(name)) continue;
       const actual = mine.get(name)!;
       expect(actual.bounds, `${name} bounds`).toEqual(expected.bounds);
       expect(actual.collision ?? null, `${name} collision`).toEqual(expected.collision ?? null);

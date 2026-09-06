@@ -27,6 +27,7 @@ import {
 } from './table/physics-build.js';
 import { advanceFrame } from './physics/step.js';
 import { createLaneProgress } from './table/lane-progress.js';
+import { openSecrets } from './table/secret.js';
 import { bindPinballControls } from './shell/controls.js';
 import {
   readPalette, writePalette, nextPalette, isCbSafe, PALETTE_LABEL, type PaletteChoice,
@@ -174,7 +175,13 @@ function refreshObjective(force = false): void {
    * is a target the ball passes through while the player looks at it — the flippers' defect and the
    * lamps' defect, arriving a third time in the same place.
    */
-  const downNow = live.downTargets().join(',');
+  /**
+   * ⚠️ THE SECRET DOORS, WHICH ARE HIDDEN THE SAME WAY A DROPPED TARGET IS. Both answers to "what is
+   * not there right now" go into one list, because the picture and the physics each take one list and
+   * the two must agree — `table/cabinet` records what it cost to learn that.
+   */
+  const hiddenNow = [...live.downTargets(), ...openSecrets(authored, ballsLost)];
+  const downNow = hiddenNow.join(',');
   const flareNow = physics.flare ? Math.round(physics.flare.at.y) : -1;
   /**
    * ⚠️ THE FIFTH ANSWER TO "WHAT HAS CHANGED", and the cheapest of the five to get wrong. The depths
@@ -185,7 +192,8 @@ function refreshObjective(force = false): void {
   const lanesNow = Object.entries(laneDepths()).map(([name, depth]) => `${name}=${depth}`).join(',');
   if (!force && objective.have === state.missionHave
     && objective.targets.length === state.missionTargets.length
-    && litNow === lastLit && downNow === lastDown && flareNow === lastFlare && lanesNow === lastLanes) {
+    && litNow === lastLit && downNow === lastDown && flareNow === lastFlare
+    && lanesNow === lastLanes) {
     return;
   }
   lastLit = litNow;
@@ -195,8 +203,8 @@ function refreshObjective(force = false): void {
   // The physics has to agree with the picture, and this is the line that makes it: a target that is
   // not drawn is not a wall either.
   for (const component of authored.components) {
-    if (component.bank === undefined) continue;
-    physics.setComponentActive(component.name, !live.downTargets().includes(component.name));
+    if (component.bank === undefined && !component.secret) continue;
+    physics.setComponentActive(component.name, !hiddenNow.includes(component.name));
   }
   state = {
     ...state,
@@ -207,7 +215,7 @@ function refreshObjective(force = false): void {
   };
   tablePicture = drawTable({
     table: authored, missionTargets: state.missionTargets,
-    litLamps: live.litLamps(), cbSafe: isCbSafe(palette), hidden: live.downTargets(),
+    litLamps: live.litLamps(), cbSafe: isCbSafe(palette), hidden: hiddenNow,
     laneDepth: laneDepths(),
     // Absent on a table with no storm, which is what leaves the other five composed as they were.
     ...(physics.flare ? { flareAt: flareNow } : {}),
@@ -685,6 +693,10 @@ function step(frames: number): void {
       // The next ball gets a fresh lane. Lights left over from the last one would be a table telling
       // this ball about a trip it did not make.
       laneProgress.reset();
+      // ⚠️ AND THE PICTURE IS REDRAWN, because losing a ball is what OPENS a secret passage. Without
+      // this the door is gone from the physics and still painted, which is the drop target's oldest
+      // defect arriving by a new road.
+      refreshObjective(true);
 
       // ⚠️ LOSING A BALL COSTS A BALL, which it did not until now: the count sat at three in the corner
       // of the screen for every commit since the HUD reached it, and the player could not lose.

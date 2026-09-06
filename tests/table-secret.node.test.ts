@@ -29,8 +29,18 @@
 import { describe, test, expect } from 'vitest';
 import { openSecrets, type AuthoredSecret } from '../app/js/table/secret.js';
 import { validateTable, type AuthoredComponent, type AuthoredTable } from '../app/js/table/authored.js';
+import { LOW_ORBIT } from '../app/js/table/low-orbit.js';
+import {
+  buildPhysics, drainedBy, inPlungerLane, launchSpeedFor, FRAME_SECONDS,
+} from '../app/js/table/physics-build.js';
 import { CRATER_RUN } from '../app/js/table/crater-run.js';
-import { buildPhysics, FRAME_SECONDS } from '../app/js/table/physics-build.js';
+
+/** Sixty balls, the same number `tests/table-reachable` surveys with, and the same seed. */
+const BALLS = 60;
+function rng(seed: number): () => number {
+  let s = seed >>> 0;
+  return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
+}
 import { advanceFrame } from '../app/js/physics/step.js';
 
 const SECRET: AuthoredSecret = { afterLostBalls: 1 };
@@ -47,9 +57,14 @@ const door = (over: Partial<AuthoredComponent> = {}): AuthoredComponent => ({
   ...over,
 });
 
+/**
+ * ⚠️ BUILT ON `low-orbit` AND NOT ON `crater-run`, WHICH THIS FILE USED TO USE. `crater-run` now
+ * declares a passage of its own, so a fixture based on it returns two door names and every assertion
+ * here about "the doors that are open" became a statement about somebody else's table as well.
+ */
 const withDoor = (over: Partial<AuthoredComponent> = {}): AuthoredTable => ({
-  ...CRATER_RUN,
-  components: [...CRATER_RUN.components, door(over)],
+  ...LOW_ORBIT,
+  components: [...LOW_ORBIT.components, door(over)],
 });
 
 describe('when a secret door is open', () => {
@@ -75,7 +90,7 @@ describe('when a secret door is open', () => {
   test('⚠️ and a table with no secret has none however many balls are lost', () => {
     // The empty list rather than a thrown error: most tables have no passage, and the loop asks every
     // frame.
-    expect(openSecrets(CRATER_RUN, 3)).toEqual([]);
+    expect(openSecrets(LOW_ORBIT, 3)).toEqual([]);
   });
 });
 
@@ -130,5 +145,76 @@ describe('⚠️ a door in a real table', () => {
 
   test('⚠️ open, the ball goes straight through', () => {
     expect(shutAndOpen(false)).toBe(false);
+  });
+});
+
+/**
+ * ⚠️ AND THE PASSAGE HAS TO BE A ROUTE, NOT A HOLE NOBODY GOES THROUGH.
+ *
+ * The design worry, written down before it was measured: a ball falls STRAIGHT DOWN the plunger lane,
+ * so a gap in the side of that lane might never be met however wide it is. It would validate, draw,
+ * open on cue and change nothing — which is this repository's oldest defect wearing its best disguise,
+ * because everything about it would look right.
+ *
+ * Measured instead, A/B on the same sixty balls with the door shut and open:
+ *
+ *     shut   0 / 60 left the lane through the passage band
+ *     open  37 / 60
+ *
+ * So the ball does arrive with sideways speed — off the return bend's curve and off the plunger's own
+ * face — and the passage is taken by most balls that are in the lane when it is open.
+ */
+describe('⚠️ `crater-run`’s passage is a route the ball takes', () => {
+  const crossings = (open: boolean): number => {
+    const random = rng(20260906);
+    let used = 0;
+
+    for (let n = 0; n < BALLS; n++) {
+      const physics = buildPhysics(CRATER_RUN);
+      if (open) physics.setComponentActive('passage.crater', false);
+
+      const ball = physics.spawnBall();
+      ball.direction = { x: (random() - 0.5) * 0.12, y: -1 };
+      ball.speed = launchSpeedFor(CRATER_RUN) * (0.55 + random() * 0.45);
+      const flap = 7 + Math.floor(random() * 34);
+      let crossed = false;
+      let wasInLane = true;
+
+      for (let i = 0; i < 4000; i++) {
+        if (inPlungerLane(CRATER_RUN, ball) && ball.speed < 20) {
+          ball.direction = { x: 0, y: -1 };
+          ball.speed = launchSpeedFor(CRATER_RUN) * (0.55 + random() * 0.45);
+        }
+        if (i % flap === 0) { physics.setFlippers('left', true); physics.setFlippers('right', true); }
+        if (i % flap === Math.floor(flap / 2)) {
+          physics.setFlippers('left', false); physics.setFlippers('right', false);
+        }
+        for (const { mover } of physics.movers) mover.advance(FRAME_SECONDS);
+        advanceFrame([ball], physics.context, FRAME_SECONDS);
+        physics.stuck.check(ball, i * (1000 / 60));
+        physics.takeHits();
+
+        const inLane = ball.position.x > 166;
+        const band = ball.position.y > 155 && ball.position.y < 181;
+        if (wasInLane && !inLane && band) crossed = true;
+        wasInLane = inLane;
+        if (drainedBy(CRATER_RUN, ball)) break;
+      }
+      if (crossed) used++;
+    }
+    return used;
+  };
+
+  test('⚠️ shut, NOTHING crosses — which is the half that says the wall is real', () => {
+    expect(crossings(false)).toBe(0);
+  });
+
+  test('⚠️ and open, most of them do', () => {
+    // Measured at 37 in 60. The gate asks for a quarter, so a change that halved the effect is still
+    // caught and one that removed it — a door that opens in the model and stays solid in the physics
+    // — cannot pass at all.
+    const used = crossings(true);
+
+    expect(used, `${used}/${BALLS} crossed`).toBeGreaterThan(BALLS / 4);
   });
 });
