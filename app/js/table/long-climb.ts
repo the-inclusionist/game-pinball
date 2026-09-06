@@ -54,6 +54,10 @@ export const LONG_CLIMB: AuthoredTable = {
   size: { width: WIDTH, height: HEIGHT },
   ballRadius: BALL_RADIUS,
 
+  // Worth more than its four targets together: on a table this tall a column is four shots kept alive
+  // at a height where the flippers are not even on screen.
+  banks: [{ name: 'bank.ledge', award: 14000 }],
+
   missions: [
     // The rungs, in order. The first is low enough to reach on a poor launch, which is what makes the
     // mission teach the table rather than gate it.
@@ -87,6 +91,88 @@ export const LONG_CLIMB: AuthoredTable = {
       scores: [500, 1000, 1500, 2000], control: 'BumperControl', lamps: ['lamp.ice3'],
       collision: [{ kind: 'circle', at: { x: 116, y: 160 }, radius: 8 }] },
 
+    /* ===================== THE SECOND GAUNTLET, HIGHER UP ===================== */
+    //
+    // Three more bumpers in the band between the second landing and the third, which was fifty-six
+    // pixels of nothing on a table three hundred tall. A climb needs rungs and it also needs something
+    // between them: a ball that gets past the ice and then falls sixty pixels unopposed has had the
+    // hard part of the climb undone by geometry rather than by play.
+    //
+    // Authored up to the 1995 playfield's density — `tests/table-density`, where the Dev's "mesas tão
+    // simples" is a number. This table measured 2.36 against the archive's 5.25, the second thinnest.
+    //
+    // ⚠️ ALL THREE WELL CLEAR OF BOTH WALLS. `ion-storm`'s fifth bumper sat nine pixels of body from
+    // the lane divider and wedged the ball between the two: the touch list read bumper, divider,
+    // bumper, divider, and every ball was spat into the outlane without reaching a paddle.
+    { name: 'frost1', kind: 'bumper', role: WALL, bounds: { x: 48, y: 96, width: 16, height: 16 },
+      scores: [500, 1000, 1500, 2000], control: 'BumperControl', lamps: ['lamp.frost1'],
+      collision: [{ kind: 'circle', at: { x: 56, y: 104 }, radius: 8 }] },
+    { name: 'frost2', kind: 'bumper', role: WALL, bounds: { x: 82, y: 84, width: 16, height: 16 },
+      scores: [500, 1000, 1500, 2000], control: 'BumperControl', lamps: ['lamp.frost2'],
+      collision: [{ kind: 'circle', at: { x: 90, y: 92 }, radius: 8 }] },
+    { name: 'frost3', kind: 'bumper', role: WALL, bounds: { x: 116, y: 96, width: 16, height: 16 },
+      scores: [500, 1000, 1500, 2000], control: 'BumperControl', lamps: ['lamp.frost3'],
+      collision: [{ kind: 'circle', at: { x: 124, y: 104 }, radius: 8 }] },
+
+    /* ===================== THE LEDGE: A DROP COLUMN ON THE LEFT WALL ===================== */
+    //
+    // Four drop targets stacked up the left wall beside the second gauntlet. Each sinks when hit and
+    // the ball passes over where it was, so the column opens as it is cleared — and on a table this
+    // tall, a route that gets easier the more of it you have done is what keeps a long climb from
+    // being the same shot repeated.
+    //
+    // ⚠️ VERTICAL, AGAINST A WALL, which is the rule two tables paid for this week. An up-facing row
+    // is safe under a bumper nest — `low-orbit`'s bank lives there — and is a shelf the ball comes to
+    // rest on anywhere else: `ion-storm` held a ball for four thousand frames on one. Here the frost
+    // bumpers are beside the column rather than over it, so the column stands on its wall.
+    { name: 'ledge1', kind: 'target', role: 'key', bounds: { x: 8, y: 84, width: 12, height: 14 },
+      scores: [2500], control: 'TargetBankControl', bank: 'bank.ledge', lamps: ['lamp.ledge1'],
+      collision: [{ kind: 'line', from: { x: 20, y: 84 }, to: { x: 20, y: 98 } }] },
+    { name: 'ledge2', kind: 'target', role: 'key', bounds: { x: 8, y: 102, width: 12, height: 14 },
+      scores: [2500], control: 'TargetBankControl', bank: 'bank.ledge', lamps: ['lamp.ledge2'],
+      collision: [{ kind: 'line', from: { x: 20, y: 102 }, to: { x: 20, y: 116 } }] },
+    { name: 'ledge3', kind: 'target', role: 'key', bounds: { x: 8, y: 120, width: 12, height: 14 },
+      scores: [2500], control: 'TargetBankControl', bank: 'bank.ledge', lamps: ['lamp.ledge3'],
+      collision: [{ kind: 'line', from: { x: 20, y: 120 }, to: { x: 20, y: 134 } }] },
+    { name: 'ledge4', kind: 'target', role: 'key', bounds: { x: 8, y: 138, width: 12, height: 14 },
+      scores: [2500], control: 'TargetBankControl', bank: 'bank.ledge', lamps: ['lamp.ledge4'],
+      collision: [{ kind: 'line', from: { x: 20, y: 138 }, to: { x: 20, y: 152 } }] },
+
+    /* ===================== THE CORNICES ===================== */
+    // Two rebounders under the second gauntlet, throwing a stalling ball back up the table. On a climb
+    // the worst outcome is not losing the ball; it is drifting down having achieved nothing.
+    { name: 'cornice.left', kind: 'rebounder', role: 'goal',
+      bounds: { x: 32, y: 116, width: 16, height: 16 },
+      scores: [3200], control: 'RebounderControl', lamps: ['lamp.corniceLeft'],
+      collision: [{ kind: 'circle', at: { x: 40, y: 124 }, radius: 8 }] },
+    { name: 'cornice.right', kind: 'rebounder', role: 'goal',
+      bounds: { x: 132, y: 116, width: 16, height: 16 },
+      scores: [3200], control: 'RebounderControl', lamps: ['lamp.corniceRight'],
+      collision: [{ kind: 'circle', at: { x: 140, y: 124 }, radius: 8 }] },
+
+    /* ===================== THE STEPS AND THE TRAILS ===================== */
+    // Rollovers, so they can sit anywhere: a lane declares no collision and the ball passes over it.
+    // The steps flank the ice at the halfway mark; the trails run beside the funnel, where a ball that
+    // failed the climb comes home.
+    { name: 'step.left', kind: 'lane', role: 'free', bounds: { x: 14, y: 156, width: 14, height: 16 },
+      scores: [1600], control: 'LaneControl', lamps: ['lamp.stepLeft'] },
+    { name: 'step.right', kind: 'lane', role: 'free', bounds: { x: 141, y: 156, width: 14, height: 16 },
+      scores: [1600], control: 'LaneControl', lamps: ['lamp.stepRight'] },
+    { name: 'trail.left', kind: 'lane', role: 'free', bounds: { x: 8, y: 210, width: 12, height: 22 },
+      scores: [1300], control: 'LaneControl', lamps: ['lamp.trailLeft'] },
+    { name: 'trail.right', kind: 'lane', role: 'free', bounds: { x: 147, y: 210, width: 12, height: 22 },
+      scores: [1300], control: 'LaneControl', lamps: ['lamp.trailRight'] },
+
+    /* ===================== THE APPROACH ===================== */
+    // Three rollovers across the head, crossed by the ball entering from the return bend. On a table
+    // this tall the head is a long way from the flippers, and it scored nothing at all.
+    { name: 'approach1', kind: 'lane', role: 'key', bounds: { x: 40, y: 16, width: 12, height: 14 },
+      scores: [1800], control: 'LaneControl', lamps: ['lamp.approach1'] },
+    { name: 'approach2', kind: 'lane', role: 'key', bounds: { x: 62, y: 16, width: 12, height: 14 },
+      scores: [1800], control: 'LaneControl', lamps: ['lamp.approach2'] },
+    { name: 'approach3', kind: 'lane', role: 'key', bounds: { x: 110, y: 16, width: 12, height: 14 },
+      scores: [1800], control: 'LaneControl', lamps: ['lamp.approach3'] },
+
     /* ===================== THE SHELF ===================== */
     // A ramp low on the right, angled to throw the ball leftward and up: the shot that starts a climb.
     { name: 'ramp', kind: 'ramp', role: 'climb', bounds: { x: 96, y: 208, width: 56, height: 40 },
@@ -102,6 +188,11 @@ export const LONG_CLIMB: AuthoredTable = {
   lamps: [
     ...CABINET_LAMPS,
     'lamp.landing1', 'lamp.landing2', 'lamp.landing3',
+    'lamp.frost1', 'lamp.frost2', 'lamp.frost3',
+    'lamp.ledge1', 'lamp.ledge2', 'lamp.ledge3', 'lamp.ledge4',
+    'lamp.corniceLeft', 'lamp.corniceRight',
+    'lamp.stepLeft', 'lamp.stepRight', 'lamp.trailLeft', 'lamp.trailRight',
+    'lamp.approach1', 'lamp.approach2', 'lamp.approach3',
     'lamp.ice1', 'lamp.ice2', 'lamp.ice3', 'lamp.ramp', 'lamp.crest',
   ],
 };

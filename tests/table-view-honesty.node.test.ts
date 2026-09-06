@@ -184,7 +184,11 @@ const PAINTED = {
   // ⚠️ +1070: the two INLANES the cabinet now gives all five of its tables, and this table's own
   // authoring up to the 1995 density — two flank drop banks and a three-rollover reentry row.
   'crater-run': 7907,
-  'long-climb': 8223,
+  // ⚠️ +2640, the largest single move in this table: three more bumpers in a second gauntlet, a
+  // four-target drop column up the left wall, two rebounders, four rollovers on the flanks and
+  // three across the head. It is 300 tall against a 180 window and had 56 pixels of nothing in
+  // the middle of its own climb.
+  'long-climb': 10863,
   'ring-belt': 8224,
   // ⚠️ +2122 when this table was authored up to the 1995 density: two more eddies in the chamber, a
   // three-target drop COLUMN on its wall, two spillways in its corners, three wake rollovers and

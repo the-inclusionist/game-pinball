@@ -68,7 +68,6 @@ const THIN: Readonly<Record<string, number>> = {
   // Rounded DOWN to two places, always. A floor recorded above where the table actually stands would
   // pass today on the assertion's slack and refuse a table that had not moved — the ledger accusing
   // somebody of a loss they did not cause. `long-climb` measures 2.3679 and was first written 2.37.
-  'long-climb': 2.36,
   'ring-belt': 1.85,
 };
 
