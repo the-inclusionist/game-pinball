@@ -135,6 +135,14 @@ const es: Record<string, string> = {
   'pinball.title.back': 'Volver',
   'pinball.title.highScores': 'Mejores puntuaciones',
   'pinball.title.noScores': 'Todavía nadie ha jugado.',
+  'pinball.controls.title': 'Controles',
+  'pinball.controls.left': 'Paleta izquierda',
+  'pinball.controls.right': 'Paleta derecha',
+  'pinball.controls.plunger': 'Lanzar',
+  'pinball.controls.pause': 'Pausa',
+  'pinball.controls.blindMode': 'Modo ciego',
+  'pinball.controls.sweep': 'Sonar',
+  'pinball.controls.palette': 'Colores',
   'pinball.palette.close': 'Cerrar',
   'pinball.palette.title': 'Colores de la mesa',
   'pinball.palette.normal': 'Colores normales',
@@ -161,7 +169,7 @@ const es: Record<string, string> = {
   'pinball.hud.balls': 'Bolas: {n}',
   'pinball.hud.gameOver': 'Fin del juego',
   'pinball.hud.shootAgain': 'Juega de nuevo',
-  'pinball.hud.waiting': 'Tira del émbolo.',
+  'pinball.hud.waiting': 'Mantén para estirar el émbolo.',
 };
 
 export default es;

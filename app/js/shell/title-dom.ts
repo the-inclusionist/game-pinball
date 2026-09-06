@@ -23,6 +23,7 @@
 import fontUrl from '../../assets/fonts/press-start-2p.woff2';
 import { TITLE_LINES, TITLE_SUBTITLE, type TitleScreen } from './title.js';
 import { readTable, EMPTY_SCORE, type HighScoreStore } from '../control/high-score.js';
+import { controlLegend } from './control-legend.js';
 
 /** The same fallback the HUD reasons its way to: no download, no wait, no blank screen. */
 const FALLBACK = 'ui-monospace, "DejaVu Sans Mono", Menlo, Consolas, monospace';
@@ -108,16 +109,39 @@ export function mountTitle(o: TitleDomOptions): TitleDom {
 
   const select = o.doc.createElement('div');
   select.className = 'pinball-select';
+  /**
+   * ⚠️ TWO COLUMNS, BECAUSE THE SCREEN IS LANDSCAPE AND THIS WAS A COLUMN DOWN THE MIDDLE OF IT.
+   *
+   * 320×180 is wider than it is tall, and one 80%-wide stack wasted the width while running out of
+   * the height: five table buttons, a scoreboard of five names and a back link already reached the
+   * bottom edge, and the controls could not have been added without pushing something off it. What
+   * the player CHOOSES goes left; what they READ goes right.
+   */
   Object.assign(select.style, {
-    display: 'flex', flexDirection: 'column', gap: '3%', alignItems: 'center', width: '80%',
+    display: 'flex', flexDirection: 'row', gap: '4%', alignItems: 'stretch',
+    justifyContent: 'center', width: '96%',
   });
+
+  const chooseColumn = o.doc.createElement('div');
+  Object.assign(chooseColumn.style, {
+    display: 'flex', flexDirection: 'column', gap: '3%', alignItems: 'stretch', flex: '1 1 0',
+  });
+  const readColumn = o.doc.createElement('div');
+  Object.assign(readColumn.style, {
+    display: 'flex', flexDirection: 'column', gap: '3%', alignItems: 'stretch', flex: '1 1 0',
+    textAlign: 'left',
+  });
+  // `appendChild` and not `append`: the node fakes implement the one the rest of this file uses, and a
+  // column that silently fails to attach is a selector screen with nothing on it.
+  select.appendChild(chooseColumn);
+  select.appendChild(readColumn);
 
   for (const table of o.screen.tables) {
     const button = o.doc.createElement('button');
     button.textContent = table;
     button.setAttribute('data-table', table);
     Object.assign(button.style, {
-      font: 'inherit', fontSize: '3.4cqw', padding: '1.5% 3%', width: '100%',
+      font: 'inherit', fontSize: '3cqw', padding: '1.5% 3%', width: '100%',
       background: '#1a1e26', color: INK, border: `1px solid ${DIM}`, cursor: 'pointer',
     });
     button.addEventListener('click', () => {
@@ -125,8 +149,43 @@ export function mountTitle(o: TitleDomOptions): TitleDom {
       refresh();
       o.onStarted?.();
     });
-    select.appendChild(button);
+    chooseColumn.appendChild(button);
   }
+
+  /**
+   * ⚠️ WHAT THE KEYS ARE, WHICH THIS GAME HAS NEVER SAID ANYWHERE A PLAYER LOOKS.
+   *
+   * The cabinet is the one the Dev specified, it is bound, it is tested and a gamepad drives it — and
+   * somebody opening the page was told none of it. They press the arrow keys, which this cabinet does
+   * not use, and reach the conclusion the Dev reached twice from the other side of the same silence:
+   * "teclado e mouse continuam não funcionando no jogo." The keys were in `docs/README` throughout, and
+   * a player is not reading the README.
+   *
+   * ⚠️ AND THE ROWS ARE READ OUT OF THE BINDINGS. See `shell/control-legend`: a legend that is typed
+   * out is right on the day it is typed. This one changes when a key changes.
+   */
+  const controls = o.doc.createElement('div');
+  controls.className = 'pinball-controls';
+  Object.assign(controls.style, { fontSize: '2.6cqw', color: DIM, lineHeight: '1.5' });
+  const controlsHeading = o.doc.createElement('div');
+  controlsHeading.textContent = o.t('pinball.controls.title');
+  Object.assign(controlsHeading.style, { color: INK, marginBottom: '2%' });
+  controls.appendChild(controlsHeading);
+  for (const row of controlLegend()) {
+    const line = o.doc.createElement('div');
+    Object.assign(line.style, { display: 'flex', justifyContent: 'space-between', gap: '4%' });
+    const what = o.doc.createElement('span');
+    what.textContent = o.t(row.labelKey);
+    const keys = o.doc.createElement('span');
+    // ⚠️ EVERY key, not the first one. Two keys per flipper is accessibility rather than convenience —
+    // `shell/controls` argues it — and showing one of the pair hides the half that was the point.
+    keys.textContent = row.keys.join(' · ');
+    Object.assign(keys.style, { color: INK, whiteSpace: 'nowrap' });
+    line.appendChild(what);
+    line.appendChild(keys);
+    controls.appendChild(line);
+  }
+  readColumn.appendChild(controls);
 
   /**
    * ⚠️ THE SCOREBOARD IS SHOWN HERE, which is what retires `control/high-score` from the orphan
@@ -136,17 +195,19 @@ export function mountTitle(o: TitleDomOptions): TitleDom {
    */
   const scores = o.doc.createElement('div');
   scores.className = 'pinball-high-scores';
-  Object.assign(scores.style, { fontSize: '3.2cqw', color: DIM, width: '80%', marginTop: '4%' });
-  select.appendChild(scores);
+  // The same line height as the legend above it: two blocks of small text in one column read as one
+  // list when their lines are spaced differently, and the heading was landing on the row under it.
+  Object.assign(scores.style, { fontSize: '2.6cqw', color: DIM, marginTop: '2%', lineHeight: '1.5' });
+  readColumn.appendChild(scores);
 
   const back = o.doc.createElement('button');
   back.textContent = o.t('pinball.title.back');
   Object.assign(back.style, {
-    font: 'inherit', fontSize: '3.2cqw', background: 'none', border: 'none', color: DIM,
+    font: 'inherit', fontSize: '3cqw', background: 'none', border: 'none', color: DIM,
     cursor: 'pointer', marginTop: '2%',
   });
   back.addEventListener('click', () => { o.screen.back(); refresh(); });
-  select.appendChild(back);
+  chooseColumn.appendChild(back);
   root.appendChild(select);
 
   /**

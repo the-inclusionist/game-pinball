@@ -138,6 +138,16 @@ const en: Record<string, string> = {
   'pinball.title.back': 'Back',
   'pinball.title.highScores': 'High scores',
   'pinball.title.noScores': 'Nobody has played yet.',
+  'pinball.controls.title': 'Controls',
+  // Which flipper, not "flipper": each side has two ways to reach it, a direction and a button, and
+  // saying so is the reason the list is on the screen at all.
+  'pinball.controls.left': 'Left flipper',
+  'pinball.controls.right': 'Right flipper',
+  'pinball.controls.plunger': 'Launch',
+  'pinball.controls.pause': 'Pause',
+  'pinball.controls.blindMode': 'Blind mode',
+  'pinball.controls.sweep': 'Sonar',
+  'pinball.controls.palette': 'Colours',
   'pinball.palette.close': 'Close',
   'pinball.palette.title': 'Table colours',
   'pinball.palette.normal': 'Normal colours',
@@ -171,7 +181,9 @@ const en: Record<string, string> = {
   'pinball.hud.balls': 'Balls: {n}',
   'pinball.hud.gameOver': 'Game over',
   'pinball.hud.shootAgain': 'Shoot again',
-  'pinball.hud.waiting': 'Pull the plunger.',
+  // ⚠️ And it says to HOLD. The selector's legend has room for one word per line, and the moment a
+  // player needs to know the plunger draws back is this one: a ball in the lane, waiting.
+  'pinball.hud.waiting': 'Hold to draw the plunger back.',
 };
 
 export default en;

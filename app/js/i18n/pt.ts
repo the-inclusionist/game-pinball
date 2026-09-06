@@ -143,6 +143,16 @@ const pt: Record<string, string> = {
   'pinball.title.back': 'Voltar',
   'pinball.title.highScores': 'Melhores pontuações',
   'pinball.title.noScores': 'Ninguém jogou ainda.',
+  'pinball.controls.title': 'Controles',
+  // ⚠️ "Pá" é a peça, e o jogador precisa saber QUAL. As duas linhas de cada lado são as duas maneiras
+  // de alcançar a mesma pá — a direção e o botão —, e dizer isso é o motivo de a lista existir.
+  'pinball.controls.left': 'Pá esquerda',
+  'pinball.controls.right': 'Pá direita',
+  'pinball.controls.plunger': 'Lançar',
+  'pinball.controls.pause': 'Pausa',
+  'pinball.controls.blindMode': 'Modo cego',
+  'pinball.controls.sweep': 'Sonar',
+  'pinball.controls.palette': 'Cores',
   'pinball.palette.close': 'Fechar',
   'pinball.palette.title': 'Cores da mesa',
   'pinball.palette.normal': 'Cores normais',
@@ -169,7 +179,9 @@ const pt: Record<string, string> = {
   'pinball.hud.balls': 'Bolas: {n}',
   'pinball.hud.gameOver': 'Fim de jogo',
   'pinball.hud.shootAgain': 'Jogue de novo',
-  'pinball.hud.waiting': 'Puxe o êmbolo.',
+  // ⚠️ E DIZ QUE SE SEGURA. A legenda da tela de seleção só tem largura para uma palavra por linha,
+  // e o momento em que o jogador precisa saber que o lançador ESTICA é este: com uma bola na calha.
+  'pinball.hud.waiting': 'Segure para esticar o lançador.',
 };
 
 export default pt;
