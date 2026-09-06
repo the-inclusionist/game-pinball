@@ -18,8 +18,7 @@
 
 import { pack, type Framebuffer } from './framebuffer.js';
 import { applyPalette, buildDisplayPalette } from './gdrv.js';
-import { readBitmapHeader, HEADER_SIZE } from '../dat/bitmap8.js';
-import { unpackIndexed } from '../dat/indexed.js';
+import { readIndexedBitmap } from '../dat/bitmap8.js';
 import { readPalette } from '../dat/palette.js';
 import { GAME_MATRIX, createProjection, type Matrix, type Projection } from '../maths/proj.js';
 import { readZMap, type ZMap } from '../dat/zmap.js';
@@ -57,12 +56,7 @@ export function decodePlayfield(groups: readonly Group[]): Framebuffer {
   if (!paletteData) throw new Error('[original-view] the archive carries no palette');
   const palette = readPalette(paletteData);
 
-  const header = readBitmapHeader(bitmap);
-  const indices = unpackIndexed(bitmap.subarray(HEADER_SIZE), {
-    width: header.width,
-    height: header.height,
-    indexedStride: header.indexedStride ?? header.width,
-  });
+  const { header, indices } = readIndexedBitmap(bitmap);
 
   // ⚠️ THROUGH `gdrv::display_palette`, NOT STRAIGHT THROUGH THE FILE. Four blocks of the 256 entries
   // are not the file's to decide — 0 transparent, 1 to 9 the Windows system colours, 246 to 254 never

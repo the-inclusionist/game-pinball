@@ -14,6 +14,8 @@
 // THE RESOLUTION IS SIGNED and -1 is the common case for small sprites: a `getUint8` would return 255,
 // and a resolution filter would then discard exactly the entries meant to survive it.
 
+import { unpackIndexed } from './indexed.js';
+
 const OFF = { resolution: 0, width: 1, height: 3, x: 5, y: 7, size: 9, flags: 13 } as const;
 export const HEADER_SIZE = 14;
 
@@ -85,5 +87,34 @@ export function readBitmapHeader(payload: Uint8Array): BitmapHeader {
     rawUnaligned: (flags & BIT.rawUnaligned) !== 0,
     isDib: (flags & BIT.dib) !== 0,
     isSpliced: (flags & BIT.spliced) !== 0,
+  };
+}
+
+/**
+ * The header and the palette indices of one bitmap entry, in screen order.
+ *
+ * ⚠️ AND IT REFUSES A SPLICED ONE. `indexedStride` is null for spliced on purpose — that format has no
+ * rows — and the two decoders that walked bitmaps by hand each wrote `header.indexedStride ?? width`,
+ * which defuses the refusal in the one place it was meant to hold. A spliced stream read as rows is a
+ * scrambled picture with no error anywhere: its bytes are [skip][count] then [depth, index] triples,
+ * and `dat/spliced` is the module that knows how to take them apart.
+ *
+ * The shipped PINBALL.DAT carries none of them — all 318 of its bitmaps are raw — so this has never
+ * fired. It is here for the next archive, which is either phase 8's authored table or somebody's mod.
+ */
+export function readIndexedBitmap(payload: Uint8Array): { header: BitmapHeader; indices: Uint8Array } {
+  const header = readBitmapHeader(payload);
+  if (header.indexedStride === null) {
+    throw new Error(
+      `[bitmap8] this bitmap is ${header.type} and has no indexed rows; unpick it with dat/spliced`,
+    );
+  }
+  return {
+    header,
+    indices: unpackIndexed(payload.subarray(HEADER_SIZE), {
+      width: header.width,
+      height: header.height,
+      indexedStride: header.indexedStride,
+    }),
   };
 }

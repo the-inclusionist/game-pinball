@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, test, expect } from 'vitest';
 import { bitmap8, BITMAP_FLAG } from './helpers/partout.js';
-import { readBitmapHeader, BitmapType } from '../app/js/dat/bitmap8.js';
+import { readBitmapHeader, readIndexedBitmap, BitmapType } from '../app/js/dat/bitmap8.js';
+import { readFileSync, existsSync } from 'node:fs';
 
 describe('bitmap8 — header', () => {
   test('reads dimensions, position and data size', () => {
@@ -79,5 +80,55 @@ describe('bitmap8 — indexed stride', () => {
     const p = bitmap8({ width: 365, height: 470, data: new Uint8Array(7), flags: BITMAP_FLAG.spliced });
 
     expect(readBitmapHeader(p).indexedStride).toBeNull();
+  });
+});
+
+/**
+ * ⚠️ A NULL STRIDE IS A REFUSAL, AND `?? width` UNDOES IT.
+ *
+ * `indexedStrideOf` returns null for spliced on purpose — "that format has no rows, and handing back a
+ * number would invite someone to walk it as though it had". Both decoders then wrote
+ * `header.indexedStride ?? header.width`, which is exactly the invitation, in both places. A spliced
+ * bitmap fed through that comes out as a scrambled picture and no message at all: its stream is
+ * [skip][count][depth,index]... in bytes, not rows of indices.
+ *
+ * The shipped PINBALL.DAT carries none, so nothing was ever wrong on screen. The trap was waiting for
+ * a different table — the authored one of phase 8, or anybody's modified archive.
+ */
+describe('bitmap8 — unpacking a whole bitmap', () => {
+  test('a raw bitmap comes back flipped and de-padded, one byte per pixel', () => {
+    // Two rows of a 2-wide bitmap padded to a stride of 4: the source's LAST row is the picture's first.
+    const payload = bitmap8({
+      width: 2, height: 2,
+      data: Uint8Array.from([10, 11, 0, 0, 20, 21, 0, 0]),
+      flags: BITMAP_FLAG.rawUnaligned,
+    });
+
+    const { header, indices } = readIndexedBitmap(payload);
+
+    expect(header.width).toBe(2);
+    expect([...indices]).toEqual([20, 21, 10, 11]);
+  });
+
+  test('⚠️ a SPLICED bitmap is refused rather than read as rows', () => {
+    const payload = bitmap8({ width: 4, height: 2, data: new Uint8Array(9), flags: BITMAP_FLAG.spliced });
+
+    expect(() => readIndexedBitmap(payload)).toThrow(/spliced/i);
+  });
+
+  test('and the shipped archive carries none, which is why nothing was ever wrong on screen', async () => {
+    const DAT = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/PINBALL.DAT';
+    if (!existsSync(DAT)) return expect(existsSync(DAT)).toBe(false);
+    const { loadTable } = await import('../app/js/dat/loader.js');
+    const { EntryType } = await import('../app/js/dat/partman.js');
+    const file = new Uint8Array(readFileSync(DAT));
+
+    const headers = loadTable(file).groups.flatMap((g) => g.entries
+      .filter((e) => e.type === EntryType.Bitmap8 && e.data)
+      .map((e) => readBitmapHeader(e.data!)));
+
+    expect(headers).toHaveLength(318);
+    expect(headers.filter((h) => h.isSpliced), 'spliced bitmaps').toHaveLength(0);
+    expect(headers.every((h) => h.type === BitmapType.Raw), 'all 318 are raw').toBe(true);
   });
 });

@@ -37,8 +37,7 @@
 import { type Framebuffer } from './framebuffer.js';
 import { applyPalette, buildDisplayPalette } from './gdrv.js';
 import { halve } from './scale.js';
-import { readBitmapHeader, HEADER_SIZE } from '../dat/bitmap8.js';
-import { unpackIndexed } from '../dat/indexed.js';
+import { readBitmapHeader, readIndexedBitmap } from '../dat/bitmap8.js';
 import { readPalette } from '../dat/palette.js';
 import { EntryType, type Group } from '../dat/partman.js';
 import { floatAttribute, groupNamed } from '../dat/attributes.js';
@@ -180,12 +179,7 @@ function decodeSprite(
   let y = 0;
 
   for (const { bitmap, at } of bitmaps) {
-    const header = readBitmapHeader(bitmap);
-    const indices = unpackIndexed(bitmap.subarray(HEADER_SIZE), {
-      width: header.width,
-      height: header.height,
-      indexedStride: header.indexedStride ?? header.width,
-    });
+    const { header, indices } = readIndexedBitmap(bitmap);
 
     // The transparency is the palette's: entry 0 is the zero word, so an index-0 pixel is written as
     // the transparent it already was. Skipping it and writing it are the same thing on a fresh
