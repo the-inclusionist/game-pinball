@@ -21,7 +21,7 @@
 // renders nothing on the machine this game is for.
 
 import fontUrl from '../../assets/fonts/press-start-2p.woff2';
-import { TITLE_LINES, TITLE_SUBTITLE, type TitleScreen } from './title.js';
+import { TITLE_LINES, TITLE_SUBTITLE, TITLE_BYLINE, type TitleScreen } from './title.js';
 import { readTable, EMPTY_SCORE, type HighScoreStore } from '../control/high-score.js';
 import { controlLegend } from './control-legend.js';
 
@@ -104,6 +104,24 @@ export function mountTitle(o: TitleDomOptions): TitleDom {
   subtitle.textContent = TITLE_SUBTITLE;
   Object.assign(subtitle.style, { fontSize: '5cqw', color: DIM, letterSpacing: '0.25em' });
   title.appendChild(subtitle);
+
+  /**
+   * ⚠️ WHO MADE IT, ALIGNED TO THE RIGHT, asked for by name: "adicione a linha «by Prof. José Rocha»
+   * abaixo da palavra PINBALL, alinhado à direita".
+   *
+   * ⚠️ AND `alignSelf`, NOT `textAlign`. The title is a centred flex COLUMN, so each child's box is
+   * only as wide as its own text — aligning text inside a box that fits it is aligning nothing, and
+   * the first attempt looked centred while the style said `right`. `alignSelf: flex-end` moves the
+   * BOX to the block's right edge, which is what a reader sees and what the browser test measures with
+   * `getBoundingClientRect` rather than by reading the style back.
+   */
+  const byline = o.doc.createElement('span');
+  byline.className = 'pinball-byline';
+  byline.textContent = TITLE_BYLINE;
+  Object.assign(byline.style, {
+    fontSize: '2.6cqw', color: DIM, alignSelf: 'flex-end', marginTop: '2%',
+  });
+  title.appendChild(byline);
   title.addEventListener('click', () => { o.screen.advance(); refresh(); });
   root.appendChild(title);
 

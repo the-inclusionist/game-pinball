@@ -26,6 +26,20 @@ export const TITLE_LINES: readonly string[] = ['SPACE', 'STUDENT'];
 export const TITLE_SUBTITLE = 'PINBALL';
 
 /**
+ * Who made it, under the subtitle and aligned to the right.
+ *
+ * ⚠️ ASKED FOR BY NAME: "adicione a linha «by Prof. José Rocha» abaixo da palavra PINBALL, alinhado à
+ * direita". It is a CREDIT rather than a caption, which is what the alignment says — the eye reads the
+ * title down the middle and then finds the name at the edge, the way a cover does.
+ *
+ * ⚠️ AND IT IS NOT TRANSLATED, for the reason the two lines above it are not: a name is written the
+ * way its owner writes it, and routing "by" through `t()` would invite one locale to say it and
+ * another not to, under a name that is the same in all three. It is exempt from the UPPERCASE rule
+ * and from nothing else.
+ */
+export const TITLE_BYLINE = 'by Prof. José Rocha';
+
+/**
  * Where the player is.
  *
  * `playing` is a screen here even though nothing in this module draws it: it is what the shell has to

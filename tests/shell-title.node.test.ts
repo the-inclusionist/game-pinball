@@ -11,7 +11,7 @@
 // ships neither. `SPACE STUDENT PINBALL` is the Dev's own, and the port has no claim on the other one.
 import { describe, test, expect } from 'vitest';
 import {
-  TITLE_LINES, TITLE_SUBTITLE, titleScreen, type Screen,
+  TITLE_LINES, TITLE_SUBTITLE, TITLE_BYLINE, titleScreen, type Screen,
 } from '../app/js/shell/title.js';
 import { CATALOG, PLAYABLE_TABLES } from '../app/js/table/catalog.js';
 
@@ -23,6 +23,13 @@ describe('what the title says', () => {
     expect(TITLE_SUBTITLE).toBe('PINBALL');
   });
 
+  test('⚠️ and the byline names who made it, under PINBALL', () => {
+    // The Dev asked for it by name: "adicione a linha «by Prof. José Rocha» abaixo da palavra PINBALL,
+    // alinhado à direita". It is a credit rather than a caption, which is why it is right-aligned and
+    // why it is smaller than everything above it — the eye reads the title and then finds the name.
+    expect(TITLE_BYLINE).toBe('by Prof. José Rocha');
+  });
+
   test('and none of it is a translated string, because a title is a name', () => {
     // Every other word on screen goes through `t()`. A game's title does not: it is the same in every
     // language, the way `PINBALL` was in 1995, and routing it through i18n would invite somebody to
@@ -31,6 +38,10 @@ describe('what the title says', () => {
       expect(line).not.toMatch(/^pinball\./);
       expect(line).toBe(line.toUpperCase());
     }
+    // ⚠️ THE BYLINE IS EXEMPT FROM THE UPPERCASE HALF AND NOT FROM THE OTHER. It is a person's name,
+    // and a name is written the way its owner writes it — but it is still not translated, for exactly
+    // the reason above: "by" is not a word that should differ between locales while the name does not.
+    expect(TITLE_BYLINE).not.toMatch(/^pinball\./);
   });
 });
 

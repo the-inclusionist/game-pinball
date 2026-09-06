@@ -18,7 +18,7 @@
 // layout knows whether a thing occupies the screen.
 import { describe, test, expect, beforeEach, afterEach } from 'vitest';
 import { mountTitle } from '../app/js/shell/title-dom.js';
-import { titleScreen } from '../app/js/shell/title.js';
+import { titleScreen, TITLE_BYLINE } from '../app/js/shell/title.js';
 import { emptyTable, writeTable, type HighScoreStore } from '../app/js/control/high-score.js';
 import { DEFAULT_BINDINGS } from '../app/js/shell/controls.js';
 import { keyLabel } from '../app/js/shell/control-legend.js';
@@ -85,6 +85,45 @@ describe('⚠️ one screen at a time, measured', () => {
 
     expect(screen.current).toBe('playing');
     expect(shows(at('.pinball-title')), 'nothing of it is left on the canvas').toBe(false);
+  });
+});
+
+describe('⚠️ the byline', () => {
+  test('it is on the title screen, under PINBALL', () => {
+    const { at } = build();
+
+    expect(at('.pinball-byline').textContent).toBe(TITLE_BYLINE);
+  });
+
+  test('⚠️ and it is aligned RIGHT, which is what the Dev asked for', () => {
+    // Measured in layout rather than read off a style, because `textAlign` on a centred flex column
+    // does nothing at all — the box is only as wide as its text, so aligning inside it is aligning
+    // nothing. This asserts the box's right edge sits at the title block's, which is what a reader
+    // sees. A style assertion would have passed on the version that looked centred.
+    //
+    // ⚠️ AGAINST THE LONGEST TITLE LINE, NOT AGAINST THE BUTTON. The first version compared with the
+    // button's rectangle and failed by twelve pixels — its `padding: 4%`. `alignSelf: flex-end` puts a
+    // child at the CONTENT edge, which is correct and is not what a border box measures. What a reader
+    // means by "aligned right under PINBALL" is flush with the text above it, and STUDENT is the
+    // widest line there.
+    const { at } = build();
+    const byline = at('.pinball-byline').getBoundingClientRect();
+    const lines = [...host.querySelectorAll<HTMLElement>('.pinball-title button > span')]
+      .map((el) => el.getBoundingClientRect());
+    const widest = lines.reduce((a, b) => (b.width > a.width ? b : a));
+
+    expect(byline.right).toBeCloseTo(widest.right, 0);
+    expect(byline.width, 'and it does not span the block, or right-aligned means nothing')
+      .toBeLessThan(widest.width);
+  });
+
+  test('it goes away with the rest of the screen when a game starts', () => {
+    const { at, shows, screen } = build();
+    at('.pinball-title button').click();
+    at('[data-table]').click();
+
+    expect(screen.current).toBe('playing');
+    expect(shows(at('.pinball-byline'))).toBe(false);
   });
 });
 
