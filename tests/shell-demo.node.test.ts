@@ -405,6 +405,46 @@ describe('⚠️ and a ball can be lost, which the demonstration counts', () => 
     expect(demo.scored.filter((name) => name.startsWith('roll')).length).toBe(crossed.length);
   });
 
+  test('⚠️ the ball is drawn BEHIND what the table has standing above it', () => {
+    // Now that the ramps exist there is something to go under, and the playfield's own depth map is
+    // what says where. At (3.27, -12.45) the map holds 52979 and a ball resting on the table there is
+    // 59637 away — the scene is nearer, so no pixel of the ball may be painted. Down on the open
+    // playfield the comparison goes the other way and the whole ball shows.
+    const bytes = archive();
+    if (!bytes) return expect(existsSync(DAT)).toBe(false);
+    const demo = createDemo(bytes, { random: seeded() });
+
+    demo.ball.position.x = 3.271;
+    demo.ball.position.y = -12.453;
+    const hidden = demo.render();
+    expect([...hidden.pixels].includes(DEMO_BALL_COLOR), 'under the arch').toBe(false);
+
+    demo.ball.position.x = 0.16;
+    demo.ball.position.y = 9.4;
+    const shown = demo.render();
+    expect([...shown.pixels].includes(DEMO_BALL_COLOR), 'out on the open table').toBe(true);
+  });
+
+  test('⚠️ and it is the BALL’S OWN Z that decides, which is what a ramp writes', () => {
+    // Same spot on the playfield, twice. Resting on the table the ball is behind what is drawn there
+    // and no pixel of it is painted; lifted a unit into the air — which is what a ramp's plane
+    // equation does to a ball crossing onto it — it clears the same scenery and shows. Using the
+    // ball's radius always would draw a ball riding a ramp at the height of one on the floor, and it
+    // would vanish under the very arch it is on top of.
+    const bytes = archive();
+    if (!bytes) return expect(existsSync(DAT)).toBe(false);
+    const demo = createDemo(bytes, { random: seeded() });
+    const position = demo.ball.position as { x: number; y: number; z?: number };
+    position.x = 3.271;
+    position.y = -12.453;
+
+    position.z = demo.table.ballRadius;
+    expect([...demo.render().pixels].includes(DEMO_BALL_COLOR), 'on the floor').toBe(false);
+
+    position.z = 1;
+    expect([...demo.render().pixels].includes(DEMO_BALL_COLOR), 'and a unit up').toBe(true);
+  });
+
   test('⚠️ the two ramps exist, and a ball that climbs one feels ITS gravity', () => {
     // Neither ramp carries a wall record, so until they were built the ball could not ride either.
     // The field goes into the grid over the ramp's own boxes: this crosses a triangle edge — which is

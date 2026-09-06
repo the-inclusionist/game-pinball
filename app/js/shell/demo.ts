@@ -48,7 +48,7 @@ import {
 import { readGroups, type Group } from '../dat/partman.js';
 import { advanceFrame, type Ball } from '../physics/step.js';
 import { checkStuckBall, unstuckBall, type StuckBall } from '../physics/stuck.js';
-import { fillCircle } from '../gfx/table-view.js';
+import { fillCircle, fillCircleBehind } from '../gfx/table-view.js';
 import { pack, type Framebuffer } from '../gfx/framebuffer.js';
 import { kindOf } from '../i18n/names.js';
 import { soundForKind } from '../audio/voices.js';
@@ -496,9 +496,9 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
   const camera = readCamera(groups);
   const playfield = decodePlayfield(groups);
   /**
-   * ⚠️ THE PLAYFIELD'S OWN DEPTH MAP, READ AND NOT YET USED. One 16-bit number per pixel saying how
-   * far away the thing drawn there is, and the whole of the original's occlusion is a comparison
-   * against it. See `render` below for the disagreement that stops it being used, measured.
+   * ⚠️ THE PLAYFIELD'S OWN DEPTH MAP, WHICH IS THE WHOLE OF THE ORIGINAL'S OCCLUSION. One 16-bit
+   * number per pixel saying how far away the thing drawn there is. Until the ramps existed the ball
+   * had nothing to go under; now it has two of them.
    */
   const playfieldDepth = readPlayfieldDepth(groups);
 
@@ -588,23 +588,23 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
       return camera.projection.toScreen({ x: ball.position.x, y: ball.position.y, z: table.ballRadius });
     },
 
-    /**
-     * ⚠️ STILL FLAT ON TOP, AND THE DEPTH MAP IS READ AND NOT USED. Everything the occlusion needs is
-     * built and tested — `readPlayfieldDepth`, `Projection.depthOf`, `fillCircleBehind` — and the two
-     * numbers do not agree: measured across the playfield, `depthOf` FALLS from 39449 at the top of
-     * the bitmap to 0 at the bottom, and the shipped depth map RISES from 4506 to 57476 over the same
-     * pixels. Both are monotonic and clean, so neither is noise: they simply count from opposite ends.
-     *
-     * `zdrv::paint` keeps the SMALLER value, so the buffer the game composites into holds smaller as
-     * nearer, and `depthOf` agrees with it (the near plane is `zMin`, and the bottom of the table sits
-     * just below it). The shipped map does not, so something converts it, and this port has not read
-     * what. Drawing the ball against it as it stands hides the ball everywhere — which is what the
-     * test that caught this says.
-     */
     render(): Framebuffer {
       frame.pixels.set(playfield.pixels);
       const at = this.ballOnScreen();
-      fillCircle(frame, at.x, at.y, table.ballRadius * pixelsPerUnit, DEMO_BALL_COLOR);
+      const radius = table.ballRadius * pixelsPerUnit;
+      // An archive without a depth map gets the ball flat on top, which is what this had before.
+      if (!playfieldDepth) {
+        fillCircle(frame, at.x, at.y, radius, DEMO_BALL_COLOR);
+        return frame;
+      }
+
+      // ⚠️ THE BALL'S OWN Z, WHICH A RAMP WRITES. On the open table it is the ball's radius — the
+      // centre of a sphere resting on the playfield — and a ramp replaces it with its plane equation
+      // as the ball crosses on. Using the radius always would put a ball riding a ramp at the height
+      // of one on the floor, and it would disappear under the very arch it is on top of.
+      const z = (ball.position as { z?: number }).z ?? table.ballRadius;
+      const depth = camera.projection.depthOf({ x: ball.position.x, y: ball.position.y, z });
+      fillCircleBehind(frame, playfieldDepth, at.x, at.y, radius, depth, DEMO_BALL_COLOR);
       return frame;
     },
 

@@ -82,51 +82,61 @@ describe('the ball drawn behind what is in front of it', () => {
   });
 });
 
-describe('⚠️ and the two numbers do not agree, which is why nothing draws against it yet', () => {
-  test('the projection counts from the near plane and the shipped map counts the other way', () => {
-    // Down the bitmap, the table tilts TOWARD the camera. `depthOf` falls to zero at the bottom —
-    // the near plane is `zMin` and the bottom of the table sits just below it — and the shipped depth
-    // map rises over the same pixels. Both are clean and monotonic, so neither is noise: they simply
-    // count from opposite ends, and `zdrv::paint` keeps the SMALLER value.
-    //
-    // Something in the original converts the one into the other and this port has not read what. The
-    // measurement is here so the next person starts from a number rather than from a suspicion.
+describe('⚠️ the map and the projection agree, once the map is the right way up', () => {
+  test('the stored depth of the empty playfield IS the projection’s own answer', () => {
+    // This is the whole check: away from anything standing above the table, the number in the file and
+    // the number the projection computes for the table's own surface are the same to within a fraction
+    // of a percent. If they were not, either the depth formula or the map's orientation would be
+    // wrong, and the ball would be hidden everywhere or hidden nowhere.
     const groups = archive();
     if (!groups) return expect(existsSync(DAT)).toBe(false);
     const camera = readCamera(groups);
     const map = readPlayfieldDepth(groups)!;
-    const sample = (py: number) => {
+
+    for (const py of [30, 60, 150, 330, 420]) {
       const t = camera.projection.toTable({ x: 180, y: py });
-      return {
-        projected: camera.projection.depthOf({ x: t.x, y: t.y, z: 0 }),
-        stored: map.depths[py * map.stride + 180]!,
-      };
-    };
+      const projected = camera.projection.depthOf({ x: t.x, y: t.y, z: 0 });
+      const stored = map.depths[py * map.stride + 180]!;
+      expect(Math.abs(projected - stored) / projected, `row ${py}`).toBeLessThan(0.01);
+    }
+  });
 
-    const high = sample(60);
-    const low = sample(420);
+  test('⚠️ and read as it LIES in the file it runs the other way entirely', () => {
+    // The map is stored bottom-up and `zdrv::FlipZMapHorizontally` — which swaps ROWS, whatever its
+    // name says — mirrors it on load. Unflipped, the stored value rises down the bitmap while the
+    // projection falls: the ball would be hidden on the open table and drawn through the ramps.
+    const groups = archive();
+    if (!groups) return expect(existsSync(DAT)).toBe(false);
+    const map = readPlayfieldDepth(groups)!;
+    const asItLies = (py: number) => map.depths[(map.height - 1 - py) * map.stride + 180]!;
 
-    expect(high.projected, 'the projection: far at the top').toBeGreaterThan(low.projected);
-    expect(high.stored, 'the map: small at the top').toBeLessThan(low.stored);
+    expect(asItLies(60), 'the file, at the top of the picture').toBeLessThan(asItLies(420));
+    expect(map.depths[60 * map.stride + 180]!, 'and turned the right way up, the other way round')
+      .toBeGreaterThan(map.depths[420 * map.stride + 180]!);
   });
 });
 
 describe('how deep the ball is', () => {
-  test('⚠️ the depth is ROW TWO of the projection matrix, which is what `z_distance` returns', () => {
-    // The same dot product `toScreen` divides by. Taking the ball's own z, or the distance to the
-    // camera, gives a number in the wrong units entirely — and the ball would be either always in
-    // front of everything or always behind it.
+  test('⚠️ it is the MAGNITUDE of the projected vector, not row two of it', () => {
+    // `proj::z_distance` is `magnitude(matrix * vec)`. Row two is the obvious guess — it is what
+    // `toScreen` divides by — and it is the depth along the camera's AXIS rather than the distance to
+    // the camera. Against the playfield's own map the magnitude agrees to a fraction of a percent and
+    // row two is nine parts in ten out at the top of the bitmap.
     const groups = archive();
     if (!groups) return expect(existsSync(DAT)).toBe(false);
     const camera = readCamera(groups);
     const point = { x: 1, y: -2, z: 0.3 };
-    const row2 = camera.matrix.row2;
+    const m = camera.matrix;
+    const dot = (row: { x: number; y: number; z: number; w: number }) =>
+      row.x * point.x + row.y * point.y + row.z * point.z + row.w;
 
     const expected = camera.projection.normalizeDepth(
-      row2.x * point.x + row2.y * point.y + row2.z * point.z + row2.w,
+      Math.hypot(dot(m.row0), dot(m.row1), dot(m.row2)),
     );
 
     expect(camera.projection.depthOf(point)).toBe(expected);
+    expect(camera.projection.depthOf(point), 'and it is not row two alone')
+      .not.toBe(camera.projection.normalizeDepth(dot(m.row2)));
   });
 
   test('⚠️ and a ball high on a ramp is NEARER than one on the open table', () => {

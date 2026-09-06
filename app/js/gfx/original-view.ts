@@ -119,14 +119,33 @@ export function readCamera(groups: readonly Group[]): OriginalCamera {
 export const DOCUMENTED_MATRIX = GAME_MATRIX;
 
 /**
- * The playfield's own DEPTH MAP, beside its bitmap in the same group.
+ * The playfield's own DEPTH MAP, beside its bitmap in the same group, TURNED THE RIGHT WAY UP.
  *
  * ⚠️ THE WHOLE OF THE ORIGINAL'S OCCLUSION IS A COMPARISON AGAINST THIS. One 16-bit number per pixel,
  * the same 365x470 as the picture, saying how far away the thing drawn there is. The ramps stand above
  * the table in it, which is what a ball riding under an arch is drawn behind.
+ *
+ * ⚠️ AND IT IS STORED BOTTOM-UP. `zdrv::FlipZMapHorizontally` — which despite its name swaps ROWS —
+ * mirrors it on load. Read as it lies, the map runs the opposite way from the projection: measured
+ * down the middle of the bitmap the stored value RISES from 6434 to 54311 while the depth of the
+ * table's own surface FALLS from 51117 to 6455. Flipped, the two agree to within a fraction of a
+ * percent everywhere except where something is genuinely standing above the table — which is the only
+ * place they are supposed to differ, and the whole reason the map exists.
  */
 export function readPlayfieldDepth(groups: readonly Group[]): ZMap | null {
   const table = groupNamed(groups, TABLE_GROUP);
   const entry = table && entryOfType(table, EntryType.ZMap);
-  return entry ? readZMap(entry) : null;
+  if (!entry) return null;
+  const map = readZMap(entry);
+
+  // ⚠️ COPIED A WHOLE STRIDE AT A TIME, PADDING AND ALL. Copying only `width` cells leaves the surplus
+  // as zeros, and on this archive nothing reads them — the mutation survives, and is recorded rather
+  // than chased. It stops being equivalent the moment anything samples past the picture's last column.
+  const flipped = new Uint16Array(map.depths.length);
+  for (let y = 0; y < map.height; y++) {
+    const from = (map.height - 1 - y) * map.stride;
+    flipped.set(map.depths.subarray(from, from + map.stride), y * map.stride);
+  }
+
+  return { ...map, depths: flipped };
 }

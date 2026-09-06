@@ -35,11 +35,13 @@ export interface Projection {
   toTable(p: { x: number; y: number }): Vector3;
   normalizeDepth(depth: number): number;
   /**
-   * `proj::z_distance` and then `normalizeDepth`, which is how deep a thing is to the z-buffer.
+   * `proj::z_distance` and then `NormalizeDepth`: how deep a thing is, to the z-buffer.
    *
-   * ⚠️ IT IS ROW TWO OF THE MATRIX — the same dot product `toScreen` divides by — and NOT the point's
-   * own z, nor its distance to the camera. Either of those is a number in the wrong units: the ball
-   * would come out always in front of the scene or always behind it, and never sometimes.
+   * ⚠️ IT IS THE MAGNITUDE OF THE WHOLE PROJECTED VECTOR, not row two of it. `toScreen` divides by
+   * row two, so row two is the obvious guess and it is wrong — it is the depth along the camera's
+   * axis, and this is the distance to the camera. Measured against the playfield's own depth map, the
+   * magnitude agrees to within a fraction of a percent across the table and row two does not agree at
+   * all: it is nine parts in ten out at the top of the bitmap.
    */
   depthOf(v: Vector3): number;
 }
@@ -87,8 +89,8 @@ export function createProjection(o: ProjectionOptions): Projection {
      * with A = matrix[1][1], B = matrix[1][2], F = matrix[1][3], G = matrix[2][3].
      */
     depthOf(v: Vector3): number {
-      const row2 = o.matrix.row2;
-      return this.normalizeDepth(row2.x * v.x + row2.y * v.y + row2.z * v.z + row2.w);
+      const p = multiply(o.matrix, v);
+      return this.normalizeDepth(Math.hypot(p.x, p.y, p.z));
     },
 
     toTable(point: { x: number; y: number }): Vector3 {
