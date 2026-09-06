@@ -106,7 +106,26 @@ whoever made it.
 
 Applied here, honestly, as of phase 8:
 
-- **There is no art in this repository.** `git ls-files` matches no image, font or audio file at all.
+- ⚠️ **THERE IS ONE ASSET, AS OF 2026-09-06, AND IT IS A FONT.** This line used to read "there is no
+  art in this repository: `git ls-files` matches no image, font or audio file at all", and that stopped
+  being true the moment the Dev asked for the title screen to be set in **Press Start 2P**.
+
+  It is the first thing here that is not code, so it is the first test of the two rules below, and both
+  are satisfied rather than asserted:
+
+  | | |
+  |---|---|
+  | file | `app/assets/fonts/press-start-2p.woff2` (12 KB) |
+  | author | The Press Start 2P Project Authors — cody@zone38.net |
+  | licence | **SIL Open Font License 1.1**, copied verbatim beside it as `press-start-2p.OFL.txt` |
+  | redistributable | **yes** — the OFL exists to permit exactly this, including inside a bundle |
+  | reserved name | "Press Start 2P" — the OFL forbids shipping a MODIFIED font under that name, so it is bundled unmodified |
+
+  It is **bundled, not fetched**. A webfont pulled from Google at boot is a network dependency in a
+  game that has to run offline on a school machine, and it is a request to a third party carrying the
+  player's address every time a child opens the title screen. Twelve kilobytes is cheaper than either.
+
+- No other asset exists. `git ls-files` still matches no image and no audio file.
 - What phase 8 draws is not art in that sense. `gfx/table-view.ts` draws each component as the shape it
   collides with, in colours `gfx/table-palette.ts` computes per role and per world. **That is code**,
   and it is AGPL like everything else around it. Calling it art would invoke a regime over something

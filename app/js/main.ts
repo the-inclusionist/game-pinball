@@ -26,6 +26,8 @@ import {
   readPalette, writePalette, nextPalette, isCbSafe, PALETTE_LABEL, type PaletteChoice,
 } from './shell/options.js';
 import { mountOptionsDialog } from './shell/options-dialog.js';
+import { titleScreen } from './shell/title.js';
+import { mountTitle } from './shell/title-dom.js';
 import { createLiveControls } from './table/live-controls.js';
 import { createRolloverWatch } from './table/rollovers.js';
 import { objectiveOf, AUTHORED_OBJECTIVE_ID } from './table/objective.js';
@@ -736,6 +738,52 @@ optionsButton.className = 'pinball-options-open';
 optionsButton.textContent = shell.t('pinball.palette.title');
 optionsButton.addEventListener('click', () => optionsDialog.open());
 region.appendChild(optionsButton);
+
+/**
+ * ⚠️ THE FIRST SCREEN, AND THE ONE COMPROMISE IN IT, NAMED RATHER THAN HIDDEN.
+ *
+ * The Dev asked for a title that opens a table selector. The selector is real and it lists the
+ * catalogue — but choosing a table that is not the one already booted RELOADS the page with
+ * `?table=`, because this entry point resolves `authored` at module scope and builds the physics, the
+ * live controls, the rollover watch and the picture from it before any of this runs. Switching tables
+ * in place means lifting all of that into a function that can be called twice.
+ *
+ * That refactor is worth doing and is not being done in the same commit as the screen: the Dev has
+ * asked for five more tables and a mission machine for each, and every one of those makes the seam
+ * clearer. A reload costs a blink and is honest; a half-reinitialised table would be the kind of
+ * defect this port spends its nights on.
+ *
+ * A game already running is not disturbed: choosing the table that is already booted just hides the
+ * screen.
+ */
+const screens = titleScreen({
+  onStart: (table) => {
+    if (table !== authored.name) {
+      const url = new URL(location.href);
+      url.searchParams.set('table', table);
+      location.assign(url.toString());
+    }
+  },
+});
+
+const title = mountTitle({
+  doc: document,
+  host: region,
+  screen: screens,
+  t: shell.t,
+  store: localStorage,
+});
+
+/**
+ * ⚠️ AND THE DEMONSTRATION SKIPS IT. `?demo=original` is the validation configuration — it asks for
+ * the player's own archive through a file picker — and putting a title in front of that would be a
+ * screen between somebody and the thing they came to the URL for.
+ */
+if (demoRequested) {
+  screens.advance();
+  screens.choose(authored.name);
+  title.refresh();
+}
 
 const hud = mountHud({
   doc: document, host: region, layout: shell.hud, screen: { ...DEFAULT_HUD, playfieldWidth: authored.size.width },

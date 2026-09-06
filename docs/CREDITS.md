@@ -66,3 +66,13 @@ No code from it is present here.
 Maxis. Its data files are Microsoft's and are **never distributed with this project** under any
 circumstances; see [`LICENSES.md` § 3](LICENSES.md). This port is not a redistribution of the game and
 nothing about it should be read as permission to redistribute one.
+
+## Press Start 2P
+
+The title screen is set in **Press Start 2P** by CodeMan38 (cody@zone38.net), under the
+**SIL Open Font License 1.1**. The licence is copied verbatim beside the font at
+`app/assets/fonts/press-start-2p.OFL.txt`.
+
+The font is bundled unmodified. "Press Start 2P" is a Reserved Font Name under the OFL, which means a
+modified copy may not be shipped under that name — so if it is ever subset or patched, it is renamed
+first.

@@ -1,0 +1,186 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// shell/title-dom — the markup for the first screen and the selector behind it.
+//
+// Thin on purpose: `shell/title` holds which screen is showing, what the selector offers and what
+// choosing does, and every one of those is checked in node. What is left here is the part only a
+// browser has — elements, a font, and a click.
+//
+// ========================= THE FONT IS BUNDLED, NOT FETCHED =========================
+// ⚠️ AND THAT IS THE FIRST ASSET THIS REPOSITORY HAS EVER SHIPPED. `docs/LICENSES.md` § 4 said "there
+// is no art in this repository: `git ls-files` matches no image, font or audio file at all", and the
+// Dev asking for Press Start 2P is what ended that. It is OFL-1.1, the licence sits beside it, and the
+// record says so — the two rules in § 4 exist for exactly this moment.
+//
+// Bundled rather than pulled from Google at boot, for two reasons that both matter more than the 12 KB:
+// a game that has to run offline on a school machine cannot depend on a font server, and a request to a
+// third party every time a child opens the title screen carries that child's address to them.
+//
+// ⚠️ AND NOTHING WAITS FOR IT. `document.fonts.add` is fired and not awaited: the stack falls back to
+// the same monospace list the HUD uses, so a font that fails to decode costs the LOOK of the title and
+// never the title itself. A screen that renders nothing until a download finishes is a screen that
+// renders nothing on the machine this game is for.
+
+import fontUrl from '../../assets/fonts/press-start-2p.woff2';
+import { TITLE_LINES, TITLE_SUBTITLE, type TitleScreen } from './title.js';
+import { readTable, EMPTY_SCORE, type HighScoreStore } from '../control/high-score.js';
+
+/** The same fallback the HUD reasons its way to: no download, no wait, no blank screen. */
+const FALLBACK = 'ui-monospace, "DejaVu Sans Mono", Menlo, Consolas, monospace';
+const FACE = `"Press Start 2P", ${FALLBACK}`;
+
+const SURFACE = '#0e1017';
+const INK = '#e8ecf4';
+const DIM = '#8a93a6';
+
+export interface TitleDomOptions {
+  readonly doc: Pick<Document, 'createElement'>;
+  readonly host: Pick<HTMLElement, 'appendChild'>;
+  readonly screen: TitleScreen;
+  readonly t: (key: string) => string;
+  /** Where the high scores live. The selector is the only place they are shown. */
+  readonly store: HighScoreStore;
+  /** Called after the player picks, so the caller can hide this and start the game. */
+  readonly onStarted?: () => void;
+}
+
+export interface TitleDom {
+  /** Redraws for whatever screen `shell/title` now says is current. */
+  refresh(): void;
+  readonly element: HTMLElement;
+}
+
+function loadFont(): void {
+  // Guarded because `FontFace` is absent in a node environment and in older browsers, and neither is
+  // a reason for the screen not to draw.
+  try {
+    if (typeof FontFace === 'undefined' || !document.fonts) return;
+    const face = new FontFace('Press Start 2P', `url(${fontUrl}) format("woff2")`);
+    void face.load().then((loaded) => document.fonts.add(loaded)).catch(() => {});
+  } catch {
+    // See the header: the look is optional, the screen is not.
+  }
+}
+
+export function mountTitle(o: TitleDomOptions): TitleDom {
+  loadFont();
+
+  const root = o.doc.createElement('div');
+  root.className = 'pinball-title';
+  Object.assign(root.style, {
+    position: 'absolute', left: '0', top: '0', width: '100%', height: '100%',
+    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+    gap: '4%', background: SURFACE, color: INK, fontFamily: FACE, textAlign: 'center',
+    containerType: 'inline-size',
+  });
+
+  const title = o.doc.createElement('button');
+  // ⚠️ A BUTTON, NOT A DIV WITH A CLICK ON IT. The whole screen is the control — the Dev's words are
+  // "ao clicar nesta tela" — and a div that responds to a pointer responds to nothing else: no Enter,
+  // no Space, no focus ring, and nothing for a screen reader to announce as actionable.
+  Object.assign(title.style, {
+    display: 'flex', flexDirection: 'column', gap: '6%', alignItems: 'center',
+    background: 'none', border: 'none', color: 'inherit', font: 'inherit', cursor: 'pointer',
+    padding: '4%',
+  });
+  title.setAttribute('aria-label', `${TITLE_LINES.join(' ')} ${TITLE_SUBTITLE}`);
+
+  for (const line of TITLE_LINES) {
+    const el = o.doc.createElement('span');
+    el.textContent = line;
+    // Sized against the container rather than the viewport: the canvas is 320 wide whatever the page
+    // is scaled to, and the title has to sit on the same grid as everything else drawn on it.
+    Object.assign(el.style, { fontSize: '13cqw', lineHeight: '1.2', letterSpacing: '0.05em' });
+    title.appendChild(el);
+  }
+
+  const subtitle = o.doc.createElement('span');
+  subtitle.textContent = TITLE_SUBTITLE;
+  Object.assign(subtitle.style, { fontSize: '7cqw', color: DIM, letterSpacing: '0.3em' });
+  title.appendChild(subtitle);
+  title.addEventListener('click', () => { o.screen.advance(); refresh(); });
+  root.appendChild(title);
+
+  const select = o.doc.createElement('div');
+  select.className = 'pinball-select';
+  Object.assign(select.style, {
+    display: 'flex', flexDirection: 'column', gap: '3%', alignItems: 'center', width: '80%',
+  });
+
+  for (const table of o.screen.tables) {
+    const button = o.doc.createElement('button');
+    button.textContent = table;
+    button.setAttribute('data-table', table);
+    Object.assign(button.style, {
+      font: 'inherit', fontSize: '4cqw', padding: '2% 4%', width: '100%',
+      background: '#1a1e26', color: INK, border: `1px solid ${DIM}`, cursor: 'pointer',
+    });
+    button.addEventListener('click', () => {
+      o.screen.choose(table);
+      refresh();
+      o.onStarted?.();
+    });
+    select.appendChild(button);
+  }
+
+  /**
+   * ⚠️ THE SCOREBOARD IS SHOWN HERE, which is what retires `control/high-score` from the orphan
+   * ledger. The original shows it on its own screen from a menu; this game has one screen before the
+   * table and it is this, so the five names live under the selector where a player passes them on the
+   * way in.
+   */
+  const scores = o.doc.createElement('div');
+  scores.className = 'pinball-high-scores';
+  Object.assign(scores.style, { fontSize: '3.2cqw', color: DIM, width: '80%', marginTop: '4%' });
+  select.appendChild(scores);
+
+  const back = o.doc.createElement('button');
+  back.textContent = o.t('pinball.title.back');
+  Object.assign(back.style, {
+    font: 'inherit', fontSize: '3.2cqw', background: 'none', border: 'none', color: DIM,
+    cursor: 'pointer', marginTop: '2%',
+  });
+  back.addEventListener('click', () => { o.screen.back(); refresh(); });
+  select.appendChild(back);
+  root.appendChild(select);
+
+  function refresh(): void {
+    const at = o.screen.current;
+    title.hidden = at !== 'title';
+    select.hidden = at !== 'select';
+    // The whole screen steps aside once a game is running: the table is behind it.
+    root.hidden = at === 'playing';
+
+    if (at !== 'select') return;
+    // Read every time the selector opens, never cached: a game finished since it was last shown is
+    // exactly when this changed.
+    scores.textContent = '';
+    const heading = o.doc.createElement('div');
+    heading.textContent = o.t('pinball.title.highScores');
+    Object.assign(heading.style, { color: INK, marginBottom: '2%' });
+    scores.appendChild(heading);
+
+    const table = readTable(o.store);
+    const played = table.filter((entry) => entry.score > EMPTY_SCORE && entry.name !== '');
+    if (played.length === 0) {
+      const none = o.doc.createElement('div');
+      // An empty scoreboard says so. A blank space says the feature is broken.
+      none.textContent = o.t('pinball.title.noScores');
+      scores.appendChild(none);
+      return;
+    }
+    for (const entry of played) {
+      const row = o.doc.createElement('div');
+      Object.assign(row.style, { display: 'flex', justifyContent: 'space-between' });
+      const who = o.doc.createElement('span');
+      who.textContent = entry.name;
+      const what = o.doc.createElement('span');
+      what.textContent = String(entry.score);
+      row.append?.(who, what);
+      scores.appendChild(row);
+    }
+  }
+
+  refresh();
+  o.host.appendChild(root);
+  return { refresh, element: root };
+}
