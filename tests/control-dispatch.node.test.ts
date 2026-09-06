@@ -161,6 +161,8 @@ describe('table actions — flag, lamp, message', () => {
         flagLights: ['lite20', 'lite19', 'lite61'],
       },
       resetSinkTimers: (s) => built.sounds.push(`sinks:${s}`),
+      relaunchBall: (s) => built.sounds.push(`relaunch:${s}`),
+      lockedText: 'BALL LOCKED',
     });
     return { ...built, a };
   }
@@ -236,5 +238,91 @@ describe('table actions — flag, lamp, message', () => {
     a.setMultiball(5);
 
     expect(ctx.table.multiballCount).toBe(4);
+  });
+});
+
+/**
+ * ⚠️ `table_bump_ball_sink_lock`: THE ONLY THING IN THE GAME THAT STARTS MULTIBALL.
+ *
+ * Three balls sent into the wormhole's own sink and held there. The first two are announced and the
+ * plunger sends another ball out two seconds later; the THIRD one, which the counter recognises by
+ * already standing at two, starts multiball instead and puts the counter back to zero. Nothing else
+ * anywhere calls `table_set_multiball` from play.
+ */
+describe('locking a ball in the wormhole', () => {
+  function actions() {
+    const built = build();
+    const a = createTableActions({
+      ctx: built.ctx,
+      text: {
+        extraBall: 'EXTRA BALL', bonusHeld: 'BONUS HELD', bonusSet: 'BONUS',
+        jackpotSet: 'JACKPOT', multiball: 'MULTIBALL', replay: 'REPLAY',
+        flagLightsSet: 'FLAGS',
+      },
+      lamps: {
+        bonusHold: 'lite58', bonus: 'lite59', jackpot: 'lite60', replay: 'lite199',
+        multiball: ['lite38', 'lite39', 'lite40'],
+        flagLights: ['lite20', 'lite19', 'lite61'],
+      },
+      resetSinkTimers: (s) => built.sounds.push(`sinks:${s}`),
+      relaunchBall: (s) => built.sounds.push(`relaunch:${s}`),
+      lockedText: 'BALL LOCKED',
+    });
+    return { ...built, a };
+  }
+
+  test('⚠️ a locked ball is one FEWER on the table, and the plunger sends out another', () => {
+    // The ball stays in the hole. Without the decrement the drain would keep believing there are
+    // other balls out there and would never end a ball, let alone the game.
+    const { a, ctx, info, sounds } = actions();
+    ctx.table.multiballCount = 1;
+
+    a.bumpBallSinkLock();
+
+    expect(ctx.table.multiballCount).toBe(0);
+    expect(info).toEqual([{ text: 'BALL LOCKED', seconds: 2 }]);
+    expect(sounds).toEqual(['ballLocked', 'relaunch:2']);
+  });
+
+  test('⚠️ and it refuses while more than one ball is already out', () => {
+    // The guard is `<= 1`, the same one `table_set_multiball` uses: locking during multiball would
+    // take the count down towards zero one hole at a time and end the ball with balls still in play.
+    const { a, ctx, info } = actions();
+    ctx.table.multiballCount = 2;
+
+    a.bumpBallSinkLock();
+
+    expect(ctx.table.multiballCount).toBe(2);
+    expect(info).toEqual([]);
+  });
+
+  test('⚠️ THE THIRD LOCK STARTS MULTIBALL, and the counter goes back to zero', () => {
+    const { a, ctx, info, sounds } = actions();
+    ctx.table.multiballCount = 1;
+
+    a.bumpBallSinkLock();
+    a.bumpBallSinkLock();
+    ctx.table.multiballCount = 1;
+    a.bumpBallSinkLock();
+
+    // Three added by `setMultiball` on top of the one it was put back to, minus the lock's own step.
+    expect(ctx.table.multiballCount).toBe(3);
+    expect(info.at(-1)).toEqual({ text: 'MULTIBALL', seconds: 2 });
+    expect(sounds.at(-1), 'and the three sinks give their balls back').toBe('sinks:2');
+    expect(sounds, 'the third lock does not relaunch: the sinks do').not.toContain('relaunch:2:third');
+  });
+
+  test('⚠️ and the fourth lock is a first lock again', () => {
+    const { a, ctx, info } = actions();
+    ctx.table.multiballCount = 1;
+    a.bumpBallSinkLock();
+    a.bumpBallSinkLock();
+    ctx.table.multiballCount = 1;
+    a.bumpBallSinkLock();
+    ctx.table.multiballCount = 1;
+
+    a.bumpBallSinkLock();
+
+    expect(info.at(-1), 'announced, not another multiball').toEqual({ text: 'BALL LOCKED', seconds: 2 });
   });
 });

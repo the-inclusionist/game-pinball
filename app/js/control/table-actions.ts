@@ -41,7 +41,16 @@ export interface TableActionOptions {
   };
   /** The sinks that hold the extra balls during multiball. */
   readonly resetSinkTimers?: (seconds: number) => void;
+  /** `TableG->Plunger->Message(PlungerRelaunchBall, 2.0)` after a ball is locked away. */
+  readonly relaunchBall?: (seconds: number) => void;
+  /** `STRING102`, shown for the first two locks. The third says MULTIBALL instead. */
+  readonly lockedText?: string;
 }
+
+/** How many balls go into the hole before it gives all three back at once. */
+const LOCKS_BEFORE_MULTIBALL = 2;
+/** `table_set_multiball(2.0)` and `PlungerRelaunchBall, 2.0f` — the original's literal, twice. */
+const LOCK_SECONDS = 2;
 
 /**
  * `control::table_add_extra_ball`. Exported on its own because the OUT LANES grant one directly, and
@@ -59,6 +68,8 @@ export function addExtraBall(ctx: ControlContext, text: string, seconds: number)
 
 export function createTableActions(o: TableActionOptions) {
   const { ctx } = o;
+  /** `TableG->BallLockedCounter`. Two balls waiting; the third is the one that pays. */
+  let ballLockedCounter = 0;
 
   return {
     /** An extra ball is a counter and an announcement, and nothing else. */
@@ -108,6 +119,38 @@ export function createTableActions(o: TableActionOptions) {
       for (const lamp of o.lamps.multiball) ctx.light(lamp)?.flasherStartTimed(-1);
       ctx.showInfo(o.text.multiball, 2);
       ctx.playMusic('track3');
+    },
+
+    /**
+     * `control::table_bump_ball_sink_lock` — THE ONLY THING IN THE GAME THAT STARTS MULTIBALL.
+     *
+     * ⚠️ A LOCKED BALL IS ONE FEWER ON THE TABLE, and the decrement is the load-bearing line. The ball
+     * is sitting in a hole that will not give it back; leaving the count alone would have the drain
+     * believing other balls were still out there, and it would answer every drain with
+     * "multiball continues" — a ball could never be lost and the game could never end.
+     *
+     * ⚠️ AND THE COUNTER IS READ BEFORE IT IS WRITTEN. `BallLockedCounter == 2` is the THIRD ball: the
+     * first two announce themselves and have another ball sent out after them, and the third finds the
+     * counter already at two, starts multiball and puts it back to zero. Testing for three would make
+     * multiball need a fourth ball that the table has no way to supply.
+     */
+    bumpBallSinkLock(): void {
+      // The same `<= 1` guard `setMultiball` uses: locking during multiball would walk the count down
+      // one hole at a time and end the ball with balls still in play.
+      if (ctx.table.multiballCount > 1) return;
+      ctx.table.multiballCount--;
+
+      if (ballLockedCounter === LOCKS_BEFORE_MULTIBALL) {
+        ctx.playSound('multiball');
+        this.setMultiball(LOCK_SECONDS);
+        ballLockedCounter = 0;
+        return;
+      }
+
+      ballLockedCounter++;
+      ctx.playSound('ballLocked');
+      if (o.lockedText !== undefined) ctx.showInfo(o.lockedText, LOCK_SECONDS);
+      o.relaunchBall?.(LOCK_SECONDS);
     },
 
     setReplay(value: number): void {

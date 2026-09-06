@@ -97,6 +97,10 @@ export const VOICES: Readonly<Record<string, VoiceSpec>> = {
   // original gives the same three targets two different emitters and picks between them by asking
   // `lite198`. Flat and short, because it is an acknowledgement of something that led nowhere.
   noMission: { frequency: 349, endFrequency: 330, duration: 0.08, wave: 'triangle' },
+  // ⚠️ A BALL PUT AWAY, WHICH IS PROGRESS AND NOT A LOSS. `soundwave44` sounds for each of the first
+  // two balls locked in the wormhole; the third plays `soundwave41` and starts multiball. Falling
+  // would read as the ball being taken, and the player is two thirds of the way to three balls.
+  ballLocked: { frequency: 262, endFrequency: 349, duration: 0.16, wave: 'sine' },
 
   // The ramp pays four different ways, and the original branches on three lamps to decide which.
   reflexOnly: { frequency: 349, endFrequency: 523, duration: 0.18, wave: 'triangle' },
@@ -131,7 +135,7 @@ export const VOICES: Readonly<Record<string, VoiceSpec>> = {
 export const ORIGINAL_FX: readonly string[] = [
   'hit', 'miss', 'complete', 'collect', 'promotion', 'multiball', 'highScore', 'chain',
   'reflexOnly', 'rampAward', 'mission', 'plain', 'drain', 'extraBall', 'shootAgain', 'refuel',
-  'noMission',
+  'noMission', 'ballLocked',
 ];
 
 /** Kind to voice name. A kind with no entry makes no sound, which a wall does on purpose. */

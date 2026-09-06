@@ -79,7 +79,7 @@ describe('⚠️ and the list is checked against the control layer itself', () =
     expect([...literals].filter((role) => !ORIGINAL_FX.includes(role))).toEqual([]);
   });
 
-  test('⚠️ and the roles asked for by NAME today are exactly these three', () => {
+  test('⚠️ and the roles asked for by NAME today are exactly these five', () => {
     // An inventory, like `wired.size` in the dispatcher. Every other role is supplied as an option by
     // whoever wires the table, and that wiring does not exist yet — so this list is the honest measure
     // of how much of the effect bank a player can currently hear. It grows as the controls are wired,
@@ -91,6 +91,10 @@ describe('⚠️ and the list is checked against the control layer itself', () =
       for (const match of source.matchAll(/playSound\('([^']+)'\)/g)) literals.add(match[1]!);
     }
 
-    expect([...literals].sort()).toEqual(['drain', 'extraBall', 'shootAgain']);
+    // Three until `table_bump_ball_sink_lock` was written. It names both of its own sounds: `ballLocked`
+    // for each of the first two balls put away, and `multiball` for the third — the one place in the
+    // game where multiball is asked for by something a player did rather than handed in as an option.
+    expect([...literals].sort())
+      .toEqual(['ballLocked', 'drain', 'extraBall', 'multiball', 'shootAgain']);
   });
 });
