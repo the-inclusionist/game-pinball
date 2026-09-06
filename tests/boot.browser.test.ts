@@ -129,3 +129,26 @@ describe('⚠️ the keyboard is bound to #game-region and NOT to the window', (
     expect(region.getAttribute('tabindex')).toBe('-1');
   });
 });
+
+describe('⚠️ and the game is CONTROLLABLE once it starts, not merely visible', () => {
+  // The defect this exists for shipped and the Dev found it: after the title screen was added, choosing
+  // a table left the focus on the button that was clicked, and then on `<body>` when the selector hid.
+  // `bindPinballControls` listens on `#game-region` and never on `window` — the right choice, and the
+  // engine trap the plan names in advance — so a keydown on the body reached nothing. Every key did
+  // nothing until the player happened to click the canvas.
+  //
+  // ⚠️ `tests/title.browser` PASSED THROUGHOUT. It asks which screen occupies the canvas, which is a
+  // question about pixels; this is a question about whether the game can be played, and the two are not
+  // the same. The controls were implemented, tested, and unreachable — which is worse than absent,
+  // because the game looks finished and does not respond.
+  test('starting a table puts the focus where the keys are bound', () => {
+    const region = document.getElementById('game-region')!;
+    const title = document.querySelector<HTMLElement>('.pinball-title button');
+    if (!title) return expect(document.querySelector('.pinball-title')).toBeNull();
+
+    title.click();
+    document.querySelector<HTMLElement>('[data-table]')!.click();
+
+    expect(region.contains(document.activeElement), 'the focus is inside the game region').toBe(true);
+  });
+});

@@ -800,8 +800,23 @@ const title = mountTitle({
   screen: screens,
   t: shell.t,
   store: localStorage,
-  // The HUD is about a game in progress. Until one is, it has nothing to say.
-  onStarted: () => hud.setVisible(true),
+  onStarted: () => {
+    // The HUD is about a game in progress. Until one is, it has nothing to say.
+    hud.setVisible(true);
+    /**
+     * ⚠️ AND THE FOCUS GOES TO THE REGION, OR THE GAME IS UNPLAYABLE.
+     *
+     * `bindPinballControls` listens on `#game-region` and never on `window` — the engine trap the plan
+     * names in advance, and the right choice. But a player reaches the table by CLICKING A BUTTON, and
+     * after that click the focus is on the button; when the selector hides, it falls to `<body>`. A
+     * keydown on the body never reaches a listener on a descendant, so every key did nothing until the
+     * player happened to click the canvas.
+     *
+     * The controls were implemented and browser-tested. The title screen made them unreachable, which
+     * is worse than not having them: the game looks finished and does not respond.
+     */
+    region.focus();
+  },
 });
 
 /**
