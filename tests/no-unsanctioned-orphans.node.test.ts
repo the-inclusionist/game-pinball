@@ -35,6 +35,12 @@ const SANCTIONED: Readonly<Record<string, string>> = {
   'control/simple-components.ts':
     'the 145-name address book the control layer is written against, checked against the archive by '
     + 'the same test',
+  'control/high-score.ts':
+    'the five names the table remembers, transcribed from `high_score.cpp` and tested. It has no '
+    + 'importer for one commit: the original asks for a name through a dialog and shows the table on '
+    + 'its own screen, and this port has neither until the title screen lands — which is the next '
+    + 'thing being built. If that screen ships without reading this, the entry is the defect, not the '
+    + 'ledger',
   'dat/spliced.ts':
     'the spliced-bitmap decoder. All 318 bitmaps in the shipped archive are raw, so it has nothing to '
     + 'do here; `dat/bitmap8.readIndexedBitmap` refuses a spliced one by name rather than walking it',
