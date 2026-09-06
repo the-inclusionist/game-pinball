@@ -28,6 +28,7 @@ import {
 import { advanceFrame } from './physics/step.js';
 import { createLaneProgress } from './table/lane-progress.js';
 import { openSecrets } from './table/secret.js';
+import { loadBackdrop } from './gfx/backdrop.js';
 import { bindPinballControls } from './shell/controls.js';
 import {
   readPalette, writePalette, nextPalette, isCbSafe, PALETTE_LABEL, type PaletteChoice,
@@ -180,7 +181,7 @@ function refreshObjective(force = false): void {
    * not there right now" go into one list, because the picture and the physics each take one list and
    * the two must agree — `table/cabinet` records what it cost to learn that.
    */
-  const hiddenNow = [...live.downTargets(), ...openSecrets(authored, ballsLost)];
+  const hiddenNow = notThere();
   const downNow = hiddenNow.join(',');
   const flareNow = physics.flare ? Math.round(physics.flare.at.y) : -1;
   /**
@@ -213,12 +214,37 @@ function refreshObjective(force = false): void {
     missionNeed: objective.need,
     missionTargets: objective.targets,
   };
+  composePicture();
+}
+
+/**
+ * ⚠️ THE ONE PLACE THE TABLE IS DRAWN, AND THERE WERE FOUR.
+ *
+ * `drawTable` grew an option every time something started changing that the picture had to follow —
+ * the mission's targets, the lit lamps, the dropped targets, the flare's position, the lane lights,
+ * the open secret doors, and now the table's own artwork. Seven arguments, and only ONE of the four
+ * call sites in this file had learnt all of them.
+ *
+ * ⚠️ SO SWITCHING THE PALETTE WIPED THE TABLE. The colour menu recomposed with three arguments, which
+ * put back a table with no lamps lit, its dropped targets standing again, its secret passage sealed,
+ * its lane lights out and its storm frozen at the top — until the next thing happened to repaint it.
+ * On `ion-storm` that is a fortieth of a second, because the flare moves; on `long-climb` it is never.
+ *
+ * That is how the artwork was found not to appear at all: the boot sequence recomposed through one of
+ * the short call sites AFTER the picture had been painted, and the art was thrown away without a
+ * trace. `tests/shell-boot` now holds this file to exactly one `drawTable` call.
+ */
+function composePicture(): void {
   tablePicture = drawTable({
-    table: authored, missionTargets: state.missionTargets,
-    litLamps: live.litLamps(), cbSafe: isCbSafe(palette), hidden: hiddenNow,
+    table: authored,
+    missionTargets: state.missionTargets,
+    litLamps: live.litLamps(),
+    cbSafe: isCbSafe(palette),
+    hidden: notThere(),
     laneDepth: laneDepths(),
+    ...(backdrop ? { backdrop } : {}),
     // Absent on a table with no storm, which is what leaves the other five composed as they were.
-    ...(physics.flare ? { flareAt: flareNow } : {}),
+    ...(physics.flare ? { flareAt: Math.round(physics.flare.at.y) } : {}),
   });
 }
 
@@ -426,9 +452,13 @@ const image = context.createImageData(screen.width, screen.height);
  * layer is built from the table below — and at boot nothing is lit anyway. `refreshObjective` composes
  * it again with the real set before the first frame.
  */
-let tablePicture = drawTable({
-  table: authored, missionTargets: state.missionTargets, cbSafe: isCbSafe(palette),
-});
+/**
+ * ⚠️ BORN EMPTY AND FILLED BY `composePicture` AT BOOT, because this ran before `live` and `physics`
+ * existed and could therefore only ever be one of the short compositions the comment on
+ * `composePicture` is about. An empty framebuffer that is never seen is honest; a partial table that
+ * is never seen is a fifth call site waiting to be forgotten.
+ */
+let tablePicture = createFramebuffer(authored.size.width, authored.size.height);
 
 // `update(dt)` counts FRAMES, not seconds — see `shell/boot`. The engine hands the count through and
 // the camera's damping is per frame, so this passes it on untouched.
@@ -503,6 +533,29 @@ const board = createSoundBoard({
  * `inPlungerLane`.
  */
 const laneProgress = createLaneProgress(authored);
+
+/**
+ * The table's own picture, once it has been fetched and decoded.
+ *
+ * ⚠️ LATE, AND ON PURPOSE. The game boots synchronously — a table, a ball and working flippers in the
+ * first frame — so the picture arrives after and the composition is redone when it does. A decode that
+ * fails leaves `undefined` here and a table drawn in the world's colour bands, which is a table that
+ * plays. See `gfx/backdrop`.
+ */
+let backdrop: Uint32Array | undefined;
+
+/**
+ * Everything that is not there right now, by component name.
+ *
+ * ⚠️ TWO ANSWERS AND ONE LIST. A drop target that has gone down, and a secret door that has opened —
+ * different mechanisms on different clocks, and the picture and the physics each take the whole list,
+ * because `table/cabinet` records what it cost to learn that those two must agree. Written once
+ * because the alternative is two expressions that start identical and drift, which is what put four
+ * `drawTable` calls in this file.
+ */
+function notThere(): string[] {
+  return [...live.downTargets(), ...openSecrets(authored, ballsLost)];
+}
 
 /** The depths in the shape the renderer and the staleness check both want. */
 function laneDepths(): Record<string, number> {
@@ -1169,6 +1222,17 @@ const demoPage = demoRequested
 refreshObjective(true);
 
 /**
+ * ⚠️ AND THE PICTURE IS REDRAWN WHEN THE ART LANDS, which is the join this whole feature turns on.
+ * Without the `refreshObjective` the image would be fetched, decoded, stored and never looked at
+ * again — the shape of defect found here in the lamps, the gamepad, the mission text and the movers.
+ */
+void loadBackdrop(authored.name, authored.size).then((pixels) => {
+  if (!pixels) return;
+  backdrop = pixels;
+  refreshObjective(true);
+});
+
+/**
  * ⚠️ ONE PLACE THAT APPLIES A CHOICE, and the key and the menu both call it.
  *
  * Two callers doing this separately is the failure mode with no symptom: the key would redraw and the
@@ -1182,9 +1246,7 @@ refreshObjective(true);
 function choosePalette(choice: PaletteChoice): void {
   palette = choice;
   writePalette(localStorage, palette);
-  tablePicture = drawTable({
-    table: authored, missionTargets: state.missionTargets, cbSafe: isCbSafe(palette),
-  });
+  composePicture();
   const status = document.getElementById('sr-status');
   if (status) status.textContent = shell.t(PALETTE_LABEL[palette]);
 }
@@ -1445,10 +1507,7 @@ Object.assign(window as unknown as Record<string, unknown>, {
     get diag() { return { frameCount, lastFrames, phase, ballsLost, speed: ball.speed, y: ball.position.y }; },
     setState(next: Partial<TableState>) {
       state = { ...state, ...next };
-      tablePicture = drawTable({
-    table: authored, missionTargets: state.missionTargets,
-    litLamps: live.litLamps(), cbSafe: isCbSafe(palette),
-  });
+      composePicture();
     },
   },
 });

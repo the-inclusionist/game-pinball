@@ -232,8 +232,15 @@ describe('the camera on a table wider than the window', () => {
     // 5. ⚠️ AND THE PICTURE IS REBUILT. `tablePicture` is composed once per change and the camera moves
     // a window over it, so a handler that changed the variable and stopped would take effect at the
     // next mission event — minutes later, looking like a bug in the mission machine.
-    expect(source.match(/cbSafe: isCbSafe\(palette\)/g) ?? [],
-      'every drawTable call is told which palette').toHaveLength(4);
+    //
+    // ⚠️ THIS COUNTED FOUR, AND FOUR WAS THE DEFECT. It asserted that every one of `main.ts`'s four
+    // `drawTable` calls was told the palette — which they were, and which was the least of what the
+    // other three were NOT told. There is one composition now (see the count in the drop-target test
+    // below), so the palette reaching it is a statement about the whole picture rather than about a
+    // quorum of copies.
+    expect(source, 'the one composition is told which palette')
+      .toMatch(/drawTable\(\{[\s\S]*?cbSafe: isCbSafe\(palette\)/s);
+    expect(source, 'and the palette handler goes through it').toMatch(/composePicture\(\);/);
   });
 
   test('⚠️ and a table NO wider than the window does not move sideways at all', () => {
@@ -416,12 +423,28 @@ describe('booting', () => {
      * come to differ. `hiddenNow` is built once and handed to the picture and to the physics, which is
      * what makes them agree by construction rather than by both being edited.
      */
-    expect(source, 'the two are built from one list')
-      .toMatch(/const hiddenNow = \[\.\.\.live\.downTargets\(\), \.\.\.openSecrets\(/s);
+    expect(source, 'the two answers are one list, written once')
+      .toMatch(/function notThere\(\)[\s\S]*?live\.downTargets\(\), \.\.\.openSecrets\(/s);
     expect(source, 'the picture is told what is not there')
-      .toMatch(/drawTable\(\{[^}]*hidden: hiddenNow/s);
+      .toMatch(/drawTable\(\{[\s\S]*?hidden: notThere\(\)/s);
     expect(source, 'and so is the physics')
+      .toMatch(/const hiddenNow = notThere\(\)/s);
+    expect(source, 'through that same list')
       .toMatch(/setComponentActive\([^)]*hiddenNow\.includes\(/s);
+    /**
+     * ⚠️ AND THE TABLE IS DRAWN IN EXACTLY ONE PLACE, WHICH IT WAS NOT.
+     *
+     * `drawTable` has grown an argument every time something started changing that the picture had to
+     * follow — seven of them now — and this file had FOUR call sites, of which one had learnt them
+     * all. Switching the palette recomposed with three, putting back a table with no lamps lit, its
+     * dropped targets standing, its secret door sealed and its storm frozen. It is also how the
+     * artwork was found not to appear: a short call site ran after the picture was painted and threw
+     * it away.
+     *
+     * A count rather than an inspection, because the defect is not what any one call passes — it is
+     * that there is more than one call to keep in step.
+     */
+    expect(source.match(/drawTable\(/g)?.length, 'the table is composed in exactly one place').toBe(1);
   });
 
   /**

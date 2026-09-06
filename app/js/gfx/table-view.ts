@@ -356,6 +356,14 @@ export interface TableViewOptions {
    */
   readonly laneDepth?: Readonly<Record<string, number>>;
   /**
+   * The table's own picture, one packed word per pixel of the playfield.
+   *
+   * ⚠️ ABSENT UNTIL IT HAS BEEN FETCHED AND DECODED, and the game opens without it. The image is
+   * loaded after boot, so the first frames are the world's colour bands and the art arrives when it
+   * arrives; a decode that fails leaves a table that plays. See `gfx/backdrop`.
+   */
+  readonly backdrop?: Uint32Array;
+  /**
    * Components NOT to draw, by name — a drop target that is currently down.
    *
    * ⚠️ THE PICTURE HAS TO AGREE WITH THE PHYSICS, and this is the half that makes a bank visible.
@@ -380,10 +388,130 @@ export interface TableViewOptions {
  * light could brighten the ground. Six tests went red saying the table claimed to be solid where it
  * was merely lit. Now there is one implementation and the gate calls it.
  */
+/**
+ * The table's lights, cast over whatever is already in the framebuffer.
+ *
+ * ⚠️ THE SAME LIGHTS AS THE BANDS PATH, ON A DIFFERENT GROUND. There the base colour is one value per
+ * ROW and the loop can fill a rectangle either side; here every pixel has its own, so the base is read
+ * back out of `bytes` — the same memory, in R,G,B,A order on every machine, which is why nothing here
+ * has to re-derive `gfx/framebuffer`'s endianness probe.
+ *
+ * Only the discs are walked. A light is round and most of a table is outside every one of them.
+ */
+/**
+ * The table's lights with their palette colours resolved and scaled by intensity.
+ *
+ * Resolved once per composition rather than per pixel: `paletteFor` builds an object, and doing that
+ * forty thousand times to answer the same question is the cost a picture composed once per change
+ * exists to avoid.
+ */
+function resolveLights(table: AuthoredTable, palette: TablePalette): Light[] {
+  return (table.lights ?? []).map((light) => {
+    const role = palette.roles[light.role];
+    return {
+      at: light.at,
+      radius: light.radius,
+      color: {
+        r: role.r * light.intensity, g: role.g * light.intensity, b: role.b * light.intensity,
+      },
+      ...(light.lamp === undefined ? {} : { lamp: light.lamp }),
+    };
+  });
+}
+
+function paintLightsOver(
+  fb: Framebuffer, table: AuthoredTable, palette: TablePalette, o: TableViewOptions,
+): void {
+  const lit = new Set(o.litLamps ?? []);
+  const cast = resolveLights(table, palette).filter(
+    (light) => light.lamp === undefined || lit.has(light.lamp),
+  );
+  if (cast.length === 0) return;
+
+  const glow = { r: 0, g: 0, b: 0 };
+  const base = { r: 0, g: 0, b: 0 };
+  for (const light of cast) {
+    const reach = Math.ceil(light.radius);
+    const top = Math.max(0, Math.floor(light.at.y) - reach);
+    const bottom = Math.min(table.size.height, Math.ceil(light.at.y) + reach);
+    const left = Math.max(0, Math.floor(light.at.x) - reach);
+    const right = Math.min(table.size.width, Math.ceil(light.at.x) + reach);
+
+    for (let y = top; y < bottom; y++) {
+      for (let x = left; x < right; x++) {
+        const i = (y * fb.width + x) * 4;
+        base.r = fb.bytes[i]!;
+        base.g = fb.bytes[i + 1]!;
+        base.b = fb.bytes[i + 2]!;
+        // One light at a time: the ceiling is still applied to each result, and two overlapping lights
+        // therefore approach it rather than adding through it.
+        if (!glowInto(base, [light], x, y, lit, glow)) continue;
+        fb.bytes[i] = glow.r;
+        fb.bytes[i + 1] = glow.g;
+        fb.bytes[i + 2] = glow.b;
+      }
+    }
+  }
+}
+
+/**
+ * The flare, swept over whatever is already in the framebuffer.
+ *
+ * ⚠️ THE ART DOES NOT REPLACE THE FLARE, BECAUSE THE FLARE IS A MECHANIC. It slows the ball inside its
+ * band, and a mechanic the player cannot see is the defect this repository has found six times over —
+ * a bitmap that hid it would be the seventh.
+ *
+ * Read back out of `bytes` rather than out of `pixels`: the two are the same memory, and the byte view
+ * is R,G,B,A in that order on every machine while the word's layout depends on the endianness probe in
+ * `gfx/framebuffer`. Unpacking a word here would be re-deriving that probe in a second place.
+ */
+function paintFlareOver(fb: Framebuffer, table: AuthoredTable, o: TableViewOptions): void {
+  if (table.storm === undefined || o.flareAt === undefined) return;
+
+  for (let y = 0; y < table.size.height; y++) {
+    const grip = flareGrip(y, o.flareAt, table.storm.thickness);
+    if (grip <= 0) continue;
+    const row = y * fb.width;
+    for (let x = 0; x < table.size.width; x++) {
+      const i = (row + x) * 4;
+      const c = flareColor({ r: fb.bytes[i]!, g: fb.bytes[i + 1]!, b: fb.bytes[i + 2]! }, grip);
+      fb.bytes[i] = c.r;
+      fb.bytes[i + 1] = c.g;
+      fb.bytes[i + 2] = c.b;
+    }
+  }
+}
+
 export function drawBackground(
   fb: Framebuffer, table: AuthoredTable, palette: TablePalette, o: TableViewOptions,
 ): void {
   const lamps = new Set(o.litLamps ?? []);
+
+  /**
+   * ⚠️ THE TABLE'S OWN PICTURE, IF IT HAS ARRIVED. It replaces the world's colour bands, and the LIGHTS
+   * ARE STILL CAST OVER IT — which is the Dev's own instruction and a reversal of what this branch did
+   * for one commit: "escureça as imagens e ilumine somente os elementos que quer usar."
+   *
+   * The first version had the backdrop replace the lights too, reasoning that the art already draws its
+   * own floodlights. That was true and beside the point. The art is DIMMED — every shipped picture is
+   * multiplied down until its brightest pixel sits under ADR-0007's ceiling, so the whole playfield is
+   * a night version of itself — and the lights are then what pick the PLAYABLE parts back out of it.
+   * The scenery is dark; what the ball can touch is lit.
+   *
+   * ⚠️ AND THAT RESTORES ADR-0004 RATHER THAN SPENDING IT. Undimmed art is brighter than every role
+   * everywhere, which is the ordering the tables are told apart by, inverted across the whole table
+   * instead of inside one sweeping band. Dimming buys the rule back.
+   *
+   * ⚠️ AND THE WRONG SIZE IS REFUSED RATHER THAN STRETCHED. A stretched playfield puts the art a few
+   * pixels from the geometry EVERYWHERE, which is worse than having none: the player aims at what they
+   * see and the ball meets what they do not. Falling back to the world is a table that plays.
+   */
+  if (o.backdrop && o.backdrop.length === fb.width * fb.height) {
+    fb.pixels.set(o.backdrop);
+    paintLightsOver(fb, table, palette, o);
+    paintFlareOver(fb, table, o);
+    return;
+  }
   /**
    * ⚠️ THE GROUND IS A GRADIENT WHEN THE WORLD SAYS SO, and one flat colour when it does not.
    *
@@ -406,17 +534,7 @@ export function drawBackground(
    * times to answer the same question is the kind of cost a composition made once per change is
    * supposed to be spending instead of a per-frame one.
    */
-  const cast: Light[] = (table.lights ?? []).map((light) => {
-    const role = palette.roles[light.role];
-    return {
-      at: light.at,
-      radius: light.radius,
-      color: {
-        r: role.r * light.intensity, g: role.g * light.intensity, b: role.b * light.intensity,
-      },
-      ...(light.lamp === undefined ? {} : { lamp: light.lamp }),
-    };
-  });
+  const cast = resolveLights(table, palette);
 
   /** One scratch colour for every lit pixel of the table — see `glowInto`. */
   const glow = { r: 0, g: 0, b: 0 };
