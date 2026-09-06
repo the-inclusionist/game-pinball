@@ -263,3 +263,58 @@ describe('the primitives clip rather than crash', () => {
     expect(at(fb, 9, 0)).toBe(0);
   });
 });
+
+describe('⚠️ a lit lamp shows on the table', () => {
+  // The flippers were one instance of a class: state that changes and is never drawn. Lamps are the
+  // other, and worse — every scoring component on every authored table declares one, the control layer
+  // lights them constantly, `objectiveOf` decides what is FINISHED by reading them, and `table-view`
+  // had no notion of them at all. A player completing a lane saw the score move and the table not.
+  //
+  // ⚠️ IT IS NOT ART. The Dev asked to continue without art, and this is not that: it is the component
+  // drawn in its own colour, brightened by exactly the headroom `SHADE_HEADROOM` already says that
+  // colour has. Nothing new is invented to look at — the lit state simply becomes visible.
+  const litColour = (name: string) => {
+    const lit = drawTable({ table: LOW_ORBIT, litLamps: [name] });
+    return lit;
+  };
+
+  test('a component whose lamps are all lit is drawn brighter than one whose are not', () => {
+    const dark = drawTable({ table: LOW_ORBIT });
+    const lit = litColour('lamp.bumper1');
+
+    // `bumper1` is a circle at (57, 67) on `low-orbit`.
+    expect(at(lit, 57, 67), 'the lit bumper changed colour').not.toBe(at(dark, 57, 67));
+  });
+
+  test('⚠️ and ONLY that component, or lighting one lamp repaints the table', () => {
+    const dark = drawTable({ table: LOW_ORBIT });
+    const lit = litColour('lamp.bumper1');
+
+    // `bumper2` is a circle at (87, 55) and its lamp is not lit.
+    expect(at(lit, 87, 55), 'the unlit bumper is untouched').toBe(at(dark, 87, 55));
+  });
+
+  test('⚠️ and a component with TWO lamps needs both, which is what `objectiveOf` means by finished', () => {
+    // `table/objective` counts a component done only when every lamp it names is lit — "a component
+    // with two lamps is half done after one, and the sonar should still point at it". The picture has
+    // to agree with the sonar or they are describing different tables.
+    const table = {
+      ...LOW_ORBIT,
+      components: LOW_ORBIT.components.map((c) => (c.name === 'bumper1'
+        ? { ...c, lamps: ['lamp.bumper1', 'lamp.bumper2'] } : c)),
+    };
+    const half = drawTable({ table, litLamps: ['lamp.bumper1'] });
+    const dark = drawTable({ table });
+
+    expect(at(half, 57, 67), 'half-lit is not lit').toBe(at(dark, 57, 67));
+  });
+
+  test('and a table drawn with no lamps lit is the table as it always was', () => {
+    // The default has to be the old picture exactly, or every painted-pixel count in the repository
+    // moves for a feature nobody switched on.
+    const withNone = drawTable({ table: LOW_ORBIT, litLamps: [] });
+    const without = drawTable({ table: LOW_ORBIT });
+
+    expect([...withNone.pixels]).toEqual([...without.pixels]);
+  });
+});

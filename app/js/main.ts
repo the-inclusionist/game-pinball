@@ -116,6 +116,8 @@ let state: TableState = {
  */
 const missions = runMissions(authored.missions ?? []);
 
+let lastLit = '';
+
 function refreshObjective(force = false): void {
   // A table with missions is asked about its mission; one without is asked about its roles.
   const objective = missions.current
@@ -125,8 +127,18 @@ function refreshObjective(force = false): void {
       need: missions.current.targets.length,
     }
     : objectiveOf(authored, live);
+  /**
+   * ⚠️ AND THE LIT LAMPS ARE PART OF WHAT MAKES THE PICTURE STALE.
+   *
+   * The objective alone was the trigger, so a lamp lighting without changing the objective repainted
+   * nothing — and until this commit that did not matter, because the picture never drew lamps. It does
+   * now, which turns "what has changed" into a question with two answers.
+   */
+  const litNow = live.litLamps().join(',');
   if (!force && objective.have === state.missionHave
-    && objective.targets.length === state.missionTargets.length) return;
+    && objective.targets.length === state.missionTargets.length
+    && litNow === lastLit) return;
+  lastLit = litNow;
   state = {
     ...state,
     missionTextId: missions.current?.id ?? AUTHORED_OBJECTIVE_ID,
@@ -134,7 +146,10 @@ function refreshObjective(force = false): void {
     missionNeed: objective.need,
     missionTargets: objective.targets,
   };
-  tablePicture = drawTable({ table: authored, missionTargets: state.missionTargets, cbSafe: isCbSafe(palette) });
+  tablePicture = drawTable({
+    table: authored, missionTargets: state.missionTargets,
+    litLamps: live.litLamps(), cbSafe: isCbSafe(palette),
+  });
 }
 
 /**
@@ -296,8 +311,16 @@ window.addEventListener('resize', fitCanvas);
 const context = canvas.getContext('2d')!;
 const image = context.createImageData(screen.width, screen.height);
 
-// Redrawn only when what it shows changes, which today is when the mission's targets change.
-let tablePicture = drawTable({ table: authored, missionTargets: state.missionTargets, cbSafe: isCbSafe(palette) });
+/**
+ * Redrawn when what it shows changes: the mission's targets, the palette, or which lamps are lit.
+ *
+ * ⚠️ NO LAMPS HERE, AND NOT BECAUSE THEY ARE FORGOTTEN. This runs before `live` exists — the control
+ * layer is built from the table below — and at boot nothing is lit anyway. `refreshObjective` composes
+ * it again with the real set before the first frame.
+ */
+let tablePicture = drawTable({
+  table: authored, missionTargets: state.missionTargets, cbSafe: isCbSafe(palette),
+});
 
 // `update(dt)` counts FRAMES, not seconds — see `shell/boot`. The engine hands the count through and
 // the camera's damping is per frame, so this passes it on untouched.
@@ -1054,7 +1077,10 @@ Object.assign(window as unknown as Record<string, unknown>, {
     get diag() { return { frameCount, lastFrames, phase, ballsLost, speed: ball.speed, y: ball.position.y }; },
     setState(next: Partial<TableState>) {
       state = { ...state, ...next };
-      tablePicture = drawTable({ table: authored, missionTargets: state.missionTargets, cbSafe: isCbSafe(palette) });
+      tablePicture = drawTable({
+    table: authored, missionTargets: state.missionTargets,
+    litLamps: live.litLamps(), cbSafe: isCbSafe(palette),
+  });
     },
   },
 });

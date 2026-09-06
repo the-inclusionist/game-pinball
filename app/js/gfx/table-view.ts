@@ -205,6 +205,16 @@ export interface TableViewOptions {
   /** The components the running mission is counting. They are drawn as goals whatever they are. */
   readonly missionTargets?: readonly string[];
   /**
+   * The lamps that are lit right now.
+   *
+   * ⚠️ WITHOUT THIS THE TABLE NEVER SHOWED A LAMP AT ALL. Every scoring component on every authored
+   * table declares one, the control layer lights them constantly, and `table/objective` decides what
+   * is FINISHED by reading them — so a player completing a lane saw the score move and the table sit
+   * still. The same class of defect as the flippers drawn at rest: state that changes and nothing
+   * draws.
+   */
+  readonly litLamps?: readonly string[];
+  /**
    * The alternative palette, which the player chooses and nothing else may choose for them.
    *
    * ⚠️ ABSENT MEANS THE NORMAL ONE, never "work out which is better". A caller that forgets to pass
@@ -222,11 +232,8 @@ export function drawTable(o: TableViewOptions): Framebuffer {
   const { table } = o;
   const fb = createFramebuffer(table.size.width, table.size.height);
   const targets = new Set(o.missionTargets ?? []);
+  const lamps = new Set(o.litLamps ?? []);
   const palette = paletteOf(table, o.cbSafe ?? false);
-  const roleColor = Object.fromEntries(
-    Object.entries(palette.roles).map(([role, c]) => [role, packRgb(c)]),
-  ) as Record<Role, number>;
-
   fillRect(fb, { x: 0, y: 0, width: table.size.width, height: table.size.height },
     packRgb(palette.ground));
 
@@ -234,8 +241,21 @@ export function drawTable(o: TableViewOptions): Framebuffer {
     // THE ROLE MOVES WITH THE MISSION, in the picture as well as in the contract: a bumper the
     // mission is counting is drawn as a goal, and goes back to furniture when it stops counting.
     const role = targets.has(component.name) ? 'goal' : component.role;
-    const color = roleColor[role];
-    const lit = litColors(palette.roles[role], role);
+    /**
+     * ⚠️ EVERY LAMP, NOT ANY — which is what `table/objective` means by finished: "a component with two
+     * lamps is half done after one, and the sonar should still point at it". If the picture lit on the
+     * first of two, the screen and the sonar would be describing different tables.
+     *
+     * A component with no lamps is never lit rather than always: `every` over an empty list is true,
+     * and a wall that brightened because it declared nothing would be the whole table lighting up.
+     */
+    const isLit = (component.lamps?.length ?? 0) > 0
+      && component.lamps!.every((lamp) => lamps.has(lamp));
+    // Brightened by exactly the headroom this colour is measured to have — see `SHADE_HEADROOM`. No
+    // new colour is invented, so a lit component cannot start reading as another role.
+    const body = isLit ? shade(palette.roles[role], SHADE_HEADROOM[role]) : palette.roles[role];
+    const color = packRgb(body);
+    const lit = litColors(body, role);
 
     /**
      * ⚠️ A FLIPPER IS NOT DRAWN HERE AT ALL, AND IT USED TO BE — AT REST, FOR EVER.

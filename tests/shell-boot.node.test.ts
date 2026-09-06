@@ -175,6 +175,22 @@ describe('the camera on a table wider than the window', () => {
       .toMatch(/demoView = demoWorld\(\{ demo: ready, groups: groupsOf\(archive\) \}\)/);
   });
 
+  test('⚠️ a lit lamp reaches the PICTURE, not only the control layer', () => {
+    // The class of defect this belongs to has cost two player-visible failures already: the flippers
+    // drawn at rest for ever, and the lamps that lit in `live` and appeared nowhere. Both were state
+    // that changes with nothing drawing it, and no gate in this repository spans the simulation and
+    // the screen — which is why this one reads the entry point as text, like the others here.
+    //
+    // Three things have to be true and all three are separately losable: the picture is composed WITH
+    // the lit set, the staleness check NOTICES the set changing, and the check keeps what it saw.
+    const source = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../app/js/main.ts'), 'utf8');
+
+    expect(source, 'the picture is drawn with the lit lamps').toMatch(/litLamps: live\.litLamps\(\)/);
+    expect(source, 'and a change in them counts as a change')
+      .toMatch(/litNow !== lastLit|litNow === lastLit/);
+    expect(source, 'and what was seen is remembered').toMatch(/lastLit = litNow/);
+  });
+
   test('⚠️ the palette key is CONNECTED, and the table is redrawn when it turns', () => {
     // The defect this shape of test exists for: `createGame` took `isBlindMode` and `main.ts` supplied
     // none, so the engine's default stood and the audio guide never fired — a switch nobody could
