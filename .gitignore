@@ -21,3 +21,25 @@ shots/
 # Operating system
 .DS_Store
 Thumbs.db
+
+# ============================================================================
+# THE ART MASTERS — NOT VERSIONED, AND THAT IS A DECISION RATHER THAN AN OMISSION.
+#
+# `art/*.jpg` are the Dev's generated playfields at 7x to 9x the size the game
+# uses: eighteen megabytes for six pictures, against roughly seventy kilobytes
+# each once they are reduced to the playfield. What SHIPS is the reduction, and
+# that lives in `app/assets/tables/` and IS versioned.
+#
+# ⚠️ AND THIS RULE EXISTS BECAUSE I BROKE IT BY ACCIDENT. A `git add -A` swept
+# 12.6 MB of masters into a commit about browser tests, whose message did not
+# mention them — seventy per cent of the repository's history, added without a
+# decision. The commit was undone. A game meant to be cloned onto school machines
+# does not carry thirty times its own assets in masters nobody runs.
+#
+# They are CC0 and they are the Dev's; `art/README.md` records their provenance
+# and is versioned. If he wants the masters kept in history, that is his call and
+# this block is where it gets reversed.
+# ============================================================================
+art/*.jpg
+art/*.jpeg
+art/*.png
