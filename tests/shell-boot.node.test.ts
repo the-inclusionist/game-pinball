@@ -141,10 +141,18 @@ describe('the camera on a table wider than the window', () => {
     const source = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../app/js/main.ts'), 'utf8');
 
     // 1. The key reaches a handler at all.
-    expect(source, 'the controls are given a palette handler').toContain('cyclePalette: () => {');
-    // 2. The choice is remembered, or it lasts until the page reloads and no further.
+    expect(source, 'the controls are given a palette handler').toMatch(/cyclePalette: \(\) =>/);
+    // 2. ⚠️ AND THE KEY AND THE MENU GO THROUGH THE SAME PLACE. Two callers applying a choice
+    // separately is the failure with no symptom: one redraws and the other does not, or one remembers
+    // and the other forgets, and the difference shows up only for the player who used both.
+    expect(source, 'the key applies through the one applier')
+      .toMatch(/cyclePalette: \(\) => choosePalette\(nextPalette\(palette\)\)/);
+    expect(source, 'and so does the menu').toMatch(/onChoose: choosePalette/);
+    // 3. The choice is remembered, or it lasts until the page reloads and no further.
     expect(source, 'and the choice is written back').toMatch(/writePalette\(localStorage, palette\)/);
-    // 3. ⚠️ AND THE PICTURE IS REBUILT. `tablePicture` is composed once per change and the camera moves
+    // 4. The menu is mounted where the engine's Escape chain can reach it.
+    expect(source, 'the dialog goes in the game region').toMatch(/mountOptionsDialog\(\{[^}]*host: region/s);
+    // 5. ⚠️ AND THE PICTURE IS REBUILT. `tablePicture` is composed once per change and the camera moves
     // a window over it, so a handler that changed the variable and stopped would take effect at the
     // next mission event — minutes later, looking like a bug in the mission machine.
     expect(source.match(/cbSafe: isCbSafe\(palette\)/g) ?? [],

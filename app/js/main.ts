@@ -25,6 +25,7 @@ import { bindPinballControls } from './shell/controls.js';
 import {
   readPalette, writePalette, nextPalette, isCbSafe, PALETTE_LABEL, type PaletteChoice,
 } from './shell/options.js';
+import { mountOptionsDialog } from './shell/options-dialog.js';
 import { createLiveControls } from './table/live-controls.js';
 import { createRolloverWatch } from './table/rollovers.js';
 import { objectiveOf, AUTHORED_OBJECTIVE_ID } from './table/objective.js';
@@ -555,15 +556,7 @@ const unbindControls = bindPinballControls({
    * The demonstration keeps the 1995 artwork whatever this says: those are Microsoft's pixels, and
    * recolouring them is not something this port is entitled to do.
    */
-  cyclePalette: () => {
-    palette = nextPalette(palette);
-    writePalette(localStorage, palette);
-    tablePicture = drawTable({
-      table: authored, missionTargets: state.missionTargets, cbSafe: isCbSafe(palette),
-    });
-    const status = document.getElementById('sr-status');
-    if (status) status.textContent = shell.t(PALETTE_LABEL[palette]);
-  },
+  cyclePalette: () => choosePalette(nextPalette(palette)),
   /**
    * ⚠️ THE BACK DOOR, AND ONLY THE 1995 TABLE HAS ONE. `bmax`, `rmax`, `gmax`, `1max`, `easy mode` and
    * `hidden test` are the Space Cadet's own codes and mean nothing on an authored table, so a
@@ -686,6 +679,63 @@ const demoPage = demoRequested
   : null;
 
 refreshObjective(true);
+
+/**
+ * ⚠️ ONE PLACE THAT APPLIES A CHOICE, and the key and the menu both call it.
+ *
+ * Two callers doing this separately is the failure mode with no symptom: the key would redraw and the
+ * menu would not, or one would remember the choice and the other would forget it, and the difference
+ * only shows up for the player who used both. Announcing here means the menu speaks too, which it
+ * should — a button that changes the table silently tells a blind player nothing happened.
+ *
+ * The demonstration keeps the 1995 artwork whatever this says. Those are Microsoft's pixels, and
+ * recolouring them is not something this port is entitled to do.
+ */
+function choosePalette(choice: PaletteChoice): void {
+  palette = choice;
+  writePalette(localStorage, palette);
+  tablePicture = drawTable({
+    table: authored, missionTargets: state.missionTargets, cbSafe: isCbSafe(palette),
+  });
+  const status = document.getElementById('sr-status');
+  if (status) status.textContent = shell.t(PALETTE_LABEL[palette]);
+}
+
+/**
+ * The menu, which is what the Dev asked for; the key on C is the shortcut beside it.
+ *
+ * ⚠️ IT GOES IN `region`, WHICH IS `#game-region`. The engine's overlay machinery scopes itself to
+ * that element — the Escape chain, the z-stack, the focus restoration — so a dialog mounted anywhere
+ * else registers for a chain it is not in.
+ */
+const optionsDialog = mountOptionsDialog({
+  doc: document,
+  host: region,
+  overlays: shell.engine.overlays,
+  t: shell.t,
+  current: () => palette,
+  onChoose: choosePalette,
+  // ⚠️ BACK TO THE BUTTON THAT OPENED IT. Hiding the element the focus is inside leaves the focus
+  // nowhere: the next Tab starts at the top of the document. `optionsButton` is declared below and
+  // read at call time, which is the only order that works — the button's own handler needs the dialog.
+  restoreFocus: () => optionsButton.focus(),
+});
+
+/**
+ * And something to open it with.
+ *
+ * ⚠️ A BUTTON, BECAUSE THE ENGINE'S PAUSE MENU HAS NO ENTRY TO ADD ONE TO. `SettingsPanelApi` registers
+ * OVERLAYS — a close and a place in the Escape chain — and offers no way to put a line in the pause
+ * list, so a dialog with no opener of its own would be a dialog nothing opens. It is a real `<button>`
+ * inside the game region: reachable by Tab, by pointer, and by a screen reader, and it announces the
+ * setting rather than a symbol.
+ */
+const optionsButton = document.createElement('button');
+optionsButton.id = 'pinball-options-open';
+optionsButton.className = 'pinball-options-open';
+optionsButton.textContent = shell.t('pinball.palette.title');
+optionsButton.addEventListener('click', () => optionsDialog.open());
+region.appendChild(optionsButton);
 
 const hud = mountHud({
   doc: document, host: region, layout: shell.hud, screen: { ...DEFAULT_HUD, playfieldWidth: authored.size.width },

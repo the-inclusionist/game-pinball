@@ -117,6 +117,8 @@ const pt: Record<string, string> = {
   'pinball.scene.mars': 'Marte',
   'pinball.scene.ice': 'Gelo',
   'pinball.scene.slate': 'Neutro',
+  'pinball.palette.close': 'Fechar',
+  'pinball.palette.title': 'Cores da mesa',
   'pinball.palette.normal': 'Cores normais',
   'pinball.palette.cbSafe': 'Cores para daltonismo',
   'pinball.a11y.blindOn': 'Modo cego ligado. Use S para varrer a mesa.',

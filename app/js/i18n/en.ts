@@ -112,6 +112,8 @@ const en: Record<string, string> = {
   'pinball.scene.mars': 'Mars',
   'pinball.scene.ice': 'Ice',
   'pinball.scene.slate': 'Neutral',
+  'pinball.palette.close': 'Close',
+  'pinball.palette.title': 'Table colours',
   'pinball.palette.normal': 'Normal colours',
   'pinball.palette.cbSafe': 'Colour-blind safe',
   'pinball.a11y.blindOn': 'Blind mode on. Press S to sweep the table.',

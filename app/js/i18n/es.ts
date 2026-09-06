@@ -109,6 +109,8 @@ const es: Record<string, string> = {
   'pinball.scene.mars': 'Marte',
   'pinball.scene.ice': 'Hielo',
   'pinball.scene.slate': 'Neutro',
+  'pinball.palette.close': 'Cerrar',
+  'pinball.palette.title': 'Colores de la mesa',
   'pinball.palette.normal': 'Colores normales',
   'pinball.palette.cbSafe': 'Colores para daltonismo',
   'pinball.a11y.blindOn': 'Modo ciego activado. Pulsa S para barrer la mesa.',
