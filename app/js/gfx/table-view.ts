@@ -100,6 +100,8 @@ export interface Lit {
   readonly body: number;
   readonly top: number;
   readonly bottom: number;
+  /** The outline, dark enough to read against anything the ground can be. See `rimOf`. */
+  readonly rim: number;
 }
 
 export function litColors(colour: Rgb, role: Role): Lit {
@@ -108,18 +110,56 @@ export function litColors(colour: Rgb, role: Role): Lit {
     body: packRgb(colour),
     top: packRgb(shade(colour, amount)),
     bottom: packRgb(shade(colour, -amount)),
+    rim: packRgb(rimOf(colour)),
   };
 }
 
 /**
- * A rectangle with the light on it. The edges are ONE pixel: at this size a component is a handful of
- * pixels across, and a two-pixel edge on a four-pixel shape is not shading, it is a stripe.
+ * How dark a component's rim is, and the whole reason there is one.
+ *
+ * ADR-0007 caps the lit ground at L* 32 and takes ONE exception: `ion-storm`'s flare sweeps a band up
+ * to L* 90.6 across the table. A component inside that band has a ground BRIGHTER than itself, so the
+ * lightness ordering the tables are told apart by inverts while it passes — and a `goal` rollover, at
+ * (242, 206, 84) against the flare's (236, 186, 52), simply disappears. Both of `ion-storm`'s flank
+ * rollovers do, visibly, in `shots/authored-ion-storm-flare.png`.
+ *
+ * A rim does not care what is behind it. Fifty-five per cent toward black sits under the flare's peak
+ * by a wide margin in every role and in both palettes, which `tests/gfx-rim` checks rather than trusts.
+ *
+ * ⚠️ AND IT IS THE PREREQUISITE FOR THE DEV'S BITMAP ART. ADR-0007 says so in as many words: a
+ * photograph-like background cannot be held under a lightness ceiling and still be the picture he
+ * drew, so legibility has to stop depending on the ground being dark.
+ */
+export function rimOf(colour: Rgb): Rgb {
+  return shade(colour, -0.55);
+}
+
+/**
+ * A rectangle with the light on it, and a rim so it reads against anything.
+ *
+ * The edges are ONE pixel: at this size a component is a handful of pixels across, and a two-pixel
+ * edge on a four-pixel shape is not shading, it is a stripe.
+ *
+ * ⚠️ THE RIM IS INSIDE THE SHAPE, NOT AROUND IT. `tests/table-view-honesty` holds this renderer to "no
+ * painted pixel sits where the ball would pass straight through", and a border one pixel beyond the
+ * collision shape claims solidity exactly where there is none. So the outermost pixel BECOMES the rim
+ * and the silhouette is unchanged — a 16-pixel bumper keeps 14 pixels of body, which is what being
+ * visible on a bright ground costs.
  */
 export function fillLitRect(fb: Framebuffer, rect: Rect, lit: Lit): void {
   fillRect(fb, rect, lit.body);
-  if (rect.height < 3) return;
-  fillRect(fb, { ...rect, height: 1 }, lit.top);
-  fillRect(fb, { ...rect, y: rect.y + rect.height - 1, height: 1 }, lit.bottom);
+  if (rect.height < 3 || rect.width < 3) return;
+
+  fillRect(fb, { ...rect, height: 1 }, lit.rim);
+  fillRect(fb, { ...rect, y: rect.y + rect.height - 1, height: 1 }, lit.rim);
+  fillRect(fb, { ...rect, width: 1 }, lit.rim);
+  fillRect(fb, { ...rect, x: rect.x + rect.width - 1, width: 1 }, lit.rim);
+
+  // The light and shade go INSIDE the rim, so a raised face still reads as raised.
+  if (rect.height < 5 || rect.width < 5) return;
+  const inner = { x: rect.x + 1, y: rect.y + 1, width: rect.width - 2, height: rect.height - 2 };
+  fillRect(fb, { ...inner, height: 1 }, lit.top);
+  fillRect(fb, { ...inner, y: inner.y + inner.height - 1, height: 1 }, lit.bottom);
 }
 
 /**
@@ -188,9 +228,21 @@ export function drawLaneRails(fb: Framebuffer, rect: Rect, lit: Lit, depth = 0):
 export function fillLitCircle(
   fb: Framebuffer, cx: number, cy: number, radius: number, lit: Lit,
 ): void {
-  fillCircle(fb, cx, cy, radius, lit.body);
+  // ⚠️ THE RIM IS THE OUTERMOST RING, drawn by filling the whole disc dark and the body one pixel in.
+  // Inside the silhouette, for the reason `fillLitRect` records: a ring beyond the collision shape
+  // would be the picture claiming to be solid where the ball passes through.
+  if (radius >= 3) {
+    fillCircle(fb, cx, cy, radius, lit.rim);
+    fillCircle(fb, cx, cy, radius - 1, lit.body);
+  } else {
+    fillCircle(fb, cx, cy, radius, lit.body);
+  }
   if (radius < 2) return;
   const r2 = radius * radius;
+  // ⚠️ AND THE LIGHT AND SHADE STOP INSIDE IT, or they paint over the rim at the top and the bottom of
+  // the disc — the two places a round shape needs an outline most, because that is where its edge runs
+  // most nearly horizontal and has the least to distinguish it.
+  const inner = radius >= 3 ? (radius - 1) * (radius - 1) : r2;
   const y0 = Math.max(0, Math.floor(cy - radius));
   const y1 = Math.min(fb.height, Math.ceil(cy + radius) + 1);
   for (let y = y0; y < y1; y++) {
@@ -201,7 +253,7 @@ export function fillLitCircle(
     const row = y * fb.width;
     for (let x = Math.max(0, Math.floor(cx - radius)); x < Math.min(fb.width, Math.ceil(cx + radius) + 1); x++) {
       const dx = x + 0.5 - cx;
-      if (dx * dx + dy * dy <= r2) fb.pixels[row + x] = above ? lit.top : lit.bottom;
+      if (dx * dx + dy * dy <= inner) fb.pixels[row + x] = above ? lit.top : lit.bottom;
     }
   }
 }

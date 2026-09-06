@@ -176,8 +176,16 @@ describe('⚠️ the light changes the COLOURS and never the SHAPE', () => {
     fillLitCircle(shaded, 20, 20, 9, lit);
 
     const colours = new Set(painted(shaded).map((i) => shaded.pixels[i]));
-    expect(colours.size, 'a body, a top and a bottom').toBe(3);
+    /**
+     * ⚠️ FOUR NOW, AND IT WAS THREE. The fourth is the RIM — see `gfx/table-view.rimOf` and ADR-0007.
+     * A disc is filled dark and its body drawn one pixel inside, so that a component still has an edge
+     * where the ground behind it is brighter than it is, which `ion-storm`'s flare makes happen on
+     * purpose. The number is asserted rather than the set's membership loosened, because "a shape has
+     * exactly these colours in it" is the claim that catches a shading pass drawing nothing at all.
+     */
+    expect(colours.size, 'a rim, a body, a top and a bottom').toBe(4);
     expect(colours.has(lit.top) && colours.has(lit.bottom) && colours.has(lit.body)).toBe(true);
+    expect(colours.has(lit.rim), 'and the rim is one of them').toBe(true);
   });
 
   test('and a shape too small to light keeps its one colour rather than becoming all edge', () => {
