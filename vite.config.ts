@@ -32,6 +32,23 @@ export default defineConfig({
   root: join(RAIZ, 'app'),
   build: { outDir: join(RAIZ, 'dist'), emptyOutDir: true },
   test: {
+    /**
+     * ⚠️ RANDOM ORDER, EVERY RUN, AND IT FOUND SOMETHING THE HOUR IT WAS TURNED ON.
+     *
+     * A test that only passes when it runs before its neighbours is green until the day something
+     * reorders it, and nothing here had ever reordered anything: `tests/accessibility.browser.test.ts`
+     * asserted that blind mode "starts off" by reading the live state, which is true only while that
+     * test runs before the two others that press the same key. Shuffled, it failed two runs in five.
+     * It had been committed green.
+     *
+     * THE TRADE, STATED: a real order dependence now surfaces as an INTERMITTENT failure rather than
+     * never surfacing at all. Intermittent is harder to read than deterministic — but the alternative
+     * is not "deterministic", it is "silent", and this repository has spent enough nights on silent.
+     *
+     * A failure prints its seed. `npx vitest run --sequence.seed=<n>` replays that exact order, which
+     * is what makes an intermittent failure a reproducible one.
+     */
+    sequence: { shuffle: { files: true, tests: true } },
     projects: [
       {
         test: {

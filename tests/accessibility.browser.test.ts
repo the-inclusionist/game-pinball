@@ -32,6 +32,17 @@ async function press(key: string): Promise<void> {
   await userEvent.keyboard(key);
 }
 
+/**
+ * ⚠️ CAPTURED BEFORE ANY KEY IS PRESSED, because "it starts off" is a claim about the BOOT and not
+ * about whichever test happens to run first.
+ *
+ * The first version of this file read `__pinball.blind` inside the test instead, and that test passed
+ * only while it ran before the two that press the same key. Shuffled, it failed two runs in five — a
+ * flaky test committed as a green one, found by running the suite in a random order rather than by
+ * anything noticing. The state is a snapshot taken once; the assertion can then be made from anywhere.
+ */
+let blindAtBoot = true;
+
 beforeAll(async () => {
   document.body.innerHTML = `
     <main id="game-region" tabindex="-1"></main>
@@ -40,6 +51,7 @@ beforeAll(async () => {
     <svg id="cvd-filters" width="0" height="0" aria-hidden="true" focusable="false"></svg>
   `;
   await import('../app/js/main.js');
+  blindAtBoot = debug().blind;
 });
 
 describe('blind mode, from the key a player would actually press', () => {
@@ -56,11 +68,12 @@ describe('blind mode, from the key a player would actually press', () => {
     // `tests/shell-boot`, which reads `main.ts` and requires the callback to be passed. Together they
     // cover the chain; neither covers it alone, and this file would pass on a build where the engine
     // was told nothing.
-    expect(debug().blind, 'it starts off').toBe(false);
+    expect(blindAtBoot, 'nobody is opted into blind mode at boot').toBe(false);
+    const before = debug().blind;
 
     await press('b');
 
-    expect(debug().blind).toBe(true);
+    expect(debug().blind, 'the key moved it').toBe(!before);
   });
 
   test('and it SAYS so, in the live region rather than in silence', async () => {

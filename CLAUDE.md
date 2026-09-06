@@ -49,6 +49,13 @@ populated locally by `npm run data:extract`.
   `tests/gfx-original-shot` now leaves one on disk per run, for the 1995 table, its screen and each of
   the five authored ones. Reading the page's own words counts as output too: the caveat under the file
   picker described a build from two months earlier.
+- **A test that passes in the order it was written has not been tested.** `tests/accessibility.browser`
+  asserted that blind mode "starts off" by reading the live state — true only while it ran before the two
+  tests that press the same key. Nothing had ever reordered anything, so it was committed green;
+  shuffled, it failed two runs in five. The suite now runs in a random order every time
+  (`sequence.shuffle` in `vite.config.ts`), which turns a silent dependence into an intermittent one. A
+  failure prints its seed and `--sequence.seed=<n>` replays that exact order. And note what the first
+  shuffled run did: it PASSED. One green run against a known-flaky test is not evidence.
 - **Registering with an API is not the API doing the thing.** The palette menu joined the engine's
   overlay registry with `inEscapeChain: true`, and the header, a test comment and the reasoning behind
   writing no close button all said Escape would dismiss it. Escape did nothing: the engine drives that
