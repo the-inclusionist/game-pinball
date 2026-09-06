@@ -20,7 +20,7 @@ import { pack, type Framebuffer } from './framebuffer.js';
 import { applyPalette, buildDisplayPalette } from './gdrv.js';
 import { readIndexedBitmap } from '../dat/bitmap8.js';
 import { readPalette } from '../dat/palette.js';
-import { GAME_MATRIX, createProjection, type Matrix, type Projection } from '../maths/proj.js';
+import { createProjection, type Matrix, type Projection } from '../maths/proj.js';
 import { readZMap, type ZMap } from '../dat/zmap.js';
 import { EntryType, type Group } from '../dat/partman.js';
 import { floatAttribute, groupNamed } from '../dat/attributes.js';
@@ -139,8 +139,6 @@ export function readCamera(groups: readonly Group[], o: CameraOptions = {}): Ori
   };
 }
 
-/** The matrix the archive carries, for a test that wants to know it is the one `maths/proj` documents. */
-export const DOCUMENTED_MATRIX = GAME_MATRIX;
 
 /**
  * The playfield's own DEPTH MAP, beside its bitmap in the same group, TURNED THE RIGHT WAY UP.

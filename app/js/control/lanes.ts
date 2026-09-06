@@ -187,8 +187,10 @@ export function makeFuelRolloverControl(o: FuelRolloverOptions): ControlFunc {
   };
 }
 
-/** `FuelRollover1Control` … `FuelRollover6Control`, as the data they are. */
-export const FUEL_ROLLOVER_SPLITS: readonly number[] = [1, 3, 5, 7, 9, 11];
+// ⚠️ THE SIX SPLIT INDICES ARE NOT HERE. They were, as `FUEL_ROLLOVER_SPLITS`, and nothing ever read
+// them: the wiring takes them from `FUEL_ROLLOVERS` in `control/bindings`, where each one sits beside
+// the component and the lamp it belongs to. Two copies of one list is how the two drift apart, and the
+// copy that loses is always the one no code reads.
 
 /* ===================== THE OUT LANES ===================== */
 

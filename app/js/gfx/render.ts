@@ -44,7 +44,7 @@
 
 import { copyBitmap, type Framebuffer } from './framebuffer.js';
 import { fillZ, paint, paintFlat, type ZBuffer } from './zbuffer.js';
-import { enclosingBox, rectangleClip, type Rect } from '../maths/rect.js';
+import { enclosingBox, rectangleClip, isEmpty, EMPTY_WIDTH, type Rect } from '../maths/rect.js';
 
 export type VisualType = 'sprite' | 'background' | 'ball';
 
@@ -88,7 +88,17 @@ export interface Renderer {
   readonly balls: readonly Sprite[];
 }
 
-export function makeRect(x = 0, y = 0, width = -1, height = 0): Rect {
+/**
+ * ⚠️ AND `EMPTY_WIDTH` IS WHY THE DEFAULT IS MINUS ONE. `maths/rect` names the sentinel and gives it a
+ * test, and this module — the only one that uses empty rectangles at all — spelled it as a bare `-1`
+ * seven times and read it as `width <= 0` once. Both were written for each other and neither knew.
+ *
+ * ⚠️ AND THE TWO CHECKS ARE NOT THE SAME CHECK. `isEmpty` is `width <= 0`; `=== EMPTY_WIDTH` is the
+ * sentinel exactly. A rectangle of zero width is empty and is NOT the sentinel, and the places below
+ * that ask for the sentinel are asking whether a sprite was ever given a box — not whether its box has
+ * area. Folding them together would be tidier and wrong.
+ */
+export function makeRect(x = 0, y = 0, width = EMPTY_WIDTH, height = 0): Rect {
   return { x, y, width, height };
 }
 
@@ -117,7 +127,7 @@ export function createRenderer(o: RendererOptions): Renderer {
 
     for (const ball of ordered) {
       if (!ball.bmp || !rectangleClip(ball.bmpRect, screenRect, ball.dirtyRect)) {
-        ball.dirtyRect.width = -1;
+        ball.dirtyRect.width = EMPTY_WIDTH;
         continue;
       }
       const rect = ball.dirtyRect;
@@ -138,7 +148,7 @@ export function createRenderer(o: RendererOptions): Renderer {
 
   /** Redraw everyone overlapping this sprite's dirty rectangle, clipped to it. */
   function repaint(sprite: Sprite): void {
-    if (!sprite.occludedSprites || sprite.visualType === 'ball' || sprite.dirtyRect.width <= 0) return;
+    if (!sprite.occludedSprites || sprite.visualType === 'ball' || isEmpty(sprite.dirtyRect)) return;
 
     const clip: Rect = makeRect();
     for (const other of sprite.occludedSprites) {
@@ -171,10 +181,10 @@ export function createRenderer(o: RendererOptions): Renderer {
     buildOccludeList(): void {
       for (const main of sprites) {
         main.occludedSprites = null;
-        if (main.deleted || main.boundingRect.width === -1) continue;
+        if (main.deleted || main.boundingRect.width === EMPTY_WIDTH) continue;
 
         const overlapping = sprites.filter(
-          (other) => !other.deleted && other.boundingRect.width !== -1
+          (other) => !other.deleted && other.boundingRect.width !== EMPTY_WIDTH
             && rectangleClip(main.boundingRect, other.boundingRect),
         );
 
@@ -203,12 +213,12 @@ export function createRenderer(o: RendererOptions): Renderer {
             sprite.dirtyRect = { ...sprite.bmpRect };
           }
           clear = rectangleClip(sprite.dirtyRect, screenRect, sprite.dirtyRect);
-          if (!clear) sprite.dirtyRect.width = -1;
+          if (!clear) sprite.dirtyRect.width = EMPTY_WIDTH;
         } else if (sprite.visualType === 'background') {
           if (rectangleClip(sprite.bmpRect, screenRect, sprite.dirtyRect)) {
             clear = !sprite.bmp;
           } else {
-            sprite.dirtyRect.width = -1;
+            sprite.dirtyRect.width = EMPTY_WIDTH;
           }
         }
 
