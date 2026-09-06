@@ -17,7 +17,7 @@ import {
 import { createScoreState } from '../app/js/control/score.js';
 import { BASE_BONUS } from '../app/js/control/drain.js';
 import { SCORE_COMPONENTS } from '../app/js/control/score-table.js';
-import { ALIEN_MENACE } from '../app/js/control/bindings.js';
+import { ALIEN_MENACE, TIME_WARP_PART_TWO } from '../app/js/control/bindings.js';
 import { MISSION_TABLE } from '../app/js/control/mission-table.js';
 import { loadTable } from '../app/js/dat/loader.js';
 import type { ControlContext } from '../app/js/control/dispatch.js';
@@ -1547,6 +1547,60 @@ describe('⚠️ the mission machine, and the state the table sits in before a b
     });
   });
 
+  /**
+   * ⚠️ TIME WARP PART TWO IS THE ONE PLACE THE RANK RUNS BACKWARDS. Two components end it and they end
+   * it opposite ways: `a_kout2` — the hyperspace hole — costs a rank, `ramp` earns one, and both pay
+   * the same two million and hand back to mission select. Every number is read from `control.cpp`.
+   */
+  describe('mission 24, Time Warp part two', () => {
+    test('⚠️ the RAMP promotes, pays two million and hands back to mission select', () => {
+      const w = wired({ gates: true, wormHole: true });
+      if (!w) return expect(existsSync(DAT)).toBe(false);
+      const lamp = w.components.lights.get('lite198')!;
+      const circle = w.components.lightGroups.get('middle_circle')!;
+      lamp.messageField = TIME_WARP_PART_TWO.mission;
+      const before = { rank: circle.onCount, score: w.score.curScore };
+
+      w.dispatch.hit(TIME_WARP_PART_TWO.promote);
+
+      expect(circle.onCount, 'one rank up').toBe(before.rank + 1);
+      expect(w.score.curScore - before.score, 'two million, plus whatever the ramp itself pays')
+        .toBeGreaterThanOrEqual(2_000_000);
+      expect(lamp.messageField, 'and back to mission select').toBe(1);
+    });
+
+    test('⚠️ and the HYPERSPACE HOLE demotes, which nothing else on this table does', () => {
+      const w = wired({ gates: true, wormHole: true });
+      if (!w) return expect(existsSync(DAT)).toBe(false);
+      const lamp = w.components.lights.get('lite198')!;
+      const circle = w.components.lightGroups.get('middle_circle')!;
+      // Two ranks in hand, because the controller refuses to drop below the first.
+      circle.turnOnNext();
+      circle.turnOnNext();
+      lamp.messageField = TIME_WARP_PART_TWO.mission;
+      const before = circle.onCount;
+
+      w.dispatch.hit(TIME_WARP_PART_TWO.demote);
+
+      expect(circle.onCount, 'one rank down').toBe(before - 1);
+      expect(lamp.messageField).toBe(1);
+    });
+
+    test('⚠️ and the line it shows while running is STRING248, not the promotion headline', () => {
+      // The port showed STRING147 — "you have been promoted" — the moment the mission began, before
+      // anything had been. The fall-through in `TimeWarpPartTwoController` is what says otherwise.
+      const w = wired({ gates: true, wormHole: true });
+      if (!w) return expect(existsSync(DAT)).toBe(false);
+      const said: string[] = [];
+      const lamp = w.components.lights.get('lite198')!;
+      lamp.messageField = TIME_WARP_PART_TWO.mission;
+
+      w.dispatch.missions.dispatch('ControlMissionStarted', null, missionContext(w, said) as never);
+
+      expect(said).toEqual(['text:STRING248']);
+    });
+  });
+
   test('the table starts in mission ZERO, which is a state and not a mission', () => {
     const w = wired();
     if (!w) return expect(existsSync(DAT)).toBe(false);
@@ -1629,8 +1683,9 @@ describe('⚠️ the eighteen missions that can run without the holes, and the t
     // ⚠️ PLUS ONE FOR ALIEN MENACE, which is case 10 of the switch and NOT a row in the table — it has
     // no components to count hits on, because it is won by a bumper LEVEL. So the two numbers stopped
     // being the same number the day it was wired, and the sum is spelled out rather than adjusted.
-    expect(w.dispatch.missionsRun.size, 'nineteen rows and one special').toBe(19 + 1);
+    expect(w.dispatch.missionsRun.size, 'nineteen rows and two specials').toBe(19 + 2);
     expect(w.dispatch.missionsRun.has(ALIEN_MENACE.mission)).toBe(true);
+    expect(w.dispatch.missionsRun.has(TIME_WARP_PART_TWO.mission)).toBe(true);
     for (const row of runnable) expect(w.dispatch.missionsRun.has(row.mission), row.name).toBe(true);
     // ⚠️ BUG HUNT USED TO BE THE EXAMPLE HERE and it runs now: `target22` is the wormhole's
     // destination and it is wired. The five still declined need the three sinks and `kickout2`.
@@ -1651,7 +1706,7 @@ describe('⚠️ the eighteen missions that can run without the holes, and the t
     if (!w) return expect(existsSync(DAT)).toBe(false);
     const tagOf = new Map(SCORE_COMPONENTS.map((row) => [row.name, row.tag]));
 
-    expect(w.dispatch.missionsRun.size, 'twenty-three rows and one special').toBe(23 + 1);
+    expect(w.dispatch.missionsRun.size, 'twenty-three rows and two specials').toBe(23 + 2);
     for (const mission of [16, 22, 23, 30, 31]) {
       expect(w.dispatch.missionsRun.has(mission), `mission ${mission}`).toBe(true);
     }
@@ -1666,9 +1721,8 @@ describe('⚠️ the eighteen missions that can run without the holes, and the t
     // false of `gh api`, which hands over all 4603 lines of `control.cpp`. Alien Menace is wired from
     // the source rather than from a guess; the other two are next, and stay declined until they are.
     expect(w.dispatch.missionsRun.has(10), 'alien menace').toBe(true);
-    for (const mission of [24, 32]) {
-      expect(w.dispatch.missionsRun.has(mission), `special ${mission}`).toBe(false);
-    }
+    expect(w.dispatch.missionsRun.has(24), 'time warp part two').toBe(true);
+    expect(w.dispatch.missionsRun.has(32), 'game over is still declined').toBe(false);
     // And every component every mission names is registered, which is the same claim from the other
     // side: nothing is declined for want of a part any more.
     for (const row of MISSION_TABLE) {
@@ -2253,6 +2307,6 @@ describe('the hole that pays more every time', () => {
     if (!w) return expect(existsSync(DAT)).toBe(false);
 
     expect(w.dispatch.wired.has(HYPERSPACE.component)).toBe(true);
-    expect(w.dispatch.missionsRun.size, 'and Alien Menace on top of the table').toBe(23 + 1);
+    expect(w.dispatch.missionsRun.size, 'and the two specials on top of the table').toBe(23 + 2);
   });
 });

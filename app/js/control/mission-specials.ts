@@ -109,6 +109,12 @@ export interface TimeWarpPartTwoOptions {
   readonly addRankProgress: (points: number) => boolean;
   readonly rankName: (index: number) => string;
   readonly texts: {
+    /**
+     * ⚠️ STRING248, WHICH IS THE MISSION'S OWN LINE AND NOT THE PROMOTION'S. Both the take-over and the
+     * start fall through to it upstream; this port had neither, and showed STRING147 — "you have been
+     * promoted" — the moment the mission began, before anything had been.
+     */
+    readonly mission: string;
     readonly demoteHeadline: string;
     readonly promoteHeadline: string;
     readonly demoted: (rank: string) => string;
@@ -124,15 +130,24 @@ export const TOP_RANK = 9;
 
 export function makeTimeWarpPartTwoController(o: TimeWarpPartTwoOptions): MissionController {
   return (code, caller, ctx) => {
-    if (code === 'ControlMissionComplete') {
-      for (const lamp of o.lamps) lamp.flasherStartTimed(0);
+    // ⚠️ THE FALL-THROUGH IS THE SHAPE, and it is easy to lose in translation:
+    //
+    //     if (code == ControlMissionComplete) { four lamps flash }
+    //     else if (code != ControlMissionStarted) return;
+    //     mission_text_box->Display(STRING248, -1.0);
+    //
+    // The take-over lights the lamps AND THEN shows the line; the start shows the same line. Written
+    // as two early returns — which is what this was — the completion shows nothing at all.
+    if (code !== 'ControlCollision') {
+      if (code === 'ControlMissionComplete') {
+        for (const lamp of o.lamps) lamp.flasherStartTimed(0);
+      } else if (code !== 'ControlMissionStarted') {
+        return;
+      }
+      ctx.showMissionText(o.texts.mission, -1);
       return;
     }
-    if (code === 'ControlMissionStarted') {
-      ctx.showMissionText(o.texts.promoteHeadline, -1);
-      return;
-    }
-    if (code !== 'ControlCollision' || !caller) return;
+    if (!caller) return;
 
     if (caller === o.demoteComponent) {
       ctx.showMissionText(o.texts.demoteHeadline, 4);

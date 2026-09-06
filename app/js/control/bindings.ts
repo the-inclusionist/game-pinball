@@ -599,6 +599,37 @@ export const ALIEN_MENACE = {
   nextMission: 20,
 } as const;
 
+/**
+ * ⚠️ TIME WARP PART TWO, CASE 24 OF THE MISSION SWITCH AND THE ONE PLACE THE RANK RUNS BACKWARDS.
+ *
+ * Transcribed from `TimeWarpPartTwoController`. Two components end it and they end it in opposite
+ * directions: the hyperspace hole DEMOTES, the ramp PROMOTES, and both pay the same two million.
+ *
+ * ⚠️ AND STRING248 IS THE MISSION'S OWN LINE. Both the take-over and the start fall through to it —
+ * `else if (code != ControlMissionStarted) return;` and then the Display below the branch — which is
+ * the shape this port lost when it wrote the two cases as two early returns.
+ *
+ * `kickout2` is `a_kout2` and `ramp` is `ramp`; the four lamps are the same in both.
+ */
+export const TIME_WARP_PART_TWO = {
+  mission: 24,
+  /** `kickout2` — the hyperspace hole. Hitting it costs a rank. */
+  demote: 'a_kout2',
+  /** `ramp`. Hitting it earns one. */
+  promote: 'ramp',
+  lamps: ['lite55', 'lite26', 'lite304', 'lite317'],
+  /** STRING248, shown for as long as nothing replaces it. */
+  textId: 'STRING248',
+  demoteHeadlineId: 'STRING148',
+  promoteHeadlineId: 'STRING147',
+  /** `RankRcArray[rank - 1]` after the step back. */
+  demotedTextId: 'STRING274',
+  /** `RankRcArray[rank]` read BEFORE the step up. */
+  promotedTextId: 'STRING273',
+  /** `lite198->MessageField = 1` — back to mission select. */
+  nextMission: 1,
+} as const;
+
 export const RANK = {
   outerCircle: 'outer_circle',
   middleCircle: 'middle_circle',

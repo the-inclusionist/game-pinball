@@ -123,6 +123,7 @@ describe('Time Warp part two, where the rank can go BACKWARDS', () => {
       addRankProgress: () => promoted,
       rankName: (i) => 'RANK' + i,
       texts: {
+        mission: 'THE TIME WARP',
         demoteHeadline: 'DEMOTED', promoteHeadline: 'PROMOTED',
         demoted: (r) => 'YOU ARE NOW ' + r,
         promoted: (r) => 'YOU REACHED ' + r,
@@ -133,6 +134,27 @@ describe('Time Warp part two, where the rank can go BACKWARDS', () => {
       setPromoted: (v: boolean) => { promoted = v; },
     };
   }
+
+  test('⚠️ BOTH the start and the completion show the MISSION line, and it is its own string', () => {
+    // The upstream's shape is a fall-through, and the fall-through is the whole point:
+    //
+    //     if (code == ControlMissionComplete) { lite55, lite26, lite304, lite317 flash }
+    //     else if (code != ControlMissionStarted) return;
+    //     mission_text_box->Display(pb::get_rc_string(Msg::STRING248), -1.0);
+    //
+    // So the take-over lights the four lamps AND shows the line, and starting shows the same line.
+    // This port returned after the flashers and showed the PROMOTION headline on start — STRING147,
+    // "you have been promoted", before anything had been promoted — so STRING248 was never on screen
+    // and the one line naming the mission did not exist in the module at all.
+    const b = build(4);
+
+    b.controller('ControlMissionStarted', null, b.ctx);
+    b.controller('ControlMissionComplete', null, b.ctx);
+
+    expect(b.shown.map((entry) => entry.text)).toEqual(['THE TIME WARP', 'THE TIME WARP']);
+    expect(b.shown.map((entry) => entry.seconds), 'until something replaces it').toEqual([-1, -1]);
+    expect(b.lamps[0]!.log, 'and the take-over lights the lamps').toContain('flash:0');
+  });
 
   test('the kickout DEMOTES and names the rank dropped to', () => {
     // The one place in the game the rank circle runs backwards.

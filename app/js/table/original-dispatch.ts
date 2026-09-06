@@ -54,6 +54,7 @@ import {
   BOOSTER_BANK, TABLE_ACTIONS, FLIPPER_REBOUNDERS, GATE_LAMPS, KICKERS, SKILL_SHOT,
   LAUNCH_RAMP, FLAGS, KICKOUTS, DRAIN, PER_BALL_RESET, MISSIONS, RANK, WORM_HOLE,
   DRAIN_BLOCKER, PLUNGER_FEED, WORM_HOLE_SINKS, HYPERSPACE, CHEAT_GATES, ALIEN_MENACE,
+  TIME_WARP_PART_TWO,
   type BumperLaneBinding,
 } from '../control/bindings.js';
 import { addExtraBall, createTableActions } from '../control/table-actions.js';
@@ -74,7 +75,9 @@ import { makeMissionController } from '../control/mission-runner.js';
 import { MISSION_TABLE } from '../control/mission-table.js';
 import { addRankProgress as advanceRank } from '../control/rank.js';
 import { cheatBumpRank } from '../control/cheats.js';
-import { makeAlienMenaceController } from '../control/mission-specials.js';
+import {
+  makeAlienMenaceController, makeTimeWarpPartTwoController,
+} from '../control/mission-specials.js';
 import {
   makePlungerControl, makeDrainBallBlockerControl, NEW_BALL_REFLEX_SCORE,
   type FeedGroup, type FeedTable,
@@ -1546,10 +1549,10 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
   // in one piece from here". That was true of a fetch that truncates a 150 KB file and false of
   // `gh api`, which hands over all 4603 lines of `control.cpp`. Ten is wired below, from the source.
   //
-  // Twenty-four and thirty-two are still declined, and now for the ordinary reason: nobody has wired
-  // them yet. Their numbers are known — Time Warp part two is lamps `lite55`, `lite26`, `lite304` and
-  // `lite317` with STRING248, and Game Over is `goal_lights`, `flip1`, `flip2` and STRING272 — and the
-  // work is the wiring, not the reading.
+  // Ten and twenty-four are wired below, from the source. Thirty-two is not, and now for the ordinary
+  // reason: nobody has wired it yet. Its numbers are known — `goal_lights`, `flip1`, `flip2`, the
+  // banner STRING272 and the two carousels of STRING280..283 and STRING284..288 — and the work left is
+  // the wiring, not the reading.
   /**
    * ⚠️ CASE 10 OF THE MISSION SWITCH, WHICH IS NOT A ROW IN THE TABLE. Alien Menace listens for a
    * bumper LEVEL and for nothing else — no collision, no lane, no target — so it is built here rather
@@ -1578,6 +1581,50 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
         text: o.textFor(ALIEN_MENACE.textId),
         nextMission: ALIEN_MENACE.nextMission,
         missionLamp,
+      });
+    }
+  }
+
+  /**
+   * ⚠️ CASE 24, WHICH IS ALSO NOT A ROW IN THE TABLE. Time Warp part two ends on a collision with one
+   * of two components pointing opposite ways — the hyperspace hole takes a rank away, the ramp gives
+   * one — and both pay two million. It needs the rank circle, which means it needs the same three
+   * lamps `earnRank` does; without them it is declined whole, like everything else here.
+   */
+  {
+    const demote = byName.get(TIME_WARP_PART_TWO.demote);
+    const promote = byName.get(TIME_WARP_PART_TWO.promote);
+    const warpLamps = TIME_WARP_PART_TWO.lamps
+      .map((name) => o.components.lights.get(name))
+      .filter((lamp): lamp is NonNullable<typeof lamp> => Boolean(lamp));
+
+    if (demote && promote && middleCircle && missionLamp
+      && warpLamps.length === TIME_WARP_PART_TWO.lamps.length) {
+      const circle = middleCircle;
+      controllers[TIME_WARP_PART_TWO.mission] = makeTimeWarpPartTwoController({
+        rankCircle: {
+          get onCount() { return circle.onCount; },
+          // `TLightGroupOffsetAnimationBackward` and `TLightGroupResetAndTurnOn`, under this port's
+          // names for them — the same pair `gfx`-side callers use to walk a group one lamp at a time.
+          offsetAnimationBackward: () => { circle.turnOffNext(); },
+          resetAndTurnOn: (period: number) => { circle.groupResetAndTurnOn(period); },
+        },
+        demoteComponent: demote,
+        promoteComponent: promote,
+        lamps: warpLamps,
+        missionLamp,
+        score: ctx.score,
+        addRankProgress: earnRank,
+        rankName: (index: number) => rankNames[index] ?? '',
+        texts: {
+          mission: o.textFor(TIME_WARP_PART_TWO.textId),
+          demoteHeadline: o.textFor(TIME_WARP_PART_TWO.demoteHeadlineId),
+          promoteHeadline: o.textFor(TIME_WARP_PART_TWO.promoteHeadlineId),
+          demoted: (rank: string) => o.textFor(TIME_WARP_PART_TWO.demotedTextId, { rank }),
+          promoted: (rank: string) => o.textFor(TIME_WARP_PART_TWO.promotedTextId, { rank }),
+        },
+        // `soundwave10->Play`, whose WAV this repository never holds. The role is the promotion's.
+        playPromotionSound: () => ctx.playSound('promotion'),
       });
     }
   }
