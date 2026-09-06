@@ -41,10 +41,25 @@ const fakeEngine = (problems: readonly string[] = []) =>
  * ⚠️ A TABLE WIDER THAN THE VIEW SCROLLS SIDEWAYS TOO, which phase 8 of the plan asks for in one line:
  * "mesas mais largas que 320 passam a rolar também na horizontal, pelo mesmo algoritmo de câmera".
  *
- * `wide-arc` is 360 wide against a playfield window of 183, so a hundred and seventy-seven columns of
- * it — nearly half the table — could never be looked at. `shell/camera` was built for this from the
- * start: `stepAxis` knows nothing about vertical, and its own header says the horizontal axis calls it
- * "with a different `anchor` and a different pair of sizes". Nothing ever called it.
+ * `wide-arc` is 360 wide against a playfield window of 320, so FORTY columns of it could never be
+ * looked at. `shell/camera` was built for this from the start: `stepAxis` knows nothing about
+ * vertical, and its own header says the horizontal axis calls it "with a different `anchor` and a
+ * different pair of sizes". Nothing ever called it.
+ *
+ * ⚠️ THIS PARAGRAPH SAID 183 AND A HUNDRED AND SEVENTY-SEVEN, and contradicted the line twelve rows
+ * below it, which has always said 320 and forty. The code was right and the prose was wrong, so
+ * nothing failed — it merely overstated the defect fourfold, from forty columns to "nearly half the
+ * table", in the paragraph somebody reads to find out what the horizontal camera is for.
+ *
+ * WHERE THE WRONG NUMBER COMES FROM, because it is the one anybody would reach for again: 183 is
+ * `low-orbit`'s window, and it is what you get by halving the 1995 playfield and forgetting that
+ * `layoutHud` clamps — `width: Math.min(playfieldWidth, screenWidth)`. A table wider than the screen
+ * does not get a narrow window with columns beside it; it takes the whole screen and the HUD moves on
+ * top, which is what `overlaying` reports.
+ *
+ * AND IT WAS FOUND BY LOOKING. `shots/authored-wide-arc.png` shows the table spanning the full width
+ * of the screen, which a 183-wide window cannot do. Two of the five authored tables had never been
+ * opened; this was in the first one.
  */
 describe('the camera on a table wider than the window', () => {
   const wideTable = (x: number, speed = 20) => table({
