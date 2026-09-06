@@ -176,6 +176,47 @@ export const SLIPSTREAM: AuthoredTable = {
       scores: [5000], control: 'LaneControl', lamps: ['lamp.returnRight'] },
 
     /* ===================== THE CREST ===================== */
+    /* ===================== WHAT IS PASSING =====================
+     *
+     * ⚠️ THE DEV'S THEME FOR THIS TABLE, in his own words: "viagem em alta velocidade pelo espaço, com
+     * estrelas na forma de traço, cometas passando bem devagar, meteoros e sondas voyager like em alta
+     * velocidade." The streaked stars are the backdrop's — see `gfx/table-palette`'s `stream`. These
+     * three are the things that move, and his sentence gives them two different speeds ON PURPOSE.
+     *
+     * ⚠️ AND THE TWO SPEEDS MEAN TWO DIFFERENT KINDS OF COMPONENT, which is a consequence of a rule
+     * `crater-run` had to learn the hard way: a shuttle is met far LESS often the slower it runs, not
+     * the same amount later. A slow body makes few passes and the ball's visits to any square are
+     * brief and uncorrelated.
+     *
+     * So the things he wants FAST can be paid for, because `tests/table-reachable` will find them
+     * sixty balls out of sixty. The thing he wants SLOW cannot, and it does not try: the comet scores
+     * nothing and declares no control. It is a body drifting through, which is exactly what he
+     * described, and the reachability gate ignores it because there is nothing to be denied.
+     */
+    { name: 'comet', kind: 'rebounder', role: WALL,
+      // Ten pixels a second, against the probe's sixty-five below. "Bem devagar", and slow enough that
+      // a player watching one cross has time to notice it is not furniture.
+      //
+      // ⚠️ AND IT IS IN THE UPPER-LEFT QUADRANT BECAUSE THE TOP OF THE TABLE IS THE LAUNCH'S OWN ROAD.
+      // The first draft ran it across the head under the ceiling, 128 pixels in eleven seconds, and
+      // `drift2` stopped being reached by sixty balls — the ball comes off the plunger lane's curve
+      // travelling left just under the ceiling, and a slow body parked in that corridor is a wall
+      // across the one route that feeds the target column down the left wall. Shortening it to forty
+      // pixels did not help and moving it to the right-hand end did not either: anywhere in that lane
+      // is in the way. `table/cabinet` records the same rule for static furniture — a drop bank across
+      // a table is a wall — and this is it for something that moves.
+      bounds: { x: 19, y: 13, width: 46, height: 28 },
+      mover: { from: { x: 26, y: 20 }, to: { x: 58, y: 34 }, seconds: 3.5, radius: 6 } },
+
+    { name: 'meteor', kind: 'rebounder', role: 'goal',
+      bounds: { x: 50, y: 170, width: 52, height: 12 },
+      scores: [2500], control: 'RebounderControl', lamps: ['lamp.meteor'],
+      mover: { from: { x: 56, y: 176 }, to: { x: 96, y: 176 }, seconds: 0.6, radius: 5 } },
+    { name: 'probe.voyager', kind: 'rebounder', role: 'goal',
+      bounds: { x: 98, y: 170, width: 48, height: 12 },
+      scores: [3500], control: 'RebounderControl', lamps: ['lamp.voyager'],
+      mover: { from: { x: 104, y: 176 }, to: { x: 140, y: 176 }, seconds: 0.55, radius: 5 } },
+
     { name: 'crown', kind: 'target', role: 'key', bounds: { x: 84, y: 24, width: 14, height: 14 },
       scores: [6000], control: 'TargetControl', lamps: ['lamp.crown'],
       collision: [{ kind: 'line', from: { x: 84, y: 38 }, to: { x: 98, y: 38 } }] },
@@ -183,6 +224,7 @@ export const SLIPSTREAM: AuthoredTable = {
 
   lamps: [
     ...CABINET_LAMPS,
+    'lamp.voyager', 'lamp.meteor',
     'lamp.vaneLeft', 'lamp.vaneRight', 'lamp.eddy1', 'lamp.eddy2', 'lamp.eddy3', 'lamp.eddy4',
     'lamp.drift1', 'lamp.drift2', 'lamp.drift3',
     'lamp.spillLeft', 'lamp.spillRight',
