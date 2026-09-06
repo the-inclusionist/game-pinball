@@ -98,22 +98,37 @@ export const SLIPSTREAM: AuthoredTable = {
     /* ===================== THE UPPER CHAMBER ===================== */
     // Two bumpers above the vanes: a ball that got through is kept up there a while, which is the
     // reward for making the shot and the reason the chamber feels like somewhere.
-    { name: 'eddy1', kind: 'bumper', role: WALL, bounds: { x: 54, y: 62, width: 16, height: 16 },
+    /**
+     * ⚠️ MOVED ONTO THE PICTURE, 2026-09-06, IN THREE GROUPS AND NEVER PIECE BY PIECE. The eddies
+     * four pixels right and four up, the drift bank six right and four down, the crown eighteen
+     * right and ten down. Structure under them, from `art/slipstream.jpg` at this table's size:
+     *
+     *     eddy1   1.21x median -> 1.74x
+     *     drift1  1.50x        -> 2.19x
+     *     crown   1.26x        -> 2.33x
+     *
+     * ⚠️ AND THE WAKES AND THE REBOUNDERS WERE LEFT WHERE THEY WERE, which is the half of this
+     * worth writing down. The same search offered them the same kind of move and the best it could
+     * find was 1.62x against 1.62x and 2.70x against 2.57x — no better than where they are. A
+     * measurement that only ever says yes is not measuring; `crater-run` was left untouched
+     * entirely for the same reason, its best mirrored move being 0.81x to 1.07x, which is noise.
+     */
+    { name: 'eddy1', kind: 'bumper', role: WALL, bounds: { x: 58, y: 58, width: 16, height: 16 },
       scores: [500, 1000, 1500, 2000], control: 'BumperControl', lamps: ['lamp.eddy1'],
-      collision: [{ kind: 'circle', at: { x: 62, y: 70 }, radius: 8 }] },
-    { name: 'eddy2', kind: 'bumper', role: WALL, bounds: { x: 112, y: 62, width: 16, height: 16 },
+      collision: [{ kind: 'circle', at: { x: 66, y: 66 }, radius: 8 }] },
+    { name: 'eddy2', kind: 'bumper', role: WALL, bounds: { x: 116, y: 58, width: 16, height: 16 },
       scores: [500, 1000, 1500, 2000], control: 'BumperControl', lamps: ['lamp.eddy2'],
-      collision: [{ kind: 'circle', at: { x: 120, y: 70 }, radius: 8 }] },
+      collision: [{ kind: 'circle', at: { x: 124, y: 66 }, radius: 8 }] },
 
     // ⚠️ AND TWO MORE, MAKING FOUR, because the chamber is this table's whole reward and it was two
     // bumpers and a target. Authored up to the 1995 playfield's density — `tests/table-density`, where
     // the Dev's "mesas tão simples" is a number: this table measured 2.67 against the archive's 5.25.
-    { name: 'eddy3', kind: 'bumper', role: WALL, bounds: { x: 83, y: 42, width: 16, height: 16 },
+    { name: 'eddy3', kind: 'bumper', role: WALL, bounds: { x: 87, y: 38, width: 16, height: 16 },
       scores: [500, 1000, 1500, 2000], control: 'BumperControl', lamps: ['lamp.eddy3'],
-      collision: [{ kind: 'circle', at: { x: 91, y: 50 }, radius: 8 }] },
-    { name: 'eddy4', kind: 'bumper', role: WALL, bounds: { x: 83, y: 84, width: 16, height: 16 },
+      collision: [{ kind: 'circle', at: { x: 95, y: 46 }, radius: 8 }] },
+    { name: 'eddy4', kind: 'bumper', role: WALL, bounds: { x: 87, y: 80, width: 16, height: 16 },
       scores: [500, 1000, 1500, 2000], control: 'BumperControl', lamps: ['lamp.eddy4'],
-      collision: [{ kind: 'circle', at: { x: 91, y: 92 }, radius: 8 }] },
+      collision: [{ kind: 'circle', at: { x: 95, y: 88 }, radius: 8 }] },
 
     /* ===================== THE DRIFT: A DROP COLUMN ON THE CHAMBER WALL ===================== */
     //
@@ -134,15 +149,15 @@ export const SLIPSTREAM: AuthoredTable = {
     // A vertical face has neither problem — nothing rests on it, and it stands beside the vanes rather
     // than across them. `ion-storm` reached the same shape from a different direction, which is worth
     // noticing: a drop bank wants a wall to stand against unless there is a bumper nest overhead.
-    { name: 'drift1', kind: 'target', role: 'key', bounds: { x: 8, y: 60, width: 12, height: 14 },
+    { name: 'drift1', kind: 'target', role: 'key', bounds: { x: 14, y: 64, width: 12, height: 14 },
       scores: [2200], control: 'TargetBankControl', bank: 'bank.drift', lamps: ['lamp.drift1'],
-      collision: [{ kind: 'line', from: { x: 20, y: 60 }, to: { x: 20, y: 74 } }] },
-    { name: 'drift2', kind: 'target', role: 'key', bounds: { x: 8, y: 78, width: 12, height: 14 },
+      collision: [{ kind: 'line', from: { x: 26, y: 64 }, to: { x: 26, y: 78 } }] },
+    { name: 'drift2', kind: 'target', role: 'key', bounds: { x: 14, y: 82, width: 12, height: 14 },
       scores: [2200], control: 'TargetBankControl', bank: 'bank.drift', lamps: ['lamp.drift2'],
-      collision: [{ kind: 'line', from: { x: 20, y: 78 }, to: { x: 20, y: 92 } }] },
-    { name: 'drift3', kind: 'target', role: 'key', bounds: { x: 8, y: 96, width: 12, height: 14 },
+      collision: [{ kind: 'line', from: { x: 26, y: 82 }, to: { x: 26, y: 96 } }] },
+    { name: 'drift3', kind: 'target', role: 'key', bounds: { x: 14, y: 100, width: 12, height: 14 },
       scores: [2200], control: 'TargetBankControl', bank: 'bank.drift', lamps: ['lamp.drift3'],
-      collision: [{ kind: 'line', from: { x: 20, y: 96 }, to: { x: 20, y: 110 } }] },
+      collision: [{ kind: 'line', from: { x: 26, y: 100 }, to: { x: 26, y: 114 } }] },
 
     /* ===================== THE SPILLWAYS ===================== */
     // Rollovers in the chamber's top corners, where a ball that came up the outside arrives. They pay
@@ -227,9 +242,9 @@ export const SLIPSTREAM: AuthoredTable = {
       scores: [3500], control: 'RebounderControl', lamps: ['lamp.voyager'],
       mover: { from: { x: 104, y: 176 }, to: { x: 140, y: 176 }, seconds: 0.55, radius: 5 } },
 
-    { name: 'crown', kind: 'target', role: 'key', bounds: { x: 84, y: 24, width: 14, height: 14 },
+    { name: 'crown', kind: 'target', role: 'key', bounds: { x: 102, y: 34, width: 14, height: 14 },
       scores: [6000], control: 'TargetControl', lamps: ['lamp.crown'],
-      collision: [{ kind: 'line', from: { x: 84, y: 38 }, to: { x: 98, y: 38 } }] },
+      collision: [{ kind: 'line', from: { x: 102, y: 48 }, to: { x: 116, y: 48 } }] },
   ],
 
   lamps: [

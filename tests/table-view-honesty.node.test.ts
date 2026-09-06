@@ -235,6 +235,11 @@ describe('⚠️ the drawing tells the truth about what the ball can touch', () 
  * pixels off the walls and four down, each bank moved RIGIDLY so its members keep their spacing —
  * a bank is a unit, and the search that proposed the move had wanted to slide its two halves into
  * each other. The two is a face that used to be drawn over a wall's stroke and now is not.
+ *
+ * ⚠️ AND `slipstream` GAINED 2 when its eddies, its drift bank and its crown were moved onto the
+ * picture — three GROUPS, each rigid. Two pixels for twenty-two components' worth of movement is
+ * the number behaving as it should: these are translations, so the only pixels that change are
+ * where a shape stops or starts overlapping another one's stroke.
  */
 const PAINTED = {
   // ⚠️ 6991 UNTIL THE TABLE WAS AUTHORED UP TO THE 1995 DENSITY. `tests/table-density` measures the
@@ -274,7 +279,7 @@ const PAINTED = {
   // ⚠️ +2122 when this table was authored up to the 1995 density: two more eddies in the chamber, a
   // three-target drop COLUMN on its wall, two spillways in its corners, three wake rollovers and
   // two rebounders below the vanes.
-  'slipstream': 5135,
+  'slipstream': 5137,
   'wide-arc': 4313,
   // ⚠️ 3553 UNTIL THE BALL GAINED A RADIUS. `table/physics-build` now offsets every wall by it, the way
   // the original does and `physics/wall` already did for the 1995 table, and two of this fixture's
