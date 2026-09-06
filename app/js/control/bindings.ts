@@ -630,6 +630,32 @@ export const TIME_WARP_PART_TWO = {
   nextMission: 1,
 } as const;
 
+/**
+ * ⚠️ GAME OVER, CASE 32, WHICH THE DRAIN ALREADY HANDS OVER TO. `BallDrainControl` sets
+ * `lite199->MessageField = 1` when the last ball of the last player is lost and then
+ * `lite198->MessageField = 32`, and `control/drain` transcribes that — so the lamp has been saying 32
+ * for several passes with no controller behind it. The whole of what was missing is this table and the
+ * four things the dispatcher does not own: the flippers, the mode change, the scores and the music.
+ *
+ * ⚠️ AND THE CAROUSEL COMES OUT OF ORDER ON PURPOSE. `GameoverController` reads its cursor back with
+ * `% 4` and `% 5` WITHOUT masking the phase bit off. For players that is harmless — 0x100 is a multiple
+ * of four — but 0x200 is 512 and 512 mod 5 is 2, so the high-score carousel enters at index 2 and walks
+ * 0, 3, 1, 4: THIRD, FIRST, FOURTH, SECOND, FIFTH. Every place is shown exactly once and the order is
+ * wrong, which is a defect, is observable, and is transcribed.
+ */
+export const GAME_OVER = {
+  mission: 32,
+  goalLights: 'goal_lights',
+  /** STRING272, ten seconds, and then the carousel starts again. */
+  bannerTextId: 'STRING272',
+  /** One per place, `%d` filled with that player's score. */
+  playerTextIds: ['STRING280', 'STRING281', 'STRING282', 'STRING283'],
+  /** Five places. This port has no high-score table, so none of these has ever been shown. */
+  highScoreTextIds: ['STRING284', 'STRING285', 'STRING286', 'STRING287', 'STRING288'],
+  /** `midi::play_track(MidiTracks::Track1, false)`. */
+  musicTrack: 'track1',
+} as const;
+
 export const RANK = {
   outerCircle: 'outer_circle',
   middleCircle: 'middle_circle',

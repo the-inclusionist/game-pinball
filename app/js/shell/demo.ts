@@ -623,9 +623,25 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
   let cheatMode = false;
   let cheatsUsed = false;
 
+  /**
+   * ⚠️ THE END OF THE GAME WAS A BOOLEAN AND NOTHING ELSE. `control/drain` has been handing the mission
+   * lamp over to 32 since it was written — the same line `BallDrainControl` has — and the machine found
+   * no controller there, so the carousel that names the score, the goal lights going out and both
+   * flippers freezing all happened nowhere. What the caller owes the dispatcher is the part it cannot
+   * reach: the flippers and the mode.
+   *
+   * ⚠️ AND FREEZING THE FLIPPERS IS NOT THE SAME AS IGNORING THE KEYS. A held flipper stays up when the
+   * game ends unless something puts it down, which is what `TFlipper::Message(GameOver)` does.
+   */
   dispatch = createOriginalDispatch({
     components, context, gates, kickouts, popupTargets, sinks,
     isEasyMode: () => easyMode,
+    gameOver: {
+      flippers: table.flippers.map((flipper) => ({
+        gameOver: () => { flipper.motion = 'retracting'; },
+      })),
+      enterMode: () => { gameOver = true; },
+    },
     feed: { table: drainTable, blockers: drainBlockers },
     drain: {
       table: drainTable,

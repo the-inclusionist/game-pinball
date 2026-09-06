@@ -54,7 +54,7 @@ import {
   BOOSTER_BANK, TABLE_ACTIONS, FLIPPER_REBOUNDERS, GATE_LAMPS, KICKERS, SKILL_SHOT,
   LAUNCH_RAMP, FLAGS, KICKOUTS, DRAIN, PER_BALL_RESET, MISSIONS, RANK, WORM_HOLE,
   DRAIN_BLOCKER, PLUNGER_FEED, WORM_HOLE_SINKS, HYPERSPACE, CHEAT_GATES, ALIEN_MENACE,
-  TIME_WARP_PART_TWO,
+  TIME_WARP_PART_TWO, GAME_OVER,
   type BumperLaneBinding,
 } from '../control/bindings.js';
 import { addExtraBall, createTableActions } from '../control/table-actions.js';
@@ -76,7 +76,7 @@ import { MISSION_TABLE } from '../control/mission-table.js';
 import { addRankProgress as advanceRank } from '../control/rank.js';
 import { cheatBumpRank } from '../control/cheats.js';
 import {
-  makeAlienMenaceController, makeTimeWarpPartTwoController,
+  makeAlienMenaceController, makeTimeWarpPartTwoController, makeGameoverController,
 } from '../control/mission-specials.js';
 import {
   makePlungerControl, makeDrainBallBlockerControl, NEW_BALL_REFLEX_SCORE,
@@ -140,6 +140,25 @@ export interface OriginalDispatchOptions {
     /** `table_unlimited_balls` and `TableG->ReflexShotScore`, which `ControlContext` does not carry. */
     readonly table: FeedTable;
     readonly blockers: ReadonlyMap<string, Blocker>;
+  };
+  /**
+   * ⚠️ WHAT THE END OF A GAME DOES BESIDES STOPPING, and none of it belongs to the dispatcher.
+   * `GameoverController` turns the goal lights off, changes the table's mode, sends both flippers
+   * `GameOver` and starts track one. `control/drain` has been handing the lamp over to mission 32 for
+   * several passes with nothing behind it — the lamp said 32 and the machine found no controller — so
+   * absent, this is declined and the caller keeps a game that stops without ever saying so.
+   */
+  readonly gameOver?: {
+    /** `flip1` and `flip2`. `TFlipper::Message(GameOver)` is what stops them answering. */
+    readonly flippers: readonly { gameOver(): void }[];
+    /** `pb::mode_change(GameModes::GameOver)`. */
+    readonly enterMode: () => void;
+    /**
+     * `high_score::highscore_table`. This port has no high-score table, so the default is empty and the
+     * second carousel shows nothing — which is exactly what the original does with an empty table, and
+     * is stated here rather than discovered by somebody watching the banner repeat.
+     */
+    readonly highScores?: () => readonly number[];
   };
   readonly context: ControlContext;
   /** `pb::FullTiltMode`. False for Space Cadet, which is the only table this port targets. */
@@ -1549,10 +1568,9 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
   // in one piece from here". That was true of a fetch that truncates a 150 KB file and false of
   // `gh api`, which hands over all 4603 lines of `control.cpp`. Ten is wired below, from the source.
   //
-  // Ten and twenty-four are wired below, from the source. Thirty-two is not, and now for the ordinary
-  // reason: nobody has wired it yet. Its numbers are known — `goal_lights`, `flip1`, `flip2`, the
-  // banner STRING272 and the two carousels of STRING280..283 and STRING284..288 — and the work left is
-  // the wiring, not the reading.
+  // All three are wired below, from the source. Thirty-two takes an option, because the end of a game
+  // touches things the dispatcher does not own — the flippers and the table's mode — and a caller that
+  // does not hand them over gets it declined whole rather than half-run.
   /**
    * ⚠️ CASE 10 OF THE MISSION SWITCH, WHICH IS NOT A ROW IN THE TABLE. Alien Menace listens for a
    * bumper LEVEL and for nothing else — no collision, no lane, no target — so it is built here rather
@@ -1625,6 +1643,44 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
         },
         // `soundwave10->Play`, whose WAV this repository never holds. The role is the promotion's.
         playPromotionSound: () => ctx.playSound('promotion'),
+      });
+    }
+  }
+
+  /**
+   * ⚠️ CASE 32, WHOSE STATE IS A TEXT BOX'S MESSAGE FIELD. `GameoverController` keeps the whole
+   * carousel in `mission_text_box->MessageField` as a tagged union — 0x100 players, 0x200 high scores,
+   * the low bits the cursor — and each step is driven by THE PREVIOUS LINE EXPIRING. There is no timer
+   * and no index variable anywhere in it.
+   *
+   * ⚠️ AND THIS PORT HAS NO TEXT BOX COMPONENT. `mission_text_box` is a name in the address book and
+   * nothing reads its message field but this, so the field lives here, next to the only thing that
+   * uses it. Give the port a real text box and this is the line that moves.
+   */
+  if (o.gameOver && missionLamp) {
+    const goalLights = feedAdapter(o.components, GAME_OVER.goalLights);
+    if (goalLights) {
+      const textBoxState = { messageField: 0 };
+      const gameOverOptions = o.gameOver;
+      controllers[GAME_OVER.mission] = makeGameoverController({
+        state: textBoxState,
+        // One player, one score. The original carries four and picks by `CurrentPlayer`.
+        get playerScores() { return [ctx.score.curScore]; },
+        get playerCount() { return o.drain?.table.playerCount ?? 1; },
+        get highScores() { return gameOverOptions.highScores?.() ?? []; },
+        goalLights,
+        flippers: gameOverOptions.flippers,
+        enterGameOverMode: gameOverOptions.enterMode,
+        playMusic: (track: string) => ctx.playMusic(track),
+        playerText: (place, score) => {
+          const id = GAME_OVER.playerTextIds[place - 1];
+          return id === undefined ? null : o.textFor(id, { score });
+        },
+        highScoreText: (place, score) => {
+          const id = GAME_OVER.highScoreTextIds[place - 1];
+          return id === undefined ? null : o.textFor(id, { score });
+        },
+        bannerText: o.textFor(GAME_OVER.bannerTextId),
       });
     }
   }

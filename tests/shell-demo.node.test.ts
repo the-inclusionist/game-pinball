@@ -430,6 +430,26 @@ describe('⚠️ and a ball can be lost, which the demonstration counts', () => 
     expect(demo.gameOver).toBe(false);
   });
 
+  test('⚠️ and the END of a game is handed to mission 32, with the parts only this file has', () => {
+    // `control/drain` sets the mission lamp to 32 when the last ball of the last player is lost —
+    // `BallDrainControl` does exactly that — and until `GameoverController` was wired the machine
+    // found nothing at 32: the goal lights stayed on, both flippers stayed live and the carousel that
+    // names the score existed in a module nothing called.
+    //
+    // ⚠️ AN INVENTORY RATHER THAN A RUN, and the reason is worth stating. The drain is a SINK, so
+    // reaching it means putting a ball into its geometry; nothing in this suite can currently do that,
+    // so no test here drives a real game to its end. What the controller DOES once it is reached is
+    // covered in `table-original-dispatch`, over the real archive, with five mutants killed. What is
+    // checked here is the half only this file owns — that the dispatcher is handed the flippers and
+    // the mode change at all — and it is the same shape as the sound-player inventory below, for the
+    // same reason: a hook nobody passes is invisible to any test that waits for a ball.
+    const source = readFileSync(resolve(dirname(DAT), '../app/js/shell/demo.ts'), 'utf8');
+
+    expect(source, 'the dispatcher is given a game-over block').toContain('gameOver: {');
+    expect(source, 'with both flippers').toMatch(/flippers: table\.flippers\.map/);
+    expect(source, 'and the mode change').toMatch(/enterMode: \(\) => \{ gameOver = true; \}/);
+  });
+
   test('⚠️ every part of the table reports the sound the ARCHIVE gives it, by index', () => {
     // Twelve builders have taken a sound player since they were written and the demonstration handed
     // one to none of them, so every archive-indexed noise on this table was silent: the gates, the

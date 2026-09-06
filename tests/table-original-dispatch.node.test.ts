@@ -17,7 +17,7 @@ import {
 import { createScoreState } from '../app/js/control/score.js';
 import { BASE_BONUS } from '../app/js/control/drain.js';
 import { SCORE_COMPONENTS } from '../app/js/control/score-table.js';
-import { ALIEN_MENACE, TIME_WARP_PART_TWO } from '../app/js/control/bindings.js';
+import { ALIEN_MENACE, TIME_WARP_PART_TWO, GAME_OVER } from '../app/js/control/bindings.js';
 import { MISSION_TABLE } from '../app/js/control/mission-table.js';
 import { loadTable } from '../app/js/dat/loader.js';
 import type { ControlContext } from '../app/js/control/dispatch.js';
@@ -38,13 +38,16 @@ const manifest = () => {
 };
 
 function wired(
-  o: { gates?: boolean; easy?: boolean; drain?: boolean; feed?: boolean; wormHole?: boolean } = {},
+  o: { gates?: boolean; easy?: boolean; drain?: boolean; feed?: boolean; wormHole?: boolean;
+    gameOver?: boolean; highScores?: readonly number[] } = {},
 ) {
   const drainTable = {
     tiltLocked: false, multiballCount: 0, multiballFlag: false, extraBalls: 0, ballCount: 3,
     currentPlayer: 0, playerCount: 1, unlimitedBalls: false,
   };
   const outcomes: string[] = [];
+  /** What the end of a game froze, in the order it froze it. */
+  const frozen: string[] = [];
   /** Stubs, because what is under test here is WHO is asked to come back up, not the rising. */
   const poppedUp: string[] = [];
   const popupTargets = new Map(
@@ -106,6 +109,11 @@ function wired(
     ...(o.easy ? { isEasyMode: () => true } : {}),
     ...(o.feed && blockers ? { feed: { table: feedTable, blockers } } : {}),
     ...(sinks ? { sinks } : {}),
+    ...(o.gameOver ? { gameOver: {
+      flippers: [{ gameOver: () => frozen.push('flip1') }, { gameOver: () => frozen.push('flip2') }],
+      enterMode: () => frozen.push('mode'),
+      ...(o.highScores ? { highScores: () => o.highScores! } : {}),
+    } } : {}),
     ...(o.drain ? { drain: {
       table: drainTable,
       onOutcome: (outcome: string, over: boolean) => outcomes.push(over ? `${outcome}:over` : outcome),
@@ -114,7 +122,7 @@ function wired(
   });
   return {
     components, score, shown, sounds, dispatch, context, geometry, gates, kickouts,
-    drainTable, outcomes, poppedUp, blockers, feedTable, sinks, born,
+    drainTable, outcomes, poppedUp, blockers, feedTable, sinks, born, frozen,
   };
 }
 
@@ -1598,6 +1606,77 @@ describe('⚠️ the mission machine, and the state the table sits in before a b
       w.dispatch.missions.dispatch('ControlMissionStarted', null, missionContext(w, said) as never);
 
       expect(said).toEqual(['text:STRING248']);
+    });
+  });
+
+  /**
+   * ⚠️ GAME OVER IS A CAROUSEL DRIVEN BY A TEXT BOX, AND THE DRAIN HAS BEEN CALLING IT FOR PASSES.
+   * `control/drain` sets the mission lamp to 32 when the last ball of the last player is lost, exactly
+   * as `BallDrainControl` does — and until now the machine found no controller at 32 and did nothing.
+   * A game ended and said so nowhere.
+   */
+  describe('mission 32, Game Over', () => {
+    test('⚠️ it is declined without the flippers and the mode change, and runs with them', () => {
+      const off = wired({ gates: true, wormHole: true });
+      const on = wired({ gates: true, wormHole: true, gameOver: true });
+      if (!off || !on) return expect(existsSync(DAT)).toBe(false);
+
+      expect(off.dispatch.missionsRun.has(GAME_OVER.mission), 'declined whole').toBe(false);
+      expect(on.dispatch.missionsRun.has(GAME_OVER.mission)).toBe(true);
+    });
+
+    test('⚠️ the take-over freezes both flippers and changes the mode', () => {
+      const w = wired({ gates: true, wormHole: true, gameOver: true });
+      if (!w) return expect(existsSync(DAT)).toBe(false);
+      const said: string[] = [];
+      w.components.lights.get('lite198')!.messageField = GAME_OVER.mission;
+
+      w.dispatch.missions.dispatch('ControlMissionComplete', null, missionContext(w, said) as never);
+
+      expect(w.frozen).toEqual(['mode', 'flip1', 'flip2']);
+    });
+
+    test('⚠️ and each expiring line is what advances the carousel — there is no timer in it', () => {
+      // `ControlMissionStarted` arrives when the PREVIOUS text runs out, so the carousel is driven by
+      // the text box's own timeout. Banner, then one line per player, then the high scores, then the
+      // banner again. This port has one player and no high-score table, so the third step falls
+      // straight back to the banner — which is what the original does with an empty table.
+      const w = wired({ gates: true, wormHole: true, gameOver: true });
+      if (!w) return expect(existsSync(DAT)).toBe(false);
+      const said: string[] = [];
+      w.components.lights.get('lite198')!.messageField = GAME_OVER.mission;
+      const step = () =>
+        w.dispatch.missions.dispatch('ControlMissionStarted', null, missionContext(w, said) as never);
+
+      step();
+      step();
+      step();
+
+      expect(said[0], 'the banner first').toBe('text:STRING272');
+      expect(said[1], 'then player one, with the score in it').toContain('STRING280');
+      expect(said[2], 'and with nothing else to show, the banner again').toBe('text:STRING272');
+    });
+
+    test('⚠️ AND THE HIGH SCORES COME OUT THIRD, FIRST, FOURTH, SECOND, FIFTH', () => {
+      // The cursor is read back with `% 5` WITHOUT masking the phase bit off, and 0x200 is 512:
+      // 512 mod 5 is 2, so the carousel enters at index 2 and walks 0, 3, 1, 4. Every place is shown
+      // exactly once and the order is wrong. It is a defect, it is observable, and it is transcribed.
+      const w = wired({
+        gates: true, wormHole: true, gameOver: true,
+        highScores: [10_000, 20_000, 30_000, 40_000, 50_000],
+      });
+      if (!w) return expect(existsSync(DAT)).toBe(false);
+      const said: string[] = [];
+      w.components.lights.get('lite198')!.messageField = GAME_OVER.mission;
+      const step = () =>
+        w.dispatch.missions.dispatch('ControlMissionStarted', null, missionContext(w, said) as never);
+
+      for (let i = 0; i < 7; i++) step();
+
+      const places = said
+        .filter((line) => GAME_OVER.highScoreTextIds.some((id) => line.includes(id)))
+        .map((line) => GAME_OVER.highScoreTextIds.findIndex((id) => line.includes(id)) + 1);
+      expect(places).toEqual([3, 1, 4, 2, 5]);
     });
   });
 
