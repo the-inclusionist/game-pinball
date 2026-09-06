@@ -111,8 +111,8 @@ describe('blocker — a wall that only exists during a mission', () => {
       timer: t.timer, edges,
       enableSoundId: 1, disableSoundId: 2,
       sound: { play: (id) => played.push(id) },
-      onTimeout: () => timeouts.push(1),
     });
+    blocker.control = () => timeouts.push(1);
     return { blocker, t, edges, played, timeouts };
   }
 

@@ -79,6 +79,12 @@ export interface OriginalComponents {
   /** The fuel tank, kept apart from the light groups — see `table/light-bargraph`. */
   readonly bargraphs: ReadonlyMap<string, LightBargraph>;
   /**
+   * ⚠️ ITS LAMPS, WHICH `membersOf` CANNOT REACH. A bargraph is not a light group and is not in
+   * `lightGroups`, so a caller holding only the tank has no way to send its members a message — and
+   * the original sends them several, `TLightResetAndTurnOn` among them.
+   */
+  readonly bargraphLights: ReadonlyMap<string, readonly Light[]>;
+  /**
    * ⚠️ THE TWO OUTLANE SAVERS, WHICH THE BALL HAS TO REACH. A kickback is a collision component, so
    * unlike a lamp it means nothing until `table/original` hands its group's walls to it — see
    * `componentFor`. Built here because everything it needs is records; wired to the geometry there.
@@ -155,6 +161,7 @@ export function buildOriginalComponents(
   const thresholds = new Map<string, number>();
   const lightGroups = new Map<string, LightGroup>();
   const bargraphs = new Map<string, LightBargraph>();
+  const bargraphLights = new Map<string, readonly Light[]>();
   const kickbacks = new Map<string, Kickback>();
   const groupMembers = new Map<LightGroup, Light[]>();
   const periods = new Map<string, number>();
@@ -264,6 +271,7 @@ export function buildOriginalComponents(
     const underlying = createLightGroup({
       timer, lights: members, defaultPeriod: floatAttribute(group, GROUP_PERIOD_RECORD)?.[0] ?? 0,
     });
+    bargraphLights.set(name, members);
     bargraphs.set(name, createLightBargraph({
       timer, group: underlying, lights: members,
       times: floatAttribute(group, BARGRAPH_TIMES_RECORD) ?? [],
@@ -288,6 +296,7 @@ export function buildOriginalComponents(
     lights,
     lightGroups,
     bargraphs,
+    bargraphLights,
     kickbacks,
     bumperGroups,
     timer,

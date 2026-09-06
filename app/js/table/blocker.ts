@@ -26,8 +26,6 @@ export interface BlockerOptions {
   readonly disableSoundId?: number;
   readonly sound?: SoundPlayer;
   readonly setSprite?: (index: number) => void;
-  /** The timeout fired. What that means is the mission's business, not the blocker's. */
-  readonly onTimeout?: () => void;
 }
 
 export interface Blocker {
@@ -39,6 +37,15 @@ export interface Blocker {
   /** Off and SILENT — used by reset, tilt and player change alike. */
   reset(): void;
   readonly active: boolean;
+  /**
+   * ⚠️ `control::handler(ControlTimerExpired, this)` WHEN THE DEADLINE RUNS OUT, and the only way the
+   * blocker's two phases can ever be told apart. What the timeout MEANS is the mission's business, not
+   * the blocker's: the first one buys a flashing extension, the second lowers the barrier.
+   *
+   * A field rather than an option, like `Gate.control`, `Kickback.control` and `Kickout.control` — the
+   * blocker is built from the archive, which happens before the dispatcher that binds it exists.
+   */
+  control: (() => void) | null;
 }
 
 export function createBlocker(o: BlockerOptions): Blocker {
@@ -58,13 +65,14 @@ export function createBlocker(o: BlockerOptions): Blocker {
 
   const blocker: Blocker = {
     get active() { return active; },
+    control: null,
 
     enable(seconds: number): void {
       setActive(true);
       playSoundId(o.sound, o.enableSoundId, blocker);
       clearTimer();
       if (seconds >= 0) {
-        timerId = o.timer.set(seconds, () => { timerId = 0; o.onTimeout?.(); });
+        timerId = o.timer.set(seconds, () => { timerId = 0; blocker.control?.(); });
       }
     },
 
@@ -76,7 +84,7 @@ export function createBlocker(o: BlockerOptions): Blocker {
 
     restartTimeout(seconds: number): void {
       clearTimer();
-      timerId = o.timer.set(Math.max(seconds, 0), () => { timerId = 0; o.onTimeout?.(); });
+      timerId = o.timer.set(Math.max(seconds, 0), () => { timerId = 0; blocker.control?.(); });
     },
 
     reset(): void {

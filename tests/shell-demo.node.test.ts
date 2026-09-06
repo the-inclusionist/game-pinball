@@ -169,14 +169,19 @@ describe('the 1995 table, from an ArrayBuffer', () => {
   });
 });
 
-describe('⚠️ and the sixty-three wired components run their 1995 control function', () => {
+describe('⚠️ and the sixty-five wired components run their 1995 control function', () => {
   test('the demo says which they are', () => {
     const bytes = archive();
     if (!bytes) return expect(existsSync(DAT)).toBe(false);
 
     const demo = createDemo(bytes, { random: seeded() });
 
-    expect(demo.wired.size).toBe(63);
+    // Sixty-three until the feed was wired. The two new ones are not collisions: `plunger` runs
+    // `PlungerControl` when a ball is put back into play, and `v_bloc1` runs
+    // `DrainBallBlockerControl` when the barrier's own deadline runs out.
+    expect(demo.wired.size).toBe(65);
+    expect(demo.wired.has('plunger')).toBe(true);
+    expect(demo.wired.has('v_bloc1')).toBe(true);
   });
 
   test('⚠️ and no wired component is ALSO paid flat, over a whole ball', () => {

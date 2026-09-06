@@ -59,8 +59,9 @@ function build() {
   const blockers = buildOriginalBlockers(table, geometry, {
     timer: clock.service,
     sound: { play: (id) => played.push(id) },
-    onTimeout: (name) => timedOut.push(name),
   });
+  // The dispatcher's job, done here by hand: the deadline running out is a message to control.
+  for (const [name, blocker] of blockers) blocker.control = () => timedOut.push(name);
   return { table, names, geometry, blockers, clock, played, timedOut };
 }
 

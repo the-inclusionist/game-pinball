@@ -30,7 +30,7 @@ import { buildOriginalPopupTargets } from '../table/original-popup-targets.js';
 import { buildOriginalSoloTargets } from '../table/original-solo-targets.js';
 import { buildOriginalOneways, onewayNames } from '../table/original-oneways.js';
 import { flipperSides } from '../table/original-flippers.js';
-import { blockerNames } from '../table/original-blockers.js';
+import { blockerNames, buildOriginalBlockers } from '../table/original-blockers.js';
 import { buildOriginalPlunger } from '../table/original-plunger.js';
 import type { ControlContext } from '../control/dispatch.js';
 import { loadTable } from '../dat/loader.js';
@@ -182,10 +182,13 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
    */
   const scoringByTag = new Map(SCORE_COMPONENTS.map((row) => [row.tag, row]));
 
-  /** One player, three balls, and the cheat off. What the drain needs and the context does not carry. */
+  /**
+   * One player, three balls, and the cheat off. What the drain needs and the context does not carry —
+   * plus `reflexShotScore`, which is the plunger's, and lives on `TPinballTable` in the original.
+   */
   const drainTable = {
     tiltLocked: false, multiballCount: 0, extraBalls: 0, ballCount: DEMO_BALLS,
-    currentPlayer: 0, playerCount: 1, unlimitedBalls: false,
+    currentPlayer: 0, playerCount: 1, unlimitedBalls: false, reflexShotScore: 0,
   };
   let gameOver = false;
   /**
@@ -193,7 +196,18 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
    * fresh start and forgets what the last ball touched; a ball LOST is the game continuing, and the
    * lists it leaves behind are the record of it.
    */
-  const feedBall = (): void => { ball = table.spawnBall(); };
+  const feedBall = (): void => {
+    ball = table.spawnBall();
+    // ⚠️ AND THE CONTROL LAYER IS TOLD, which is what makes a new ball different from a saved one and
+    // the only thing in the game that ever raises the barrier across the drain. Spawning alone leaves
+    // the launch chute dark, the treks as the last ball left them and the multiplier still running.
+    //
+    // ⚠️ BOTH MESSAGES IN ONE BREATH, WHICH THE ORIGINAL DOES NOT. There, `PlungerFeedBall` arms the
+    // plunger's own feed timer and `PlungerStartFeedTimer` arrives when it expires. This demonstration
+    // has no such delay to model, so it sends them together — a deviation, and named as one.
+    dispatch?.plunger?.feedBall();
+    dispatch?.plunger?.startFeedTimer();
+  };
   /** The stuck watch counts in milliseconds, and this table's only clock is its own frames. */
   let frames60 = 0;
 
@@ -356,12 +370,14 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
   })) soloTargets.set(name, target);
 
   const gates = buildOriginalGates(manifest, table);
+  const drainBlockers = buildOriginalBlockers(manifest, table, { timer: components.timer });
   for (const [name, kickout] of buildOriginalKickouts(manifest, table, {
     table: { tiltLocked: false }, timer: components.timer,
   })) kickouts.set(name, kickout);
 
   dispatch = createOriginalDispatch({
     components, context, gates, kickouts, popupTargets,
+    feed: { table: drainTable, blockers: drainBlockers },
     drain: {
       table: drainTable,
       onOutcome: (outcome, over) => {

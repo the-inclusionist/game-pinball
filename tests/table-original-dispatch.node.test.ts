@@ -6,10 +6,11 @@ import { buildOriginalComponents } from '../app/js/table/original-components.js'
 import { buildOriginalTable } from '../app/js/table/original.js';
 import { buildOriginalGates } from '../app/js/table/original-gates.js';
 import { buildOriginalKickouts, kickoutGeometry } from '../app/js/table/original-kickouts.js';
+import { blockerNames, buildOriginalBlockers } from '../app/js/table/original-blockers.js';
 import {
   REENTRY_LANES, LAMP_BINDINGS, FUEL_ROLLOVERS, OUT_LANES, BONUS_LANE, SPOT_TARGET_SETS,
   MEDAL_BANK, MULTIPLIER_BANK, BOOSTER_BANK, TABLE_ACTIONS, GATE_LAMPS, KICKERS, SKILL_SHOT,
-  LAUNCH_RAMP, FLAGS, DRAIN, PER_BALL_RESET, WORM_HOLE,
+  LAUNCH_RAMP, FLAGS, DRAIN, PER_BALL_RESET, WORM_HOLE, DRAIN_BLOCKER, PLUNGER_FEED,
 } from '../app/js/control/bindings.js';
 import { createScoreState } from '../app/js/control/score.js';
 import { BASE_BONUS } from '../app/js/control/drain.js';
@@ -33,7 +34,7 @@ const manifest = () => {
   return loadTable(new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength));
 };
 
-function wired(o: { gates?: boolean; easy?: boolean; drain?: boolean } = {}) {
+function wired(o: { gates?: boolean; easy?: boolean; drain?: boolean; feed?: boolean } = {}) {
   const drainTable = {
     tiltLocked: false, multiballCount: 0, extraBalls: 0, ballCount: 3,
     currentPlayer: 0, playerCount: 1, unlimitedBalls: false,
@@ -49,11 +50,21 @@ function wired(o: { gates?: boolean; easy?: boolean; drain?: boolean } = {}) {
   if (!table) return null;
   const components = buildOriginalComponents(table);
   // The gates need the GEOMETRY, which is a different build — see `table/original-gates`.
-  const geometry = o.gates ? buildOriginalTable(table.groups, { geometryFor: kickoutGeometry(table) }) : null;
+  const geometry = (o.gates || o.feed)
+    ? buildOriginalTable(table.groups, {
+      geometryFor: kickoutGeometry(table),
+      startsInactive: (name) => blockerNames(table).has(name),
+    })
+    : null;
   const gates = geometry ? buildOriginalGates(table, geometry) : undefined;
   const kickouts = geometry
     ? buildOriginalKickouts(table, geometry, { table: { tiltLocked: false }, timer: components.timer })
     : undefined;
+  const blockers = geometry
+    ? buildOriginalBlockers(table, geometry, { timer: components.timer })
+    : undefined;
+  /** `table_unlimited_balls` and `TableG->ReflexShotScore`, which no other option carries. */
+  const feedTable = { unlimitedBalls: true, reflexShotScore: 0 };
   const score = createScoreState();
   const shown: string[] = [];
   const sounds: string[] = [];
@@ -71,6 +82,7 @@ function wired(o: { gates?: boolean; easy?: boolean; drain?: boolean } = {}) {
   const dispatch = createOriginalDispatch({
     components, context, popupTargets, ...(gates ? { gates } : {}), ...(kickouts ? { kickouts } : {}),
     ...(o.easy ? { isEasyMode: () => true } : {}),
+    ...(o.feed && blockers ? { feed: { table: feedTable, blockers } } : {}),
     ...(o.drain ? { drain: {
       table: drainTable,
       onOutcome: (outcome: string, over: boolean) => outcomes.push(over ? `${outcome}:over` : outcome),
@@ -79,7 +91,7 @@ function wired(o: { gates?: boolean; easy?: boolean; drain?: boolean } = {}) {
   });
   return {
     components, score, shown, sounds, dispatch, context, geometry, gates, kickouts,
-    drainTable, outcomes, poppedUp,
+    drainTable, outcomes, poppedUp, blockers, feedTable,
   };
 }
 
@@ -1712,5 +1724,143 @@ describe('⚠️ and a bank puts its three targets back up', () => {
     w.dispatch.hit(MULTIPLIER_BANK.targets[1]!);
 
     expect(w.poppedUp).toEqual([]);
+  });
+});
+
+/**
+ * ⚠️ PUTTING A BALL BACK INTO PLAY, WHICH IS THE ONLY THING THAT EVER RAISES THE BARRIER.
+ *
+ * `table/blocker` and `control/feed` had both existed, tested, since their own passes, and nothing had
+ * ever made the two meet: no code path anywhere sent `TBlockerEnable`, so `v_bloc1` was a component
+ * that could not be reached from a running game.
+ */
+describe('the ball fed back onto the plunger', () => {
+  test('the plunger is declined WHOLE when the feed is not given', () => {
+    const w = wired();
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+
+    expect(w.dispatch.plunger).toBe(null);
+  });
+
+  test('outside easy mode a fed ball raises nothing', () => {
+    const w = wired({ gates: true, feed: true });
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+
+    w.dispatch.plunger!.feedBall();
+
+    expect(w.blockers!.get(DRAIN_BLOCKER.component)!.active).toBe(false);
+  });
+
+  test('⚠️ in EASY MODE the barrier goes up and lite1 is lit STEADY', () => {
+    const w = wired({ gates: true, feed: true, easy: true });
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+
+    w.dispatch.plunger!.feedBall();
+
+    expect(w.blockers!.get(DRAIN_BLOCKER.component)!.active).toBe(true);
+    expect(w.components.lights.get(DRAIN_BLOCKER.lamp)!.lit).toBe(true);
+    // And the geometry the grid holds is what came up, not a flag on a copy.
+    expect(w.geometry!.edgesOf(DRAIN_BLOCKER.component).every((edge) => edge.active)).toBe(true);
+  });
+
+  test('⚠️ and easy mode gives it NO CLOCK, so it stands for the rest of the ball', () => {
+    // -1 never expires. Easy mode does not make the barrier last longer; it removes its countdown.
+    const w = wired({ gates: true, feed: true, easy: true });
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    w.dispatch.plunger!.feedBall();
+
+    // ⚠️ IN THE SAME STEPS THE OTHER TEST TAKES. One jump past both deadlines cannot tell the two
+    // apart: a timer re-armed inside an `advance` is armed from the NEW now, so the second deadline
+    // falls beyond the jump and the barrier is still standing either way. That mutation survived until
+    // the clock was moved the way a game moves it.
+    w.components.advance(DRAIN_BLOCKER.initialDuration + 1);
+    w.components.advance(DRAIN_BLOCKER.extendedDuration + 1);
+
+    expect(w.blockers!.get(DRAIN_BLOCKER.component)!.active).toBe(true);
+  });
+
+  test('⚠️ raised OUTSIDE easy mode it is solid, then flashing, then gone', () => {
+    // The lamp is the entire countdown: nothing is written on screen, and the player learns that
+    // flashing means "about to open" from the one thing that ever happens next.
+    const w = wired({ gates: true, feed: true });
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    const blocker = w.blockers!.get(DRAIN_BLOCKER.component)!;
+    w.dispatch.raiseDrainBlocker!();
+    expect(blocker.active, 'solid').toBe(true);
+
+    w.components.advance(DRAIN_BLOCKER.initialDuration + 1);
+    expect(blocker.active, 'the first timeout buys an extension, it does not lower it').toBe(true);
+
+    w.components.advance(DRAIN_BLOCKER.extendedDuration + 1);
+    expect(blocker.active, 'and the second lowers it').toBe(false);
+  });
+
+  test('⚠️ a NEW ball opens both hazard gates and relights the launch chute', () => {
+    const w = wired({ gates: true, feed: true });
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    for (const name of PLUNGER_FEED.gates) w.gates!.get(name)!.shutGate();
+
+    w.dispatch.plunger!.startFeedTimer();
+
+    expect(w.components.lights.get(PLUNGER_FEED.firstSkillLamp)!.lit, 'lite67').toBe(true);
+    for (const name of PLUNGER_FEED.gates) {
+      expect(w.gates!.get(name)!.open, name).toBe(true);
+    }
+    expect(w.feedTable.reflexShotScore).toBe(25000);
+    expect(w.feedTable.unlimitedBalls, 'the cheat dies on the act of feeding').toBe(false);
+  });
+
+  test('⚠️ and it refills the TANK\u2019S LAMPS, which is not the same as refilling the tank', () => {
+    // `TLightBargraph::Message` handles four codes and forwards the rest to `TLightGroup`, so
+    // `TLightResetAndTurnOn` reaches the members and never touches `TimeIndex`. After a drain the tank
+    // SHOWS full and COUNTS empty — the original's own behavior, transcribed rather than corrected.
+    const w = wired({ gates: true, feed: true });
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    const lamps = w.components.bargraphLights.get(PLUNGER_FEED.fuelBargraph)!;
+    expect(lamps.length).toBeGreaterThan(0);
+    for (const lamp of lamps) lamp.turnOff();
+
+    w.dispatch.plunger!.startFeedTimer();
+
+    expect(lamps.every((lamp) => lamp.lit), 'every lamp lit').toBe(true);
+    expect(w.components.bargraphs.get(PLUNGER_FEED.fuelBargraph)!.onCount, 'and the level untouched')
+      .toBe(0);
+  });
+
+  test('⚠️ a SAVED ball keeps the lot, and only the latch is cleared', () => {
+    // `lite200` lit means "this is the same ball continuing": the launch chute, the treks, the fuel,
+    // the reflex score and the multiplier are inherited exactly as the ball left them.
+    const w = wired({ gates: true, feed: true });
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    const shootAgain = w.components.lights.get(PLUNGER_FEED.shootAgainLamp)!;
+    shootAgain.turnOn();
+    shootAgain.messageField = 7;
+    for (const name of PLUNGER_FEED.gates) w.gates!.get(name)!.shutGate();
+
+    w.dispatch.plunger!.startFeedTimer();
+
+    expect(w.feedTable.reflexShotScore, 'not reset').toBe(0);
+    for (const name of PLUNGER_FEED.gates) {
+      expect(w.gates!.get(name)!.open, `${name} stays as the ball left it`).toBe(false);
+    }
+    expect(shootAgain.messageField, 'the latch is outside the guard').toBe(0);
+  });
+
+  test('⚠️ and the multiplier is switched off THROUGH its own control, which stops its clock', () => {
+    // Clearing the number here would pass a test that only asked about the number, and leave the
+    // group lit with its thirty-second clock still running: the lamps would then come down one at a
+    // time over a multiplier that had already been zero since the ball began.
+    const w = wired({ gates: true, feed: true });
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    const multiplierLamps = w.components.membersOf(
+      w.components.lightGroups.get('top_target_lights')!,
+    );
+    for (const lamp of multiplierLamps) lamp.turnOn();
+    w.score.scoreMultiplier = 4;
+
+    w.dispatch.plunger!.startFeedTimer();
+
+    expect(w.score.scoreMultiplier).toBe(0);
+    expect(multiplierLamps.some((lamp) => lamp.lit), 'the group goes dark with it').toBe(false);
   });
 });

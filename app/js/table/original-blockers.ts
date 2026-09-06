@@ -38,12 +38,6 @@ export function blockerNames(manifest: Table): Set<string> {
 export interface OriginalBlockerOptions {
   readonly timer: TimerService;
   readonly sound?: SoundPlayer;
-  /**
-   * The deadline ran out. What that MEANS is `DrainBallBlockerControl`'s business — the first timeout
-   * buys a flashing extension, the second lowers the barrier — so it is reported by name and nothing
-   * here acts on it.
-   */
-  readonly onTimeout?: (groupName: string) => void;
 }
 
 /**
@@ -74,7 +68,6 @@ export function buildOriginalBlockers(
       enableSoundId: visual.soundIndex3,
       disableSoundId: visual.soundIndex4,
       ...(o.sound ? { sound: o.sound } : {}),
-      ...(o.onTimeout ? { onTimeout: () => o.onTimeout!(name) } : {}),
     }));
   }
 

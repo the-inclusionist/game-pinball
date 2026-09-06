@@ -527,6 +527,52 @@ export const MISSIONS = {
  * `middle_circle` get `TLightGroupReset` instead, which stops an animation and leaves the lamps alone —
  * the rank circles are the two things on this table that do NOT go out at the end of a ball.
  */
+/**
+ * `DrainBallBlockerControl`, and the two numbers in this file that are NOT in the archive.
+ *
+ * ⚠️ `InitialDuration = 55` AND `ExtendedDuration = 5` ARE WRITTEN IN `TBlocker`'s CONSTRUCTOR. Every
+ * other duration this port uses comes out of a record in `PINBALL.DAT`; these two are literals in the
+ * C++, so they are transcribed here rather than looked up. A different table would need the code
+ * changed, which is the original's own limitation and is kept rather than improved away.
+ *
+ * The barrier is solid for the first stretch with `lite1` STEADY, then flashing for the second with the
+ * lamp FLASHING, and then it is gone. Nothing is written on screen: the lamp is the entire countdown.
+ */
+export const DRAIN_BLOCKER = {
+  control: 'DrainBallBlockerControl',
+  component: 'v_bloc1',
+  lamp: 'lite1',
+  initialDuration: 55,
+  extendedDuration: 5,
+} as const;
+
+/**
+ * `PlungerControl`: everything a NEW ball gets and a saved one keeps.
+ *
+ * ⚠️ `top_target_lights` IS THE MULTIPLIER GROUP, AND IT APPEARS HERE AS A CALLER, NOT A TARGET. The
+ * original's line is `MultiplierLightGroupControl(ControlDisableMultiplier, top_target_lights)` — one
+ * control function calling another and handing it the component it belongs to. Reading the reference
+ * list as "components this function touches" would put the group in the wrong role and lose the fact
+ * that the multiplier is switched off THROUGH its own control, which is what stops its clock.
+ *
+ * ⚠️ AND THE GATES ARE DISABLED, WHICH MEANS OPENED. `TGateDisable` takes the wall away; a new ball
+ * starts with both hazard gates open, and it is the spot targets that shut them again.
+ */
+export const PLUNGER_FEED = {
+  control: 'PlungerControl',
+  component: 'plunger',
+  /** `lite200`. Lit, the ball being fed is a SAVED one and the whole block below is skipped. */
+  shootAgainLamp: 'lite200',
+  firstSkillLamp: 'lite67',
+  skillShotGroup: 'skill_shot_lights',
+  trekGroups: ['l_trek_lights', 'r_trek_lights'],
+  /** Nudged forward only when it is completely dark — the rank a player reached outlives the ball. */
+  middleCircle: 'middle_circle',
+  fuelBargraph: 'fuel_bargraph',
+  gates: ['v_gate1', 'v_gate2'],
+  multiplierGroup: 'top_target_lights',
+} as const;
+
 export interface PerBallResetBinding {
   /** Individual lamps, every one of them off and untimed. */
   readonly lamps: readonly string[];

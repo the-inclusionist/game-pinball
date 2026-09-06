@@ -53,6 +53,7 @@ import {
   FUEL_REFUEL_TEXT_ID, OUT_LANES, BONUS_LANE, SPOT_TARGET_SETS, MEDAL_BANK, MULTIPLIER_BANK,
   BOOSTER_BANK, TABLE_ACTIONS, FLIPPER_REBOUNDERS, GATE_LAMPS, KICKERS, SKILL_SHOT,
   LAUNCH_RAMP, FLAGS, KICKOUTS, DRAIN, PER_BALL_RESET, MISSIONS, RANK, WORM_HOLE,
+  DRAIN_BLOCKER, PLUNGER_FEED,
   type BumperLaneBinding,
 } from '../control/bindings.js';
 import { addExtraBall, createTableActions } from '../control/table-actions.js';
@@ -68,7 +69,10 @@ import {
 import { makeMissionController } from '../control/mission-runner.js';
 import { MISSION_TABLE } from '../control/mission-table.js';
 import { addRankProgress as advanceRank } from '../control/rank.js';
-import { NEW_BALL_REFLEX_SCORE } from '../control/feed.js';
+import {
+  makePlungerControl, makeDrainBallBlockerControl, NEW_BALL_REFLEX_SCORE,
+  type FeedGroup, type FeedTable,
+} from '../control/feed.js';
 import {
   handler, bumperControl, rebounderControl, makeFlipperRebounderControl,
   type ControlContext, type ControlledComponent, type MessageCode,
@@ -77,6 +81,7 @@ import { SCORE_COMPONENTS } from '../control/score-table.js';
 import type { OriginalComponents } from './original-components.js';
 import type { Gate } from './gate.js';
 import type { Kickout } from './kickout.js';
+import type { Blocker } from './blocker.js';
 
 export interface OriginalDispatchOptions {
   readonly components: OriginalComponents;
@@ -109,6 +114,17 @@ export interface OriginalDispatchOptions {
    * means the two hazard spot sets are declined rather than run with their completion missing.
    */
   readonly gates?: ReadonlyMap<string, Gate>;
+  /**
+   * ⚠️ WHAT PUTS A BALL BACK INTO PLAY, AND THE ONLY THING THAT EVER RAISES THE BARRIER. `v_bloc1` is
+   * built by `table/original-blockers` and reached from exactly one place in the whole game:
+   * `PlungerControl`'s easy-mode line. Absent, the plunger is declined whole and the blocker is a
+   * component no running game can touch — which is what it was until this option existed.
+   */
+  readonly feed?: {
+    /** `table_unlimited_balls` and `TableG->ReflexShotScore`, which `ControlContext` does not carry. */
+    readonly table: FeedTable;
+    readonly blockers: ReadonlyMap<string, Blocker>;
+  };
   readonly context: ControlContext;
   /** `pb::FullTiltMode`. False for Space Cadet, which is the only table this port targets. */
   readonly isFullTilt?: () => boolean;
@@ -144,6 +160,17 @@ export interface OriginalDispatch {
   hit(groupName: string): void;
   /** Which archive names this dispatcher will actually act on. */
   readonly wired: ReadonlySet<string>;
+  /**
+   * `PlungerControl`'s two messages, which are sent at different moments: `PlungerFeedBall` when the
+   * ball arrives on the plunger, `PlungerStartFeedTimer` when the feed begins. Null when the feed was
+   * not given — declined whole rather than half-run.
+   */
+  readonly plunger: { feedBall(): void; startFeedTimer(): void } | null;
+  /**
+   * `DrainBallBlockerControl(TBlockerEnable)`, exposed because the plunger is not its only sender: in
+   * the original a hyperspace award raises the barrier too, and that control is not wired yet.
+   */
+  raiseDrainBlocker?(): void;
 }
 
 /**
@@ -194,6 +221,31 @@ function decayingAdapter(
     restartNotifyTimer,
     // `TLightGroupOffsetAnimationBackward`: the LAST lit lamp goes out, animation kept running.
     offsetAnimationBackward: () => { group.turnOffNext(); },
+  };
+}
+
+/**
+ * A light group as `PlungerControl` drives it.
+ *
+ * ⚠️ `TLightGroupOffsetAnimationForward` IS NOT `stepForward`. The original's case lights the next DARK
+ * lamp — `next_light_up`, one lamp on — and only then restarts the animation; it does not rotate the
+ * persistent state around the ring. It is the exact twin of the decay control's
+ * `TLightGroupOffsetAnimationBackward`, and its `value` is unused there as it is here.
+ */
+function feedAdapter(components: OriginalComponents, name: string): FeedGroup | null {
+  const group = components.lightGroups.get(name);
+  if (!group) return null;
+  const members = components.membersOf(group);
+  const eachLamp = (run: (light: (typeof members)[number]) => void): void => {
+    for (let i = members.length - 1; i >= 0; i--) run(members[i]!);
+  };
+
+  return {
+    get onCount() { return group.onCount; },
+    lightsResetAndTurnOn: () => eachLamp((light) => { light.resetTimed(); light.turnOn(); }),
+    lightsResetAndTurnOff: () => eachLamp((light) => { light.resetTimed(); light.turnOff(); }),
+    offsetAnimationForward: () => { group.turnOnNext(); },
+    animationBackward: (period) => group.animateBackward(period),
   };
 }
 
@@ -1189,8 +1241,111 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
     },
   });
 
+  // ⚠️ THE BALL PUT BACK INTO PLAY, AND THE BARRIER THAT NOTHING COULD RAISE. `table/blocker` and
+  // `control/feed` were both written and tested in their own passes and had never met: no path in this
+  // port sent `TBlockerEnable`, so `v_bloc1` was a component no running game could reach.
+  //
+  // ⚠️ AND `top_target_lights` IS A CALLER HERE, NOT A TARGET. The original's line is
+  // `MultiplierLightGroupControl(ControlDisableMultiplier, top_target_lights)` — one control function
+  // calling another — so the multiplier is switched off THROUGH its own control, which is what stops
+  // its thirty-second clock. Clearing the number directly would leave the clock running and the lamps
+  // coming down one at a time over a multiplier that was already zero.
+  let plunger: OriginalDispatch['plunger'] = null;
+  let raiseDrainBlocker: (() => void) | undefined;
+  if (o.feed) {
+    const isEasyMode = o.isEasyMode ?? (() => false);
+    const blocker = o.feed.blockers.get(DRAIN_BLOCKER.component);
+    const blockerLamp = o.components.lights.get(DRAIN_BLOCKER.lamp);
+    const shootAgainLamp = o.components.lights.get(PLUNGER_FEED.shootAgainLamp);
+    const firstSkillLamp = o.components.lights.get(PLUNGER_FEED.firstSkillLamp);
+    const skillShotGroup = feedAdapter(o.components, PLUNGER_FEED.skillShotGroup);
+    const middleCircleFeed = feedAdapter(o.components, PLUNGER_FEED.middleCircle);
+    const trekGroups = PLUNGER_FEED.trekGroups
+      .map((name) => feedAdapter(o.components, name))
+      .filter((group): group is FeedGroup => Boolean(group));
+    const tankLamps = o.components.bargraphLights.get(PLUNGER_FEED.fuelBargraph);
+    const feedGates = PLUNGER_FEED.gates
+      .map((name) => o.gates?.get(name))
+      .filter((gate): gate is Gate => Boolean(gate));
+
+    if (blocker && blockerLamp && shootAgainLamp && firstSkillLamp && skillShotGroup
+      && middleCircleFeed && tankLamps
+      && trekGroups.length === PLUNGER_FEED.trekGroups.length
+      && feedGates.length === PLUNGER_FEED.gates.length) {
+      // `TBlocker::MessageField` — 0 not raised, 1 solid, 2 flashing. It is the only thing that tells
+      // the two timeouts apart, and it lives on the component in the original.
+      const blockerState = {
+        messageField: 0,
+        enable: (duration: number) => blocker.enable(duration),
+        restartTimeout: (duration: number) => blocker.restartTimeout(duration),
+        disable: () => blocker.disable(),
+      };
+      const blockerCaller: ControlledComponent = {
+        name: DRAIN_BLOCKER.component, scores: [], control: null,
+      };
+      const blockerControl = makeDrainBallBlockerControl({
+        blocker: blockerState,
+        lamp: blockerLamp,
+        initialDuration: DRAIN_BLOCKER.initialDuration,
+        extendedDuration: DRAIN_BLOCKER.extendedDuration,
+        isEasyMode,
+      });
+      // The deadline running out is a message to control, and the control is what decides what it
+      // meant. Bound here because the blocker was built from the archive before this existed.
+      blocker.control = () => blockerControl('ControlTimerExpired', blockerCaller, ctx);
+      byName.set(DRAIN_BLOCKER.component, blockerCaller);
+      raiseDrainBlocker = () => blockerControl('TBlockerEnable', blockerCaller, ctx);
+
+      const plungerCaller: ControlledComponent = {
+        name: PLUNGER_FEED.component, scores: [], control: null,
+      };
+      const plungerControl = makePlungerControl({
+        table: o.feed.table,
+        shootAgainLamp,
+        firstSkillLamp,
+        skillShotGroup,
+        trekGroups,
+        middleCircle: middleCircleFeed,
+        // ⚠️ THE TANK IS SENT THE LAMPS' MESSAGE AND NOT ITS OWN. `TLightBargraph::Message` handles
+        // four codes and forwards the rest to `TLightGroup`, so `TLightResetAndTurnOn` reaches the
+        // members and never touches `TimeIndex`: after a drain the tank SHOWS full and COUNTS empty,
+        // and the six fuel rollovers read the count. Transcribed as written — it is the original's
+        // behavior, and inventing a `toggleSplitIndex` here would be improving the game rather than
+        // porting it.
+        fuelBargraph: {
+          get onCount() { return 0; },
+          lightsResetAndTurnOn: () => {
+            for (let i = tankLamps.length - 1; i >= 0; i--) {
+              tankLamps[i]!.resetTimed();
+              tankLamps[i]!.turnOn();
+            }
+          },
+          lightsResetAndTurnOff: () => {},
+          offsetAnimationForward: () => {},
+          animationBackward: () => {},
+        },
+        // `TGateDisable` OPENS a gate: disabling a wall is opening a way through.
+        gates: feedGates.map((gate) => ({ disable: () => gate.openGate() })),
+        isEasyMode,
+        blocker: {
+          get active() { return blocker.active; },
+          enable: () => blockerControl('TBlockerEnable', blockerCaller, ctx),
+        },
+        disableMultiplier: () => multiplierGroup?.('ControlDisableMultiplier'),
+      });
+      plungerCaller.control = plungerControl;
+      byName.set(PLUNGER_FEED.component, plungerCaller);
+      plunger = {
+        feedBall: () => handler('PlungerFeedBall', plungerCaller, ctx),
+        startFeedTimer: () => handler('PlungerStartFeedTimer', plungerCaller, ctx),
+      };
+    }
+  }
+
   return {
     missions,
+    plunger,
+    ...(raiseDrainBlocker ? { raiseDrainBlocker } : {}),
     get rankPoints() { return rankPoints; },
     missionsRun: new Set(Object.keys(controllers).map(Number)),
     wired: new Set(byName.keys()),
