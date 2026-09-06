@@ -48,6 +48,7 @@ import type { Role } from '@the-inclusionist/engine/core/contract.js';
 import { createFramebuffer, pack, type Framebuffer } from './framebuffer.js';
 import type { AuthoredTable } from '../table/authored.js';
 import { flareGrip } from '../table/storm.js';
+import { LANE_SEGMENTS } from '../table/lane-progress.js';
 import {
   paletteFor, sceneOf, shade, backdropAt, flareColor, SHADE_HEADROOM, type Rgb, type TablePalette,
 } from './table-palette.js';
@@ -139,7 +140,7 @@ export function fillLitRect(fb: Framebuffer, rect: Rect, lit: Lit): void {
  * small shape is a stripe rather than shading — and a rail IS the edge, so there is nothing left to
  * shade. A lit lane arrives here already brightened, in `lit.body`.
  */
-export function drawLaneRails(fb: Framebuffer, rect: Rect, lit: Lit): void {
+export function drawLaneRails(fb: Framebuffer, rect: Rect, lit: Lit, depth = 0): void {
   const x = Math.floor(rect.x);
   const y = Math.floor(rect.y);
   const width = Math.max(1, Math.round(rect.width));
@@ -147,12 +148,34 @@ export function drawLaneRails(fb: Framebuffer, rect: Rect, lit: Lit): void {
 
   // Along the LONG side, which is the direction the ball travels. Railed on the short sides it would
   // be two dashes with a gap between them, which is a gate rather than a lane.
-  if (height >= width) {
-    fillRect(fb, { x, y, width: 1, height }, lit.body);
-    fillRect(fb, { x: x + width - 1, y, width: 1, height }, lit.body);
-  } else {
-    fillRect(fb, { x, y, width, height: 1 }, lit.body);
-    fillRect(fb, { x, y: y + height - 1, width, height: 1 }, lit.body);
+  const down = height >= width;
+  const span = down ? height : width;
+  const litSegments = Math.round(depth * LANE_SEGMENTS);
+
+  /**
+   * ⚠️ BROKEN INTO SEGMENTS WHETHER OR NOT ANYTHING IS LIT, because a row of lamps is a row of lamps
+   * when it is dark. A rail that only broke up once the ball had been down it would appear out of
+   * nowhere at the moment the player is least able to look at it.
+   *
+   * ⚠️ AND ONE PIXEL OF GAP, NOT A FRACTION. The shortest lane in the catalogue is twenty-two pixels
+   * over five segments, so a proportional gap would round to nothing on some of them and the row would
+   * be a stripe again on exactly the lanes it matters least to notice.
+   */
+  for (let i = 0; i < LANE_SEGMENTS; i++) {
+    const from = Math.round((i * span) / LANE_SEGMENTS);
+    const to = Math.round(((i + 1) * span) / LANE_SEGMENTS) - 1;
+    const length = Math.max(1, to - from);
+    // Brightened by exactly this role's own headroom, so a lit lane cannot start reading as another
+    // role — the same rule and the same number `drawTable` lights a component by.
+    const colour = i < litSegments ? lit.top : lit.body;
+
+    if (down) {
+      fillRect(fb, { x, y: y + from, width: 1, height: length }, colour);
+      fillRect(fb, { x: x + width - 1, y: y + from, width: 1, height: length }, colour);
+    } else {
+      fillRect(fb, { x: x + from, y, width: length, height: 1 }, colour);
+      fillRect(fb, { x: x + from, y: y + height - 1, width: length, height: 1 }, colour);
+    }
   }
 }
 
@@ -267,6 +290,18 @@ export interface TableViewOptions {
    * appearance, which is what every gate that counts its pixels was written against.
    */
   readonly flareAt?: number;
+  /**
+   * How far down each lane the ball has been on this ball, by component name, 0 to 1.
+   *
+   * ⚠️ THE DEV: "deve haver luzes que vão acendendo conforme ela sai da pista lateral." A lane is
+   * drawn as a row of segments and this says how many of them are lit. Absent means none — a picture
+   * composed without it is the table at the start of a ball, which is what every gate counting its
+   * pixels was written against.
+   *
+   * `table/lane-progress` is what keeps it, and it quantises to `LANE_SEGMENTS` so that this changes a
+   * handful of times per trip rather than on every frame the ball spends in a lane.
+   */
+  readonly laneDepth?: Readonly<Record<string, number>>;
   /**
    * Components NOT to draw, by name — a drop target that is currently down.
    *
@@ -390,7 +425,7 @@ export function drawTable(o: TableViewOptions): Framebuffer {
      * the ball, and the drain reading as a red bar across the floor is the table telling the truth.
      */
     if (component.kind === 'lane') {
-      drawLaneRails(fb, component.bounds, lit);
+      drawLaneRails(fb, component.bounds, lit, o.laneDepth?.[component.name] ?? 0);
       continue;
     }
 

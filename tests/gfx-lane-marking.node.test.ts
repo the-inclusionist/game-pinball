@@ -31,7 +31,8 @@
 // bar across the floor is the table telling the truth. The rule is the kind, not the absence.
 import { describe, test, expect } from 'vitest';
 import { drawTable, packRgb, paletteOf } from '../app/js/gfx/table-view.js';
-import { backdropAt } from '../app/js/gfx/table-palette.js';
+import { backdropAt, shade, SHADE_HEADROOM } from '../app/js/gfx/table-palette.js';
+import { LANE_SEGMENTS } from '../app/js/table/lane-progress.js';
 import { ION_STORM } from '../app/js/table/ion-storm.js';
 import type { AuthoredComponent, AuthoredTable } from '../app/js/table/authored.js';
 
@@ -121,5 +122,73 @@ describe('⚠️ and everything that is NOT a lane keeps its body', () => {
     const midY = Math.floor(bumper.bounds.y + bumper.bounds.height / 2);
 
     expect(at(picture, midX, midY)).not.toBe(groundAt(midY));
+  });
+});
+
+/**
+ * ⚠️ AND THE RAILS ARE A ROW OF LIGHTS, WHICH IS THE DEV'S OTHER SENTENCE.
+ *
+ * "Deve haver luzes que vão acendendo conforme ela sai da pista lateral." `table/lane-progress` keeps
+ * how far down each lane the ball has been; this is that shown. The segments exist whether or not
+ * anything is lit — a row of lamps is a row of lamps when it is dark — and they light from the mouth
+ * downward as the ball goes.
+ */
+describe('a lane is a row of lights', () => {
+  const lane = named('outlane.left').bounds;
+  /**
+   * ⚠️ THE INNER RAIL, BECAUSE THE OUTER ONE IS THE WALL. `outlane.left` starts at x = 4 and
+   * `wall.left`'s collision line is stroked down x = 4, so the outer rail is painted over by the
+   * table's own edge. That is right on screen — the wall IS the lane's outer side — but a test reading
+   * it would be reading the wall and would pass whatever this function did.
+   */
+  const railX = Math.floor(lane.x + lane.width) - 1;
+  const column = (fb: { pixels: Uint32Array }): number[] => {
+    const out: number[] = [];
+    for (let y = Math.floor(lane.y); y < Math.floor(lane.y + lane.height); y++) out.push(at(fb, railX, y));
+    return out;
+  };
+
+  test('⚠️ the rail is BROKEN into segments, so it reads as lamps and not as a stripe', () => {
+    const dark = column(drawTable({ table }));
+    const ground = new Set<number>();
+    for (let y = Math.floor(lane.y); y < Math.floor(lane.y + lane.height); y++) ground.add(groundAt(y));
+
+    const gaps = dark.filter((p) => ground.has(p)).length;
+    expect(gaps, `${gaps} of ${dark.length} rail pixels are gaps`).toBeGreaterThanOrEqual(LANE_SEGMENTS - 1);
+  });
+
+  test('with nothing lit, every segment is the plain colour', () => {
+    const plain = packRgb(palette.roles[named('outlane.left').role]);
+    const dark = column(drawTable({ table, laneDepth: { 'outlane.left': 0 } }));
+
+    expect(dark.every((p) => p === plain || p === groundAt(0) || dark.includes(p))).toBe(true);
+    expect(new Set(dark.filter((p) => p === plain)).size, 'the unlit rail is drawn').toBe(1);
+  });
+
+  test('⚠️ and the ones the ball has passed are BRIGHTER than the ones it has not', () => {
+    // The claim. Without it the depth could be plumbed all the way through and change no pixel, which
+    // is this repository's oldest defect wearing a new coat.
+    const role = named('outlane.left').role;
+    const plain = packRgb(palette.roles[role]);
+    const bright = packRgb(shade(palette.roles[role], SHADE_HEADROOM[role]));
+    const half = column(drawTable({ table, laneDepth: { 'outlane.left': 3 / LANE_SEGMENTS } }));
+
+    expect(half.filter((p) => p === bright).length, 'three segments are lit').toBeGreaterThan(0);
+    expect(half.filter((p) => p === plain).length, 'and two are not').toBeGreaterThan(0);
+    // The LIT ones are the ones nearest the mouth: the first lit pixel is above the first unlit one.
+    expect(half.indexOf(bright)).toBeLessThan(half.indexOf(plain));
+  });
+
+  test('and a lane nobody names is drawn dark, not lit', () => {
+    const role = named('outlane.right').role;
+    const bright = packRgb(shade(palette.roles[role], SHADE_HEADROOM[role]));
+    const other = named('outlane.right').bounds;
+    const fb = drawTable({ table, laneDepth: { 'outlane.left': 1 } });
+    let litPixels = 0;
+    for (let y = Math.floor(other.y); y < Math.floor(other.y + other.height); y++) {
+      if (at(fb, Math.floor(other.x), y) === bright) litPixels++;
+    }
+
+    expect(litPixels).toBe(0);
   });
 });

@@ -26,6 +26,7 @@ import {
   buildPhysics, drainedBy, inPlungerLane, launchSpeedFor, FRAME_SECONDS,
 } from './table/physics-build.js';
 import { advanceFrame } from './physics/step.js';
+import { createLaneProgress } from './table/lane-progress.js';
 import { bindPinballControls } from './shell/controls.js';
 import {
   readPalette, writePalette, nextPalette, isCbSafe, PALETTE_LABEL, type PaletteChoice,
@@ -140,6 +141,8 @@ let lastDown = '';
  * fraction of a pixel, recomposed or not, giving two different tables.
  */
 let lastFlare = -1;
+/** The lane depths, as a string, when the picture was last composed. See `refreshObjective`. */
+let lastLanes = '';
 
 function refreshObjective(force = false): void {
   // A table with missions is asked about its mission; one without is asked about its roles.
@@ -173,12 +176,22 @@ function refreshObjective(force = false): void {
    */
   const downNow = live.downTargets().join(',');
   const flareNow = physics.flare ? Math.round(physics.flare.at.y) : -1;
+  /**
+   * ⚠️ THE FIFTH ANSWER TO "WHAT HAS CHANGED", and the cheapest of the five to get wrong. The depths
+   * are quantised to `LANE_SEGMENTS` by `table/lane-progress`, so this string changes a handful of
+   * times per trip down a lane; keying on a continuous depth would recompose the whole table on every
+   * frame the ball spent in one.
+   */
+  const lanesNow = Object.entries(laneDepths()).map(([name, depth]) => `${name}=${depth}`).join(',');
   if (!force && objective.have === state.missionHave
     && objective.targets.length === state.missionTargets.length
-    && litNow === lastLit && downNow === lastDown && flareNow === lastFlare) return;
+    && litNow === lastLit && downNow === lastDown && flareNow === lastFlare && lanesNow === lastLanes) {
+    return;
+  }
   lastLit = litNow;
   lastDown = downNow;
   lastFlare = flareNow;
+  lastLanes = lanesNow;
   // The physics has to agree with the picture, and this is the line that makes it: a target that is
   // not drawn is not a wall either.
   for (const component of authored.components) {
@@ -195,6 +208,7 @@ function refreshObjective(force = false): void {
   tablePicture = drawTable({
     table: authored, missionTargets: state.missionTargets,
     litLamps: live.litLamps(), cbSafe: isCbSafe(palette), hidden: live.downTargets(),
+    laneDepth: laneDepths(),
     // Absent on a table with no storm, which is what leaves the other five composed as they were.
     ...(physics.flare ? { flareAt: flareNow } : {}),
   });
@@ -471,6 +485,26 @@ const board = createSoundBoard({
   },
 });
 
+/**
+ * How far down each lane the ball has been on this ball, which is what lights them.
+ *
+ * ⚠️ NOT A LAMP, AND THAT IS THE POINT. `laneControl` lights every lamp a lane declares the moment the
+ * ball touches it, and `table/objective` reads lamps to decide what is finished — so a lane declaring
+ * four would come on all at once AND tell the sonar it was three-quarters done. See
+ * `table/lane-progress`. This is a position test the loop owns, beside `drainedBy` and
+ * `inPlungerLane`.
+ */
+const laneProgress = createLaneProgress(authored);
+
+/** The depths in the shape the renderer and the staleness check both want. */
+function laneDepths(): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const component of authored.components) {
+    if (component.kind === 'lane') out[component.name] = laneProgress.depthOf(component.name);
+  }
+  return out;
+}
+
 const live = createLiveControls(authored, {
   showInfo: (text) => { hint = text; },
   showMission: (text) => { hint = text; },
@@ -597,6 +631,10 @@ function step(frames: number): void {
         announceMission();
       }
     }
+    // ⚠️ AND THE LANES LIGHT UP BEHIND IT. The Dev: "deve haver luzes que vão acendendo conforme ela
+    // sai da pista lateral." Polled here for the same reason the rollovers below are: nothing
+    // collides with a lane, so being in one is a question about a position and only the loop can ask.
+    if (phase === 'playing') laneProgress.advance(ball.position);
     // Crossings are polled rather than reported, because nothing collides to report them.
     if (phase === 'playing') {
       for (const name of rollovers.poll(ball)) {
@@ -644,6 +682,9 @@ function step(frames: number): void {
     if (drained) {
       hits.push(`drained:${drained}`);
       ballsLost++;
+      // The next ball gets a fresh lane. Lights left over from the last one would be a table telling
+      // this ball about a trip it did not make.
+      laneProgress.reset();
 
       // ⚠️ LOSING A BALL COSTS A BALL, which it did not until now: the count sat at three in the corner
       // of the screen for every commit since the HUD reached it, and the player could not lose.
