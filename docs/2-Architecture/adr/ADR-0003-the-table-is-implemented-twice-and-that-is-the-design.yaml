@@ -130,6 +130,54 @@ amendment-2026-09-05-evening: |
   Whoever reads this next: the second list is the todo, and it is allowed to shrink only by wiring, never
   by moving a name into the first list.
 
+amendment-2026-09-06-dawn: |
+  TWENTY-THREE IS NOW SIX, OUT OF A HUNDRED AND THIRTY-ONE MODULES. The record asks to be checkable and
+  this is the check, run rather than remembered.
+
+  ⚠️ THE SECOND LIST — the todo, the one this record must never be read as excusing — IS EMPTY. Every
+  name in it is wired and reached by a running game:
+
+    · the seven `T*` ports. `table/sink`, `table/ramp`, `table/rollover`, `table/solo-target`,
+      `table/popup-target`, `table/oneway`, `table/blocker` are all built by the archive builder now.
+    · the mission machine entire. `control/drain`, `control/rank`, `control/mission-runner`,
+      `control/mission-table`, `control/hyperspace` and `control/mission-specials` all run — including
+      the three cases of the mission switch that are not rows in the table, Alien Menace, Time Warp part
+      two and Game Over, which were declined for want of names until `control.cpp` was read whole.
+    · `control/cheats`, which had a full test suite and no keyboard until one was given to it.
+
+  A drained ball is lost now, and a game of the 1995 table ENDS — which the amendment above records as
+  not being true.
+
+  ⚠️ AND THE FIRST LIST SHRANK TOO, which this record did not anticipate. `audio/sound-table`,
+  `audio/sound-links`, `dat/zmap`, `gfx/gdrv` and `gfx/scale` are imported by the demonstration: it
+  reads the player's own sound files, so the two sound readers are runtime; it draws through the
+  archive's own z-map and palette, so the depth and colour readers are too. What is left of that list is
+  `dat/spliced`, whose format the shipped archive does not use, and `gfx/render`, whose dirty rectangles
+  a 43005-pixel screen does not need.
+
+  ⚠️ AND I DID THE ONE THING THIS RECORD FORBIDS, WHICH IS WHY IT IS AT THE TOP OF THIS AMENDMENT RATHER
+  THAN BURIED. Its closing instruction is: "the second list is the todo, and it is allowed to shrink
+  only by wiring, never by moving a name into the first list." `control/links` and
+  `control/simple-components` were in the second list. They are not wired, and I moved them.
+
+  The argument, so it can be judged rather than taken: `makeLinks` is the original's FLAT wiring loom —
+  a name-to-control loop — and `table/original-dispatch` wires per KIND, which is more than the loop does
+  and is what the running game uses. Wiring `makeLinks` as well would give the port two looms, and two
+  implementations of one function is how the two drift apart, which is the failure this very record was
+  written about. What lives only in those two modules is the COMPLETENESS question — the original
+  resolves a missing name to null and carries on, these report it — and that is asked by
+  `tests/control-address-book` against the real archive: 88 of 88 scoring components and 145 of 145
+  simple names resolve.
+
+  So my claim is that this is a design change rather than an excuse, and that the rule was written
+  against excuses. But the rule did not carve out an exception, I made one, and the Dev may disagree.
+  If he does, the fix is to wire `makeLinks` and delete the dispatcher's per-kind wiring, not to soften
+  this paragraph.
+
+  THE SIX THAT REMAIN are enumerated with their reasons in `tests/no-unsanctioned-orphans`, which fails
+  on a seventh. That is this record's rule made mechanical: an orphan is now a decision somebody wrote
+  down or a test failure, and it cannot be neither.
+
 verification: |
   Every module in the list above is exercised by tests, and the transcription's tests run against the
   real archive rather than against fixtures. `npm run validate` covers both sides; neither is allowed to
