@@ -261,3 +261,51 @@ describe('the frames the AUTHORED tables draw', () => {
     },
   );
 });
+
+/**
+ * ⚠️ AND THE FLARE, WHICH NO SHOT ABOVE CAN SHOW.
+ *
+ * Every picture in this file is composed with the table at rest, and `ion-storm`'s storm is the first
+ * thing on any of them that exists only while the clock is running. A shot of the calm table is a
+ * shot of the one moment the feature is not there — which is precisely the arrangement this file was
+ * written to stop, where 1,700 tests were green over a side panel covering a third of the playfield.
+ *
+ * Five phases of one sweep, stacked, so the Dev's list is readable down the sheet: preto, marrom,
+ * vermelho, amarelo, branco.
+ */
+describe('the flare on `ion-storm`', () => {
+  test('⚠️ it is a PICTURE that changes with the sweep, at shots/authored-ion-storm-flare.png', () => {
+    const table = CATALOG.find((t) => t.name === 'ion-storm')!;
+    const layout = layoutHud({ ...DEFAULT_HUD, playfieldWidth: table.size.width });
+    const phases = [0.1, 0.3, 0.5, 0.7, 0.9].map((f) => Math.round(f * table.size.height));
+
+    const sheet = createFramebuffer(320, 180 * phases.length);
+    const seen = new Set<number>();
+    phases.forEach((flareAt, i) => {
+      const screen = createFramebuffer(320, 180);
+      // Centred on the flare, so each strip shows the band rather than wherever the camera rests.
+      const offsetY = Math.max(0, Math.min(table.size.height - layout.playfield.height,
+        flareAt - layout.playfield.height / 2));
+      blitView(screen, drawTable({ table, flareAt }), layout.playfield,
+        Math.max(0, table.size.width - layout.playfield.width), offsetY);
+      sheet.pixels.set(screen.pixels, i * 320 * 180);
+      for (const p of screen.pixels) seen.add(p);
+    });
+
+    mkdirSync('shots', { recursive: true });
+    writeFileSync(
+      'shots/authored-ion-storm-flare.png',
+      png(sheet.width * MAGNIFY, sheet.height * MAGNIFY,
+        magnify(new Uint8Array(sheet.bytes.buffer, sheet.bytes.byteOffset, sheet.bytes.length),
+          sheet.width, sheet.height, MAGNIFY)),
+    );
+
+    // ⚠️ THE FIVE STRIPS ARE FIVE DIFFERENT PICTURES, which is the claim a stacked sheet can make and
+    // a single shot cannot. A flare that never moved — an unadvanced clock, a `flareAt` dropped on the
+    // way through `main` — would give five identical strips and a file that looks perfectly fine.
+    const strip = (i: number): string => sheet.pixels.slice(i * 320 * 180, (i + 1) * 320 * 180).join();
+    const strips = new Set(phases.map((_, i) => strip(i)));
+    expect(strips.size, 'each phase of the sweep draws a different table').toBe(phases.length);
+    expect(seen.size, 'and the sheet is made of many colours').toBeGreaterThan(20);
+  });
+});

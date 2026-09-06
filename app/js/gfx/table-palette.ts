@@ -143,6 +143,43 @@ export function backdropAt(bands: readonly Band[], t: number): Rgb {
 
 
 /**
+ * ⚠️ THE BRIGHTEST THING THE FLARE PAINTS, AND IT IS NOT PURE WHITE.
+ *
+ * The Dev asked `ion-storm`'s background to run "de preto, marrom, vermelho, amarelo e branco". Pure
+ * white would swallow the ball, which is (238, 242, 248) and is deliberately the lightest thing on any
+ * table — see this module's header, where that ordering IS the identity the five tables share.
+ *
+ * So the peak is the brightest white that stays under the ball in CIE lightness: 90.6 against 95.4.
+ * Against a sky whose brightest band is 74 it reads as white, and the ball stays findable in the one
+ * place the player most needs to find it — the core of the flare, which is where the table has just
+ * taken hold of it.
+ */
+export const FLARE_PEAK: Rgb = { r: 232, g: 228, b: 214 };
+
+/**
+ * The colours the flare paints, keyed on how deep into the band a row is rather than on its height.
+ *
+ * ⚠️ WHICH IS WHY A FIXED POINT OF THE TABLE SEES THE DEV'S WHOLE LIST, IN HIS ORDER. The grip at a
+ * row rises from nought to one and falls back as the band sweeps over it, so that row is painted the
+ * scene's own black, then brown, red, yellow, white, and the same in reverse — "e volta" — and the
+ * cycle comes out of the mechanic instead of being animated beside it.
+ *
+ * The first stop is the WORLD's own colour, so a flare over the Earth's atmosphere starts from the
+ * atmosphere and a flare over regolith starts from regolith. A ramp that began at a fixed black would
+ * make the band a hole in whatever it crossed.
+ */
+const FLARE_STOPS: readonly Band[] = [
+  { at: 0.3, color: rgb(92, 52, 24) },
+  { at: 0.55, color: rgb(178, 44, 22) },
+  { at: 0.8, color: rgb(236, 186, 52) },
+  { at: 1, color: FLARE_PEAK },
+];
+
+export function flareColor(ground: Rgb, grip: number): Rgb {
+  return backdropAt([{ at: 0, color: ground }, ...FLARE_STOPS], grip);
+}
+
+/**
  * The five worlds.
  *
  * The first three are the Dev's: the 1995 table's blue sky, the black of space, the earthy red of

@@ -47,8 +47,9 @@
 import type { Role } from '@the-inclusionist/engine/core/contract.js';
 import { createFramebuffer, pack, type Framebuffer } from './framebuffer.js';
 import type { AuthoredTable } from '../table/authored.js';
+import { flareGrip } from '../table/storm.js';
 import {
-  paletteFor, sceneOf, shade, backdropAt, SHADE_HEADROOM, type Rgb, type TablePalette,
+  paletteFor, sceneOf, shade, backdropAt, flareColor, SHADE_HEADROOM, type Rgb, type TablePalette,
 } from './table-palette.js';
 import type { Rect } from '../shell/hud.js';
 
@@ -223,6 +224,14 @@ export interface TableViewOptions {
    */
   readonly cbSafe?: boolean;
   /**
+   * Where the solar flare's band is centred right now, in table pixels down from the top.
+   *
+   * ⚠️ A POSITION, NOT A PERMISSION — a table declaring no `storm` ignores it entirely. And absent
+   * means NO FLARE rather than "at the top": a picture composed without it is the table's calm
+   * appearance, which is what every gate that counts its pixels was written against.
+   */
+  readonly flareAt?: number;
+  /**
    * Components NOT to draw, by name — a drop target that is currently down.
    *
    * ⚠️ THE PICTURE HAS TO AGREE WITH THE PHYSICS, and this is the half that makes a bank visible.
@@ -252,11 +261,26 @@ export function drawTable(o: TableViewOptions): Framebuffer {
    * with black shadows, a solar storm's colours, Saturn's rings. Painted row by row rather than as one
    * rectangle, which costs one `backdropAt` per row of a picture composed once per change.
    */
-  if (palette.bands) {
+  /**
+   * ⚠️ AND THE FLARE IS PAINTED HERE TOO, WHICH IS WHY THIS BRANCH IS ALSO TAKEN BY A FLAT WORLD.
+   *
+   * `flareAt` is a POSITION, not a permission: a table that declares no storm is untouched by it,
+   * however the caller writes the frame loop. Otherwise the first tidy-up of `main` that passed the
+   * argument unconditionally would put a solar flare on Saturn's rings.
+   */
+  const flare = table.storm !== undefined && o.flareAt !== undefined
+    ? { at: o.flareAt, thickness: table.storm.thickness }
+    : undefined;
+
+  if (palette.bands || flare) {
     for (let y = 0; y < table.size.height; y++) {
       const at = table.size.height <= 1 ? 0 : y / (table.size.height - 1);
-      fillRect(fb, { x: 0, y, width: table.size.width, height: 1 },
-        packRgb(backdropAt(palette.bands, at)));
+      let color = palette.bands ? backdropAt(palette.bands, at) : palette.ground;
+      if (flare) {
+        const grip = flareGrip(y, flare.at, flare.thickness);
+        if (grip > 0) color = flareColor(color, grip);
+      }
+      fillRect(fb, { x: 0, y, width: table.size.width, height: 1 }, packRgb(color));
     }
   } else {
     fillRect(fb, { x: 0, y: 0, width: table.size.width, height: table.size.height },

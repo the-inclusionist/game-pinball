@@ -127,6 +127,19 @@ const missions = runMissions(authored.missions ?? []);
 let lastLit = '';
 /** The drop targets that were down when the picture was last composed. See `refreshObjective`. */
 let lastDown = '';
+/**
+ * Where the flare was, to the pixel, when the picture was last composed.
+ *
+ * ⚠️ THE FOURTH ANSWER TO "WHAT HAS CHANGED", and the comments above it record the first three
+ * arriving one at a time, each on the day something started changing that the picture did not follow.
+ * This one differs only in how often: the band moves about forty pixels a second, so the table is
+ * recomposed about forty times a second on `ion-storm` and not at all on the other five.
+ *
+ * ⚠️ ROUNDED, AND THE PICTURE IS COMPOSED FROM THE ROUNDED VALUE. Keying on the pixel and drawing
+ * from the float would be a picture that is not a function of its own staleness key — the same
+ * fraction of a pixel, recomposed or not, giving two different tables.
+ */
+let lastFlare = -1;
 
 function refreshObjective(force = false): void {
   // A table with missions is asked about its mission; one without is asked about its roles.
@@ -159,11 +172,13 @@ function refreshObjective(force = false): void {
    * lamps' defect, arriving a third time in the same place.
    */
   const downNow = live.downTargets().join(',');
+  const flareNow = physics.flare ? Math.round(physics.flare.at.y) : -1;
   if (!force && objective.have === state.missionHave
     && objective.targets.length === state.missionTargets.length
-    && litNow === lastLit && downNow === lastDown) return;
+    && litNow === lastLit && downNow === lastDown && flareNow === lastFlare) return;
   lastLit = litNow;
   lastDown = downNow;
+  lastFlare = flareNow;
   // The physics has to agree with the picture, and this is the line that makes it: a target that is
   // not drawn is not a wall either.
   for (const component of authored.components) {
@@ -180,6 +195,8 @@ function refreshObjective(force = false): void {
   tablePicture = drawTable({
     table: authored, missionTargets: state.missionTargets,
     litLamps: live.litLamps(), cbSafe: isCbSafe(palette), hidden: live.downTargets(),
+    // Absent on a table with no storm, which is what leaves the other five composed as they were.
+    ...(physics.flare ? { flareAt: flareNow } : {}),
   });
 }
 
@@ -548,6 +565,13 @@ function step(frames: number): void {
   // ⚠️ AND THE FLARE, for the same reason and one more: it is the BACKGROUND. A storm that stopped
   // between balls would be a sky frozen mid-sweep while the player reads the score.
   physics.flare?.advance(frames * FRAME_SECONDS);
+  /**
+   * ⚠️ AND THE PICTURE FOLLOWS IT, HERE RATHER THAN IN THE PLAYING BRANCH. The flare is the
+   * BACKGROUND: a storm that only moved while a ball was in play would freeze mid-sweep the moment
+   * one drained, with the player looking straight at it. `refreshObjective` is a no-op when nothing
+   * has changed, and on a table with no flare nothing here has.
+   */
+  if (physics.flare) refreshObjective();
 
   // ⚠️ THE FLIPPERS MOVE WHETHER OR NOT A BALL IS IN PLAY, and this used to run only while playing.
   // A player pressing the button on the title screen got nothing back — no movement, no sound, no way
