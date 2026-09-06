@@ -124,7 +124,7 @@ const pt: Record<string, string> = {
   'pinball.scene.mars': 'Marte',
   'pinball.scene.ice': 'Gelo',
   'pinball.scene.slate': 'Neutro',
-  'pinball.mission.lowOrbit.bumpers': 'Acerte os três amortecedores',
+  'pinball.mission.lowOrbit.bumpers': 'Acerte os três para-choques',
   'pinball.mission.lowOrbit.targets': 'Derrube o banco de alvos',
   'pinball.mission.lowOrbit.lanes': 'Complete as três pistas de reentrada',
   // ⚠️ O SEGUNDO ATO DE CADA MISSÃO. Curto de propósito: a coluna do HUD tem cerca de quinze
@@ -149,7 +149,7 @@ const pt: Record<string, string> = {
   'pinball.mission.slipstream.return': 'Desça pelas duas pistas de retorno',
   'pinball.highScore.title': 'Melhor pontuação!',
   'pinball.highScore.name': 'Seu nome',
-  'pinball.highScore.confirm': 'Gravar',
+  'pinball.highScore.confirm': 'Salvar',
   'pinball.highScore.anonymous': 'Anônimo',
   'pinball.hud.paused': 'Pausado',
   'pinball.pause.heading': 'Pausa',
