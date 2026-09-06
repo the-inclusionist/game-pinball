@@ -39,6 +39,23 @@ export const CATALOG: readonly AuthoredTable[] = [
   LOW_ORBIT, ION_STORM, SLIPSTREAM, RING_BELT, LONG_CLIMB, CRATER_RUN, WIDE_ARC, NARROW_TOWER, FOUR_FLIPPERS, BARE_MINIMUM,
 ];
 
+/**
+ * The tables offered to a player, as against the ones that exist to test the machine.
+ *
+ * ⚠️ THE SELECTOR WAS SHOWING ALL TEN, and four of them are fixtures. `bare-minimum` is the floor of
+ * the format — a ceiling, one flipper, a plunger and a drain — and this file's own header says the
+ * validator "checks that a table can RUN, not that it is any good". Offering them beside six tables
+ * that were designed to be played tells a player they are the same kind of thing.
+ *
+ * They stay in `CATALOG` because every gate in the repository walks it, and their whole purpose is to
+ * be walked: `wide-arc` gives the horizontal camera a case, `narrow-tower` the extreme of vertical
+ * travel, `four-flippers` two drains, `bare-minimum` the minimum. What changes is only what the
+ * SELECTOR lists.
+ */
+export const PLAYABLE_TABLES: readonly AuthoredTable[] = [
+  LOW_ORBIT, ION_STORM, CRATER_RUN, LONG_CLIMB, RING_BELT, SLIPSTREAM,
+];
+
 /** The one the game opens with. */
 export const DEFAULT_TABLE: AuthoredTable = LOW_ORBIT;
 

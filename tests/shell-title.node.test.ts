@@ -13,7 +13,7 @@ import { describe, test, expect } from 'vitest';
 import {
   TITLE_LINES, TITLE_SUBTITLE, titleScreen, type Screen,
 } from '../app/js/shell/title.js';
-import { CATALOG } from '../app/js/table/catalog.js';
+import { CATALOG, PLAYABLE_TABLES } from '../app/js/table/catalog.js';
 
 describe('what the title says', () => {
   test('⚠️ SPACE and STUDENT on two lines, and PINBALL under them', () => {
@@ -75,10 +75,17 @@ describe('moving between the screens', () => {
     expect(screen.current, 'and it stays where it was').toBe('select');
   });
 
-  test('the selector offers every table in the catalogue and nothing else', () => {
+  test('⚠️ the selector offers the PLAYABLE tables, and not the fixtures', () => {
+    // This said "every table in the catalogue", and that was wrong the moment it was written: four of
+    // the ten exist to give a gate a case to walk. `bare-minimum` is a ceiling, one flipper, a plunger
+    // and a drain — the floor of the format — and offering it beside `low-orbit` tells a player they
+    // are the same kind of thing.
     const screen = titleScreen();
 
-    expect([...screen.tables].sort()).toEqual(CATALOG.map((t) => t.name).sort());
+    expect([...screen.tables].sort()).toEqual(PLAYABLE_TABLES.map((t) => t.name).sort());
+    // ⚠️ AND THE TWO LISTS ARE DIFFERENT, or this is the old test under a new name.
+    expect(screen.tables.length).toBeLessThan(CATALOG.length);
+    expect([...screen.tables], 'no fixture is offered').not.toContain('bare-minimum');
   });
 });
 

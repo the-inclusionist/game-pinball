@@ -18,7 +18,7 @@
 // ⚠️ AND IT IS NOT "SPACE CADET". That is Microsoft's title for Microsoft's table, and this ships
 // neither. The Dev's name for the game is the Dev's.
 
-import { CATALOG } from '../table/catalog.js';
+import { PLAYABLE_TABLES } from '../table/catalog.js';
 
 /** Two lines, because the screen is 320 wide and the font is fixed-width: the break is a layout fact. */
 export const TITLE_LINES: readonly string[] = ['SPACE', 'STUDENT'];
@@ -52,7 +52,10 @@ export interface TitleScreen {
 
 export function titleScreen(o: TitleOptions = {}): TitleScreen {
   let current: Screen = 'title';
-  const tables = CATALOG.map((t) => t.name);
+  // ⚠️ THE PLAYABLE ONES, NOT THE WHOLE CATALOGUE. Four of the ten are fixtures that exist to give a
+  // gate a case to walk — see `PLAYABLE_TABLES`. A selector that offers `bare-minimum` beside
+  // `low-orbit` is telling the player they are the same kind of thing.
+  const tables = PLAYABLE_TABLES.map((t) => t.name);
 
   return {
     get current() { return current; },

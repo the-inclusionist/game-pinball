@@ -853,11 +853,7 @@ const title = mountTitle({
  * the player's own archive through a file picker — and putting a title in front of that would be a
  * screen between somebody and the thing they came to the URL for.
  */
-if (demoRequested) {
-  screens.advance();
-  screens.choose(authored.name);
-  title.refresh();
-}
+
 
 const hud = mountHud({
   doc: document, host: region, layout: shell.hud, screen: { ...DEFAULT_HUD, playfieldWidth: authored.size.width },
@@ -868,6 +864,25 @@ const hud = mountHud({
 // Bolas: 3" printed over a menu is the HUD answering a question nobody asked. The demonstration skips
 // the screens entirely, so it turns the HUD straight back on.
 hud.setVisible(screens.current === 'playing');
+
+/**
+ * ⚠️ A TABLE ALREADY CHOSEN DOES NOT ASK AGAIN.
+ *
+ * Choosing a table that is not the booted one reloads with `?table=`, and the reload brought the player
+ * back to the TITLE — so picking `slipstream` meant clicking through the title and the selector a
+ * second time to reach the table you had just picked. Measured in the browser: the URL was right, the
+ * table was right, the missions were running, and the player was looking at the front screen.
+ *
+ * `?table=` in the address IS a choice. `?demo=original` is the validation configuration and skips the
+ * screens for the same reason: a file picker is what somebody came to that URL for.
+ */
+if (demoRequested || requested) {
+  screens.advance();
+  screens.choose(authored.name);
+  title.refresh();
+  hud.setVisible(true);
+  region.focus();
+}
 
 // Exposed so the browser gate can confirm a real boot rather than a screenshot.
 Object.assign(window as unknown as Record<string, unknown>, {
