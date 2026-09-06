@@ -175,6 +175,19 @@ describe('the camera on a table wider than the window', () => {
       .toMatch(/demoView = demoWorld\(\{ demo: ready, groups: groupsOf\(archive\) \}\)/);
   });
 
+  test('⚠️ a finished game is OFFERED to the scoreboard, which nothing did for two days', () => {
+    // `control/high-score` was transcribed, tested to the checksum, shown under the selector — and
+    // never written to. Its orphan-ledger entry was retired because the title screen READS it, and
+    // "something imports it" is not "the feature works". The ledger only ever asked the first
+    // question; this asks the second.
+    const source = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../app/js/main.ts'), 'utf8');
+
+    expect(source, 'a finished game reaches the board').toMatch(/if \(gameOver\) highScores\.offer\(/);
+    // ⚠️ AND ON THE GAME, NOT ON EVERY BALL. A board that recorded each lost ball would hold three
+    // entries per game and mean nothing.
+    expect(source.match(/highScores\.offer\(/g) ?? [], 'offered once').toHaveLength(1);
+  });
+
   test('⚠️ a lit lamp reaches the PICTURE, not only the control layer', () => {
     // The class of defect this belongs to has cost two player-visible failures already: the flippers
     // drawn at rest for ever, and the lamps that lit in `live` and appeared nowhere. Both were state

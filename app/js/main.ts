@@ -30,6 +30,7 @@ import { titleScreen } from './shell/title.js';
 import { integerScale } from './shell/present.js';
 import { createPadReader, CABINET_OF_ENGINE_ACTION } from './shell/pad.js';
 import { mountTitle } from './shell/title-dom.js';
+import { mountHighScoreDialog } from './shell/high-score-dialog.js';
 import { createLiveControls } from './table/live-controls.js';
 import { createRolloverWatch } from './table/rollovers.js';
 import { objectiveOf, AUTHORED_OBJECTIVE_ID } from './table/objective.js';
@@ -509,6 +510,10 @@ function step(frames: number): void {
       // of the screen for every commit since the HUD reached it, and the player could not lose.
       const { gameOver } = live.endBall();
       hint = shell.t(gameOver ? 'pinball.hud.gameOver' : 'pinball.hud.waiting');
+      // ⚠️ ONLY WHEN THE GAME IS OVER, not on every lost ball: a scoreboard records a GAME. And only
+      // if it places — `offer` asks the board and shows nothing when it does not, because being told
+      // you failed to make the top five is not information anybody asked for.
+      if (gameOver) highScores.offer(live.score.curScore);
 
       const fresh = physics.spawnBall();
       ball.position = fresh.position;
@@ -988,6 +993,22 @@ const title = mountTitle({
  * screen between somebody and the thing they came to the URL for.
  */
 
+
+/**
+ * ⚠️ WITHOUT THIS THE SCOREBOARD WAS READ AND NEVER WRITTEN. `control/high-score` was transcribed,
+ * tested and shown under the selector, and nothing in the game called `writeTable` — so every game
+ * ended and the board said "nobody has played yet", for ever. Its orphan-ledger entry had been retired
+ * on the grounds that the title screen READS it, which is half of a scoreboard.
+ */
+const highScores = mountHighScoreDialog({
+  doc: document,
+  host: region,
+  store: localStorage,
+  t: shell.t,
+  // Once the name is in, the board behind the selector has changed — so the screen is redrawn rather
+  // than showing the state it was built with.
+  onDone: () => title.refresh(),
+});
 
 const hud = mountHud({
   doc: document, host: region, layout: shell.hud, screen: { ...DEFAULT_HUD, playfieldWidth: authored.size.width },
