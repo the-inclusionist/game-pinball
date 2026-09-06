@@ -35,7 +35,7 @@
 
 import { createRamp, computeFieldForce, type Ramp, type RampPlane, type Vector3 } from './ramp.js';
 import { createLine, type LineEdge } from '../physics/edges.js';
-import { placeLineInGrid, type EdgeManager } from '../physics/grid.js';
+import { insertFieldSquare, placeLineInGrid, type EdgeManager } from '../physics/grid.js';
 import { readVisual } from '../dat/visual.js';
 import { floatAttribute } from '../dat/attributes.js';
 import type { Vector2 } from '../maths/maths.js';
@@ -238,6 +238,20 @@ export function buildOriginalRamps(
       ramp.collision(ball, position, direction, distance, edge);
 
     for (const edge of [entryLine, wall1Line, wall2Line, ...planeEdges]) placeLineInGrid(o.grid, edge);
+
+    // ⚠️ THE FIELD GOES IN OVER A RECTANGLE OF BOXES, NOT INTO A LIST OF EVERY FIELD ON THE TABLE.
+    // Both ramps carry collision group 2, so the mask cannot tell them apart — the BOX is what does,
+    // and a flat list would give a ball on one ramp the gravity of the other from across the table.
+    //
+    // ⚠️ AND THE RECTANGLE IS THE SIC ONE. `TRamp`'s constructor folds three of its four accumulators
+    // against `xMin` and the upstream marks the line. For the long ramp the box that results is a
+    // patch of the ramp rather than the whole of it, so the ball feels the ramp on part of its own
+    // surface and not on the rest. That is the shipped game's behaviour; `boundsCorrected` is beside
+    // it in `table/ramp` so the difference can be measured rather than argued about.
+    insertFieldSquare(o.grid, ramp.fieldBounds, {
+      collisionGroup,
+      fieldEffect: (ball, destination) => ramp.fieldEffect(ball as never, destination),
+    });
 
     // Fields added to the ramp itself: `fieldBounds` is a getter over the live planes, and copying the
     // object would freeze it.

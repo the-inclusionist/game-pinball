@@ -103,8 +103,14 @@ describe('building the 1995 table from its own archive', () => {
 
     const table = buildOriginalTable(groups);
     const force = { x: 0, y: 0 };
+    // A position and a mask, because the table now asks the ball's own grid box for its fields too —
+    // and the free ball's mask of one is what keeps a ramp's world out of this answer.
     table.context.fieldEffects(
-      { direction: { x: 0, y: 0 }, speed: 0 } as never, force,
+      {
+        position: { x: 0, y: 0 }, collisionMask: 1,
+        direction: { x: 0, y: 0 }, speed: 0,
+      } as never,
+      force,
     );
 
     // y grows downward in table coordinates too, so down the table is positive.

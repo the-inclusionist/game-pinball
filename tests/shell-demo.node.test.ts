@@ -405,6 +405,64 @@ describe('⚠️ and a ball can be lost, which the demonstration counts', () => 
     expect(demo.scored.filter((name) => name.startsWith('roll')).length).toBe(crossed.length);
   });
 
+  test('⚠️ the two ramps exist, and a ball that climbs one feels ITS gravity', () => {
+    // Neither ramp carries a wall record, so until they were built the ball could not ride either.
+    // The field goes into the grid over the ramp's own boxes: this crosses a triangle edge — which is
+    // what puts the ball in the ramp's world — and then asks the table what the ball feels.
+    const bytes = archive();
+    if (!bytes) return expect(existsSync(DAT)).toBe(false);
+    const demo = createDemo(bytes, { random: seeded() });
+    expect([...demo.ramps.keys()].sort()).toEqual(['ramp', 's_ramp9']);
+
+    const ramp = demo.ramps.get('s_ramp9') as unknown as {
+      planes: { v1: { x: number; y: number } }[];
+      planeEdges: { component: { collision(b: unknown, p: unknown, d: unknown, n: number, e: unknown): void } }[];
+    };
+    const at = ramp.planes[0]!.v1;
+    const ball = {
+      position: { x: at.x, y: at.y, z: 0 },
+      // ⚠️ ALONG Y, ON PURPOSE. The table's own gravity carries a random jitter on X — `0.5 - random()`
+      // — so two calls never agree there, and the difference between them would be noise rather than
+      // the ramp. Y has no jitter, so what is left between the two answers is exactly the ramp.
+      direction: { x: 0, y: 1 }, speed: 5, radius: demo.table.ballRadius,
+      collisionMask: 1, collisionFlag: false,
+      collisionOffset: { x: 0, y: 0, z: 0 }, rampFieldForce: { x: 0, y: 0 },
+      memory: { record: () => {} },
+    };
+    const edge = ramp.planeEdges[0]!;
+    edge.component.collision(ball, { x: at.x, y: at.y }, { x: 0, y: 1 }, 0, edge);
+    expect(ball.collisionMask, 'in the ramp’s world').toBe(2);
+
+    const free = { ...ball, collisionMask: 1, direction: { x: 0, y: 1 }, speed: 5 };
+    const onRamp = { x: 0, y: 0 };
+    const offRamp = { x: 0, y: 0 };
+    demo.table.context.fieldEffects(ball as never, onRamp);
+    demo.table.context.fieldEffects(free as never, offRamp);
+
+    // The short ramp's first triangle is flat, so what the ball feels on it is the ramp's own drag on
+    // top of the table's gravity — a fifth of its speed, against its heading.
+    expect(onRamp.y - offRamp.y).toBeCloseTo(-1 * 5 * 0.2, 6);
+  });
+
+  test('⚠️ and a ramp’s triangles are scaled by the TABLE’S gravity, not by one', () => {
+    // `plane.FieldForce = (cos a2, sin a2) * sin(a1) * TableG->GravityDirVectMult`. The direction part
+    // is a unit vector, so the length of a triangle's gravity is `sin(steepness) * the table's own
+    // multiplier` — build the ramps with a flat 1 and every slope on the table is wrong by that
+    // factor, in a way that reads as the ramps being oddly gentle.
+    const bytes = archive();
+    if (!bytes) return expect(existsSync(DAT)).toBe(false);
+    const demo = createDemo(bytes, { random: seeded() });
+    const ramp = demo.ramps.get('ramp') as unknown as {
+      planes: { gravityAngle1: number; fieldForce: { x: number; y: number } }[];
+    };
+    const plane = ramp.planes[0]!;
+
+    const length = Math.hypot(plane.fieldForce.x, plane.fieldForce.y);
+
+    expect(length).toBeCloseTo(Math.abs(Math.sin(plane.gravityAngle1)) * demo.table.gravityMult, 9);
+    expect(demo.table.gravityMult, 'and the table’s own is not one').not.toBeCloseTo(1, 3);
+  });
+
   test('⚠️ and the five trip lines own theirs, which is what stops them being walls', () => {
     // Nothing in a six-hundred-frame run reaches them: the trip lines are up the launch chute and the
     // ball only gets there on a strong plunge. So this asks the wiring directly, the way the holes'

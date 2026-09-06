@@ -5,6 +5,7 @@ import {
   buildOriginalRamps, findClosestEdge, PLANE_FLOATS,
 } from '../app/js/table/original-ramps.js';
 import { buildOriginalTable } from '../app/js/table/original.js';
+import { planeBounds, boundsCorrected } from '../app/js/table/ramp.js';
 import { loadTable } from '../app/js/dat/loader.js';
 
 /**
@@ -21,6 +22,18 @@ const manifest = () => {
   const buf = readFileSync(DAT);
   return loadTable(new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength));
 };
+
+/** A ball as a ramp meets it: it needs a heading and a speed before a ramp's drag means anything. */
+function rampBall(at: { x: number; y: number }) {
+  return {
+    position: { x: at.x, y: at.y, z: 0 },
+    direction: { x: 1, y: 0 }, speed: 5, radius: 0.25,
+    collisionMask: 1, collisionFlag: false,
+    collisionOffset: { x: 0, y: 0, z: 0 },
+    rampFieldForce: { x: 0, y: 0 },
+    memory: { record: () => {} },
+  };
+}
 
 function build() {
   const table = manifest();
@@ -168,6 +181,64 @@ describe('the two ramps, which are triangles and not walls', () => {
     expect(b.ramps.get('ramp')!.ballFieldMult, 'record 701').toBeCloseTo(0.2, 6);
     expect(b.ramps.get('ramp')!.ballZOffsetFlag, 'record 1305 — the long ramp does not pin Z').toBe(false);
     expect(b.ramps.get('s_ramp9')!.ballZOffsetFlag, 'and the short one does').toBe(true);
+  });
+});
+
+describe('⚠️ a ramp’s gravity reaches only where the ramp is', () => {
+  test('the field is registered over the ramp’s own boxes, and asked by the ball’s box alone', () => {
+    // Both ramps carry collision group 2, so the MASK alone cannot tell them apart — the box is what
+    // does. A flat list of every field on the table would give a ball on one ramp the other's gravity
+    // as well, and the two are at opposite ends of the playfield.
+    const b = build();
+    if (!b) return expect(existsSync(DAT)).toBe(false);
+    const short = b.ramps.get('s_ramp9')!;
+    const ball = rampBall(short.planes[0]!.v1);
+
+    // Cross a triangle edge first: that is what puts the ball in the ramp's world and hands it the
+    // triangle's gravity. Asking the field of a ball that never crossed is asking about nothing.
+    short.planeEdges[0]!.component.collision(
+      ball, { x: ball.position.x, y: ball.position.y }, { x: 0, y: 1 }, 0, short.planeEdges[0],
+    );
+    expect(ball.collisionMask, 'in the ramp’s world now').toBe(2);
+    const pull = { x: 0, y: 0 };
+
+    b.geometry.grid.fieldEffects(ball, pull);
+
+    // The short ramp's first triangle is FLAT — its steepness is zero — so all that is left is the
+    // drag: a fifth of the ball's own velocity, against it.
+    expect(pull.x).toBeCloseTo(-1 * 5 * 0.2, 6);
+    expect(pull.y).toBeCloseTo(0, 6);
+  });
+
+  test('⚠️ and a ball that has not crossed onto it is in another world', () => {
+    // A free ball's mask is 1 and a ramp's group is 2. The mask IS which set of walls the ball can
+    // see, and a ball that never crossed a triangle edge never adopted the ramp's.
+    const b = build();
+    if (!b) return expect(existsSync(DAT)).toBe(false);
+    const short = b.ramps.get('s_ramp9')!;
+    const free = rampBall(short.planes[0]!.v1);
+    const pull = { x: 0, y: 0 };
+
+    b.geometry.grid.fieldEffects(free, pull);
+
+    expect(pull).toEqual({ x: 0, y: 0 });
+  });
+
+  test('⚠️ the box comes from the SIC bounds, defect and all', () => {
+    // `TRamp`'s constructor folds three of its four accumulators against `xMin`, and the upstream
+    // marks the line `// Sic`. For the long ramp that is not harmless: the box it registers over is a
+    // patch of the ramp rather than the whole of it, so the ball feels the ramp's gravity on part of
+    // its own surface and not on the rest. Transcribed, because correcting it changes how the table
+    // plays — and stated here so the difference can be measured rather than argued about.
+    const b = build();
+    if (!b) return expect(existsSync(DAT)).toBe(false);
+    const ramp = b.ramps.get('ramp')!;
+
+    const sic = planeBounds(ramp.planes);
+    const corrected = boundsCorrected(ramp.planes);
+    expect(sic.yMin, 'the Sic box starts above the ramp’s lowest triangle')
+      .toBeGreaterThan(corrected.yMin);
+    expect(sic.xMax, 'and stops short of its rightmost').toBeLessThan(corrected.xMax);
   });
 });
 

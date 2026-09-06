@@ -31,6 +31,7 @@ import { buildOriginalSoloTargets } from '../table/original-solo-targets.js';
 import { buildOriginalOneways, onewayNames } from '../table/original-oneways.js';
 import { buildOriginalRollovers, rolloverNames } from '../table/original-rollovers.js';
 import { buildOriginalTripwires } from '../table/original-tripwires.js';
+import { buildOriginalRamps } from '../table/original-ramps.js';
 import { flipperSides } from '../table/original-flippers.js';
 import { blockerNames, buildOriginalBlockers } from '../table/original-blockers.js';
 import { buildOriginalSinks } from '../table/original-sinks.js';
@@ -94,6 +95,8 @@ export interface Demo {
    * shot's own run, and nothing anywhere reports it.
    */
   readonly tripwires: ReadonlyMap<string, unknown>;
+  /** The two ramps, which are triangles with their own gravity rather than walls. */
+  readonly ramps: ReadonlyMap<string, unknown>;
   /** The archive names whose 1995 control function actually runs. */
   readonly wired: ReadonlySet<string>;
   /**
@@ -417,6 +420,18 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
   })) soloTargets.set(name, target);
 
   const gates = buildOriginalGates(manifest, table);
+  /**
+   * ⚠️ THE TWO RAMPS, WHICH WERE NOT GEOMETRY AT ALL. Neither carries a wall record, so the wall loop
+   * never saw them and the ball could not ride either one. Their field goes into the grid over the
+   * ramp's own boxes — not into `fieldsFor` — because both carry collision group 2 and only the box
+   * tells them apart. See `table/original-ramps`.
+   */
+  const ramps = buildOriginalRamps(manifest, {
+    table: { tiltLocked: false },
+    grid: table.grid,
+    gravityMult: table.gravityMult,
+    onEnter: (name) => { touched.push(name); payFor(name); },
+  });
   buildOriginalRollovers(manifest, {
     table: { tiltLocked: false },
     grid: table.grid,
@@ -509,6 +524,7 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
     components,
     sinks,
     tripwires,
+    ramps,
     wired: dispatch.wired,
     paidFlat,
     get info() { return info; },

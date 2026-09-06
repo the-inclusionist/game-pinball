@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, test, expect } from 'vitest';
-import { createEdgeManager, BOXES_X, BOXES_Y, type Edge } from '../app/js/physics/grid.js';
+import {
+  createEdgeManager, insertFieldSquare, BOXES_X, BOXES_Y, type Edge,
+} from '../app/js/physics/grid.js';
 import { NO_COLLISION, type Ray } from '../app/js/maths/maths.js';
 
 /** A fake edge that returns a fixed distance and COUNTS how often it was queried. */
@@ -144,5 +146,79 @@ describe('grid — collision search', () => {
 
     expect(onTheDiagonal.queries()).toBe(1);
     expect(offThePath.queries()).toBe(0);
+  });
+});
+
+/**
+ * ⚠️ A FIELD IS REGISTERED OVER A RECTANGLE OF BOXES, AND ONLY THE BALL'S OWN BOX IS ASKED.
+ *
+ * `TEdgeManager::FieldEffects` reads the field list of the ONE box the ball is standing in, and asks
+ * each field whose collision group intersects the ball's mask. That is what keeps a ramp's gravity to
+ * the part of the table the ramp is on — with a flat list of every field on the table, a ball anywhere
+ * would feel every ramp at once.
+ */
+describe('the fields a box holds', () => {
+  const field = (collisionGroup: number, tag: string) => ({
+    collisionGroup,
+    tag,
+    fieldEffect: (_ball: unknown, destination: { x: number; y: number }) => {
+      destination.x = 1;
+      destination.y = 0;
+      return true;
+    },
+  });
+
+  test('a square puts the field in every box it touches, and in no other', () => {
+    const grid = createEdgeManager(0, 0, 100, 150);
+    const one = field(1, 'one');
+
+    insertFieldSquare(grid, { xMin: 5, yMin: 5, xMax: 15, yMax: 5 }, one);
+
+    // 100 wide over ten boxes is ten apiece; 150 tall over fifteen is ten apiece.
+    expect(grid.fieldsInBox(0, 0)).toContain(one);
+    expect(grid.fieldsInBox(1, 0)).toContain(one);
+    expect(grid.fieldsInBox(2, 0)).not.toContain(one);
+    expect(grid.fieldsInBox(0, 1)).not.toContain(one);
+  });
+
+  test('⚠️ only the ball’s OWN box is asked', () => {
+    const grid = createEdgeManager(0, 0, 100, 150);
+    const one = field(1, 'one');
+    insertFieldSquare(grid, { xMin: 5, yMin: 5, xMax: 5, yMax: 5 }, one);
+    const destination = { x: 0, y: 0 };
+
+    grid.fieldEffects({ position: { x: 95, y: 145 }, collisionMask: 1 }, destination);
+
+    expect(destination, 'the far corner of the table feels nothing').toEqual({ x: 0, y: 0 });
+  });
+
+  test('⚠️ and only the fields whose group the ball’s MASK carries', () => {
+    // `ball->CollisionMask & field->CollisionGroup`. A free ball's mask is 1 and a ramp's group is 2,
+    // so a ball that has not crossed onto the ramp never feels it — the mask IS which world the ball
+    // is in.
+    const grid = createEdgeManager(0, 0, 100, 150);
+    const ramp = field(2, 'ramp');
+    insertFieldSquare(grid, { xMin: 5, yMin: 5, xMax: 5, yMax: 5 }, ramp);
+    const destination = { x: 0, y: 0 };
+
+    grid.fieldEffects({ position: { x: 5, y: 5 }, collisionMask: 1 }, destination);
+    expect(destination, 'a free ball is in world one').toEqual({ x: 0, y: 0 });
+
+    grid.fieldEffects({ position: { x: 5, y: 5 }, collisionMask: 2 }, destination);
+    expect(destination.x, 'and a ball on the ramp is in world two').toBe(1);
+  });
+
+  test('⚠️ every field in the box is ADDED, each with its own vector', () => {
+    // `maths::vector_add(*dstVec, vec)` — and `vec` is declared once, outside the loop, upstream. A
+    // field answering false leaves the previous field's value in it; this port zeroes per field for
+    // the same reason `TEdgeManager::FieldEffects`' callers do.
+    const grid = createEdgeManager(0, 0, 100, 150);
+    insertFieldSquare(grid, { xMin: 5, yMin: 5, xMax: 5, yMax: 5 }, field(1, 'a'));
+    insertFieldSquare(grid, { xMin: 5, yMin: 5, xMax: 5, yMax: 5 }, field(1, 'b'));
+    const destination = { x: 0, y: 0 };
+
+    grid.fieldEffects({ position: { x: 5, y: 5 }, collisionMask: 1 }, destination);
+
+    expect(destination.x, 'both of them').toBe(2);
   });
 });

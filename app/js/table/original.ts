@@ -70,6 +70,12 @@ export interface OriginalTable {
   readonly context: StepContext;
   readonly bounds: Bounds;
   readonly ballRadius: number;
+  /**
+   * `TableG->GravityDirVectMult`, record 305's first float. Exposed because a RAMP scales every one of
+   * its triangles' gravity by it — a ramp built with the wrong multiplier is a ramp with the table's
+   * slope and not its own.
+   */
+  readonly gravityMult: number;
   /** How many wall records were installed. A table with none means the archive was not understood. */
   readonly wallCount: number;
   /** The groups that contributed geometry, so a hit can be reported by name. */
@@ -388,7 +394,13 @@ export function buildOriginalTable(groups: readonly Group[], o: OriginalOptions 
         destination.x = gravityX - (0.5 - random() + ball.direction.x) * ball.speed * drag;
         destination.y = gravityY - ball.direction.y * ball.speed * drag;
 
-        // And then every field the ball is inside, ADDED — see `fieldsFor`.
+        // ⚠️ AND THEN THE FIELDS THE BALL'S OWN GRID BOX HOLDS, which is where a ramp's gravity comes
+        // from. `TEdgeManager::FieldEffects` reads one box and filters by collision group; a flat list
+        // of every field on the table would give a ball on one ramp the gravity of the other from
+        // across the playfield, because both ramps carry the same group.
+        grid.fieldEffects(ball as never, destination);
+
+        // And then every field given as a flat list — see `fieldsFor`.
         const fields = o.fieldsFor?.();
         if (!fields) return;
         // ⚠️ ZEROED BEFORE EACH ONE. A field that answers `false` does not write, and a shared vector
@@ -409,6 +421,7 @@ export function buildOriginalTable(groups: readonly Group[], o: OriginalOptions 
       },
     },
     balls,
+    gravityMult: mult,
 
     addBall(at) {
       const spare = balls.find((ball) => !ball.active);

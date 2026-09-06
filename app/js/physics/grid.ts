@@ -40,6 +40,28 @@ export interface WithCircle extends Edge {
   radius: number;
 }
 
+/**
+ * A force a component applies to a ball that is standing in its area. `field_effect_type`.
+ *
+ * ⚠️ IT IS REGISTERED PER BOX, AND ONLY THE BALL'S OWN BOX IS ASKED. That is what keeps a ramp's
+ * gravity to the part of the table the ramp is on: with one flat list of every field, a ball anywhere
+ * would feel every ramp at once. The collision group is the second half of the same idea — a free
+ * ball's mask is 1 and a ramp's group is 2, so a ball that has not crossed onto the ramp is in another
+ * world and feels nothing.
+ */
+export interface FieldEffect {
+  readonly collisionGroup: number;
+  /** `*field->ActiveFlag`. Absent means always live. */
+  readonly activeFlag?: () => boolean;
+  fieldEffect(ball: unknown, destination: Vector2): boolean;
+}
+
+/** What `FieldEffects` needs of the ball: where it is and which world it is in. */
+export interface FieldBall {
+  readonly position: Vector2;
+  readonly collisionMask: number;
+}
+
 export interface CollisionResult {
   readonly distance: number;
   readonly edge: Edge | null;
@@ -54,6 +76,10 @@ export interface EdgeManager {
   boxY(y: number): number;
   addEdge(x: number, y: number, edge: Edge): void;
   edgesInBox(x: number, y: number): readonly Edge[];
+  addField(x: number, y: number, field: FieldEffect): void;
+  fieldsInBox(x: number, y: number): readonly FieldEffect[];
+  /** `TEdgeManager::FieldEffects`. Adds every field of the ball's own box that its mask can see. */
+  fieldEffects(ball: FieldBall, destination: Vector2): void;
   walkBoxes(x0: number, y0: number, x1: number, y1: number, visit: (x: number, y: number) => void): void;
   findCollisionDistance(ray: Ray, alreadyHit?: (e: Edge) => boolean): CollisionResult;
 }
@@ -64,6 +90,7 @@ export function createEdgeManager(minX: number, minY: number, width: number, hei
   const advanceX = width / BOXES_X;
   const advanceY = height / BOXES_Y;
   const boxes: Edge[][] = Array.from({ length: BOXES_X * BOXES_Y }, () => []);
+  const fieldBoxes: FieldEffect[][] = Array.from({ length: BOXES_X * BOXES_Y }, () => []);
 
   // CLAMPS rather than rejecting: the ball leaves the table in normal play (the drain, the plunger
   // lane), and clamping is what keeps the border edges being tested while it is out there.
@@ -76,6 +103,13 @@ export function createEdgeManager(minX: number, minY: number, width: number, hei
   };
 
   const edgesInBox = (x: number, y: number): readonly Edge[] => boxes[x + y * BOXES_X]!;
+
+  const addField = (x: number, y: number, field: FieldEffect): void => {
+    const list = fieldBoxes[x + y * BOXES_X]!;
+    if (!list.includes(field)) list.push(field);
+  };
+
+  const fieldsInBox = (x: number, y: number): readonly FieldEffect[] => fieldBoxes[x + y * BOXES_X]!;
 
   /**
    * Walks the boxes the segment (x0,y0)-(x1,y1) crosses, visiting each. A transcription of the
@@ -154,7 +188,32 @@ export function createEdgeManager(minX: number, minY: number, width: number, hei
     return { distance, edge: found };
   }
 
-  return { minX, minY, advanceX, advanceY, boxX, boxY, addEdge, edgesInBox, walkBoxes, findCollisionDistance };
+  /**
+   * `TEdgeManager::FieldEffects`. The ball's own box, walked BACKWARDS as the original does, and every
+   * field whose group the ball's mask carries.
+   *
+   * ⚠️ THE VECTOR IS ZEROED PER FIELD. A field that answers `false` does not write into it, and a
+   * shared vector would then be added a second time still holding the previous field's value — two
+   * ramps overlapping would pull twice as hard as either.
+   */
+  const fieldEffects = (ball: FieldBall, destination: Vector2): void => {
+    const list = fieldsInBox(boxX(ball.position.x), boxY(ball.position.y));
+    for (let i = list.length - 1; i >= 0; i--) {
+      const field = list[i]!;
+      if (field.activeFlag && !field.activeFlag()) continue;
+      if (!(ball.collisionMask & field.collisionGroup)) continue;
+      const pull = { x: 0, y: 0 };
+      if (!field.fieldEffect(ball, pull)) continue;
+      destination.x += pull.x;
+      destination.y += pull.y;
+    }
+  };
+
+  return {
+    minX, minY, advanceX, advanceY, boxX, boxY,
+    addEdge, edgesInBox, addField, fieldsInBox, fieldEffects,
+    walkBoxes, findCollisionDistance,
+  };
 }
 
 /** `TLine::place_in_grid`: the line enters every box it crosses. */
@@ -191,5 +250,44 @@ export function placeCircleInGrid(g: EdgeManager, edge: WithCircle): void {
       const dy = edge.center.y - nearestY;
       if (dx * dx + dy * dy <= radiusSq) g.addEdge(ix, iy, edge);
     }
+  }
+}
+
+/**
+ * `TTableLayer::edges_insert_square`. Registers a field in every box its rectangle touches.
+ *
+ * ⚠️ THE MARGIN IS A THOUSANDTH OF A BOX, TRUNCATED TO AN INTEGER — so on this table it is ZERO. The
+ * original writes `(float)(int)(AdvanceX * 0.001f)`, and with boxes about 1.6 units wide that is
+ * `(int)0.0016`. Transcribed as written rather than dropped, because on a table with much larger
+ * boxes it would not be zero and the difference would be a row of boxes.
+ */
+export function insertFieldSquare(
+  grid: EdgeManager,
+  bounds: { xMin: number; yMin: number; xMax: number; yMax: number },
+  field: FieldEffect,
+): void {
+  const widthMargin = Math.trunc(grid.advanceX * 0.001);
+  const heightMargin = Math.trunc(grid.advanceY * 0.001);
+  const xMin = bounds.xMin - widthMargin;
+  const xMax = bounds.xMax + widthMargin;
+  const yMin = bounds.yMin - heightMargin;
+  const yMax = bounds.yMax + heightMargin;
+
+  const xMinBox = grid.boxX(xMin);
+  const yMinBox = grid.boxY(yMin);
+  const xMaxBox = grid.boxX(xMax);
+  const yMaxBox = grid.boxY(yMax);
+
+  let boxLeft = xMinBox * grid.advanceX + grid.minX;
+  for (let indexX = xMinBox; indexX <= xMaxBox; indexX++) {
+    let boxTop = yMinBox * grid.advanceY + grid.minY;
+    for (let indexY = yMinBox; indexY <= yMaxBox; indexY++) {
+      if (xMax >= boxLeft && xMin <= boxLeft + grid.advanceX
+        && yMax >= boxTop && yMin <= boxTop + grid.advanceY) {
+        grid.addField(indexX, indexY, field);
+      }
+      boxTop += grid.advanceY;
+    }
+    boxLeft += grid.advanceX;
   }
 }
