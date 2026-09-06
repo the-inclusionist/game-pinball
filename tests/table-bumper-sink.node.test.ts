@@ -183,6 +183,38 @@ describe('sink — swallowing', () => {
     expect(played).toEqual([4]);
   });
 
+  test('⚠️ a hole the file gives NO sound is silent, and zero is not a sound', () => {
+    // `loader::play_sound` returns immediately for anything at or below zero, and the original guards
+    // the release sound with `if (SoundIndex3)` on top of that. Passing the id straight to the player
+    // makes a hole whose records are absent announce itself as voice number nought, which the sound
+    // layer would then have to know to ignore.
+    const t = fakeTimer();
+    const played: number[] = [];
+    const disabled: unknown[] = [];
+    const table: SinkTable = {
+      tiltLocked: false,
+      drainCollision: () => {},
+      ballCountInRect: () => 0,
+      addBall: () => ({ collisionDisabled: false, throwBall: () => {} }),
+      collisionCompOffset: 1,
+    };
+    const sink = createSink({
+      table, timer: t.timer,
+      ballPosition: { x: 10, y: 20 },
+      throwDirection: { x: 0, y: -1 },
+      throwAngleMult: 0, throwSpeedMult1: 1, throwSpeedMult2: 1,
+      holdTime: 2,
+      swallowSoundId: 0, releaseSoundId: 0,
+      sound: { play: (id) => played.push(id) },
+    });
+
+    sink.collision(swallowable(disabled), AT, UP, 0, null);
+    sink.scheduleRelease();
+    t.fireAll();
+
+    expect(played).toEqual([]);
+  });
+
   test('on TILT the sink becomes the DRAIN — the ball is lost, not swallowed', () => {
     // The harshest thing tilt does, and it is one line in the original. Treating tilt as merely "no
     // sound and no score" would lose it entirely.

@@ -21,6 +21,7 @@
 import type { Vector2 } from '../maths/maths.js';
 import type { SoundPlayer, TableState } from './collision-component.js';
 import type { TimerService } from './bumper.js';
+import { playSoundId } from './sound-id.js';
 
 /** The retry delay when the exit is occupied. The original's literal 0.5. */
 const RETRY_SECONDS = 0.5;
@@ -75,7 +76,9 @@ export function createSink(o: SinkOptions): Sink {
     // very sink it is being born inside.
     ball.collisionDisabled = true;
     ball.throwBall(o.throwDirection, o.throwAngleMult, o.throwSpeedMult1, o.throwSpeedMult2);
-    if (o.releaseSoundId !== undefined) o.sound?.play(o.releaseSoundId, ball);
+    // ⚠️ ZERO IS SILENCE, NOT VOICE NUMBER NOUGHT. `loader::play_sound` returns immediately for
+    // anything at or below zero, and the original guards this one with `if (SoundIndex3)` besides.
+    playSoundId(o.sound, o.releaseSoundId, ball);
   }
 
   return {
@@ -86,7 +89,7 @@ export function createSink(o: SinkOptions): Sink {
       }
 
       (ball as SinkBall).disable();
-      if (o.swallowSoundId !== undefined) o.sound?.play(o.swallowSoundId, ball);
+      playSoundId(o.sound, o.swallowSoundId, ball);
       o.onSwallow?.();
     },
 
