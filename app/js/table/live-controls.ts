@@ -22,6 +22,7 @@
 // missions would mean inventing the missions.
 
 import { createLight, type Light } from './light.js';
+import { createTargetBank, type TargetBank } from './target-bank.js';
 import { createScoreState, type ScoreState } from '../control/score.js';
 import { handler, type ControlContext, type ControlledComponent, type TableFlags } from '../control/dispatch.js';
 import { authoredSelf, controlNamed } from '../control/registry.js';
@@ -53,6 +54,13 @@ export interface LiveControls {
   readonly context: ControlContext;
   /** Every lamp the table declared, by name. */
   readonly lamps: ReadonlyMap<string, Light>;
+  /**
+   * The drop targets currently down, by component name.
+   *
+   * Read every frame by the renderer and by the physics: a target that is down must stop being drawn
+   * and stop being a wall, and the two must agree or the player is hitting something invisible.
+   */
+  downTargets(): readonly string[];
   /** The components as the control layer sees them. */
   readonly components: ReadonlyMap<string, ControlledComponent>;
   /**
@@ -129,8 +137,23 @@ export function createLiveControls(table: AuthoredTable, o: LiveControlsOptions 
       name: component.name,
       scores: component.scores ?? [],
       control: component.control ? controlNamed(component.control) ?? null : null,
-      self: authoredSelf(component.lamps ?? [], soundForKind(component.kind)),
+      self: authoredSelf(component.lamps ?? [], soundForKind(component.kind), component.bank),
     });
+  }
+
+  /**
+   * The table's drop-target banks, live.
+   *
+   * ⚠️ ONE PER BANK AND SHARED BY ITS MEMBERS, which is the whole reason it is built here rather than
+   * inside the control: a bank held per-target would be five banks that agree about nothing, and the
+   * fifth target would never be the last one standing.
+   */
+  const banks = new Map<string, TargetBank>();
+  for (const declared of table.banks ?? []) {
+    banks.set(declared.name, createTargetBank({
+      members: table.components.filter((c) => c.bank === declared.name).map((c) => c.name),
+      award: declared.award,
+    }));
   }
 
   const context: ControlContext = {
@@ -140,6 +163,7 @@ export function createLiveControls(table: AuthoredTable, o: LiveControlsOptions 
     // An authored table has no light GROUPS yet. Absent rather than empty: every control reaches for
     // one with `?.`, so saying "there is none" is a complete answer.
     group: () => undefined,
+    bank: (name) => banks.get(name),
     showInfo: (text, seconds) => o.showInfo?.(text, seconds),
     showMission: (text, seconds) => o.showMission?.(text, seconds),
     playSound: (name) => o.playSound?.(name, sourceOfCurrent()),
@@ -171,6 +195,17 @@ export function createLiveControls(table: AuthoredTable, o: LiveControlsOptions 
       }
     },
     litLamps: () => [...lamps].filter(([, light]) => light.on).map(([name]) => name),
+    /**
+     * ⚠️ WHICH DROP TARGETS ARE DOWN, READ EVERY FRAME BY TWO PLACES THAT BOTH HAVE TO AGREE.
+     *
+     * The renderer stops drawing them and the physics stops colliding with them. A bank that only kept
+     * score would be a mechanic the player cannot see and the ball cannot feel — which is the shape of
+     * the six defects this port has already found, and the reason this list is part of the live
+     * surface rather than something the control layer keeps to itself.
+     */
+    downTargets: () => table.components
+      .filter((c) => c.bank !== undefined && banks.get(c.bank)?.isDown(c.name) === true)
+      .map((c) => c.name),
     endBall() {
       // Clamped: the game loop calls this from a POSITION test, and a ball sitting in a drain would be
       // reported again on the next frame. Cheaper to hold the floor here than to be sure elsewhere.

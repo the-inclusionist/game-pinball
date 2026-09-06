@@ -222,6 +222,16 @@ export interface TableViewOptions {
    * than a preference to infer.
    */
   readonly cbSafe?: boolean;
+  /**
+   * Components NOT to draw, by name — a drop target that is currently down.
+   *
+   * ⚠️ THE PICTURE HAS TO AGREE WITH THE PHYSICS, and this is the half that makes a bank visible.
+   * `table/target-bank` decides a target is down and `physics-build.setComponentActive` makes the ball
+   * pass over it; if the picture still shows one, the player is looking at a target the ball goes
+   * through. That is the same defect as flippers baked at rest and lamps that were never drawn, in a
+   * new place — six of those have been found in this port.
+   */
+  readonly hidden?: readonly string[];
 }
 
 /**
@@ -237,7 +247,11 @@ export function drawTable(o: TableViewOptions): Framebuffer {
   fillRect(fb, { x: 0, y: 0, width: table.size.width, height: table.size.height },
     packRgb(palette.ground));
 
+  const hidden = new Set(o.hidden ?? []);
+
   for (const component of table.components) {
+    // A dropped target is below the playfield: nothing of it is drawn, and the ground shows through.
+    if (hidden.has(component.name)) continue;
     // THE ROLE MOVES WITH THE MISSION, in the picture as well as in the contract: a bumper the
     // mission is counting is drawn as a goal, and goes back to furniture when it stops counting.
     const role = targets.has(component.name) ? 'goal' : component.role;

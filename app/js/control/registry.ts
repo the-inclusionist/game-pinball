@@ -43,10 +43,14 @@ export interface AuthoredSelf {
    * a decision — a wall makes no sound because a resting ball would rattle against it.
    */
   readonly sound?: string;
+  /** The drop-target bank this component belongs to, if any. See `targetBankControl`. */
+  readonly bank?: string;
 }
 
-export function authoredSelf(lamps: readonly string[] = [], sound?: string): AuthoredSelf {
-  return { level: 0, lamps: [...lamps], ...(sound ? { sound } : {}) };
+export function authoredSelf(
+  lamps: readonly string[] = [], sound?: string, bank?: string,
+): AuthoredSelf {
+  return { level: 0, lamps: [...lamps], ...(sound ? { sound } : {}), ...(bank ? { bank } : {}) };
 }
 
 /** Every authored control sounds its component the same way, so the call lives in one place. */
@@ -80,6 +84,47 @@ export const targetControl: ControlFunc = (code, caller, ctx) => {
     self.level = Math.min(self.level + 1, Math.max(0, caller.scores.length - 1));
     for (const lamp of self.lamps) ctx.light(lamp)?.turnOn();
   }
+};
+
+/**
+ * `TargetBankControl`. A DROP target: it goes down when hit and stays down until the bank is cleared.
+ *
+ * ⚠️ THE DIFFERENCE FROM `TargetControl` IS THAT THE SECOND HIT DOES NOTHING. An ordinary target is
+ * worth more every time the ball comes back; a drop target is not there any more. That is what makes
+ * a bank a route round the table instead of something to rattle — which is exactly what
+ * `crater-run`'s five-target "bank" was, five unrelated targets each paying again for ever, under a
+ * mission that has said "derrube o banco de alvos" since the day it was written.
+ *
+ * ⚠️ AND IT TAKES THE BANK FROM THE CONTEXT RATHER THAN OWNING ONE. A bank is shared by its members
+ * and its state has to outlive any single component: a bank held per-target would be five banks that
+ * agree about nothing.
+ *
+ * The lamp is turned OFF on the way down and the bank's own clearing turns them back on, so the row
+ * of lamps is the row of targets — the display is the state, which is the rule the 1995 machine
+ * follows through `lite56` and this follows with something a table can declare.
+ */
+export const targetBankControl: ControlFunc = (code, caller, ctx) => {
+  if (code !== 'ControlCollision') return;
+  const self = selfOf(caller);
+  const bank = self?.bank ? ctx.bank?.(self.bank) : undefined;
+  // No bank means no drop and no reason to pretend: a member of a bank the table did not declare is
+  // refused by `validateTable` long before this, so reaching here is a table nobody validated.
+  if (!bank || !self) return;
+  if (bank.isDown(caller.name)) return;
+
+  sound(caller, ctx);
+  addScore(ctx.score, getScoring(caller, 0));
+
+  const cleared = bank.drop(caller.name);
+  if (!cleared.completed) return;
+  // ⚠️ THE LAMPS LIGHT WHEN THE BANK IS CLEARED, NOT AS EACH TARGET GOES DOWN, and that is what
+  // `LightLike` allows rather than a design choice made freely: a control can turn a lamp ON and time
+  // it, and there is no `turnOff` — `TLight` is switched off by its own timer or by a reset, which is
+  // the original's arrangement and not one to work around from here. So the row of lamps marks the
+  // ACHIEVEMENT, and which targets are still standing is shown by the targets themselves, which the
+  // renderer stops drawing. Two ways of saying the state, neither of them a lamp lying about it.
+  for (const lamp of self.lamps) ctx.light(lamp)?.turnOnTimed(3);
+  addScore(ctx.score, cleared.award);
 };
 
 /**
@@ -148,13 +193,15 @@ const withSound = (inner: ControlFunc): ControlFunc => (code, caller, ctx) => {
  * path can deliver.
  */
 export const LIGHTING_CONTROLS: readonly string[] = [
-  'BumperControl', 'RebounderControl', 'TargetControl', 'RampControl', 'LaneControl',
+  'BumperControl', 'RebounderControl', 'TargetControl', 'TargetBankControl', 'RampControl',
+  'LaneControl',
 ];
 
 export const AUTHORED_CONTROLS: Readonly<Record<string, ControlFunc>> = Object.freeze({
   BumperControl: withSound(bumperControl),
   RebounderControl: withSound(rebounderControl),
   TargetControl: targetControl,
+  TargetBankControl: withSound(targetBankControl),
   RampControl: rampControl,
   LaneControl: laneControl,
   DrainControl: drainControl,

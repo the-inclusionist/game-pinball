@@ -69,12 +69,29 @@ export interface ControlContext {
   /** Looks a lamp up by its tag name, as the original's globals do. */
   light(name: string): LightLike | undefined;
   group(name: string): LightGroupLike | undefined;
+  /**
+   * A drop-target bank by name, for an AUTHORED table. Absent on the 1995 one, whose banks are
+   * `control/banks` and are addressed through the archive's own component links.
+   *
+   * Optional for the same reason `group` returns `undefined` rather than throwing: a control that
+   * reaches for something the table does not have gets a complete answer, not an error.
+   */
+  bank?(name: string): TargetBankLike | undefined;
   showInfo(text: string, seconds: number): void;
   showMission(text: string, seconds: number): void;
   playSound(name: string): void;
   playMusic(track: string): void;
   /** The mission state machine. Runs on EVERY event — see this module's header. */
   missionControl(code: MessageCode, caller: ControlledComponent, ctx: ControlContext): void;
+}
+
+/**
+ * What a control needs of a drop-target bank. Narrow on purpose: `table/target-bank` has a `standing`
+ * list and a `reset` as well, and neither is any of a control's business.
+ */
+export interface TargetBankLike {
+  drop(member: string): { readonly completed: boolean; readonly award: number };
+  isDown(member: string): boolean;
 }
 
 export interface TableFlags {

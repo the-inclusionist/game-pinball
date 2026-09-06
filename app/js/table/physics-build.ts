@@ -27,7 +27,7 @@
 // declares today. When a ramp declares a field, it goes here and nowhere else.
 
 import {
-  createEdgeManager, placeLineInGrid, placeCircleInGrid, type EdgeManager,
+  createEdgeManager, placeLineInGrid, placeCircleInGrid, type Edge, type EdgeManager,
 } from '../physics/grid.js';
 import { createLine, createCircle, offsetLine, type Component } from '../physics/edges.js';
 import { basicCollision, type CollisionResponse } from '../physics/collision.js';
@@ -217,6 +217,18 @@ export interface TablePhysics {
   readonly flippers: readonly Flipper[];
   /** By name, because the control layer and the keyboard both address them that way. */
   flipperNamed(name: string): Flipper | undefined;
+  /**
+   * Switches a component's edges on or off, by name.
+   *
+   * ⚠️ WHAT A DROP TARGET NEEDS. `table/target-bank` decides that a target is down; this is what makes
+   * the ball pass over where it was. Without it a dropped target is still a wall the ball bounces off,
+   * which is a body with no behaviour — the worst of both.
+   *
+   * `table/blocker` has done the same for the 1995 table since it was ported. A component with no
+   * collision shapes has no edges and this does nothing to it, which is correct: what makes a lane
+   * inert is that the ball rolls over it, and there is nothing to switch.
+   */
+  setComponentActive(name: string, active: boolean): void;
   /** Raises or drops one, by name. */
   setFlipper(name: string, extended: boolean): void;
   /**
@@ -271,6 +283,8 @@ export function buildPhysics(table: AuthoredTable, o: PhysicsOptions = {}): Tabl
   const gravity = o.gravity ?? DEFAULT_GRAVITY;
   let hits: Hit[] = [];
   const nameOfFlipper = new Map<Flipper, string>();
+  /** Every edge a component owns, so it can be switched out of the table by name. */
+  const edgesOfComponent = new Map<string, Edge[]>();
 
   for (const component of table.components) {
     if (!component.collision?.length) continue;
@@ -298,6 +312,19 @@ export function buildPhysics(table: AuthoredTable, o: PhysicsOptions = {}): Tabl
      * ball's surface to stop at the launcher's face and failed by exactly one radius on all six
      * tables, which is how a defect belonging to every wall showed up as a property of one.
      */
+    /**
+     * ⚠️ THE EDGES ARE KEPT NOW, AND THEY WERE THROWN AWAY. `placeLineInGrid` takes an edge and the
+     * grid owns it; this loop built each one, handed it over and forgot it, so nothing downstream
+     * could ever switch a component out of the table.
+     *
+     * `table/blocker` has done exactly that for the 1995 table since it was ported — "for (const edge
+     * of o.edges) edge.active = value" — and it is what a DROP TARGET needs: a target that is down is
+     * below the playfield, and the ball passes over where it was. Without this a dropped target is
+     * still a wall the ball bounces off, which is a body with no behaviour: the worst of both.
+     */
+    const mine: Edge[] = [];
+    edgesOfComponent.set(component.name, mine);
+
     for (const shape of component.collision) {
       if (shape.kind === 'line') {
         const line = createLine({
@@ -308,6 +335,7 @@ export function buildPhysics(table: AuthoredTable, o: PhysicsOptions = {}): Tabl
         // to face the play. See `normalOf` in `table/authored` for why the winding is the contract.
         offsetLine(line, table.ballRadius);
         placeLineInGrid(grid, line);
+        mine.push(line);
 
         /**
          * ⚠️ AND THERE ARE NO CORNER CIRCLES HERE, WHICH WAS WRITTEN, MEASURED AND THEN REMOVED.
@@ -336,10 +364,12 @@ export function buildPhysics(table: AuthoredTable, o: PhysicsOptions = {}): Tabl
       } else {
         // A circle grows rather than moves: same trick, one dimension less. `installWall` writes it
         // as `o.offset + data[3]`.
-        placeCircleInGrid(grid, createCircle({
+        const circle = createCircle({
           component: owner, center: { x: shape.at.x, y: shape.at.y },
           radius: shape.radius + table.ballRadius,
-        }));
+        });
+        placeCircleInGrid(grid, circle);
+        mine.push(circle);
       }
     }
   }
@@ -400,6 +430,16 @@ export function buildPhysics(table: AuthoredTable, o: PhysicsOptions = {}): Tabl
     flippers,
     stuck: createStuckWatch(table, { relaunch: o.relaunch ?? (() => {}) }),
     flipperNamed: (name) => flipperByName.get(name),
+    /**
+     * Switches a component's edges on or off.
+     *
+     * ⚠️ THE EDGES, NOT THE COMPONENT. A component with no collision shapes — a lane, a drain — has no
+     * edges to switch and this does nothing to it, which is correct rather than a silent failure: what
+     * makes a lane inert is that the ball rolls over it, and there is nothing to turn off.
+     */
+    setComponentActive(name: string, active: boolean): void {
+      for (const edge of edgesOfComponent.get(name) ?? []) edge.active = active;
+    },
     setFlipper(name, extended) {
       const flipper = flipperByName.get(name);
       if (flipper) setFlipperMotion(flipper, extended ? 'extending' : 'retracting');

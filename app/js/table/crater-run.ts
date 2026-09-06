@@ -29,14 +29,30 @@ const BALL_RADIUS = 3;
 const WIDTH = 183;
 const HEIGHT = 260;
 
-/** Five in a row across the middle, 20 apart: a rattling ball can take more than one. */
+/** The name every member of the bank points at, and the table declares once. */
+const BANK_NAME = 'bank.crater';
+
+/**
+ * Five DROP targets in a row across the middle, 20 apart: a rattling ball can take more than one.
+ *
+ * ⚠️ AND THEY WERE FIVE ORDINARY TARGETS UNTIL NOW, WHICH IS WHAT THE DEV WAS POINTING AT.
+ * `pinball.mission.craterRun.bank` has read "derrube o banco de alvos" since the day this table was
+ * written, and the five behaved as five unrelated targets: each paid again every time the ball came
+ * back, none of them ever went down, and the mission was cleared by rattling the nearest one five
+ * times. The word "bank" was in the constant's name, in the mission text and in the comment, and
+ * nowhere in the behaviour.
+ *
+ * A drop target sinks when it is hit — the ball then passes over where it was — and the bank pays and
+ * stands them all up when the last one falls. That is the difference between a route and a rattle.
+ */
 const BANK = [42, 62, 82, 102, 122].map((x, i) => ({
   name: `crater${i + 1}`,
   kind: 'target' as const,
   role: 'key' as const,
   bounds: { x, y: 120, width: 12, height: 14 },
   scores: [2000],
-  control: 'TargetControl',
+  control: 'TargetBankControl',
+  bank: BANK_NAME,
   lamps: [`lamp.crater${i + 1}`],
   collision: [{ kind: 'line' as const, from: { x, y: 134 }, to: { x: x + 12, y: 134 } }],
 }));
@@ -45,6 +61,13 @@ export const CRATER_RUN: AuthoredTable = {
   name: 'crater-run',
   size: { width: WIDTH, height: HEIGHT },
   ballRadius: BALL_RADIUS,
+
+  /**
+   * ⚠️ THE PRIZE IS BIGGER THAN THE FIVE TARGETS TOGETHER — 10000 against 5 x 2000 — because clearing
+   * a bank is a different achievement from hitting five things. Five separate targets are five lucky
+   * bounces; a cleared bank means every one of them was still standing when you found it.
+   */
+  banks: [{ name: BANK_NAME, award: 10000 }],
 
   missions: [
     // The bank first, because it is the table's whole idea and a player should meet it immediately.

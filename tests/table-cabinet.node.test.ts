@@ -109,3 +109,73 @@ describe('⚠️ a ball coming back down the lane lands ON the plunger', () => {
       .toBeLessThan(plunger.bounds.y - 60);
   });
 });
+
+/**
+ * ⚠️ A DROPPED TARGET HAS TO LEAVE THE TABLE, and that is the half `table/target-bank` cannot do.
+ *
+ * The bank is a rule about names: hit t1, t1 is down. What makes it a MECHANIC is that the ball then
+ * passes over where t1 was — otherwise the target is still a wall, the ball still bounces off it, and
+ * the player is left hitting something that no longer answers. That is the worst of both: a body with
+ * no behaviour.
+ *
+ * `physics/blocker` already does this for the 1995 table — `for (const edge of o.edges) edge.active =
+ * value` — and the authored builder kept no edges at all once they were in the grid. This is that,
+ * exposed by component name.
+ */
+describe('⚠️ switching a component out of the table', () => {
+  test('a ball passes through a component whose edges are off', () => {
+    const table = PLAYABLE_TABLES[0]!;
+    const physics = buildPhysics(table);
+    // `wall.top` is the ceiling of `low-orbit`, written left to right so it faces down into the play.
+    const ball = physics.spawnBall();
+    ball.position = { x: 90, y: 40 };
+    ball.direction = { x: 0, y: -1 };
+    ball.speed = 200;
+
+    physics.setComponentActive('wall.top', false);
+    for (let i = 0; i < 60; i++) {
+      advanceFrame([ball], physics.context, FRAME_SECONDS);
+      physics.takeHits();
+    }
+
+    expect(ball.position.y, 'it went straight out through where the ceiling was').toBeLessThan(0);
+  });
+
+  test('and it bounces off the same component while its edges are on', () => {
+    // The control: same table, same shot, nothing switched off. Without this the test above would pass
+    // on a table with no ceiling at all, which is the shape of every gate this repository has had to
+    // rewrite for measuring the wrong thing.
+    const table = PLAYABLE_TABLES[0]!;
+    const physics = buildPhysics(table);
+    const ball = physics.spawnBall();
+    ball.position = { x: 90, y: 40 };
+    ball.direction = { x: 0, y: -1 };
+    ball.speed = 200;
+
+    for (let i = 0; i < 60; i++) {
+      advanceFrame([ball], physics.context, FRAME_SECONDS);
+      physics.takeHits();
+    }
+
+    expect(ball.position.y, 'the ceiling held it in').toBeGreaterThan(0);
+  });
+
+  test('and switching it back on makes it solid again', () => {
+    const table = PLAYABLE_TABLES[0]!;
+    const physics = buildPhysics(table);
+    physics.setComponentActive('wall.top', false);
+
+    physics.setComponentActive('wall.top', true);
+
+    const ball = physics.spawnBall();
+    ball.position = { x: 90, y: 40 };
+    ball.direction = { x: 0, y: -1 };
+    ball.speed = 200;
+    for (let i = 0; i < 60; i++) {
+      advanceFrame([ball], physics.context, FRAME_SECONDS);
+      physics.takeHits();
+    }
+
+    expect(ball.position.y).toBeGreaterThan(0);
+  });
+});

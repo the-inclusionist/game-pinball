@@ -138,6 +138,27 @@ export interface AuthoredComponent {
   readonly flipper?: AuthoredFlipper;
   /** Lamps this component drives. Every one must be declared by the table. */
   readonly lamps?: readonly string[];
+  /**
+   * The drop-target bank this component belongs to, by name.
+   *
+   * ⚠️ ONLY MEANINGFUL ON A `target` DRIVEN BY `TargetBankControl`, and the validator says so rather
+   * than ignoring it: a bank is a promise made in two places — the table declares the group, each
+   * target says which group it is in — and a promise split in two is one that can be made by half.
+   */
+  readonly bank?: string;
+}
+
+/**
+ * A bank of drop targets: hit them all and it pays, then stands them up again.
+ *
+ * The mechanic itself is `table/target-bank`. This is what a TABLE says about one, which is only its
+ * name and its prize — who belongs to it is each target's own declaration, so moving a target between
+ * banks is a one-line edit where it stands rather than a list to keep in step somewhere else.
+ */
+export interface AuthoredBank {
+  readonly name: string;
+  /** Paid once, on the hit that drops the last one standing. */
+  readonly award: number;
 }
 
 export interface AuthoredTable {
@@ -156,6 +177,14 @@ export interface AuthoredTable {
    * needs — it exists to be the floor of the format and giving it a campaign would stop it being that.
    */
   readonly missions?: readonly AuthoredMission[];
+  /**
+   * Drop-target banks, by name. Absent means the table has none.
+   *
+   * ⚠️ THE DEV ASKED WHY THE TABLES ARE SO MUCH SIMPLER THAN THE ORIGINAL, and this is one of the
+   * answers being paid off: every component the format could describe was a thing the ball touches
+   * once and is paid for, with no state outliving the touch. A bank is the first that remembers.
+   */
+  readonly banks?: readonly AuthoredBank[];
 }
 
 export interface ValidationOptions {
@@ -344,6 +373,37 @@ export function validateTable(table: AuthoredTable, o: ValidationOptions): strin
           problems.push(`mission "${stage.id}": names "${target}", a ${kind}, which cannot report being hit`);
         }
       }
+    }
+  }
+
+  /**
+   * ⚠️ A BANK IS A PROMISE MADE IN TWO PLACES, so it can be made by half — and half a bank is not an
+   * error anywhere. The targets simply never drop, or the award is never paid, and the table looks
+   * finished. Every rule below is one of the halves.
+   */
+  const banks = table.banks ?? [];
+  const bankNames = new Set(banks.map((b) => b.name));
+  for (const component of table.components) {
+    if (component.bank === undefined) continue;
+    if (component.kind !== 'target') {
+      problems.push(`${component.name}: only a target can be in a bank, and this is a ${component.kind}`);
+    }
+    if (component.control !== 'TargetBankControl') {
+      // ⚠️ THE SUBTLEST OF THESE AND THE ONE THAT WOULD HAVE SHIPPED. A bank member driven by the
+      // ordinary `TargetControl` pays its own score, never drops, and keeps the bank one short for
+      // ever — so the bank is unclearable and every other member looks broken instead.
+      problems.push(`${component.name}: is in a bank, so its control must be TargetBankControl`);
+    }
+    if (!bankNames.has(component.bank)) {
+      problems.push(`${component.name}: names bank "${component.bank}", which the table does not declare`);
+    }
+  }
+  for (const bank of banks) {
+    const members = table.components.filter((c) => c.bank === bank.name);
+    // Two directions of one rule: a bank of one is cleared by its own first hit and pays the prize on
+    // contact, and a bank of none can never pay at all. Neither is a thing a table meant to say.
+    if (members.length < 2) {
+      problems.push(`bank "${bank.name}": has ${members.length} targets and needs at least two`);
     }
   }
 

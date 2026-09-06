@@ -393,6 +393,24 @@ describe('booting', () => {
     expect(block, 'and the missions are told about it too').toMatch(/missions\.hit\(name\)/);
   });
 
+  /**
+   * ⚠️ A DROPPED TARGET HAS TO REACH BOTH THE PICTURE AND THE PHYSICS, or a bank is half a mechanic.
+   *
+   * `table/target-bank` decides one is down, `drawTable`'s `hidden` stops drawing it and
+   * `setComponentActive` stops it being a wall. All three are tested on their own. What no unit can
+   * see is whether the frame loop tells the last two what the first one decided — and a bank that
+   * scores while the target stays drawn and solid is the flippers' defect and the lamps' defect
+   * arriving a third time.
+   */
+  test('⚠️ a dropped target leaves the picture AND the table', () => {
+    const source = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../app/js/main.ts'), 'utf8');
+
+    expect(source, 'the picture is told which targets are down')
+      .toMatch(/drawTable\(\{[^}]*hidden: live\.downTargets\(\)/s);
+    expect(source, 'and so is the physics')
+      .toMatch(/setComponentActive\([^)]*live\.downTargets\(\)/s);
+  });
+
   test('the camera starts on the flippers', () => {
     expect(bootPinball(options(), fakeEngine()).camera.offset).toBe(55);
   });

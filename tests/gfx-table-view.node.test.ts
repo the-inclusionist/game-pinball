@@ -318,3 +318,65 @@ describe('⚠️ a lit lamp shows on the table', () => {
     expect([...withNone.pixels]).toEqual([...without.pixels]);
   });
 });
+
+/**
+ * ⚠️ A DROPPED TARGET HAS TO STOP BEING DRAWN, and this is the half that makes a bank visible.
+ *
+ * `table/target-bank` decides a target is down and `physics-build.setComponentActive` makes the ball
+ * pass over it. If the picture still shows it, the player is looking at a target the ball goes through
+ * — which is the same defect as the flippers baked at rest and the lamps that were never drawn, in a
+ * new place. Six of those have been found in this port; this is the gate written before the seventh.
+ */
+describe('⚠️ hiding a component from the picture', () => {
+  test('a hidden component paints nothing where it was', () => {
+    const target = LOW_ORBIT.components.find((c) => c.name === 'target1')!;
+    const shown = drawTable({ table: LOW_ORBIT, missionTargets: [], litLamps: [], cbSafe: false });
+    const gone = drawTable({
+      table: LOW_ORBIT, missionTargets: [], litLamps: [], cbSafe: false, hidden: ['target1'],
+    });
+
+    const box = target.bounds;
+    let differing = 0;
+    for (let y = box.y; y < box.y + box.height; y++) {
+      for (let x = box.x; x < box.x + box.width; x++) {
+        if (shown.pixels[y * LOW_ORBIT.size.width + x] !== gone.pixels[y * LOW_ORBIT.size.width + x]) {
+          differing++;
+        }
+      }
+    }
+
+    expect(differing, 'the target’s own rectangle changed').toBeGreaterThan(0);
+  });
+
+  test('⚠️ and NOTHING ELSE changed, or "hidden" would be a repaint', () => {
+    // The control that makes the test above mean something. Any difference anywhere would satisfy a
+    // whole-frame comparison, and this port has already rewritten one gate for exactly that reason.
+    const target = LOW_ORBIT.components.find((c) => c.name === 'target1')!;
+    const shown = drawTable({ table: LOW_ORBIT, missionTargets: [], litLamps: [], cbSafe: false });
+    const gone = drawTable({
+      table: LOW_ORBIT, missionTargets: [], litLamps: [], cbSafe: false, hidden: ['target1'],
+    });
+
+    /**
+     * ⚠️ ONE PIXEL WIDER THAN THE DECLARED BOUNDS, and the first version was not — it failed by
+     * SIXTEEN pixels, which turned out to be the target's own collision line. A component that
+     * declares collision shapes is drawn as those shapes rather than as its rectangle (see
+     * `drawTable`), and this target's face sits on `bounds.y + bounds.height`: on the boundary, and so
+     * one row outside a half-open box. The drawing is right and the box was.
+     */
+    const b = target.bounds;
+    const box = { x: b.x - 1, y: b.y - 1, width: b.width + 2, height: b.height + 2 };
+    let outside = 0;
+    for (let y = 0; y < LOW_ORBIT.size.height; y++) {
+      for (let x = 0; x < LOW_ORBIT.size.width; x++) {
+        const inBox = x >= box.x && x < box.x + box.width && y >= box.y && y < box.y + box.height;
+        if (inBox) continue;
+        if (shown.pixels[y * LOW_ORBIT.size.width + x] !== gone.pixels[y * LOW_ORBIT.size.width + x]) {
+          outside++;
+        }
+      }
+    }
+
+    expect(outside, 'the rest of the table is untouched').toBe(0);
+  });
+});

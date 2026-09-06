@@ -121,6 +121,8 @@ let state: TableState = {
 const missions = runMissions(authored.missions ?? []);
 
 let lastLit = '';
+/** The drop targets that were down when the picture was last composed. See `refreshObjective`. */
+let lastDown = '';
 
 function refreshObjective(force = false): void {
   // A table with missions is asked about its mission; one without is asked about its roles.
@@ -144,10 +146,26 @@ function refreshObjective(force = false): void {
    * now, which turns "what has changed" into a question with two answers.
    */
   const litNow = live.litLamps().join(',');
+  /**
+   * ⚠️ AND A DROPPED TARGET IS THE THIRD ANSWER TO "WHAT HAS CHANGED".
+   *
+   * The objective was the first, the lit lamps the second, and each was added the day something
+   * started changing that the picture did not follow. A drop target that goes down and is still drawn
+   * is a target the ball passes through while the player looks at it — the flippers' defect and the
+   * lamps' defect, arriving a third time in the same place.
+   */
+  const downNow = live.downTargets().join(',');
   if (!force && objective.have === state.missionHave
     && objective.targets.length === state.missionTargets.length
-    && litNow === lastLit) return;
+    && litNow === lastLit && downNow === lastDown) return;
   lastLit = litNow;
+  lastDown = downNow;
+  // The physics has to agree with the picture, and this is the line that makes it: a target that is
+  // not drawn is not a wall either.
+  for (const component of authored.components) {
+    if (component.bank === undefined) continue;
+    physics.setComponentActive(component.name, !live.downTargets().includes(component.name));
+  }
   state = {
     ...state,
     missionTextId: missions.stage?.id ?? AUTHORED_OBJECTIVE_ID,
@@ -157,7 +175,7 @@ function refreshObjective(force = false): void {
   };
   tablePicture = drawTable({
     table: authored, missionTargets: state.missionTargets,
-    litLamps: live.litLamps(), cbSafe: isCbSafe(palette),
+    litLamps: live.litLamps(), cbSafe: isCbSafe(palette), hidden: live.downTargets(),
   });
 }
 
