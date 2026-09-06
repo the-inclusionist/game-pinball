@@ -124,3 +124,51 @@ describe('the camera the original uses', () => {
     expect(PROJECTION_CENTRE_RECORD).toBe(700);
   });
 });
+
+/**
+ * ⚠️ THE HALVING GOES IN THE PROJECTION, NOT IN THE PHYSICS.
+ *
+ * Decision 5 of the plan: the playfield is drawn at 183x235 rather than 365x470. The table keeps its
+ * own float units and only the map onto pixels changes — which is the whole reason `maths/proj` is a
+ * separate thing from `physics`.
+ */
+describe('the camera at half scale', () => {
+  test('a table point lands on half the pixel it landed on before', () => {
+    const groups = archive();
+    if (!groups) return expect(existsSync(DAT)).toBe(false);
+    const point = { x: 2.5, y: -3.25, z: 0.3 };
+
+    const full = readCamera(groups).projection.toScreen(point);
+    const half = readCamera(groups, { scale: 0.5 }).projection.toScreen(point);
+
+    expect(half.x).toBeCloseTo(full.x / 2, 0);
+    expect(half.y).toBeCloseTo(full.y / 2, 0);
+  });
+
+  test('⚠️ and BOTH the focal distance and the centre scale, or the table slides off its own bitmap', () => {
+    // `toScreen` is `p * (d / z) + centre`. Halving the centre alone leaves every point twice as far
+    // from a middle that moved: the table would sit off to one side by a quarter of its own width, and
+    // the collisions would all still be right.
+    const groups = archive();
+    if (!groups) return expect(existsSync(DAT)).toBe(false);
+
+    const full = readCamera(groups);
+    const half = readCamera(groups, { scale: 0.5 });
+
+    expect(half.centre.x).toBeCloseTo(full.centre.x / 2, 6);
+    expect(half.centre.y).toBeCloseTo(full.centre.y / 2, 6);
+    expect(half.d).toBeCloseTo(full.d / 2, 6);
+  });
+
+  test('⚠️ and the DEPTH does not scale with it', () => {
+    // The depth is a distance in table units, not in pixels: it is what the ball is compared against
+    // in a z-buffer whose numbers came from the same projection at any size. Scaling it would put the
+    // ball at half the distance from the camera because the picture got smaller.
+    const groups = archive();
+    if (!groups) return expect(existsSync(DAT)).toBe(false);
+    const point = { x: 2.5, y: -3.25, z: 0.3 };
+
+    expect(readCamera(groups, { scale: 0.5 }).projection.depthOf(point))
+      .toBe(readCamera(groups).projection.depthOf(point));
+  });
+});

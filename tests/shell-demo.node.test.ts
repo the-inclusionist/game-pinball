@@ -49,7 +49,12 @@ describe('the 1995 table, from an ArrayBuffer', () => {
 
     const demo = createDemo(bytes, { random: seeded() });
 
-    expect([demo.playfield.width, demo.playfield.height]).toEqual([365, 470]);
+    // ⚠️ 183x235, WHICH IS THE ARCHIVE'S 365x470 HALVED. Decision 5 of the plan: the playfield is
+    // drawn at half size, which is what leaves room for the HUD beside it on a 320x180 screen. The
+    // halving lives in the PROJECTION and in the two bitmaps; not one line of physics knows about it,
+    // and the table keeps its own float units throughout. Rounding is UP — 365/2 is 182.5, and 182
+    // would cut a strip off the right of the table.
+    expect([demo.playfield.width, demo.playfield.height]).toEqual([183, 235]);
     // ⚠️ ONE HUNDRED AND SIXTEEN, AND IT WAS A HUNDRED AND FORTY-THREE. Twenty-seven groups build
     // their own geometry and none of them wants the plain wall this count is of:
     //

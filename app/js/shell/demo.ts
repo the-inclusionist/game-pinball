@@ -49,6 +49,7 @@ import { readGroups, type Group } from '../dat/partman.js';
 import { advanceFrame, type Ball } from '../physics/step.js';
 import { checkStuckBall, unstuckBall, type StuckBall } from '../physics/stuck.js';
 import { fillCircle, fillCircleBehind } from '../gfx/table-view.js';
+import { halve, halveDepth } from '../gfx/scale.js';
 import { pack, type Framebuffer } from '../gfx/framebuffer.js';
 import { kindOf } from '../i18n/names.js';
 import { soundForKind } from '../audio/voices.js';
@@ -62,6 +63,9 @@ import { soundForKind } from '../audio/voices.js';
  */
 export const MUSIC_WINDOW = 2;
 export const MUSIC_LOOKAHEAD = 4;
+
+/** Decision 5 of the plan: 365x470 becomes 183x235. */
+export const PLAYFIELD_SCALE = 0.5;
 
 /** The ball, which the archive draws as a sprite this build does not composite. */
 export const DEMO_BALL_COLOR = pack(240, 240, 250, 255);
@@ -493,14 +497,24 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
     textFor: (id, params) => o.textFor?.(id, params) ?? id,
   });
 
-  const camera = readCamera(groups);
-  const playfield = decodePlayfield(groups);
+  /**
+   * ⚠️ HALF SIZE, AND THE HALVING LIVES IN THE PROJECTION. Decision 5 of the plan: the playfield is
+   * 183x235 rather than 365x470, which is what leaves room for the HUD on a 320x180 screen. The table
+   * keeps its own float units — only the map onto pixels changes — so not one line of physics knows.
+   *
+   * ⚠️ AND THE PICTURE IS AVERAGED WHILE THE DEPTH IS SAMPLED. Averaging depth INVENTS surfaces:
+   * between a ramp at 100 and the table at 500 there is nothing at 300, and an edge of averaged depths
+   * would put the ball inside the ramp across half its pixels. See `gfx/scale`.
+   */
+  const camera = readCamera(groups, { scale: PLAYFIELD_SCALE });
+  const playfield = halve(decodePlayfield(groups));
   /**
    * ⚠️ THE PLAYFIELD'S OWN DEPTH MAP, WHICH IS THE WHOLE OF THE ORIGINAL'S OCCLUSION. One 16-bit
    * number per pixel saying how far away the thing drawn there is. Until the ramps existed the ball
    * had nothing to go under; now it has two of them.
    */
-  const playfieldDepth = readPlayfieldDepth(groups);
+  const fullDepth = readPlayfieldDepth(groups);
+  const playfieldDepth = fullDepth ? halveDepth(fullDepth) : null;
 
   // The frame the ball is drawn into. Copied from the playfield each frame rather than redrawn,
   // because the playfield is a still picture and the ball is the only thing that moves.

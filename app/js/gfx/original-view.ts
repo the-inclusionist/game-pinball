@@ -81,8 +81,20 @@ export interface OriginalCamera {
   readonly d: number;
 }
 
+export interface CameraOptions {
+  /**
+   * ⚠️ THE HALVING GOES IN THE PROJECTION, NOT IN THE PHYSICS. The table stays in its own float units
+   * and only the map onto pixels changes, which is what lets the same collision code drive a picture
+   * at any size — decision 5 of the plan, and the reason `proj.ts` exists as a separate thing.
+   *
+   * Both the focal distance and the centre scale: `toScreen` is `p * (d / z) + centre`, so halving one
+   * without the other moves the table off the middle of its own bitmap by a quarter of its width.
+   */
+  readonly scale?: number;
+}
+
 /** `pb::pb_init`'s projection, read from `camera_info` and recentred from the table's record 700. */
-export function readCamera(groups: readonly Group[]): OriginalCamera {
+export function readCamera(groups: readonly Group[], o: CameraOptions = {}): OriginalCamera {
   const camera = groupNamed(groups, CAMERA_GROUP);
   const floats = camera && entryOfType(camera, EntryType.Float32s);
   if (!floats) throw new Error('[original-view] the archive carries no camera_info');
@@ -105,13 +117,17 @@ export function readCamera(groups: readonly Group[]): OriginalCamera {
   if (!recentre || recentre.length < 2) {
     throw new Error('[original-view] the table group does not say where the projection is centred');
   }
-  const centre = { x: recentre[0]!, y: recentre[1]! };
+  const scale = o.scale ?? 1;
+  const centre = { x: recentre[0]! * scale, y: recentre[1]! * scale };
+  const scaledD = d * scale;
 
   return {
     centre,
-    d,
+    d: scaledD,
     matrix,
-    projection: createProjection({ matrix, d, centerX: centre.x, centerY: centre.y, zMin, zScaler }),
+    projection: createProjection({
+      matrix, d: scaledD, centerX: centre.x, centerY: centre.y, zMin, zScaler,
+    }),
   };
 }
 
