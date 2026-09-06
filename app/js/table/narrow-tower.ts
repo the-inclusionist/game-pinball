@@ -38,8 +38,18 @@ export const NARROW_TOWER: AuthoredTable = {
 
     { name: 'plunger', kind: 'plunger', role: 'structure', bounds: { x: 104, y: 384, width: 10, height: 32 } },
 
-    // Three landings up the tower. A ball that reaches the top has crossed the whole camera range.
-    { name: 'landing1', kind: 'lane', role: 'free', bounds: { x: 20, y: 300, width: 30, height: 12 },
+    /**
+     * Three landings up the tower. A ball that reaches the top has crossed the whole camera range.
+     *
+     * ⚠️ THE FIRST ONE SPANS THE TOWER, AND IT USED TO BE THIRTY PIXELS WIDE LIKE THE OTHERS. Thirty
+     * of a hundred and twenty is a one-in-four chance that a descending ball crosses it, and the gate
+     * that asks whether this table scores at all was riding on that chance: it went red the day the
+     * ball gained a radius and every trajectory shifted by three pixels. It had been passing on luck.
+     *
+     * A shelf everything falls past is also the truer thing for the LOWEST landing — the two above it
+     * stay narrow, because those are shots rather than certainties.
+     */
+    { name: 'landing1', kind: 'lane', role: 'free', bounds: { x: 4, y: 300, width: 112, height: 12 },
       scores: [1000], control: 'LaneControl', lamps: ['lamp.climb1'] },
     { name: 'landing2', kind: 'lane', role: 'free', bounds: { x: 60, y: 200, width: 30, height: 12 },
       scores: [2000], control: 'LaneControl', lamps: ['lamp.climb2'] },
@@ -56,6 +66,26 @@ export const NARROW_TOWER: AuthoredTable = {
     { name: 'bumper.mid', kind: 'bumper', role: 'structure', bounds: { x: 51, y: 150, width: 18, height: 18 },
       scores: [500, 1000, 1500, 2000], control: 'BumperControl',
       collision: [{ kind: 'circle', at: { x: 60, y: 159 }, radius: 9 }] },
+
+    /**
+     * ⚠️ THE FUNNEL, WHICH THIS TABLE NEVER HAD, and the gap it left is the one `wide-arc`'s own
+     * funnel comment describes: the ball came down the outside of the right paddle, hit its BACK, and
+     * went out of the bottom of the table. A run flapping the flippers came out identical to a run
+     * touching nothing — because `flipperCollision`'s from-behind branch reads no motion at all, so a
+     * ball on the wrong side of a paddle cannot tell whether the player is playing.
+     *
+     * Found when the ball gained a radius and every trajectory moved three pixels. The old path was
+     * already outside the paddles; it merely used to end at the drain by luck rather than past it.
+     *
+     * Each guide runs from a side wall down to a flipper pivot, so the only way to the bottom is over
+     * a paddle. Written to FACE the play, like every other one-sided edge here.
+     */
+    { name: 'guide.left', kind: 'wall', role: 'structure',
+      bounds: { x: 4, y: 340, width: 16, height: 50 },
+      collision: [{ kind: 'line', from: { x: 4, y: 340 }, to: { x: 20, y: 390 } }] },
+    { name: 'guide.right', kind: 'wall', role: 'structure',
+      bounds: { x: 90, y: 340, width: 26, height: 50 },
+      collision: [{ kind: 'line', from: { x: 90, y: 390 }, to: { x: 116, y: 340 } }] },
 
     { name: 'flipper.left', kind: 'flipper', role: 'structure',
       bounds: { x: 20, y: 390, width: 24, height: 7 },

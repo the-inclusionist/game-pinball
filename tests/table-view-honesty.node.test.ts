@@ -174,7 +174,14 @@ const PAINTED = {
   'ring-belt': 7696,
   'slipstream': 5899,
   'wide-arc': 4313,
-  'narrow-tower': 3553,
+  // ⚠️ 3553 UNTIL THE BALL GAINED A RADIUS. `table/physics-build` now offsets every wall by it, the way
+  // the original does and `physics/wall` already did for the 1995 table, and two of this fixture's
+  // gates went red: the ball scored nothing and flapping changed nothing. Both were passing on luck.
+  // `landing1` became a shelf spanning the tower rather than a thirty-pixel target a descending ball
+  // met one time in four, and the table gained the funnel guides it had never had. That is +1285
+  // painted pixels — 984 of them the wider landing — and it is a change to the TABLE, not to the
+  // drawing: this number is a golden, so it moves only when somebody says why.
+  'narrow-tower': 4838,
   'four-flippers': 2623,
   'bare-minimum': 388,
 };

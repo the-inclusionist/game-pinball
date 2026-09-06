@@ -29,7 +29,7 @@
 import {
   createEdgeManager, placeLineInGrid, placeCircleInGrid, type EdgeManager,
 } from '../physics/grid.js';
-import { createLine, createCircle, type Component } from '../physics/edges.js';
+import { createLine, createCircle, offsetLine, type Component } from '../physics/edges.js';
 import { basicCollision, type CollisionResponse } from '../physics/collision.js';
 import { createBall, type Ball, type StepContext } from '../physics/step.js';
 import {
@@ -270,15 +270,60 @@ export function buildPhysics(table: AuthoredTable, o: PhysicsOptions = {}): Tabl
       },
     };
 
+    /**
+     * ⚠️ THE BALL HAS A RADIUS AND NOTHING HERE KNEW IT.
+     *
+     * `physics/edges` states the original's trick in its own header — "the original never tests a
+     * circle against a wall: it PUSHES the wall outward by the ball's radius and treats the ball as a
+     * point" — and `physics/wall` ports it faithfully for the 1995 table. This loop called `createLine`
+     * and `createCircle` straight, so on an authored table every surface let the ball sink to its
+     * CENTRE: a six-pixel ball buried three pixels into everything it touched, on a screen 320 wide.
+     *
+     * Found while fixing the plunger the Dev reported. The first version of that gate asked for the
+     * ball's surface to stop at the launcher's face and failed by exactly one radius on all six
+     * tables, which is how a defect belonging to every wall showed up as a property of one.
+     */
     for (const shape of component.collision) {
       if (shape.kind === 'line') {
-        placeLineInGrid(grid, createLine({
+        const line = createLine({
           component: owner, start: { x: shape.from.x, y: shape.from.y },
           end: { x: shape.to.x, y: shape.to.y },
-        }));
+        });
+        // Along its own normal, which is the side the ball is on: these faces are one-sided and wound
+        // to face the play. See `normalOf` in `table/authored` for why the winding is the contract.
+        offsetLine(line, table.ballRadius);
+        placeLineInGrid(grid, line);
+
+        /**
+         * ⚠️ AND THERE ARE NO CORNER CIRCLES HERE, WHICH WAS WRITTEN, MEASURED AND THEN REMOVED.
+         *
+         * `physics/wall`'s header says pushing sides out OPENS the corners between them, and it closes
+         * each convex vertex with a circle. It can pick the right vertices because it is handed a
+         * POLYGON and can read the turn from one side to the next; an authored table declares loose
+         * segments belonging to different components, so a circle at every segment END was written
+         * instead — over-inclusive, on the argument that a rounded inside corner beats a hole.
+         *
+         * ⚠️ NO MEASUREMENT COULD FIND THE HOLE. 480 shots — every three degrees, four speeds — fired
+         * from the middle of a closed box: nought escapes with the circles and nought without, the
+         * same number. Repeated with the offset multiplied by EIGHT, which should tear any seam wide
+         * open: still nought.
+         *
+         * The reason is in how a table is written. `physics/wall` guards a polygon, whose sides ABUT
+         * end to end and whose joints separate when both are pushed out. These tables declare walls as
+         * overlapping SPANS — `low-orbit`'s floor runs the full width and its side runs the full
+         * height, so the two faces still cross after the offset and there is no seam to open. The
+         * hazard is real for the shape `physics/wall` handles and does not arise for this one.
+         *
+         * So the circles went, under this project's own rule: a gate that cannot be made to fail is
+         * deleted rather than kept for comfort, and code nobody can justify is code nobody can
+         * maintain. This paragraph is what stays, so that a leak found later has somewhere to start.
+         */
       } else {
+        // A circle grows rather than moves: same trick, one dimension less. `installWall` writes it
+        // as `o.offset + data[3]`.
         placeCircleInGrid(grid, createCircle({
-          component: owner, center: { x: shape.at.x, y: shape.at.y }, radius: shape.radius,
+          component: owner, center: { x: shape.at.x, y: shape.at.y },
+          radius: shape.radius + table.ballRadius,
         }));
       }
     }

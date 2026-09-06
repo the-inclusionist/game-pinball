@@ -89,16 +89,26 @@ export const WIDE_ARC: AuthoredTable = {
     { name: 'guide.right', kind: 'wall', role: 'structure', bounds: { x: 220, y: 116, width: 136, height: 134 },
       collision: [{ kind: 'line', from: { x: 220, y: 250 }, to: { x: 356, y: 116 } }] },
 
+    /**
+     * ⚠️ THE TIPS ARE SIXTEEN PIXELS APART AND WERE TWENTY-FOUR, which is the width of the drain's
+     * mouth and therefore a way to lose that no paddle could reach. The ball came off `guide.left`,
+     * touched the ramp once more and fell straight down the middle between two raised flippers — and a
+     * flapping run came out identical to a quiet one, which is exactly what the funnel note above this
+     * says the guides were added to stop. The funnel delivered the ball to a hole between the paddles.
+     *
+     * Found when the ball gained a radius and every trajectory moved three pixels; the gap had been
+     * survivable by luck rather than by geometry.
+     */
     { name: 'flipper.left', kind: 'flipper', role: 'structure',
-      bounds: { x: 140, y: 250, width: 28, height: 7 },
+      bounds: { x: 140, y: 250, width: 32, height: 7 },
       flipper: {
-        pivot: { x: 140, y: 250 }, tipAtRest: { x: 168, y: 257 }, sweepDegrees: -55,
+        pivot: { x: 140, y: 250 }, tipAtRest: { x: 172, y: 257 }, sweepDegrees: -55,
         baseRadius: 3, tipRadius: 2, extendTime: 0.08, retractTime: 0.16,
       } },
     { name: 'flipper.right', kind: 'flipper', role: 'structure',
-      bounds: { x: 192, y: 250, width: 28, height: 7 },
+      bounds: { x: 188, y: 250, width: 32, height: 7 },
       flipper: {
-        pivot: { x: 220, y: 250 }, tipAtRest: { x: 192, y: 257 }, sweepDegrees: 55,
+        pivot: { x: 220, y: 250 }, tipAtRest: { x: 188, y: 257 }, sweepDegrees: 55,
         baseRadius: 3, tipRadius: 2, extendTime: 0.08, retractTime: 0.16,
       } },
 
