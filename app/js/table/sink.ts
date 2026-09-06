@@ -35,7 +35,13 @@ export interface SinkTable extends TableState {
   drainCollision(ball: unknown, position: Vector2, direction: Vector2, distance: number, edge: unknown): void;
   /** Is there already a ball within `radius` of `at`? */
   ballCountInRect(at: Vector2, radius: number): number;
-  addBall(at: Vector2): { collisionDisabled: boolean; throwBall(direction: Vector2, angleMult: number, speedMult1: number, speedMult2: number): void };
+  /**
+   * ⚠️ IT CAN REFUSE. `TPinballTable::AddBall` returns null once twenty balls are in play, and the
+   * original answers with an assertion — which in a release build is a ball quietly thrown away. This
+   * waits the same half second the occupied exit waits and asks again, because a hole that took null
+   * for an answer would swallow a ball and never give it back.
+   */
+  addBall(at: Vector2): { collisionDisabled: boolean; throwBall(direction: Vector2, angleMult: number, speedMult1: number, speedMult2: number): void } | null;
   /** `CollisionCompOffset` — the radius used for the occupancy test is twice this. */
   collisionCompOffset: number;
 }
@@ -79,6 +85,10 @@ export function createSink(o: SinkOptions): Sink {
     }
 
     const ball = o.table.addBall(o.ballPosition);
+    if (!ball) {
+      o.timer.set(RETRY_SECONDS, release);
+      return;
+    }
     // It leaves the mouth of the sink before the grid can touch it; otherwise it would collide with the
     // very sink it is being born inside.
     ball.collisionDisabled = true;

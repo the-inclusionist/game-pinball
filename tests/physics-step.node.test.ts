@@ -142,3 +142,47 @@ describe('step — substeps', () => {
     expect(countQueries(9999, 0.01)).toBe(4);
   });
 });
+
+/**
+ * ⚠️ `TBall::Disable` — WHAT A HOLE DOES TO THE BALL IT SWALLOWS.
+ *
+ * `TSink::Collision` calls it and nothing else: the ball stops existing as far as the table is
+ * concerned, and the hole gives one back later through `AddBall`. Without it the sink had no way to
+ * take the ball off the table, and a swallowed ball went on falling through the geometry underneath.
+ */
+describe('a ball taken off the table', () => {
+  test('disabling it is what stops the frame moving it', () => {
+    const ball = createBall({ radius: 1, position: { x: 0, y: 0 }, direction: { x: 0, y: 1 }, speed: 10 });
+
+    ball.disable();
+
+    expect(ball.active).toBe(false);
+  });
+
+  test('⚠️ and it ALSO stops the collisions, which is what keeps a hole from eating a ball twice', () => {
+    // `TBall::Disable` sets `ActiveFlag = false` AND `CollisionDisabledFlag = true`, and the second is
+    // the load-bearing one: the substep loop's only guard is `!CollisionDisabledFlag && steps >= step`,
+    // with no test of the active flag anywhere. Clearing the active flag alone leaves the ball being
+    // tested against the geometry for the rest of the frame, so it falls into the same sink again and
+    // again — seventy-two times in one demonstration run, each swallow scheduling another release, and
+    // the pool of balls grew from one to nineteen. Nothing errored; the table just filled with balls.
+    const ball = createBall({ radius: 1, position: { x: 0, y: 0 }, direction: { x: 0, y: 1 }, speed: 10 });
+
+    ball.disable();
+
+    expect(ball.collisionDisabled).toBe(true);
+  });
+
+  test('⚠️ and the frame leaves a disabled ball exactly where it was', () => {
+    const ball = createBall({ radius: 1, position: { x: 0, y: 0 }, direction: { x: 0, y: 1 }, speed: 10 });
+    const ctx: StepContext = {
+      grid: createEdgeManager(0, 0, 100, 100),
+      fieldEffects: (_ball, destination) => { destination.x = 0; destination.y = 1; },
+    };
+    ball.disable();
+
+    advanceFrame([ball], ctx, 0.1);
+
+    expect(ball.position).toEqual({ x: 0, y: 0 });
+  });
+});

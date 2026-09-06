@@ -38,6 +38,19 @@ export interface HoldingComponent {
 
 export interface Ball {
   active: boolean;
+  /**
+   * `TBall::Disable` — the ball stops existing as far as the table is concerned. It is the whole of
+   * what a sink does to a ball it swallows; the hole gives one back later through
+   * `TPinballTable::AddBall`, which revives this very object.
+   *
+   * ⚠️ IT CLEARS TWO FLAGS AND THE SECOND IS THE LOAD-BEARING ONE. `ActiveFlag = false` keeps the ball
+   * out of the NEXT frame; `CollisionDisabledFlag = true` keeps it out of the REST OF THIS ONE, and
+   * the substep loop below tests only that second flag — there is no active check in it, here or in
+   * the original. Clear the active flag alone and a swallowed ball goes on being tested against the
+   * geometry for the remainder of the frame, falls into the same hole again and again, and every one
+   * of those swallows schedules another release.
+   */
+  disable(): void;
   /** `TBall::throw_ball` — see `createBall`. */
   throwBall(direction: Vector2, angleMult: number, speedMult1: number, speedMult2: number): void;
   position: Vector2;
@@ -106,6 +119,8 @@ export function createBall(
      * calls `heldBall.throwBall(...)` and has no way to reach a free function. The arithmetic stays in
      * `physics/stuck`, which is where the unstuck path already uses it.
      */
+    disable(): void { ball.active = false; ball.collisionDisabled = true; },
+
     throwBall(direction, angleMult, speedMult1, speedMult2) {
       // ⚠️ AND IT RELEASES THE COMPONENT, which is what `inCollisionComponent = false` means upstream.
       // A ball thrown while still held would be moved by the component on the next frame and the throw

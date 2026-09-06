@@ -31,6 +31,8 @@ import { buildOriginalSoloTargets } from '../table/original-solo-targets.js';
 import { buildOriginalOneways, onewayNames } from '../table/original-oneways.js';
 import { flipperSides } from '../table/original-flippers.js';
 import { blockerNames, buildOriginalBlockers } from '../table/original-blockers.js';
+import { buildOriginalSinks } from '../table/original-sinks.js';
+import { DRAIN, WORM_HOLE_SINKS } from '../control/bindings.js';
 import { buildOriginalPlunger } from '../table/original-plunger.js';
 import type { ControlContext } from '../control/dispatch.js';
 import { loadTable } from '../dat/loader.js';
@@ -78,6 +80,12 @@ export interface Demo {
   readonly score: ScoreState;
   /** The table's own bumpers and lights, built from the archive. */
   readonly components: OriginalComponents;
+  /**
+   * ⚠️ THE HOLES THAT OWN THEIR COLLISIONS, which is a shorter list than the holes that exist. A sink
+   * with no control keeps the ball for the rest of the game, so only the three the wormhole runs are
+   * here — `v_sink7`, the escape chute, runs `EscapeChuteSinkControl` and this build has none.
+   */
+  readonly sinks: ReadonlyMap<string, unknown>;
   /** The archive names whose 1995 control function actually runs. */
   readonly wired: ReadonlySet<string>;
   /**
@@ -273,6 +281,13 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
    */
   const kickouts: ReturnType<typeof buildOriginalKickouts> = new Map();
   /**
+   * ⚠️ AND THE SAME RULE FOR THE HOLES THAT TELEPORT. A sink does not release itself either: it
+   * swallows the ball and waits for a control to reset its timer. `WormHoleControl` runs the three the
+   * teleport chooses between, so those three own their collisions — and `v_sink7`, the escape chute,
+   * runs no control this build has and stays plain geometry the ball bounces off.
+   */
+  const sinks: ReturnType<typeof buildOriginalSinks> = new Map();
+  /**
    * ⚠️ THE NINE THAT DROP. A popup target reports only a hard hit and disables its own edges before it
    * does — so the payment comes from the component, like the bumper's, and the ball stops being able
    * to touch a target it has already knocked down.
@@ -315,7 +330,8 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
       ?? popupTargets.get(name) ?? soloTargets.get(name)
       ?? components.bumpers.get(name) ?? components.kickbacks.get(name)
       // Only the bound ones: an unbound hole must not be given a ball it cannot give back.
-      ?? (kickouts.get(name)?.control ? kickouts.get(name) : undefined),
+      ?? (kickouts.get(name)?.control ? kickouts.get(name) : undefined)
+      ?? sinks.get(name),
     onHit: (hit) => {
       touched.push(hit.group);
       // ⚠️ BY KIND, NOT PER COLLISION. A ball resting against a wall collides many times a second, and
@@ -329,8 +345,10 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
       // `control::handler` only when the hit was HARD; a graze bounces and pays nothing. This wrapper
       // reports every collision, so routing the payment through it paid a ball rolling along a bumper
       // once per frame of the roll — six touches, six payments, and a score that reads as luck.
+      // ⚠️ AND A SINK REPORTS FOR ITSELF TOO. `TSink::Collision` calls `control::handler` after it has
+      // swallowed the ball, so paying here as well would score the hole twice on one shot.
       if (components.bumpers.has(hit.group) || popupTargets.has(hit.group)
-        || soloTargets.has(hit.group)) return;
+        || soloTargets.has(hit.group) || sinks.has(hit.group)) return;
 
       payFor(hit.group);
     },
@@ -379,13 +397,34 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
   })) soloTargets.set(name, target);
 
   const gates = buildOriginalGates(manifest, table);
+  for (const [name, sink] of buildOriginalSinks(manifest, {
+    table: {
+      tiltLocked: false,
+      // `TableG->CollisionCompOffset`, which this port has treated as the ball's radius since the
+      // stuck watch needed it.
+      collisionCompOffset: table.ballRadius,
+      // ⚠️ ON TILT A HOLE BECOMES THE DRAIN, and the drain here is its own control function — the same
+      // one an ordinary drain collision runs. Handing the ball anywhere else would make a tilted table
+      // eat balls without ever ending one.
+      drainCollision: () => payFor(DRAIN.component),
+      ballCountInRect: (at, margin) => table.ballCountInRect(at, margin),
+      addBall: (at) => table.addBall(at),
+    },
+    timer: components.timer,
+    onSwallow: (name) => { touched.push(name); payFor(name); },
+  })) {
+    // Only the three the wormhole runs; see the note beside `sinks`.
+    if (WORM_HOLE_SINKS.sinks.includes(name as (typeof WORM_HOLE_SINKS.sinks)[number])) {
+      sinks.set(name, sink);
+    }
+  }
   const drainBlockers = buildOriginalBlockers(manifest, table, { timer: components.timer });
   for (const [name, kickout] of buildOriginalKickouts(manifest, table, {
     table: { tiltLocked: false }, timer: components.timer,
   })) kickouts.set(name, kickout);
 
   dispatch = createOriginalDispatch({
-    components, context, gates, kickouts, popupTargets,
+    components, context, gates, kickouts, popupTargets, sinks,
     feed: { table: drainTable, blockers: drainBlockers },
     drain: {
       table: drainTable,
@@ -432,6 +471,7 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
     score,
     scored,
     components,
+    sinks,
     wired: dispatch.wired,
     paidFlat,
     get info() { return info; },

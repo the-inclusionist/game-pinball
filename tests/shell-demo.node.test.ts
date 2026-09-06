@@ -169,19 +169,26 @@ describe('the 1995 table, from an ArrayBuffer', () => {
   });
 });
 
-describe('⚠️ and the sixty-five wired components run their 1995 control function', () => {
+describe('⚠️ and the sixty-eight wired components run their 1995 control function', () => {
   test('the demo says which they are', () => {
     const bytes = archive();
     if (!bytes) return expect(existsSync(DAT)).toBe(false);
 
     const demo = createDemo(bytes, { random: seeded() });
 
-    // Sixty-three until the feed was wired. The two new ones are not collisions: `plunger` runs
-    // `PlungerControl` when a ball is put back into play, and `v_bloc1` runs
-    // `DrainBallBlockerControl` when the barrier's own deadline runs out.
-    expect(demo.wired.size).toBe(65);
+    // Sixty-three until the feed was wired. Two of the five new ones are not collisions at all:
+    // `plunger` runs `PlungerControl` when a ball is put back into play, and `v_bloc1` runs
+    // `DrainBallBlockerControl` when the barrier's own deadline runs out. The other three are the
+    // wormhole's holes.
+    expect(demo.wired.size).toBe(68);
     expect(demo.wired.has('plunger')).toBe(true);
     expect(demo.wired.has('v_bloc1')).toBe(true);
+    for (const name of ['v_sink1', 'v_sink2', 'v_sink3']) {
+      expect(demo.wired.has(name), name).toBe(true);
+    }
+    // ⚠️ AND THE ESCAPE CHUTE IS NOT AMONG THEM. It runs no control this build has, and a hole with no
+    // control keeps the ball for the rest of the game.
+    expect(demo.wired.has('v_sink7'), 'the escape chute').toBe(false);
   });
 
   test('⚠️ and no wired component is ALSO paid flat, over a whole ball', () => {
@@ -371,6 +378,44 @@ describe('⚠️ and a ball can be lost, which the demonstration counts', () => 
 
     expect(demo.table.balls.length).toBe(1);
     expect(demo.table.balls.filter((b) => b.active).length).toBe(1);
+  });
+
+  test('⚠️ only the three holes the wormhole runs own their collisions', () => {
+    // A sink with no control swallows the ball and never gives it back: it does not drain, does not
+    // score and does not count as lost — the ball stops existing. So the escape chute, whose
+    // `EscapeChuteSinkControl` this build does not have, must stay plain geometry the ball bounces off.
+    // Same rule as the unbound kickout.
+    const bytes = archive();
+    if (!bytes) return expect(existsSync(DAT)).toBe(false);
+    const demo = createDemo(bytes, { random: seeded() });
+
+    expect([...demo.sinks.keys()].sort()).toEqual(['v_sink1', 'v_sink2', 'v_sink3']);
+  });
+
+  test('⚠️ a ball that reaches a wormhole hole is SWALLOWED and given back, once', () => {
+    // The one seed in twelve whose ball finds `v_sink2` on its own. Two touches over two thousand
+    // frames: swallowed, thrown back out two seconds later, and it falls in again much later.
+    //
+    // ⚠️ AND THE POOL DOES NOT GROW, which is the whole of what `TBall::Disable` clearing
+    // `CollisionDisabledFlag` buys. Without it the swallowed ball went on being tested against the
+    // geometry for the rest of the frame and fell into the same hole seventy-two times, each swallow
+    // scheduling another release: the pool reached nineteen balls and nothing errored.
+    const bytes = archive();
+    if (!bytes) return expect(existsSync(DAT)).toBe(false);
+    const demo = createDemo(bytes, { random: seeded(9) });
+
+    demo.plunge(true);
+    demo.step(60);
+    demo.plunge(false);
+    demo.step(2000);
+
+    expect(demo.touched.filter((name) => name === 'v_sink2').length).toBe(2);
+    expect(demo.table.balls.length, 'one ball, in and out of the hole').toBe(1);
+    // ⚠️ AND THE HOLE IS PAID BY ITS OWN CONTROL, never flat: `TSink::Collision` calls
+    // `control::handler` itself, so paying it through the wall wrapper as well would double it.
+    expect(demo.paidFlat).not.toContain('v_sink2');
+    // `WormHoleControl`, under the score table's own name for the hole.
+    expect(demo.scored).toContain('sink2');
   });
 
   test('⚠️ and EVERY ball in the pool is moved, not the one the demonstration watches', () => {

@@ -256,6 +256,42 @@ describe('sink — giving the ball back', () => {
     return { sink, t, thrown, created, setOccupied: (n: number) => { occupied = n; } };
   }
 
+  test('⚠️ and when the table has no ball to give it, it waits and asks again', () => {
+    // `AddBall` returns null when twenty balls are already in play. The original asserts and, in a
+    // release build, throws the ball away; this waits the same half second the occupied exit waits.
+    // A hole that took null for an answer would swallow a ball and quietly never give it back.
+    const t = fakeTimer();
+    const created: unknown[] = [];
+    let room = false;
+    const table: SinkTable = {
+      tiltLocked: false,
+      drainCollision: () => {},
+      ballCountInRect: () => 0,
+      addBall: () => {
+        if (!room) return null;
+        const b = { collisionDisabled: false, throwBall: () => {} };
+        created.push(b);
+        return b;
+      },
+      collisionCompOffset: 1,
+    };
+    const sink = createSink({
+      table, timer: t.timer,
+      ballPosition: { x: 10, y: 20 },
+      throwDirection: { x: 0, y: -1 },
+      throwAngleMult: 0, throwSpeedMult1: 1, throwSpeedMult2: 1,
+      holdTime: 2,
+    });
+
+    sink.scheduleRelease();
+    t.fireAll();
+    expect(created, 'no ball to be had').toEqual([]);
+
+    room = true;
+    t.fireAll();
+    expect(created, 'and it asked again').toHaveLength(1);
+  });
+
   test('releases a ball when the exit is clear', () => {
     const { sink, t, created, thrown } = build();
 
