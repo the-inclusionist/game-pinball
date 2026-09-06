@@ -28,12 +28,6 @@ const ASSET = /\.(png|jpe?g|gif|webp|bmp|ttf|otf|woff2?|mp3|ogg)$/i;
  * So the rule is checked where it can still be enforced — before the commit — and it is checked against
  * what git actually tracks rather than against what `.gitignore` claims.
  */
-/**
- * What counts as an asset, in ONE place because two tests ask the question — and a second copy of this
- * expression is exactly the defect the README test below exists to record.
- */
-const ASSET = /\.(png|jpe?g|gif|webp|bmp|ttf|otf|woff2?|mp3|ogg)$/i;
-
 describe('⚠️ the original game data never enters the history', () => {
   // Microsoft's own file types. Deliberately by EXTENSION rather than by directory: moving a WAV out of
   // `game_resources/` would defeat a path check, and would not make the file any more ours.
