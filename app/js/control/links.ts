@@ -25,6 +25,17 @@
 // `{BumperControl, 4, control_bump_scores1}` appears four times, once per bumper of that group. The
 // array is shared, not copied, so a group of bumpers is worth the same by construction rather than by
 // four maintained copies.
+//
+// ========================= AND THE GAME DOES NOT WIRE ITSELF THROUGH THIS =========================
+// `table/original-dispatch` attaches behaviour per KIND — lanes, target banks, bumper groups, the two
+// text boxes — which is more than the flat name-to-control loop the original runs, and it is what the
+// running game uses. So `makeLinks` is not the port's wiring loom and should not be made into one:
+// there would then be two, and two implementations of one function is how the two drift apart.
+//
+// What lives only here is the COMPLETENESS QUESTION: the original resolves a missing name to null and
+// carries on, and this reports it. `tests/control-address-book` is where that job is done — 88 scoring
+// components and 145 simple names against the shipped archive, all of them answered — and it is the
+// gate an authored table will have to pass in phase 8.
 
 import type { ControlFunc, ControlledComponent } from './dispatch.js';
 

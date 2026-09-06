@@ -27,6 +27,12 @@
 // A name that this table lists and a table does not provide is not an error in the original: it simply
 // stays null and every use of it does nothing. `resolveSimpleComponents` reports the misses instead,
 // because for an AUTHORED table (phase 8) a missing lamp is a wiring bug, not a fact of life.
+//
+// ========================= WHERE THIS LIST IS ACTUALLY ASKED =========================
+// Nothing in the running game reads these 145 names: `table/original-dispatch` reaches the components
+// it needs by kind. They are the address book the control layer is WRITTEN AGAINST, so the use they
+// have is being checked against the file — `tests/control-address-book` resolves every one of them
+// through `SIMPLE_TAGS` and asserts the archive answers to all 145. See `control/links`.
 
 /** `lite*`. Ninety-five of them, and every one is read for its state or its message field. */
 export const SIMPLE_LIGHTS: readonly string[] = [
