@@ -1538,16 +1538,18 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
     }
   }
 
-  // ⚠️ AND THREE CASES OF THE MISSION SWITCH ARE NOT MISSIONS AND ARE NOT HERE. `control/mission-specials`
-  // holds `AlienMenaceController` (10), `TimeWarpPartTwoController` (24) and `GameoverController` (32),
-  // all three written and tested and none of them wired.
+  // ⚠️ THREE CASES OF THE MISSION SWITCH ARE NOT ROWS IN `MISSION_TABLE`. `control/mission-specials`
+  // holds `AlienMenaceController` (10), `TimeWarpPartTwoController` (24) and `GameoverController` (32).
   //
-  // The reason is not that a component is missing — it is that the NAMES are. Every binding in
-  // `control/bindings` was transcribed from `control.cpp`, and these three functions sit past the point
-  // where the upstream file can be read in one piece from here; their lamps, their strings and their
-  // next-mission numbers have never been read. Wiring them from a guess would put a mission on the
-  // table that announces the wrong thing and hands over to the wrong mission, which is worse than a
-  // mission that does not run — so they are declined, and this says so.
+  // ⚠️ AND THE REASON THEY WERE ALL DECLINED IS GONE. It stood here for several passes and it said the
+  // NAMES were missing: "these three functions sit past the point where the upstream file can be read
+  // in one piece from here". That was true of a fetch that truncates a 150 KB file and false of
+  // `gh api`, which hands over all 4603 lines of `control.cpp`. Ten is wired below, from the source.
+  //
+  // Twenty-four and thirty-two are still declined, and now for the ordinary reason: nobody has wired
+  // them yet. Their numbers are known — Time Warp part two is lamps `lite55`, `lite26`, `lite304` and
+  // `lite317` with STRING248, and Game Over is `goal_lights`, `flip1`, `flip2` and STRING272 — and the
+  // work is the wiring, not the reading.
   /**
    * ⚠️ CASE 10 OF THE MISSION SWITCH, WHICH IS NOT A ROW IN THE TABLE. Alien Menace listens for a
    * bumper LEVEL and for nothing else — no collision, no lane, no target — so it is built here rather
