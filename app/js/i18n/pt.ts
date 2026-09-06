@@ -9,6 +9,13 @@
 // line over four lines. Writing to that width is the HUD decision arriving as a writing constraint, and
 // a test refuses anything longer.
 //
+// ⚠️ pt-BR, AND A GATE NOW SAYS SO. `tests/i18n-brazilian-portuguese` fails on a list of European
+// spellings — `ficheiro`, `Bónus`, `gravítico`, `sobresselente`. Eight of them were in this file at
+// once, `Bónus` and `Bônus` eleven lines apart among them, and no existing gate could see any of it:
+// the other three compare the locales with EACH OTHER, and three locales can be perfectly in step and
+// all three be wrong. The list is a FLOOR. It could not see `joga outra vez` or `Remate de perícia`,
+// which were pt-PT grammar and vocabulary spelled the Brazilian way, and it never will.
+//
 // `{n}` is what remains to be done and `{points}` a score. The FRAME translates and the NUMBER passes
 // through, which is the engine's own rule for parameters.
 
@@ -82,19 +89,19 @@ const pt: Record<string, string> = {
   'pinball.rank.8': 'Almirante',
   'pinball.rank.9': 'Almirante da Frota',
   'pinball.rank.promoted': 'Promovido a {rank}.',
-  'pinball.ball.bonus': 'Bónus: {points}',
-  'pinball.ball.extraBall1': 'Jogador 1, joga outra vez.',
-  'pinball.ball.extraBall2': 'Jogador 2, joga outra vez.',
-  'pinball.ball.extraBall3': 'Jogador 3, joga outra vez.',
-  'pinball.ball.extraBall4': 'Jogador 4, joga outra vez.',
-  'pinball.ball.held': 'Joga outra vez.',
-  'pinball.ball.spareSpent': 'Sobresselente gasto: joga outra vez.',
+  'pinball.ball.bonus': 'Bônus: {points}',
+  'pinball.ball.extraBall1': 'Jogador 1, jogue de novo.',
+  'pinball.ball.extraBall2': 'Jogador 2, jogue de novo.',
+  'pinball.ball.extraBall3': 'Jogador 3, jogue de novo.',
+  'pinball.ball.extraBall4': 'Jogador 4, jogue de novo.',
+  'pinball.ball.held': 'Jogue de novo.',
+  'pinball.ball.spareSpent': 'Bola reserva gasta: jogue de novo.',
   'pinball.award.blackHole': 'Buraco negro: {points}',
-  'pinball.award.gravityWell': 'Poço gravítico: {points}',
-  'pinball.award.gravityWellArmed': 'Poço gravítico armado: {points}',
-  'pinball.award.gravityWellUnknown': 'Poço gravítico armado.',
-  'pinball.award.reflexShot': 'Remate de reflexo: {points}',
-  'pinball.award.skillShot': 'Remate de perícia: {points}',
+  'pinball.award.gravityWell': 'Poço gravitacional: {points}',
+  'pinball.award.gravityWellArmed': 'Poço gravitacional armado: {points}',
+  'pinball.award.gravityWellUnknown': 'Poço gravitacional armado.',
+  'pinball.award.reflexShot': 'Tiro de reflexo: {points}',
+  'pinball.award.skillShot': 'Tiro de perícia: {points}',
   'pinball.award.medal1': 'Medalha de bronze.',
   'pinball.award.medal2': 'Medalha de prata.',
   'pinball.award.medal3': 'Medalha de ouro: bola extra!',
@@ -144,8 +151,9 @@ const pt: Record<string, string> = {
   'pinball.title.highScores': 'Melhores pontuações',
   'pinball.title.noScores': 'Ninguém jogou ainda.',
   'pinball.controls.title': 'Controles',
-  // ⚠️ "Pá" é a peça, e o jogador precisa saber QUAL. As duas linhas de cada lado são as duas maneiras
-  // de alcançar a mesma pá — a direção e o botão —, e dizer isso é o motivo de a lista existir.
+  // ⚠️ "Pá" NAMES THE PART, and the player needs to know WHICH one. The two lines on each side are the
+  // two ways of reaching the same flipper — the direction key and the button — and saying so is the
+  // whole reason the list exists.
   'pinball.controls.left': 'Pá esquerda',
   'pinball.controls.right': 'Pá direita',
   'pinball.controls.plunger': 'Lançar',
@@ -160,15 +168,15 @@ const pt: Record<string, string> = {
   'pinball.a11y.blindOn': 'Modo cego ligado. Use S para varrer a mesa.',
   'pinball.a11y.unavailableInDemo': 'O guia sonoro ainda não descreve a mesa de 1995.',
   'pinball.a11y.blindOff': 'Modo cego desligado.',
-  'pinball.demo.ask': 'Modo demonstração: escolha o seu PINBALL.DAT. O ficheiro não sai desta máquina.',
+  'pinball.demo.ask': 'Modo demonstração: escolha o seu PINBALL.DAT. O arquivo não sai desta máquina.',
   'pinball.demo.caveat': 'A mesa de 1995: a física, as lâmpadas, as rampas, os sprites e as vinte e três missões. O painel lateral saiu de propósito — a pontuação e o resto ficam nos cantos. O guia sonoro ainda não descreve esta mesa.',
   'pinball.demo.gameOver': 'Sem bolas.',
   'pinball.demo.music': 'Música (opcional): escolha o seu PINBALL.MID.',
   'pinball.demo.sounds': 'Sons (opcional): escolha os seus SOUND*.WAV — todos de uma vez.',
   'pinball.demo.soundsLoaded': '{n} sons da mesa carregados.',
   'pinball.demo.soundsStranding': '⚠ {n} destes sons cronometram um buraco. Sem eles a bola pode ficar retida para sempre: {names}.',
-  'pinball.demo.notMidi': 'Esse ficheiro não é MIDI padrão. O PINBALL2.MID não serve.',
-  'pinball.demo.failed': 'Não consegui ler esse ficheiro: {n}',
+  'pinball.demo.notMidi': 'Esse arquivo não é MIDI padrão. O PINBALL2.MID não serve.',
+  'pinball.demo.failed': 'Não consegui ler esse arquivo: {n}',
   'pinball.event.attackBumpersRaised': 'Os para-choques do centro valem mais.',
   'pinball.event.launchBumpersRaised': 'Os para-choques da rampa valem mais.',
   'pinball.event.extraBall': 'Bola extra!',
@@ -179,8 +187,8 @@ const pt: Record<string, string> = {
   'pinball.hud.balls': 'Bolas: {n}',
   'pinball.hud.gameOver': 'Fim de jogo',
   'pinball.hud.shootAgain': 'Jogue de novo',
-  // ⚠️ E DIZ QUE SE SEGURA. A legenda da tela de seleção só tem largura para uma palavra por linha,
-  // e o momento em que o jogador precisa saber que o lançador ESTICA é este: com uma bola na calha.
+  // ⚠️ AND IT SAYS THE KEY IS HELD. The caption on the selection screen has width for one word a line,
+  // and the moment the player needs to know that the plunger STRETCHES is this one: a ball in the lane.
   'pinball.hud.waiting': 'Segure para esticar o lançador.',
 };
 
