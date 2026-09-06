@@ -34,6 +34,8 @@ interface PinballDebug {
   flippers: readonly { pivot: { x: number; y: number }; tip: { x: number; y: number } }[];
   playfieldX: number;
   cameraY: number;
+  /** How far the plunger is drawn back, 0 to 1. Added for the charge test at the foot of this file. */
+  plungerPull: number;
 }
 
 const debug = (): PinballDebug => (window as unknown as { __pinball: PinballDebug }).__pinball;
@@ -225,6 +227,38 @@ describe('the frame follows the simulation', () => {
     expect(debug().ball.y, 'the physics moved it').not.toBe(wasAt);
     expect(differingIn(justLaunched, frame(), { left: 0, right: 320, top: 0, bottom: 180 }),
       'and so did the picture').toBeGreaterThan(0);
+  });
+
+  /**
+   * ⚠️ THE PLUNGER CHARGES IN A REAL FRAME LOOP, AND THAT IS THE HALF NO UNIT TEST REACHES.
+   *
+   * `shell/plunger` is a model with its own tests, and it was correct on the day it was written while
+   * the game still launched every ball at the minimum: the line that advances it — `plunger.advance`
+   * — sat inside `if (phase === 'playing')`, the one phase where a plunger can do nothing. The model
+   * was right, the wiring was right, and neither of them ran.
+   *
+   * So the claim has to be made where the frames are real. This is also the reason it is not checked
+   * in the Browser pane by hand: `requestAnimationFrame` is frozen there while the pane is not on
+   * screen, and three manual probes were void before that was understood. Here the frames tick.
+   */
+  test('⚠️ holding the plunger launches HARDER than tapping it', async () => {
+    await stopTheWorld();
+    key('KeyU', 'keydown');
+    key('KeyU', 'keyup');
+    await frames(2);
+    const tapped = debug().ball.speed;
+
+    await stopTheWorld();
+    key('KeyU', 'keydown');
+    // A second of real frames on the key, which is 40% of a full draw.
+    await frames(60);
+    const drawn = debug().plungerPull;
+    key('KeyU', 'keyup');
+    await frames(2);
+    const held = debug().ball.speed;
+
+    expect(drawn, 'the plunger drew back while the key was down').toBeGreaterThan(0.2);
+    expect(held, `tapped launched at ${tapped.toFixed(0)}`).toBeGreaterThan(tapped * 1.2);
   });
 
   test('nothing fell over while doing any of that', () => {
