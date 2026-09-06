@@ -67,7 +67,12 @@ export const CRATER_RUN: AuthoredTable = {
    * a bank is a different achievement from hitting five things. Five separate targets are five lucky
    * bounces; a cleared bank means every one of them was still standing when you found it.
    */
-  banks: [{ name: BANK_NAME, award: 10000 }],
+  banks: [
+    { name: BANK_NAME, award: 10000 },
+    // Half the prize of the five in the middle, for half the work and a shot that is easier to line up.
+    { name: 'bank.west', award: 5000 },
+    { name: 'bank.east', award: 5000 },
+  ],
 
   missions: [
     // The bank first, because it is the table's whole idea and a player should meet it immediately.
@@ -115,6 +120,44 @@ export const CRATER_RUN: AuthoredTable = {
     { name: 'scree.right', kind: 'lane', role: 'key', bounds: { x: 126, y: 156, width: 12, height: 16 },
       scores: [2500], control: 'LaneControl', lamps: ['lamp.screeRight'] },
 
+    /* ===================== THE TWO SHELVES, ONE ON EACH FLANK ===================== */
+    //
+    // ⚠️ TWO MORE BANKS, AND THEY ARE PAIRS RATHER THAN ROWS ON PURPOSE. The five in the middle are
+    // this table's whole idea — a line the ball can rattle along — so repeating that shape on the
+    // flanks would be the same shot three times. A PAIR is a different demand: two targets stacked
+    // against a wall, reached only by a ball the player has kept to one side, and a bank of two is
+    // cleared or it is not.
+    //
+    // Added while authoring this table up to the 1995 playfield's density — see `tests/table-density`,
+    // where the Dev's "mesas tão simples" is a number. It measured 3.36 against the archive's 5.25.
+    //
+    // Windings: the west pair faces RIGHT and the east pair faces LEFT, each toward the middle where
+    // the ball is. `(dy, -dx)`, so a face running downward points +x and one running upward points -x.
+    { name: 'shelf.west1', kind: 'target', role: 'key', bounds: { x: 14, y: 112, width: 12, height: 12 },
+      scores: [2000], control: 'TargetBankControl', bank: 'bank.west', lamps: ['lamp.shelfWest1'],
+      collision: [{ kind: 'line', from: { x: 26, y: 112 }, to: { x: 26, y: 124 } }] },
+    { name: 'shelf.west2', kind: 'target', role: 'key', bounds: { x: 14, y: 130, width: 12, height: 12 },
+      scores: [2000], control: 'TargetBankControl', bank: 'bank.west', lamps: ['lamp.shelfWest2'],
+      collision: [{ kind: 'line', from: { x: 26, y: 130 }, to: { x: 26, y: 142 } }] },
+    { name: 'shelf.east1', kind: 'target', role: 'key', bounds: { x: 145, y: 112, width: 12, height: 12 },
+      scores: [2000], control: 'TargetBankControl', bank: 'bank.east', lamps: ['lamp.shelfEast1'],
+      collision: [{ kind: 'line', from: { x: 145, y: 124 }, to: { x: 145, y: 112 } }] },
+    { name: 'shelf.east2', kind: 'target', role: 'key', bounds: { x: 145, y: 130, width: 12, height: 12 },
+      scores: [2000], control: 'TargetBankControl', bank: 'bank.east', lamps: ['lamp.shelfEast2'],
+      collision: [{ kind: 'line', from: { x: 145, y: 142 }, to: { x: 145, y: 130 } }] },
+
+    /* ===================== THE REENTRY ROW ===================== */
+    //
+    // Three rollovers between the two rim lanes, across the head of the table: the ball entering from
+    // the return bend crosses them on its way in, so the first thing every launch does is score
+    // something. `low-orbit` has had this since it was written and this table did not.
+    { name: 'crest1', kind: 'lane', role: 'free', bounds: { x: 58, y: 16, width: 12, height: 14 },
+      scores: [1200], control: 'LaneControl', lamps: ['lamp.crest1'] },
+    { name: 'crest2', kind: 'lane', role: 'free', bounds: { x: 76, y: 16, width: 12, height: 14 },
+      scores: [1200], control: 'LaneControl', lamps: ['lamp.crest2'] },
+    { name: 'crest3', kind: 'lane', role: 'free', bounds: { x: 94, y: 16, width: 12, height: 14 },
+      scores: [1200], control: 'LaneControl', lamps: ['lamp.crest3'] },
+
     /* ===================== THE RIM ===================== */
     { name: 'rim1', kind: 'lane', role: 'goal', bounds: { x: 40, y: 16, width: 12, height: 14 },
       scores: [4000], control: 'LaneControl', lamps: ['lamp.rim1'] },
@@ -126,5 +169,7 @@ export const CRATER_RUN: AuthoredTable = {
     ...CABINET_LAMPS,
     ...BANK.flatMap((t) => t.lamps),
     'lamp.rampLeft', 'lamp.rampRight', 'lamp.screeLeft', 'lamp.screeRight', 'lamp.rubble1', 'lamp.rubble2', 'lamp.rim1', 'lamp.rim2',
+    'lamp.shelfWest1', 'lamp.shelfWest2', 'lamp.shelfEast1', 'lamp.shelfEast2',
+    'lamp.crest1', 'lamp.crest2', 'lamp.crest3',
   ],
 };

@@ -28,7 +28,7 @@ const WALL = 'structure' as const;
 
 /** The lamps the cabinet's own scoring parts drive. A table must declare these alongside its own. */
 export const CABINET_LAMPS: readonly string[] = [
-  'lamp.launch', 'lamp.outlaneLeft', 'lamp.outlaneRight',
+  'lamp.launch', 'lamp.outlaneLeft', 'lamp.outlaneRight', 'lamp.inlaneLeft', 'lamp.inlaneRight',
 ];
 
 export interface CabinetOptions {
@@ -147,6 +147,37 @@ export function cabinet(o: CabinetOptions): AuthoredComponent[] {
 
     // Outside a guide, reached through the gap at its top: losing the ball there is bad luck rather
     // than the default route.
+    /**
+     * ⚠️ THE RETURN LANES, WHICH FIVE TABLES HAVE NEVER HAD.
+     *
+     * Inside each guide, where a ball that survived the funnel comes back down to a paddle. Every
+     * pinball has them and this cabinet had only the OUTLANES — so the lower third of five tables paid
+     * the player 2000 for BAD LUCK and nothing at all for good play, which is the wrong way round.
+     *
+     * Found while measuring density against the 1995 playfield (`tests/table-density`): `low-orbit` is
+     * hand-authored and got its own pair, and putting the same thing five more times in five files
+     * would have been five chances to put it somewhere slightly different. The cabinet is where the
+     * bottom of a table is decided.
+     *
+     * ⚠️ AND THEY ARE CALLED INLANES BECAUSE `slipstream` ALREADY HAS `return.left`. Its return lanes
+     * are part of its one-way vane design, they sit halfway up the table, and one of its missions
+     * names them. The first draft of this pair took that name and the validator refused the table —
+     * "declared twice — behaviour is wired by name" — which is the rule doing exactly its job. Inlane
+     * is what a pinball calls the lane inside the guide, so the better name was also the free one.
+     */
+    /**
+     */
+    // ⚠️ SEATED ON THE PIVOTS, AND THE FIRST DRAFT WAS NOT. It put them at fixed offsets from the wall
+    // and the divider, and the rendered table showed each one STRADDLING its guide — the lower half
+    // outside the funnel, where the ball cannot reach because the guide is solid. An inlane is the
+    // strip between the guide and the paddle it feeds, so it is measured from the paddle.
+    { name: 'inlane.left', kind: 'lane', role: 'free',
+      bounds: { x: centre - halfGap - flipperLength, y: flipperY - 26, width: 12, height: 22 },
+      scores: [1500], control: 'LaneControl', lamps: ['lamp.inlaneLeft'] },
+    { name: 'inlane.right', kind: 'lane', role: 'free',
+      bounds: { x: centre + halfGap + flipperLength - 12, y: flipperY - 26, width: 12, height: 22 },
+      scores: [1500], control: 'LaneControl', lamps: ['lamp.inlaneRight'] },
+
     { name: 'outlane.left', kind: 'lane', role: 'hazard',
       bounds: { x: 20, y: flipperY - 10, width: 12, height: 30 },
       scores: [2000], control: 'LaneControl', lamps: ['lamp.outlaneLeft'] },

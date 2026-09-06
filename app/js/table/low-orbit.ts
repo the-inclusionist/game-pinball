@@ -123,7 +123,7 @@ export const LOW_ORBIT: AuthoredTable = {
     'lamp.well1', 'lamp.well2', 'lamp.well3',
     'lamp.ramp', 'lamp.outlaneLeft', 'lamp.outlaneRight',
     'lamp.drop1', 'lamp.drop2', 'lamp.drop3',
-    'lamp.returnLeft', 'lamp.returnRight',
+    'lamp.inlaneLeft', 'lamp.inlaneRight',
   ],
 
   components: [
@@ -267,12 +267,12 @@ export const LOW_ORBIT: AuthoredTable = {
     // Inside each guide, where a ball that survives the funnel comes back down to the paddle. Every
     // pinball has these and this table had only the OUTLANES — so the lower third paid the player for
     // bad luck and nothing for good play, which is the wrong way round.
-    { name: 'return.left', kind: 'lane', role: 'free',
+    { name: 'inlane.left', kind: 'lane', role: 'free',
       bounds: { x: 36, y: 198, width: 12, height: 20 },
-      scores: [1500], control: 'LaneControl', lamps: ['lamp.returnLeft'] },
-    { name: 'return.right', kind: 'lane', role: 'free',
+      scores: [1500], control: 'LaneControl', lamps: ['lamp.inlaneLeft'] },
+    { name: 'inlane.right', kind: 'lane', role: 'free',
       bounds: { x: 134, y: 198, width: 12, height: 20 },
-      scores: [1500], control: 'LaneControl', lamps: ['lamp.returnRight'] },
+      scores: [1500], control: 'LaneControl', lamps: ['lamp.inlaneRight'] },
 
     /* ===================== THE REENTRY LANES ===================== */
     { name: 'lane1', kind: 'lane', role: 'free', bounds: { x: 40, y: 16, width: 12, height: 14 },

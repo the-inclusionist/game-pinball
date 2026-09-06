@@ -175,11 +175,15 @@ const PAINTED = {
   // pixels — 7519 with the bank against the lane divider, 7555 once it was moved under the bumpers
   // where it is reachable. This number is a golden: it moves when somebody says why.
   'low-orbit': 7555,
-  'ion-storm': 6685,
-  'crater-run': 6719,
-  'long-climb': 7651,
-  'ring-belt': 7696,
-  'slipstream': 5899,
+  // +572 on each of the four below: the cabinet's two inlanes, which five tables had never had.
+  // The lower third paid 2000 for bad luck through the outlanes and nothing at all for good play.
+  'ion-storm': 7257,
+  // ⚠️ +1070: the two INLANES the cabinet now gives all five of its tables, and this table's own
+  // authoring up to the 1995 density — two flank drop banks and a three-rollover reentry row.
+  'crater-run': 7907,
+  'long-climb': 8223,
+  'ring-belt': 8224,
+  'slipstream': 6471,
   'wide-arc': 4313,
   // ⚠️ 3553 UNTIL THE BALL GAINED A RADIUS. `table/physics-build` now offsets every wall by it, the way
   // the original does and `physics/wall` already did for the 1995 table, and two of this fixture's
