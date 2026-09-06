@@ -193,7 +193,9 @@ const PAINTED = {
   // thinnest by a distance, at a THIRD of the archive's. Three more rocks on the belt, a
   // three-target drop column against each far wall, two rebounder cornices, and seventeen
   // rollovers spread across a table 360 wide whose outer thirds paid nothing at all.
-  'ring-belt': 13661,
+  // -7 when the east scree column moved up twelve pixels: sixty balls never reached its lowest target,
+  // which sat where the funnel has already gathered the ball toward the middle.
+  'ring-belt': 13654,
   // ⚠️ +2122 when this table was authored up to the 1995 density: two more eddies in the chamber, a
   // three-target drop COLUMN on its wall, two spillways in its corners, three wake rollovers and
   // two rebounders below the vanes.

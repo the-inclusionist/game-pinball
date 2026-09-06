@@ -130,15 +130,18 @@ export const RING_BELT: AuthoredTable = {
     { name: 'scree.west3', kind: 'target', role: 'key', bounds: { x: 8, y: 158, width: 12, height: 14 },
       scores: [2400], control: 'TargetBankControl', bank: 'bank.west', lamps: ['lamp.screeWest3'],
       collision: [{ kind: 'line', from: { x: 20, y: 158 }, to: { x: 20, y: 172 } }] },
-    { name: 'scree.east1', kind: 'target', role: 'key', bounds: { x: 323, y: 122, width: 12, height: 14 },
+    // ⚠️ THE EAST COLUMN MOVED UP TWELVE PIXELS. Surveyed over sixty balls, `scree.east3` — its lowest
+    // target — was visited by none of them: it sat where the funnel has already gathered the ball
+    // toward the middle, so nothing came down that far out any more.
+    { name: 'scree.east1', kind: 'target', role: 'key', bounds: { x: 323, y: 110, width: 12, height: 14 },
       scores: [2400], control: 'TargetBankControl', bank: 'bank.east', lamps: ['lamp.screeEast1'],
-      collision: [{ kind: 'line', from: { x: 323, y: 136 }, to: { x: 323, y: 122 } }] },
-    { name: 'scree.east2', kind: 'target', role: 'key', bounds: { x: 323, y: 140, width: 12, height: 14 },
+      collision: [{ kind: 'line', from: { x: 323, y: 124 }, to: { x: 323, y: 110 } }] },
+    { name: 'scree.east2', kind: 'target', role: 'key', bounds: { x: 323, y: 128, width: 12, height: 14 },
       scores: [2400], control: 'TargetBankControl', bank: 'bank.east', lamps: ['lamp.screeEast2'],
-      collision: [{ kind: 'line', from: { x: 323, y: 154 }, to: { x: 323, y: 140 } }] },
-    { name: 'scree.east3', kind: 'target', role: 'key', bounds: { x: 323, y: 158, width: 12, height: 14 },
+      collision: [{ kind: 'line', from: { x: 323, y: 142 }, to: { x: 323, y: 128 } }] },
+    { name: 'scree.east3', kind: 'target', role: 'key', bounds: { x: 323, y: 146, width: 12, height: 14 },
       scores: [2400], control: 'TargetBankControl', bank: 'bank.east', lamps: ['lamp.screeEast3'],
-      collision: [{ kind: 'line', from: { x: 323, y: 172 }, to: { x: 323, y: 158 } }] },
+      collision: [{ kind: 'line', from: { x: 323, y: 160 }, to: { x: 323, y: 146 } }] },
 
     /* ===================== THE CORNICES ===================== */
     // Two rebounders flanking the core, throwing a ball that reached the middle back across the belt.

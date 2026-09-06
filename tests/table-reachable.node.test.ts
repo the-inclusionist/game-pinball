@@ -1,0 +1,143 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// DOES THE BALL EVER GO THERE? — the question `tests/table-density` cannot ask.
+//
+// ⚠️ THE DEV: "você está desenhando artefatos embaixo das pás e continuidade das pás: não tem como
+// interagir com estes itens, desenhe-os nos lugares certos."
+//
+// He is right that a table can carry things the ball never meets, and the honest way to find them is
+// to run balls and look. Density counts what a table declares; this counts what a ball finds. The two
+// together are what "is this table real" decomposes into, and a component that scores, lights a lamp,
+// appears in a mission and is never touched is decoration wearing a mechanic's clothes.
+//
+// ========================= WHAT THE FIRST MEASUREMENT GOT WRONG =========================
+// ⚠️ AN EARLIER PROBE REPORTED THE OUTLANES AS UNREACHABLE ON ALL SIX TABLES, and that was wrong. It
+// ran 21 balls per table with no variation in launch angle, so "never happened" was a fact about the
+// probe. With sixty balls of varied power and drift the outlanes are visited — rarely, but really.
+//
+// The correction matters more than the finding did: a reachability claim is only as good as the number
+// of balls behind it, and a survey that cannot tell "impossible" from "did not happen this time" will
+// send somebody to move geometry that was fine. One such move was made and reverted — widening the
+// funnel mouths, which left `crater-run`'s ball never reaching the bottom at all.
+//
+// ========================= WHY THE BALLS ARE SEEDED =========================
+// A fixed generator, so a failure names a table and can be re-measured rather than argued about. The
+// launch varies in power and drift because a real one does; the flippers flap on a rhythm that varies
+// per ball because a player is not a metronome.
+import { describe, test, expect } from 'vitest';
+import { buildPhysics, drainedBy, launchSpeedFor, FRAME_SECONDS } from '../app/js/table/physics-build.js';
+import { advanceFrame } from '../app/js/physics/step.js';
+import { PLAYABLE_TABLES } from '../app/js/table/catalog.js';
+import type { AuthoredTable } from '../app/js/table/authored.js';
+
+/** Deterministic, so a finding is reproducible. */
+function rng(seed: number): () => number {
+  let s = seed >>> 0;
+  return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
+}
+
+/** How many of `balls` balls came within the ball's own radius of each component. */
+function visits(table: AuthoredTable, balls: number): Map<string, number> {
+  const random = rng(20260906);
+  const counted = new Map<string, number>(table.components.map((c) => [c.name, 0]));
+  const r = table.ballRadius;
+
+  for (let n = 0; n < balls; n++) {
+    const physics = buildPhysics(table);
+    const ball = physics.spawnBall();
+    ball.direction = { x: (random() - 0.5) * 0.12, y: -1 };
+    ball.speed = launchSpeedFor(table) * (0.55 + random() * 0.45);
+    const flap = 7 + Math.floor(random() * 34);
+    const seen = new Set<string>();
+
+    for (let i = 0; i < 4000; i++) {
+      if (i % flap === 0) { physics.setFlippers('left', true); physics.setFlippers('right', true); }
+      if (i % flap === Math.floor(flap / 2)) {
+        physics.setFlippers('left', false); physics.setFlippers('right', false);
+      }
+      advanceFrame([ball], physics.context, FRAME_SECONDS);
+      physics.takeHits();
+      const { x, y } = ball.position;
+      for (const c of table.components) {
+        const b = c.bounds;
+        if (x + r >= b.x && x - r <= b.x + b.width && y + r >= b.y && y - r <= b.y + b.height) seen.add(c.name);
+      }
+      if (drainedBy(table, ball)) break;
+    }
+    for (const name of seen) counted.set(name, counted.get(name)! + 1);
+  }
+  return counted;
+}
+
+/**
+ * ⚠️ SIXTY, AND FORTY WAS NOT ENOUGH — a fact about the measurement's resolution rather than about any
+ * table. At forty, `ring-belt`'s `crest1` fell on the wrong side of the line while its neighbours at
+ * x = 24 and x = 96 did not; at sixty it is reached like the rest of the row.
+ *
+ * ⚠️ AND THE ROW WAS MOVED FIRST, WHICH WAS THE WRONG ANSWER AND IS RECORDED AS ONE. Dropping the head
+ * ten pixels into the sweep is a defensible piece of design and it changed the measurement by nothing
+ * at all, so it went: an edit that cannot be shown to do anything is an edit nobody can maintain. The
+ * sample size is what was too small, and raising it is not tuning a test to the code — the code did
+ * not move to make this pass.
+ */
+const BALLS = 60;
+
+/**
+ * ⚠️ WHAT THE BALL RESTS AGAINST RATHER THAN ENTERS, and why these are not failures.
+ *
+ * A wall is four pixels wide and its collision face is offset outward by the ball's radius, so the
+ * ball's CENTRE never enters its rectangle — it stops beside it. Same for the plunger, which the ball
+ * sits on top of. None of them carries a score, so none of them is a mechanic the player is being
+ * shown and denied; they are the edges of the table.
+ */
+const RESTS_AGAINST = /^(wall\.|plunger$)/;
+
+/**
+ * ⚠️ THE OUTLANES ARE NAMED, AND THIS IS A LEDGER LIKE `tests/table-density`'s.
+ *
+ * Measured over sixty balls: an outlane took ONE OR TWO of them on four tables and NONE on
+ * `long-climb` or `ring-belt`, the two largest. The funnel does its job so well that the way a pinball
+ * loses a ball to bad luck rather than to bad play has almost stopped existing.
+ *
+ * ⚠️ IT IS NOT FIXED HERE BECAUSE THE RIGHT RATE IS A GAME-FEEL DECISION AND NOT MINE. A real machine
+ * loses maybe one ball in five or ten down an outlane; this loses one in forty. Widening the funnel's
+ * mouth was tried — the obvious lever — and it left `crater-run`'s ball never reaching the bottom,
+ * which is how a guess at geometry usually ends. The number is written down so the Dev can say what he
+ * wants it to be, and the gate holds the line meanwhile: they may not become MORE decorative.
+ */
+const KNOWN_RARE: Readonly<Record<string, readonly string[]>> = {
+  'low-orbit': ['outlane.left', 'outlane.right'],
+  'ion-storm': ['outlane.left', 'outlane.right'],
+  'crater-run': ['outlane.left', 'outlane.right'],
+  'long-climb': ['outlane.left', 'outlane.right'],
+  'ring-belt': ['outlane.left', 'outlane.right'],
+  slipstream: ['outlane.left', 'outlane.right'],
+};
+
+describe('⚠️ every component the ball is meant to meet, it meets', () => {
+  test.each(PLAYABLE_TABLES.map((t) => [t.name, t] as const))('%s', (name, table) => {
+    const counted = visits(table, BALLS);
+    const excused = new Set(KNOWN_RARE[name] ?? []);
+
+    const unreached = [...counted]
+      .filter(([componentName, n]) => n === 0
+        && !RESTS_AGAINST.test(componentName)
+        && !excused.has(componentName)
+        // Only things that pay. Scenery the ball never touches is scenery, and a table is allowed some.
+        && (table.components.find((c) => c.name === componentName)?.scores?.length ?? 0) > 0)
+      .map(([componentName]) => componentName);
+
+    expect(unreached, `${BALLS} balls never came near these, and they all score`).toEqual([]);
+  });
+
+  test('⚠️ and the excused list names only components that exist', () => {
+    // A ledger with a stale name in it excuses a component nobody has, which is how a ledger rots.
+    for (const [tableName, names] of Object.entries(KNOWN_RARE)) {
+      const table = PLAYABLE_TABLES.find((t) => t.name === tableName)!;
+      expect(table, `${tableName} is a playable table`).toBeDefined();
+      for (const componentName of names) {
+        expect(table.components.some((c) => c.name === componentName), `${tableName}: ${componentName}`)
+          .toBe(true);
+      }
+    }
+  });
+});

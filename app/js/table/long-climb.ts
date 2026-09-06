@@ -166,7 +166,11 @@ export const LONG_CLIMB: AuthoredTable = {
     /* ===================== THE APPROACH ===================== */
     // Three rollovers across the head, crossed by the ball entering from the return bend. On a table
     // this tall the head is a long way from the flippers, and it scored nothing at all.
-    { name: 'approach1', kind: 'lane', role: 'key', bounds: { x: 40, y: 16, width: 12, height: 14 },
+    // ⚠️ EVENLY SPACED FROM x = 62 AND NOT FROM 40, because 40 was never crossed. Surveyed over sixty
+    // balls with varied launch power and drift: `approach1` at the far left was visited by NONE of
+    // them, `approach2` by two. The ball enters from the return bend at the top RIGHT and sweeps left
+    // losing height, so the far-left corner of the head is somewhere it arrives only by luck.
+    { name: 'approach1', kind: 'lane', role: 'key', bounds: { x: 86, y: 16, width: 12, height: 14 },
       scores: [1800], control: 'LaneControl', lamps: ['lamp.approach1'] },
     { name: 'approach2', kind: 'lane', role: 'key', bounds: { x: 62, y: 16, width: 12, height: 14 },
       scores: [1800], control: 'LaneControl', lamps: ['lamp.approach2'] },
