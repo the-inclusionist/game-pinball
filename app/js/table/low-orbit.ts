@@ -322,11 +322,33 @@ export const LOW_ORBIT: AuthoredTable = {
 
     /* ===================== THE WORMHOLE ===================== */
     // Three wells, which is what `control/wormhole` expects: the teleport is a choice among three.
-    { name: 'well1', kind: 'well', role: 'gate', bounds: { x: 36, y: 168, width: 14, height: 14 },
+    /**
+     * ⚠️ PUT ON THE PICTURE, 2026-09-06, AND THEY WERE ON NOTHING. The Dev asked for the geometry
+     * to sit where his art draws things, and these three were the clearest case in the catalogue:
+     * measured against `art/low-orbit.jpg`, they stood on ground with 0.15 and 0.16 times the
+     * table's median detail — which at that extreme is not a proxy for anything, it is plain sky.
+     *
+     * What the picture draws in that band, found by clustering the detail rather than by eye:
+     *
+     *     a satellite            x  75..107  y 100..126
+     *     the ISS                x 116..149  y 141..162
+     *     a constellation node   x  37.. 49  y 115..126
+     *     the Hubble             x  56.. 75  y 122..140   (the kicker is already on it)
+     *
+     * ⚠️ AND THE x POSITIONS ALREADY LINED UP. Only the height was wrong: the wells were a row at
+     * y 168 and every object is about fifty pixels higher. So this is a move of one coordinate
+     * each, which is why it survived where `low-orbit`'s drop bank did not — see the record on
+     * `drop1`, where every placement onto the art's pads failed `tests/table-playable`.
+     *
+     * Gated before it was kept: all three moved, and each moved alone, against reachability,
+     * playability and the flipper's force. Structure under them went from 0.16, 0.15 and 1.16
+     * times the median to 1.85, 2.83 and 2.59.
+     */
+    { name: 'well1', kind: 'well', role: 'gate', bounds: { x: 36, y: 113, width: 14, height: 14 },
       scores: [1000, 20000, 5000], control: 'LaneControl', lamps: ['lamp.well1'] },
-    { name: 'well2', kind: 'well', role: 'gate', bounds: { x: 84, y: 168, width: 14, height: 14 },
+    { name: 'well2', kind: 'well', role: 'gate', bounds: { x: 84, y: 106, width: 14, height: 14 },
       scores: [1000, 20000, 5000], control: 'LaneControl', lamps: ['lamp.well2'] },
-    { name: 'well3', kind: 'well', role: 'gate', bounds: { x: 132, y: 168, width: 14, height: 14 },
+    { name: 'well3', kind: 'well', role: 'gate', bounds: { x: 132, y: 144, width: 14, height: 14 },
       scores: [1000, 20000, 5000], control: 'LaneControl', lamps: ['lamp.well3'] },
 
     /* ===================== THE KICKER ===================== */

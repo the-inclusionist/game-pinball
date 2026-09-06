@@ -61,9 +61,21 @@ describe('drawing a table from its ROLES', () => {
   });
 
   test('a well is a gate', () => {
+    /**
+     * ⚠️ READ FROM THE TABLE RATHER THAN FROM A REMEMBERED COORDINATE, and it used to be (90, 174).
+     * `well2` moved on 2026-09-06 — the Dev asked for the geometry to be put where his art draws
+     * things, and all three wells were sitting on plain sky at 0.15 times the table's median detail
+     * while the picture drew a satellite, a node and the ISS higher up.
+     *
+     * A hard-coded point is a test that has to be edited every time the table it describes is
+     * authored, and editing a coordinate to match is indistinguishable from editing it to pass. The
+     * claim here was never about (90, 174); it is that a WELL is drawn in the GATE colour.
+     */
+    const well = LOW_ORBIT.components.find((c) => c.kind === 'well')!;
     const fb = drawTable({ table: LOW_ORBIT });
 
-    expect(at(fb, 90, 174)).toBe(ROLE_COLORS.gate);
+    expect(at(fb, Math.floor(well.bounds.x + well.bounds.width / 2),
+      Math.floor(well.bounds.y + well.bounds.height / 2))).toBe(ROLE_COLORS.gate);
   });
 
   test('⚠️ and a FLIPPER is not in this picture at all, which is the point of it', () => {

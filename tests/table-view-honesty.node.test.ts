@@ -225,6 +225,11 @@ describe('⚠️ the drawing tells the truth about what the ball can touch', () 
  * second, crossing every time. Two faces means the divider is stroked twice, which is the whole
  * difference. `crater-run` moved a hundred more than the rest because its crater bank was sloped in
  * the same commit: a diagonal stroke paints more pixels than a horizontal one.
+ *
+ * ⚠️ AND `low-orbit` GAINED 43 WHEN ITS THREE WELLS WERE PUT ON THE PICTURE. They had been
+ * sitting on plain sky at 0.15 times the table's median detail; the art draws a satellite, a
+ * constellation node and the ISS at the same x positions and about fifty pixels higher. The shapes
+ * did not change size — one of them now overlaps the ramp's stroke, and that is the 43.
  */
 const PAINTED = {
   // ⚠️ 6991 UNTIL THE TABLE WAS AUTHORED UP TO THE 1995 DENSITY. `tests/table-density` measures the
@@ -239,7 +244,7 @@ const PAINTED = {
   // five tables and skipped this one. The difference is mostly the bottom assembly moving seven
   // pixels left: this file centred the flippers and the drain on the TABLE, and the cabinet
   // centres them on the PLAY, because sixteen pixels of the width are the plunger lane.
-  'low-orbit': 5350,
+  'low-orbit': 5393,
   // +572 on each of the four below: the cabinet's two inlanes, which five tables had never had.
   // The lower third paid 2000 for bad luck through the outlanes and nothing at all for good play.
   // ⚠️ +1768 when this table was authored up to the 1995 density: two more bumpers in the storm,
