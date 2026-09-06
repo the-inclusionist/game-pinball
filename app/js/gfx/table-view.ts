@@ -275,6 +275,12 @@ export function drawTable(o: TableViewOptions): Framebuffer {
      * second paddle that never moves underneath the one that does.
      */
     if (component.kind === 'flipper') continue;
+    /**
+     * ⚠️ AND NOR IS THE PLUNGER, FOR THE SAME REASON. It slides down its lane as it is drawn back, so
+     * a plunger stroked into the composition made once per change is a plunger that never moves — the
+     * flippers' defect, and the one the Dev found next: "o lançador de bola não se mexe".
+     */
+    if (component.kind === 'plunger') continue;
 
     if (!component.collision?.length) {
       // Nothing solid was declared, so the bounds is the whole claim and there is nothing to overstate.
@@ -336,6 +342,34 @@ export function drawBall(
   if (x + radius < into.x || x - radius > into.x + into.width) return;
   if (y + radius < into.y || y - radius > into.y + into.height) return;
   fillCircle(screen, x, y, radius, BALL_COLOR);
+}
+
+/**
+ * A lit rectangle, drawn straight onto the screen and clipped to the camera's window.
+ *
+ * ⚠️ THE SAME JOB AS `fillLitRect` AND NOT THE SAME FUNCTION. That one paints into the table's own
+ * picture, in table coordinates, with the whole buffer to play in. This paints into the SCREEN, after
+ * the blit, and must be clipped to the playfield window — a rectangle drawn past it lands on the HUD's
+ * columns, which is the rule ADR-0002 exists for.
+ *
+ * It exists because the plunger moves: anything that changes every frame cannot live in a composition
+ * made once per change.
+ */
+export function drawLitRect(
+  screen: Framebuffer, rect: Rect, lit: Lit, into: Rect, offsetX: number, offsetY: number,
+): void {
+  const x0 = Math.round(into.x + rect.x - Math.floor(offsetX));
+  const y0 = Math.round(into.y + rect.y - Math.floor(offsetY));
+  const x1 = x0 + Math.round(rect.width);
+  const y1 = y0 + Math.round(rect.height);
+
+  for (let y = Math.max(y0, into.y, 0); y < Math.min(y1, into.y + into.height, screen.height); y++) {
+    for (let x = Math.max(x0, into.x, 0); x < Math.min(x1, into.x + into.width, screen.width); x++) {
+      // The same light the static picture puts on a raised thing: top edge bright, bottom edge dark.
+      const shade = y === y0 ? lit.top : (y === y1 - 1 ? lit.bottom : lit.body);
+      screen.pixels[y * screen.width + x] = rect.height < 3 ? lit.body : shade;
+    }
+  }
 }
 
 /**

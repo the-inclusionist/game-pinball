@@ -26,6 +26,7 @@ interface PinballDebug {
   ball: { x: number; y: number; speed: number; active: boolean };
   screen: { width: number; height: number };
   setPhase(next: string): void;
+  plungerPull: number;
 }
 
 const debug = (): PinballDebug =>
@@ -134,10 +135,41 @@ describe('⚠️ the keyboard is bound to #game-region and NOT to the window', (
     await userEvent.keyboard('u');
 
     expect(debug().problems, 'and nothing fell over doing it').toEqual([]);
-    // The launch speed for this table is around 273; a ball drifting from a previous test is far
-    // slower. Asserting the LAUNCH rather than "faster than it was" is what makes this independent.
-    expect(debug().ball.speed, 'the plunger launched the ball').toBeGreaterThan(200);
+    // ⚠️ A TAP LAUNCHES WEAKLY, WHICH IS THE PLUNGER WORKING. This asserted a speed above 200 — the
+    // table's full 273 — and that was right while every launch was identical. The Dev asked for a
+    // launcher whose force a player controls, so `userEvent.keyboard('u')` presses and releases in the
+    // same instant: the weakest possible draw, about a third of full. Asserting the old number would be
+    // asserting the defect.
+    expect(debug().ball.speed, 'the plunger launched the ball').toBeGreaterThan(0);
+    expect(debug().ball.speed, 'and weakly, because it was barely drawn').toBeLessThan(200);
   });
+
+  test('⚠️ and HOLDING it DRAWS IT BACK, which is what was asked for', async () => {
+    /**
+     * ⚠️ THIS ASSERTED THE LAUNCH SPEED AND PASSED WITHOUT THE FEATURE. Deleting `plunger.advance` —
+     * the one line that charges it — left the test green: it compared a tap against a hold, and with
+     * no charge both launch at the same minimum, so the comparison was being satisfied by something
+     * else entirely. A gate that survives the removal of the code it exists for is not a gate.
+     *
+     * The charge itself is the thing. `plungerPull` is the model's own state, it moves only when the
+     * frame loop advances it, and it is what the renderer draws — so asserting it is asserting the
+     * feature rather than a consequence of it that something else can produce.
+     */
+    debug().setPhase('title');
+    const region = document.getElementById('game-region')!;
+    region.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyU', bubbles: true }));
+
+    const atPress = debug().plungerPull;
+    await new Promise((resolve) => { setTimeout(resolve, 600); });
+    const afterHolding = debug().plungerPull;
+
+    region.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyU', bubbles: true }));
+
+    expect(atPress, 'it starts at rest').toBe(0);
+    expect(afterHolding, 'and is drawn back by holding').toBeGreaterThan(0);
+    expect(debug().plungerPull, 'and springs back on release').toBe(0);
+  });
+
 
   test('and the region is reachable by keyboard at all, or none of that matters', () => {
     // `tabindex="-1"` makes it focusable by script and by click but not by Tab, which is what the page

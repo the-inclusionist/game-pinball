@@ -18,7 +18,9 @@ import { toLiveTable, validateTable, type TableState } from './table/authored.js
 import { DEFAULT_CAMERA } from './shell/camera.js';
 import { DEFAULT_HUD } from './shell/hud.js';
 import { createFramebuffer } from './gfx/framebuffer.js';
-import { drawTable, blitView, drawBall, drawFlipper, ROLE_COLORS } from './gfx/table-view.js';
+import {
+  drawTable, blitView, drawBall, drawFlipper, drawLitRect, litColors, paletteOf, ROLE_COLORS,
+} from './gfx/table-view.js';
 import { buildPhysics, drainedBy, launchSpeedFor, FRAME_SECONDS } from './table/physics-build.js';
 import { advanceFrame } from './physics/step.js';
 import { bindPinballControls } from './shell/controls.js';
@@ -29,6 +31,7 @@ import { mountOptionsDialog } from './shell/options-dialog.js';
 import { titleScreen } from './shell/title.js';
 import { integerScale } from './shell/present.js';
 import { createPadReader, CABINET_OF_ENGINE_ACTION } from './shell/pad.js';
+import { createPlunger } from './shell/plunger.js';
 import { mountTitle } from './shell/title-dom.js';
 import { mountHighScoreDialog } from './shell/high-score-dialog.js';
 import { createLiveControls } from './table/live-controls.js';
@@ -162,16 +165,32 @@ function refreshObjective(force = false): void {
  * this line, the only launch a PLAYER ever performs, went on using the constant. The gate was green and
  * the game was broken, which is the worst arrangement of the two.
  */
-function launch(): void {
+/**
+ * ⚠️ THE SPEED IS AN ARGUMENT NOW, BECAUSE THE PLUNGER DECIDES IT.
+ *
+ * It used to be `launchSpeedFor(authored)` every time: every launch identical, and no way to place a
+ * ball anywhere but as hard as the table allows. The Dev, playing: "não permitindo controlar a força
+ * com que a bolinha será lançada". A full draw is still exactly that speed — the weaker ones are the
+ * new part.
+ */
+function launch(speed = launchSpeedFor(authored)): void {
   // ⚠️ A FINISHED GAME DOES NOT GET ANOTHER BALL. Without this the plunger key restarts play from a
   // game-over screen, and the count stays at zero while the ball goes round again.
   if (live.flags.ballCount === 0) return;
   ball.active = true;
   ball.direction = { x: 0, y: -1 };
-  ball.speed = launchSpeedFor(authored);
+  ball.speed = speed;
   phase = 'playing';
   announceMission();
 }
+
+/**
+ * The authored tables' plunger.
+ *
+ * ⚠️ ONE PER GAME AND NOT ONE PER TABLE, because `main.ts` boots a single table — the reload seam. Its
+ * full-draw speed is that table's, so a taller table still gets a launch that can reach its top.
+ */
+const plunger = createPlunger({ maxSpeed: launchSpeedFor(authored) });
 
 /**
  * Puts the running mission where a player can read it.
@@ -473,6 +492,24 @@ function step(frames: number): void {
     return;
   }
 
+  /**
+   * ⚠️ THE PAD AND THE PLUNGER RUN WHETHER OR NOT A BALL IS IN PLAY, and both were inside the branch
+   * that only runs while playing — which is the one phase in which neither can do anything.
+   *
+   * The plunger is drawn back BEFORE a launch, so a charge that only accumulated during play was a
+   * charge that never accumulated at all: every ball left at the minimum, however long the key was
+   * held. The Dev asked for a launcher whose force a player controls, and the model was right, the
+   * wiring was right, and the one line that advances it was in the wrong block.
+   *
+   * The pad had the same fault for a different reason: a player pressing a button on the title screen
+   * was not heard, so a controller could not start a game.
+   *
+   * ⚠️ AND IT IS THE SAME MISTAKE THE COMMENT BELOW RECORDS ABOUT THE FLIPPERS, made again three
+   * paragraphs above it.
+   */
+  pad.poll();
+  plunger.advance(frames * FRAME_SECONDS);
+
   // ⚠️ THE FLIPPERS MOVE WHETHER OR NOT A BALL IS IN PLAY, and this used to run only while playing.
   // A player pressing the button on the title screen got nothing back — no movement, no sound, no way
   // to find out what the controls are before committing a ball to them. Found by pressing a real key
@@ -546,9 +583,6 @@ function step(frames: number): void {
     }
 
     shell.advance(frames);
-    // ⚠️ POLLED, NOT LISTENED TO. A gamepad has no events: the browser exposes a snapshot and a game
-    // that does not ask never hears anything. Once per frame, before the world moves on it.
-    pad.poll();
   }
 
   hud.update({
@@ -569,6 +603,23 @@ function step(frames: number): void {
    * swung in the physics and the picture showed it at rest for ever. `rotOrigin` and `t1` are the
    * pivot and the tip as the physics has them right now, `t1` already rotated by `currentAngle`.
    */
+  /**
+   * ⚠️ THE PLUNGER, DRAWN WHERE IT IS DRAWN BACK TO. It slides down its own lane by the length of its
+   * travel: at a full pull it sits a plunger's height lower than at rest, which is what tells a player
+   * how hard the next launch will be. Without it the charge is a number nobody can see, and a control
+   * you cannot see is the defect this game has now shipped five times.
+   */
+  const plungerPart = authored.components.find((c) => c.kind === 'plunger');
+  if (plungerPart) {
+    const travel = Math.round(plungerPart.bounds.height * 0.6 * plunger.pull);
+    drawLitRect(
+      screen,
+      { ...plungerPart.bounds, y: plungerPart.bounds.y + travel },
+      litColors(paletteOf(authored, isCbSafe(palette)).roles[plungerPart.role], plungerPart.role),
+      shell.hud.playfield, shell.cameraX.offset, shell.camera.offset,
+    );
+  }
+
   for (const flipper of physics.flippers) {
     drawFlipper(
       screen, flipper.rotOrigin, flipper.t1, ROLE_COLORS.structure,
@@ -644,6 +695,22 @@ const cabinet = {
   setFlipper: (side: 'left' | 'right', extended: boolean) => {
     if (demo) demo.setFlippers(side, extended);
     else physics.setFlippers(side, extended);
+  },
+  /**
+   * ⚠️ HELD, NOT PRESSED. The press draws the plunger back and the RELEASE launches — which is what a
+   * plunger is, and what this had never been: `setPlunger` called `launch()` on the way down, so every
+   * ball left at the same speed and the key was a trigger with a spring drawn on it.
+   *
+   * The demonstration keeps its own plunger, which has worked all along.
+   */
+  setPlunger: (pressed: boolean) => {
+    if (demo) { demo.plunge(pressed); return; }
+    if (phase === 'playing') return;
+    if (pressed) plunger.press();
+    else {
+      const speed = plunger.release();
+      if (speed > 0) launch(speed);
+    }
   },
   launch: () => { if (phase !== 'playing') launch(); },
   /**
@@ -729,12 +796,7 @@ const unbindControls = bindPinballControls({
    * `launch` whenever it is given one, so a version of this that only forwarded to the demonstration
    * would leave the authored table with a launch key that does nothing at all.
    */
-  setPlunger: (pressed: boolean) => {
-    if (demo) demo.plunge(pressed);
-    // See `launch` above: the phase is what says whether a game is running. `ball.active` is true from
-    // the moment the ball is spawned, which is before anybody has pressed anything.
-    else if (pressed && phase !== 'playing') launch();
-  },
+  setPlunger: cabinet.setPlunger,
   /**
    * ⚠️ AND NOT WHILE THE 1995 TABLE IS ON SCREEN, which is a gap being named rather than closed.
    *
@@ -1098,6 +1160,9 @@ Object.assign(window as unknown as Record<string, unknown>, {
     get hits() { return hits; },
     get score() { return live.score.curScore; },
     get lamps() { return live.litLamps(); },
+    /** How far the plunger is drawn back, so a check can see the charge rather than infer it. */
+    get plungerPull() { return plunger.pull; },
+    get plungerHeld() { return plunger.held; },
     get playfieldX() { return shell.hud.playfield.x; },
     get cameraY() { return Math.floor(shell.camera.offset); },
     get hint() { return hint; },

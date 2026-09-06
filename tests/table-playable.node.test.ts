@@ -177,8 +177,24 @@ describe('⚠️ and the GAME has to launch the way the test launches', () => {
 
     expect(assignments.length).toBeGreaterThan(0);
     for (const value of assignments) {
-      // `0` is how a drained ball is stopped, and is not a launch.
-      expect(value === '0' || value.startsWith('launchSpeedFor(')).toBe(true);
+      // `0` is how a drained ball is stopped, and is not a launch. `speed` is the plunger's, and the
+      // plunger is built from the table — asserted below, because a name proves nothing on its own.
+      expect(value === '0' || value === 'speed' || value.startsWith('launchSpeedFor(')).toBe(true);
     }
+
+    /**
+     * ⚠️ AND THE PLUNGER'S FULL DRAW IS THE TABLE'S OWN SPEED, which is where the rule went when the
+     * plunger arrived.
+     *
+     * The Dev asked for a launcher whose force a player controls, so `ball.speed` is now the plunger's
+     * output rather than a call to `launchSpeedFor` — and this gate would have been satisfied by
+     * `createPlunger({ maxSpeed: 260 })`, which is the exact constant it was written to kill. Allowing
+     * the name without checking where the number comes from would have retired the rule while leaving
+     * the test green.
+     */
+    expect(main, 'the plunger is charged from the table, not from a constant')
+      .toMatch(/createPlunger\(\{ maxSpeed: launchSpeedFor\(/);
+    expect(main, 'and no launch speed is written as a number anywhere')
+      .not.toMatch(/maxSpeed: \d/);
   });
 });

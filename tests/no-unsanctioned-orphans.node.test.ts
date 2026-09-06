@@ -100,9 +100,14 @@ describe('every module is imported, or is a sanctioned orphan', () => {
   });
 
   test('⚠️ and two modules DO share a basename, which is why the specifier is resolved', () => {
-    // `control/controls.ts` is the game's control functions; `shell/controls.ts` is the keyboard. A
-    // scan that compared names would count an import of either as an import of both, and this is the
-    // evidence that the resolution above is not decoration.
+    // `control/controls.ts` is the game's control functions; `shell/controls.ts` is the keyboard.
+    // `table/plunger.ts` is the 1995 component; `shell/plunger.ts` is the pull-back the player works.
+    // A scan that compared names would count an import of either as an import of both, and these are
+    // the evidence that the resolution above is not decoration.
+    //
+    // ⚠️ THE LIST IS PINNED RATHER THAN COUNTED, so a THIRD clash has to be looked at rather than
+    // absorbed. Two modules with one name is a fact about this codebase; three is a question about
+    // whether somebody meant to shadow something.
     const byBase = new Map<string, string[]>();
     for (const module of modules) {
       const base = basename(module, '.ts');
@@ -110,6 +115,6 @@ describe('every module is imported, or is a sanctioned orphan', () => {
     }
     const clashes = [...byBase.entries()].filter(([, paths]) => paths.length > 1);
 
-    expect(clashes.map(([base]) => base)).toEqual(['controls']);
+    expect(clashes.map(([base]) => base).sort()).toEqual(['controls', 'plunger']);
   });
 });

@@ -156,22 +156,27 @@ describe('⚠️ the drawing tells the truth about what the ball can touch', () 
  * deliberate change to a table's geometry or to `EDGE_THICKNESS` must come here and update the number
  * ON PURPOSE — which is the point: area is not something to change by accident.
  *
+ * ⚠️ AND THEY DROPPED AGAIN WHEN THE PLUNGER FOLLOWED THE FLIPPERS OUT, for the same reason: it slides
+ * down its lane as it is drawn back, so a plunger stroked into a composition made once per change is a
+ * plunger that never moves. Both are drawn per frame now, and the area they used to occupy here is the
+ * area these counts lost — twice.
+ *
  * ⚠️ EVERY NUMBER DROPPED ON 2026-09-06 AND THAT WAS THE FIX LANDING. Flippers left this picture: they
  * were stroked at their resting angle into a composition made once per change, so the paddle swung in
  * the physics and the screen showed it at rest for ever. They are drawn per frame now, with the ball,
  * from the live geometry — so the area they used to occupy here is the area the counts lost.
  */
 const PAINTED = {
-  'low-orbit': 7311,
-  'ion-storm': 7005,
-  'crater-run': 7039,
-  'long-climb': 7971,
-  'ring-belt': 8016,
-  'slipstream': 6219,
-  'wide-arc': 4633,
-  'narrow-tower': 3873,
-  'four-flippers': 2923,
-  'bare-minimum': 668,
+  'low-orbit': 6991,
+  'ion-storm': 6685,
+  'crater-run': 6719,
+  'long-climb': 7651,
+  'ring-belt': 7696,
+  'slipstream': 5899,
+  'wide-arc': 4313,
+  'narrow-tower': 3553,
+  'four-flippers': 2623,
+  'bare-minimum': 388,
 };
 
 describe('⚠️ and the drawing never grows', () => {
