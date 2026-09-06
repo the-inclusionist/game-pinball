@@ -62,6 +62,14 @@ export function cabinet(o: CabinetOptions): AuthoredComponent[] {
   const halfGap = 11;          // 22 between the tips, so the middle is losable on purpose
   const flipperLength = 28;
   const guideTop = flipperY - 38;
+  /**
+   * How wide the side channels are, and therefore where the funnel guides start.
+   *
+   * ⚠️ ONE NUMBER FOR BOTH, because they are two sides of the same gap and were written separately.
+   * The ball is six pixels across; fourteen is a channel it enters without rattling and does not
+   * fall into by accident.
+   */
+  const OUTLANE_WIDTH = 14;
 
   return [
     /* ===================== THE OUTER SHELL ===================== */
@@ -173,14 +181,15 @@ export function cabinet(o: CabinetOptions): AuthoredComponent[] {
      * pivot, narrowing the path until the only way past is over a paddle. Each faces the play.
      */
     { name: 'guide.left', kind: 'wall', role: WALL,
-      bounds: { x: 14, y: guideTop, width: centre - halfGap - flipperLength - 14, height: flipperY - guideTop },
-      collision: [{ kind: 'line', from: { x: 14, y: guideTop },
+      bounds: { x: 4 + OUTLANE_WIDTH, y: guideTop,
+        width: centre - halfGap - flipperLength - 4 - OUTLANE_WIDTH, height: flipperY - guideTop },
+      collision: [{ kind: 'line', from: { x: 4 + OUTLANE_WIDTH, y: guideTop },
         to: { x: centre - halfGap - flipperLength, y: flipperY } }] },
     { name: 'guide.right', kind: 'wall', role: WALL,
       bounds: { x: centre + halfGap + flipperLength, y: guideTop,
-        width: divider - 4 - (centre + halfGap + flipperLength), height: flipperY - guideTop },
+        width: divider - OUTLANE_WIDTH - (centre + halfGap + flipperLength), height: flipperY - guideTop },
       collision: [{ kind: 'line', from: { x: centre + halfGap + flipperLength, y: flipperY },
-        to: { x: divider - 4, y: guideTop } }] },
+        to: { x: divider - OUTLANE_WIDTH, y: guideTop } }] },
 
     // Outside a guide, reached through the gap at its top: losing the ball there is bad luck rather
     // than the default route.
@@ -215,11 +224,31 @@ export function cabinet(o: CabinetOptions): AuthoredComponent[] {
       bounds: { x: centre + halfGap + flipperLength - 12, y: flipperY - 26, width: 12, height: 22 },
       scores: [1500], control: 'LaneControl', lamps: ['lamp.inlaneRight'] },
 
+    /**
+     * ⚠️ THE OUTLANE IS THE CHANNEL ITSELF, AND IT USED TO BE A RECTANGLE PARKED BESIDE ONE.
+     *
+     * The Dev, playing: "Você está desenhando artefatos embaixo das pás... não tem como interagir com
+     * estes itens, desenhe-os nos lugares certos." The first half of that sentence is this. Each
+     * outlane was twelve wide and thirty tall at a fixed offset from the wall — starting ten pixels
+     * above the flipper line and ending THIRTEEN BELOW it, with the funnel guide finishing above it
+     * and nothing leading a ball in. A red rectangle in an empty corner.
+     *
+     * ⚠️ AND THE RIGHT-HAND ONE WAS UNREACHABLE BY CONSTRUCTION, which nothing had measured. The right
+     * guide ran to `divider - 4`, so the gap between its top and the plunger lane was FOUR pixels and
+     * the ball is six across. It could not fit. Sixty balls per table found the outlanes 1 to 4 times
+     * out of 60 — and `tests/table-reachable` carried all twelve of them in its KNOWN_RARE list, which
+     * is a gate recording a defect instead of catching it.
+     *
+     * So an outlane is now what an outlane is: the channel between the side wall and the OUTSIDE of
+     * the funnel guide, running from the guide's top to the floor. `OUTLANE_WIDTH` sets both the
+     * channel and the guide that bounds it, from one number, because the two used to be written
+     * separately and drifted into a lane the ball could not enter.
+     */
     { name: 'outlane.left', kind: 'lane', role: 'hazard',
-      bounds: { x: 20, y: flipperY - 10, width: 12, height: 30 },
+      bounds: { x: 4, y: guideTop, width: OUTLANE_WIDTH, height: h - guideTop },
       scores: [2000], control: 'LaneControl', lamps: ['lamp.outlaneLeft'] },
     { name: 'outlane.right', kind: 'lane', role: 'hazard',
-      bounds: { x: divider - 16, y: flipperY - 10, width: 12, height: 30 },
+      bounds: { x: divider - OUTLANE_WIDTH, y: guideTop, width: OUTLANE_WIDTH, height: h - guideTop },
       scores: [2000], control: 'LaneControl', lamps: ['lamp.outlaneRight'] },
 
     { name: 'drain', kind: 'drain', role: 'hazard',

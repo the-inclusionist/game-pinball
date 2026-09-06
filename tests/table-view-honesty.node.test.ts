@@ -192,6 +192,11 @@ describe('⚠️ the drawing tells the truth about what the ball can touch', () 
  * with the mark this renderer uses for things the ball bounces off. The three that did not move —
  * `wide-arc`, `four-flippers`, `bare-minimum` — are the three with no lanes on them, which is a
  * check on the reading rather than a coincidence.
+ *
+ * ⚠️ AND THEY MOVED AGAIN, BY A HANDFUL EACH, WHEN THE OUTLANES BECAME THE SIDE CHANNELS. Four pixels
+ * on most tables: an outlane is longer now — guide top to floor rather than thirty pixels parked in a
+ * corner — but it is two rails either way, so the change is the rails' length and nothing else.
+ * `ring-belt` moved 68 and `low-orbit` 39 because their guides moved with the channel.
  */
 const PAINTED = {
   // ⚠️ 6991 UNTIL THE TABLE WAS AUTHORED UP TO THE 1995 DENSITY. `tests/table-density` measures the
@@ -206,32 +211,32 @@ const PAINTED = {
   // five tables and skipped this one. The difference is mostly the bottom assembly moving seven
   // pixels left: this file centred the flippers and the drain on the TABLE, and the cabinet
   // centres them on the PLAY, because sixteen pixels of the width are the plunger lane.
-  'low-orbit': 5011,
+  'low-orbit': 4972,
   // +572 on each of the four below: the cabinet's two inlanes, which five tables had never had.
   // The lower third paid 2000 for bad luck through the outlanes and nothing at all for good play.
   // ⚠️ +1768 when this table was authored up to the 1995 density: two more bumpers in the storm,
   // four drop targets in two flank shelves, three more arc rollovers and two ion trails down the
   // sides, and the eye rollover in the middle. Bumpers are the expensive ones to paint — a filled circle against a stroked line.
-  'ion-storm': 5373,
+  'ion-storm': 5369,
   // ⚠️ +1070: the two INLANES the cabinet now gives all five of its tables, and this table's own
   // authoring up to the 1995 density — two flank drop banks and a three-rollover reentry row.
-  'crater-run': 4339,
+  'crater-run': 4335,
   // ⚠️ +2640, the largest single move in this table: three more bumpers in a second gauntlet, a
   // four-target drop column up the left wall, two rebounders, four rollovers on the flanks and
   // three across the head. It is 300 tall against a 180 window and had 56 pixels of nothing in
   // the middle of its own climb.
-  'long-climb': 5820,
+  'long-climb': 5816,
   // ⚠️ +5437, and it is the last of the six to be authored up to the 1995 density — it was the
   // thinnest by a distance, at a THIRD of the archive's. Three more rocks on the belt, a
   // three-target drop column against each far wall, two rebounder cornices, and seventeen
   // rollovers spread across a table 360 wide whose outer thirds paid nothing at all.
   // -7 when the east scree column moved up twelve pixels: sixty balls never reached its lowest target,
   // which sat where the funnel has already gathered the ball toward the middle.
-  'ring-belt': 7246,
+  'ring-belt': 7178,
   // ⚠️ +2122 when this table was authored up to the 1995 density: two more eddies in the chamber, a
   // three-target drop COLUMN on its wall, two spillways in its corners, three wake rollovers and
   // two rebounders below the vanes.
-  'slipstream': 4778,
+  'slipstream': 4774,
   'wide-arc': 4313,
   // ⚠️ 3553 UNTIL THE BALL GAINED A RADIUS. `table/physics-build` now offsets every wall by it, the way
   // the original does and `physics/wall` already did for the 1995 table, and two of this fixture's

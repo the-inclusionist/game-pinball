@@ -207,9 +207,30 @@ export const LOW_ORBIT: AuthoredTable = {
       // higher than it fell from" — failed: the shot met a drone instead of open air. The drop bank
       // taught the same lesson on this table and that gate has already been moved once for it; moving
       // it again would be tuning a test to the furniture rather than placing the furniture.
-      bounds: { x: 70, y: 146, width: 60, height: 12 },
+      //
+      // ⚠️ AND A THIRD PATH, BECAUSE THE OUTLANES BECAME REAL. `table/cabinet`'s right-hand funnel
+      // guide used to run to `divider - 4`, leaving a four-pixel gap against a six-pixel ball, and
+      // widening it to a channel the ball can actually enter changed where the ball goes on this
+      // table. Sixty balls stopped meeting this drone at x 76 to 124 — which is the moving body's own
+      // rule, recorded above, arriving from a change made in another file.
+      //
+      // ⚠️ SO IT WAS MEASURED RATHER THAN GUESSED A THIRD TIME. Ball-time on this table, sixty balls,
+      // in twenty-pixel cells: the band y 160-179 holds the three busiest cells of the whole playfield
+      // — 3.6% at x 40-59, 2.7% at 60-79, 2.4% at 80-99 — against 1.0% where the old path ended.
+      //
+      // ⚠️ AND THE BUSIEST CELLS ARE THE PADDLE'S SHOT COLUMN, WHICH IS WHY THEY ARE BUSY. A horizontal
+      // path across them, x 60 to 100 at y 160, was met by the ball and failed the flipper's own gate
+      // in the same run — the two constraints are the same fact read from two ends, and no straight
+      // line along that band satisfies both.
+      //
+      // A DIAGONAL DOES. It descends from the open middle into the busy band and leaves the launch
+      // line free, because it crosses that column rather than lying along it. Four candidates were run
+      // against reachability, the flipper's force and playability together, which is what the second
+      // attempt should have done: the three horizontals each failed one of the three, and this passed
+      // all of them.
+      bounds: { x: 74, y: 124, width: 42, height: 46 },
       scores: [3000], control: 'RebounderControl', lamps: ['lamp.droneLow'],
-      mover: { from: { x: 76, y: 152 }, to: { x: 124, y: 152 }, seconds: 1.6, radius: 5 } },
+      mover: { from: { x: 80, y: 130 }, to: { x: 110, y: 164 }, seconds: 1.6, radius: 5 } },
 
     /* ===================== THE DROP BANK ===================== */
     //

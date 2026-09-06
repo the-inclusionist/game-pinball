@@ -113,26 +113,24 @@ const BALLS = 60;
 const RESTS_AGAINST = /^(wall\.|plunger$)/;
 
 /**
- * ⚠️ THE OUTLANES ARE NAMED, AND THIS IS A LEDGER LIKE `tests/table-density`'s.
+ * ⚠️ EMPTY, AND IT HELD TWELVE ENTRIES UNTIL THE OUTLANES BECAME REAL LANES.
  *
- * Measured over sixty balls: an outlane took ONE OR TWO of them on four tables and NONE on
- * `long-climb` or `ring-belt`, the two largest. The funnel does its job so well that the way a pinball
- * loses a ball to bad luck rather than to bad play has almost stopped existing.
+ * It named both outlanes on all six playable tables, with this note: an outlane took one or two balls
+ * in sixty on four tables and NONE on `long-climb` or `ring-belt`. The reading was that the funnel did
+ * its job too well — "the right rate is a game-feel decision and not mine" — and the ledger was left
+ * for the Dev to set a number.
  *
- * ⚠️ IT IS NOT FIXED HERE BECAUSE THE RIGHT RATE IS A GAME-FEEL DECISION AND NOT MINE. A real machine
- * loses maybe one ball in five or ten down an outlane; this loses one in forty. Widening the funnel's
- * mouth was tried — the obvious lever — and it left `crater-run`'s ball never reaching the bottom,
- * which is how a guess at geometry usually ends. The number is written down so the Dev can say what he
- * wants it to be, and the gate holds the line meanwhile: they may not become MORE decorative.
+ * ⚠️ THAT READING WAS WRONG, AND THE LEDGER WAS RECORDING A DEFECT INSTEAD OF CATCHING ONE. The right
+ * outlane could not be entered at all: `table/cabinet`'s right funnel guide ran to `divider - 4`, so
+ * the gap between its top and the plunger lane was FOUR PIXELS against a ball six across. No game-feel
+ * number would have fixed that, and nothing here measured the geometry — only the outcome, which is
+ * why a wrong explanation survived beside the right measurement.
+ *
+ * The outlanes are now the channels themselves, from the guide's top to the floor. Sixty balls find
+ * every one of the twelve, so nothing needs excusing. A ledger that empties is the only kind worth
+ * keeping: it stays here, empty, so the next entry has to be argued rather than appended.
  */
-const KNOWN_RARE: Readonly<Record<string, readonly string[]>> = {
-  'low-orbit': ['outlane.left', 'outlane.right'],
-  'ion-storm': ['outlane.left', 'outlane.right'],
-  'crater-run': ['outlane.left', 'outlane.right'],
-  'long-climb': ['outlane.left', 'outlane.right'],
-  'ring-belt': ['outlane.left', 'outlane.right'],
-  slipstream: ['outlane.left', 'outlane.right'],
-};
+const KNOWN_RARE: Readonly<Record<string, readonly string[]>> = {};
 
 describe('⚠️ every component the ball is meant to meet, it meets', () => {
   test.each(PLAYABLE_TABLES.map((t) => [t.name, t] as const))('%s', (name, table) => {
