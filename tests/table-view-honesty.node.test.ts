@@ -158,6 +158,7 @@ describe('⚠️ the drawing tells the truth about what the ball can touch', () 
  */
 const PAINTED = {
   'low-orbit': 7479,
+  'ion-storm': 7187,
   'wide-arc': 4801,
   'narrow-tower': 4037,
   'four-flippers': 3239,

@@ -28,9 +28,16 @@ describe('all five tables open', () => {
     }
   });
 
-  test('there are five, with distinct names', () => {
-    expect(CATALOG).toHaveLength(5);
-    expect(new Set(CATALOG.map((t) => t.name)).size).toBe(5);
+  test('⚠️ the catalogue grows on purpose, and its size is pinned so it cannot grow by accident', () => {
+    // This said FIVE, and the number was the point: the catalogue's own header explains that each of
+    // the five reaches a part of the machine no other reaches. The Dev has asked for five more tables
+    // meant to be PLAYED, which is a different axis — `ion-storm` is the first of them.
+    //
+    // The count stays pinned rather than becoming `>= 5`, because a table appearing in the catalogue is
+    // a decision: it goes in the selector, it needs a world in the palette, and it has to survive the
+    // playability gates. Updating this line is the cheapest possible way to be made to notice.
+    expect(CATALOG).toHaveLength(6);
+    expect(new Set(CATALOG.map((t) => t.name)).size, 'and no two share a name').toBe(CATALOG.length);
   });
 
   test('the default is the conventional one', () => {
