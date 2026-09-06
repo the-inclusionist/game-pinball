@@ -624,9 +624,25 @@ const cabinet = {
     else physics.setFlippers(side, extended);
   },
   launch: () => { if (phase !== 'playing') launch(); },
+  /**
+   * ⚠️ AND IT SAYS SO, IN BOTH CHANNELS, BECAUSE A SILENT PAUSE READS AS A HANG.
+   *
+   * The first version of this set the phase and stopped. The frame loop steps the ball only while
+   * playing, so pressing start froze the table and told nobody why — which to a sighted player looks
+   * like the game locking up, and to a blind one is silence where a state change belongs.
+   *
+   * The hint block carries it while it lasts, because pause is a STATE and the HUD is what shows
+   * state. The live region carries the transition, because that is an EVENT — the same split
+   * `shell/hud-dom` already makes and the same one blind mode announces through.
+   */
   togglePause: () => {
     if (phase === 'playing') phase = 'paused';
     else if (phase === 'paused') phase = 'playing';
+    else return;
+
+    hint = phase === 'paused' ? shell.t('pinball.hud.paused') : shell.t('pinball.hud.waiting');
+    const status = document.getElementById('sr-status');
+    if (status) status.textContent = hint;
   },
 };
 

@@ -131,6 +131,7 @@ const es: Record<string, string> = {
   'pinball.highScore.name': 'Tu nombre',
   'pinball.highScore.confirm': 'Guardar',
   'pinball.highScore.anonymous': 'Anónimo',
+  'pinball.hud.paused': 'En pausa',
   'pinball.title.back': 'Volver',
   'pinball.title.highScores': 'Mejores puntuaciones',
   'pinball.title.noScores': 'Todavía nadie ha jugado.',

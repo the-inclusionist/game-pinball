@@ -140,3 +140,25 @@ describe('and there is something to point at', () => {
     expect(debug().problems).toEqual([]);
   });
 });
+
+describe('⚠️ pause says so, because a silent pause reads as a hang', () => {
+  // The audit that found this: `togglePause` set the phase and stopped. The frame loop steps the ball
+  // only while playing, so pressing start froze the table and told nobody why — a lock-up to a sighted
+  // player, silence to a blind one. The same class as the flippers drawn at rest and the lamps drawn
+  // nowhere: state that changes with nothing reporting it.
+  test('start announces the pause, and announces coming back', async () => {
+    // A game has to be running first: pause on the title would be a state the title cannot leave.
+    await press('u');
+    const before = said();
+
+    await press('{Enter}');
+    const paused = said();
+
+    expect(paused, 'the pause is announced').not.toBe(before);
+    expect(paused.length, 'and it is words').toBeGreaterThan(0);
+
+    await press('{Enter}');
+
+    expect(said(), 'and so is the resume').not.toBe(paused);
+  });
+});
