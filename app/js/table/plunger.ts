@@ -32,7 +32,11 @@
 // increment is ONE and a hundred ticks of 0.025 s are needed for the full hundred. Two seconds of
 // holding is a 61% pull, which leaves the ball at speed 64 rather than 105. Nothing is wrong with that
 // — it is the original's own arithmetic — but a test that holds for 120 frames is not testing a full
-// launch, and the difference decides whether the ball clears the top of the lane.
+// launch.
+//
+// ⚠️ AND IT DOES NOT DECIDE WHERE THE BALL GETS TO, which I assumed here and then measured. A 61% pull
+// and a full hundred both stop at exactly y = -6.89: the top of the lane is closed, and a ball stopped
+// by geometry stops in the same place whatever it was launched with. See `table/original-oneways`.
 //
 // ========================= THE LAUNCH IS NEVER EXACTLY REPEATABLE =========================
 // `boost = rand() * Boost * 0.1 + Boost` — between 1.0 and 1.1 times what was pulled. A deliberate ten
