@@ -107,6 +107,8 @@ const es: Record<string, string> = {
   'pinball.scene.sky': 'Cielo',
   'pinball.scene.space': 'Espacio',
   'pinball.scene.mars': 'Marte',
+  'pinball.scene.moon': 'Luna',
+  'pinball.scene.rings': 'Anillos',
   'pinball.scene.ice': 'Hielo',
   'pinball.scene.slate': 'Neutro',
   'pinball.mission.lowOrbit.bumpers': 'Golpea los tres topes',

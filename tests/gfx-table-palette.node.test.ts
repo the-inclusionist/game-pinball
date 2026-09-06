@@ -97,11 +97,22 @@ describe('the scenes the authored tables are drawn in', () => {
     for (const name of Object.keys(SCENES)) for (const cbSafe of [false, true]) {
       const p = paletteFor(name, { cbSafe });
       const lightness = (c: Rgb) => lab(c)[0];
+      /**
+       * ⚠️ THE BRIGHTEST BAND, NOT THE NOMINAL GROUND, and this test compared the nominal one until
+       * `Scene.bands` existed. A world may be a gradient now — the Dev's four themes all are — and a
+       * single band brighter than a role would make that role unreadable wherever the two met while
+       * this gate went on passing, because `ground` is only the colour a flat world would use.
+       *
+       * The identity being protected is an ORDER: whatever the world is made of, the floor is the
+       * dimmest thing on it. A gradient has to obey that everywhere, not on average.
+       */
+      const floor = (p.bands ?? [{ at: 0, color: p.ground }])
+        .reduce((a, b) => (lightness(b.color) > lightness(a.color) ? b : a)).color;
 
       for (const [what, rgb] of swatches(p)) {
         if (what === 'the ground') continue;
-        expect(lightness(rgb), `${name}/${cbSafe}: ${what} is lighter than the ground`)
-          .toBeGreaterThan(lightness(p.ground));
+        expect(lightness(rgb), `${name}/${cbSafe}: ${what} is lighter than the brightest ground band`)
+          .toBeGreaterThan(lightness(floor));
         if (what === 'the ball') continue;
         expect(lightness(p.ball), `${name}/${cbSafe}: the ball is lighter than ${what}`)
           .toBeGreaterThan(lightness(rgb));

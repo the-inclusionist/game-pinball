@@ -177,6 +177,49 @@ export const SCENES: Readonly<Record<string, Scene>> = {
   },
   space: { ground: rgb(8, 8, 12), textId: 'pinball.scene.space' },
   mars: { ground: rgb(42, 20, 16), textId: 'pinball.scene.mars' },
+  /**
+   * ⚠️ THE MOON, AND `crater-run` STOOD ON MARS. The Dev's theme for it: "crater-run deve ter a
+   * temática da lua e suas crateras, com trilhos sob uma mina branca e sombras pretas." It has been a
+   * red world since it was written, which was a choice made before there was a theme to make it for.
+   *
+   * ⚠️ AND THE MINE IS NOT THE BACKDROP. "Uma mina branca e sombras pretas" is high contrast, and the
+   * ground is the one thing on a table that may not be: `tests/gfx-table-palette` holds every role
+   * lighter than the brightest band, which is ADR-0004's whole mechanism for telling the worlds apart
+   * without relying on hue. So the white and the black belong to the mine's own COMPONENTS, and the
+   * backdrop is what they stand on — regolith, dark and slightly warmer toward the floor where the
+   * sun does not reach.
+   */
+  moon: {
+    ground: rgb(24, 24, 27),
+    bands: [
+      { at: 0, color: rgb(6, 6, 9) },
+      { at: 0.3, color: rgb(20, 20, 24) },
+      { at: 1, color: rgb(34, 33, 31) },
+    ],
+    textId: 'pinball.scene.moon',
+  },
+  /**
+   * Saturn's rings, which are the one theme the band mechanism was already the shape of. The Dev:
+   * "ring-belt deve ser ambientado nos anéis de saturno, com meteoros voando."
+   *
+   * Alternating dark and dusty bands rather than a gradient, because that is what a ring system looks
+   * like edge-on: gaps of nothing between belts of ice and rock. `ring-belt` is the widest table and
+   * the one the camera pans across, so the bands run with the pan and give the eye something to
+   * measure the movement against.
+   */
+  rings: {
+    ground: rgb(14, 12, 16),
+    bands: [
+      { at: 0, color: rgb(5, 5, 8) },
+      { at: 0.18, color: rgb(30, 26, 22) },
+      { at: 0.3, color: rgb(8, 8, 11) },
+      { at: 0.46, color: rgb(38, 33, 27) },
+      { at: 0.6, color: rgb(10, 9, 12) },
+      { at: 0.78, color: rgb(26, 23, 20) },
+      { at: 1, color: rgb(7, 7, 10) },
+    ],
+    textId: 'pinball.scene.rings',
+  },
   ice: { ground: rgb(10, 28, 30), textId: 'pinball.scene.ice' },
   slate: { ground: rgb(26, 30, 38), textId: 'pinball.scene.slate' },
 };
@@ -195,9 +238,10 @@ const SCENE_OF_TABLE: Readonly<Record<string, string>> = {
   // to catch on as the view slides.
   // The storm is lit by what it is made of: an electrical blue-violet, closest to `sky` of the five.
   'ion-storm': 'sky',
-  'crater-run': 'mars',
+  // The Moon, from the Dev's theme. It stood on Mars until there was a theme to stand it on.
+  'crater-run': 'moon',
   'long-climb': 'ice',
-  'ring-belt': 'space',
+  'ring-belt': 'rings',
   'slipstream': 'ice',
   'wide-arc': 'space',
   // Two hundred and forty pixels of climb. Red earth for a table that is all ascent.
