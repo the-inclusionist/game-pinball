@@ -257,6 +257,63 @@ export const SCENES: Readonly<Record<string, Scene>> = {
     ],
     textId: 'pinball.scene.rings',
   },
+  /**
+   * ⚠️ THE LAUNCH PAD, AND IT IS THE DEV'S OWN THEME FOR `long-climb`, given on the day this was
+   * written: "tema plataforma de lançamento, com motor soltando fogo por toda a base, asas, pedaços
+   * de fuselagem branca, guindaste vermelho, céu escuro no alto, holofotes."
+   *
+   * It is the first world in this module that gets BRIGHTER downward, and the reason is that his
+   * theme puts the light source at the bottom. Night sky at the head of the table, the first warmth
+   * two-thirds down, ember, then the engine itself across the base, and smoke rolling out under it —
+   * six stops, because a rocket exhaust is not a fade, it is a hot core with a cooler skirt.
+   *
+   * `long-climb` is the tallest table at 300 and the camera has 120 pixels of travel on it, so the
+   * player climbs OUT of the fire and into the dark. That is the table's own shape and this is it
+   * coloured.
+   *
+   * ⚠️ AND THE FIRE STOPS AT 88, 40, 16 — a CIE lightness of 22.4 against the darkest role's 34.7.
+   * The engine is the brightest thing any world here paints and it is still darker than everything
+   * standing on it, which is the rule the whole palette is built on. The wings, the white fuselage,
+   * the red crane and the floodlights are COMPONENTS and not backdrop, for the same reason
+   * `crater-run`'s white mine is: a bright ground makes what stands on it unreadable.
+   */
+  pad: {
+    ground: rgb(14, 12, 18),
+    bands: [
+      { at: 0, color: rgb(2, 3, 8) },
+      { at: 0.32, color: rgb(7, 9, 18) },
+      { at: 0.62, color: rgb(22, 15, 17) },
+      { at: 0.84, color: rgb(56, 24, 12) },
+      { at: 0.94, color: rgb(88, 40, 16) },
+      { at: 1, color: rgb(40, 26, 20) },
+    ],
+    textId: 'pinball.scene.pad',
+  },
+  /**
+   * ⚠️ THE SLIPSTREAM ITSELF, from the Dev's theme for the table of that name: "viagem em alta
+   * velocidade pelo espaço, com estrelas na forma de traço, cometas passando bem devagar, meteoros e
+   * sondas voyager like em alta velocidade."
+   *
+   * The backdrop is the one part of that a gradient can carry: deep space at both ends with a cold
+   * bright LANE across the middle — the stream the table is named after. Everything else in his
+   * sentence moves, and a moving thing is `table/mover`'s, not this module's.
+   *
+   * ⚠️ AND THE BRIGHT BAND IS NARROW ON PURPOSE, 0.38 to 0.62 of the table. A stream you are inside
+   * is not a wash; it is an edge you cross. It also gives the eye something fixed to measure the
+   * camera's travel against, which on a table 245 tall against a 180 window is 65 pixels of scroll
+   * with nothing else to say it is happening.
+   */
+  stream: {
+    ground: rgb(6, 7, 14),
+    bands: [
+      { at: 0, color: rgb(3, 4, 10) },
+      { at: 0.38, color: rgb(10, 13, 26) },
+      { at: 0.5, color: rgb(38, 50, 80) },
+      { at: 0.62, color: rgb(10, 13, 26) },
+      { at: 1, color: rgb(3, 4, 9) },
+    ],
+    textId: 'pinball.scene.stream',
+  },
   ice: { ground: rgb(10, 28, 30), textId: 'pinball.scene.ice' },
   slate: { ground: rgb(26, 30, 38), textId: 'pinball.scene.slate' },
 };
@@ -277,9 +334,11 @@ const SCENE_OF_TABLE: Readonly<Record<string, string>> = {
   'ion-storm': 'sky',
   // The Moon, from the Dev's theme. It stood on Mars until there was a theme to stand it on.
   'crater-run': 'moon',
-  'long-climb': 'ice',
+  // The launch pad, from the Dev's theme. It stood on ice until there was one.
+  'long-climb': 'pad',
   'ring-belt': 'rings',
-  'slipstream': 'ice',
+  // And the stream the table is named after, likewise.
+  'slipstream': 'stream',
   'wide-arc': 'space',
   // Two hundred and forty pixels of climb. Red earth for a table that is all ascent.
   'narrow-tower': 'mars',

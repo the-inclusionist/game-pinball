@@ -112,6 +112,8 @@ const en: Record<string, string> = {
   'pinball.scene.mars': 'Mars',
   'pinball.scene.moon': 'Moon',
   'pinball.scene.rings': 'Rings',
+  'pinball.scene.pad': 'Launch pad',
+  'pinball.scene.stream': 'Slipstream',
   'pinball.scene.ice': 'Ice',
   'pinball.scene.slate': 'Neutral',
   'pinball.mission.lowOrbit.bumpers': 'Hit all three bumpers',

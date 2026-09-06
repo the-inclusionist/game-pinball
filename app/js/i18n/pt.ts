@@ -124,6 +124,8 @@ const pt: Record<string, string> = {
   'pinball.scene.mars': 'Marte',
   'pinball.scene.moon': 'Lua',
   'pinball.scene.rings': 'Anéis',
+  'pinball.scene.pad': 'Plataforma de lançamento',
+  'pinball.scene.stream': 'Corrente',
   'pinball.scene.ice': 'Gelo',
   'pinball.scene.slate': 'Neutro',
   'pinball.mission.lowOrbit.bumpers': 'Acerte os três para-choques',
