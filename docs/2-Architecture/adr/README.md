@@ -19,3 +19,4 @@ question, the drivers, the options that were weighed, the decision, and its cons
 | [ADR-0003](ADR-0003-the-table-is-implemented-twice-and-that-is-the-design.yaml) | The table is implemented twice on purpose, and finding both is not finding a duplicate |
 | [ADR-0004](ADR-0004-the-worlds-are-told-apart-by-lightness-and-the-gate-gives-up-blue.yaml) | The five worlds share an order rather than a colour, and the CB-Safe palette buys separability with the gate's blue |
 | [ADR-0005](ADR-0005-an-authored-table-declares-its-own-missions.yaml) | An authored table declares its own missions, and the 1995 machine is not bent into serving them |
+| [ADR-0006](ADR-0006-the-1995-playfield-is-the-density-bar-and-shortfalls-are-named.yaml) | The 1995 playfield is the density bar, and a table below it is named with what it measures |

@@ -1,0 +1,155 @@
+---
+metadata:
+  status: "accepted"
+  date: 2026-09-06
+  decision-makers: [Dev]
+  consulted:
+    - "The Dev's question of 2026-09-06, verbatim: 'Por que o resultado são mesas tão «simples» ao invés
+       de ser tão complexas quanto o original? O que tem jogável são demos que qualquer LLM forte atual
+       faria em um único prompt, não em dois dias.'"
+    - "`control/score-table.ts` (this repository) — the transcription of the archive's score rows, which
+       is where the number 90 comes from and the reason it is not an estimate"
+    - "`Doc/.dat dump.txt` (upstream, k4zmu2a/SpaceCadetPinball) — the independent dump giving the
+       playfield as 365x470, already the oracle for phase 1's parser"
+    - "ADR-0005 (this repository) — the same shape of decision one layer up: what a table declares"
+  informed: []
+
+title: The 1995 playfield is the density bar, and a table below it is named with what it measures
+
+context-and-problem-statement: |
+  The Dev asked why the authored tables are so much simpler than the original, and the first answer
+  given to him was WRONG IN BOTH DIRECTIONS AT ONCE. It said "seventy-two components across six tables
+  against ninety on the 1995 one" — adding six tables together, setting the total against ONE table,
+  and ignoring that the authored tables are roughly a quarter of the original's area.
+
+  ⚠️ THE COMPLAINT WAS RIGHT AND THE REPLY WAS UNMEASURED, WHICH IS THE WORSE OF THE TWO. Anybody can
+  agree that a table feels thin. Nobody can act on it until it is a number, and until it is a number
+  nobody can tell which tables are the problem — measured afterwards, `low-orbit` was within a fifth of
+  the original and `ring-belt` was at a third of it, so "all six are thin" was false as well.
+
+  The question this record answers is therefore not "should the tables be richer" — the Dev settled
+  that — but: WHAT IS THE BAR, and what happens to a table that is under it while the work is going on.
+
+decision-drivers:
+  - "The bar has to be a MEASUREMENT of something, not a preference. This port exists to rebuild one
+     specific table; that table is the only non-arbitrary reference available."
+  - "⚠️ A gate that is red for as long as the authoring takes is a gate nobody reads, and a suite with a
+     known-red test in it stops being evidence about anything else."
+  - "A shortfall that is not written down is not a decision — it is a surprise waiting for whoever plays
+     the game next. This repository has an orphan ledger and a basename-clash ledger for that reason."
+  - "The tables differ in area by a factor of two (183x235 against 360x240), so a count would compare
+     nothing. Density is what makes six tables commensurable."
+
+considered-options:
+  - &absolute "A minimum COUNT of scoring components per table"
+  - &density "The 1995 playfield's DENSITY as the bar, with a named ledger of tables below it"
+  - &judgement "No gate: author until the tables feel right"
+
+pros-and-cons-of-the-options:
+  *absolute:
+    good:
+      - "Trivial to check and to explain."
+    bad:
+      - "⚠️ Compares nothing across tables of different size. `ring-belt` is 360x240 and `low-orbit` is
+         183x235 — the same count is twice the crowding on one of them."
+      - "Any figure chosen is a preference wearing a number's clothes."
+  *density:
+    good:
+      - "The bar is a measurement of the archive: 90 components carrying a score row over 365x470, which
+         is 5.25 per ten thousand pixels. Both halves come from files this port already reads."
+      - "Commensurable across sizes, which is the whole difficulty."
+      - "⚠️ The ledger keeps the suite GREEN while the debt is visible, and it can only shrink by work:
+         a named table may not get thinner, and an unnamed one must meet the bar."
+    bad:
+      - "⚠️ IT MEASURES FULLNESS AND NOT QUALITY, and the difference is not small. A table stuffed with
+         rollovers scores well here and plays like a car park. The record says so in §3 rather than
+         letting the number stand in for a judgement it cannot make."
+      - "A table has an integer number of components and a density does not, so a table can land a
+         fraction short — twice in practice, and both times the answer was one more component."
+  *judgement:
+    good:
+      - "No arithmetic can tell anybody whether a table is fun, and this option is honest about that."
+    bad:
+      - "It is what was already being done, and it produced six tables at between a third and four
+         fifths of the reference without anybody noticing which was which."
+
+decision-outcome:
+  chosen-option:
+    link: *density
+    justification: |
+      ===== 1. THE BAR =====
+      The 1995 playfield is 365x470 — the largest bitmap in `PINBALL.DAT`, from the upstream dump that
+      is already phase 1's oracle — and `control/score-table` transcribes 90 components carrying a score
+      row. That is 5.25 scoring components per ten thousand table pixels, and it is the bar.
+
+      ⚠️ NEITHER NUMBER IS A CHOICE. Both are read off the archive, which is what makes this a
+      measurement rather than a target somebody picked.
+
+      ===== 2. THE LEDGER =====
+      A table below the bar is NAMED in `tests/table-density`, with the density it measured when it was
+      named. Two things are then checked: a table not on the list meets the bar, and a table on the list
+      may not get any thinner. The list shrinks by authoring and cannot grow without somebody writing a
+      name into it.
+
+      The floors are rounded DOWN. A floor recorded above where a table actually stands would refuse a
+      table that had not moved — the ledger accusing somebody of a loss they did not cause.
+
+      ===== 3. WHAT THIS DOES NOT MEASURE =====
+      ⚠️ DENSITY IS FULLNESS, NOT QUALITY, and this paragraph exists because the number will be quoted.
+      It counts components carrying a score row. It says nothing about whether they are worth hitting,
+      whether the routes between them are interesting, or whether a table is fun.
+
+      What it answers is the question the Dev actually asked — whether these tables are as FULL as the
+      one this port exists to rebuild. Whether they are as GOOD is a judgement, and it is his.
+
+      ===== 4. A FRACTION SHORT IS ONE COMPONENT SHORT =====
+      `ion-storm` measured 5.2459 against 5.2463 and `ring-belt` 5.2083; each was short by less than one
+      component, because a table has an integer number of them and a density does not. Both times the
+      answer was to add a component the table wanted anyway — the eye of the storm, the hub of the ring
+      — rather than to widen the bar. Widening a bar to swallow a third of a component is moving it.
+
+  consequences:
+    positive:
+      - "The Dev's complaint became a number that says WHICH tables and BY HOW MUCH, which no amount of
+         agreeing with him would have produced."
+      - "All six tables were authored up to the bar and the ledger is empty; every one came off it by
+         work and not once by the bar moving."
+      - "A table added tomorrow meets the bar or is named, so the debt cannot return silently."
+    negative:
+      - "⚠️ A number that measures fullness will be read as measuring quality, whatever §3 says. That is
+         the cost of having a number at all, and it is accepted rather than solved."
+      - "Authoring to a density invites padding. Four of the six gained rollovers partly because a lane
+         declares no collision and can go anywhere — cheap density, and honest only while the rollovers
+         sit where a ball actually travels."
+    neutral:
+      - "The bar moves if the transcription of `score-table` ever changes, which is correct: the
+         reference is the archive, not a number copied out of it."
+  confirmation: |
+    `tests/table-density`, whose first test pins the bar itself at 5.25 so it cannot drift when the
+    constants above it are edited, and whose ledger tests refuse a stale name in either direction — a
+    listed table that is not really thin, and a name that is not a playable table.
+
+    Born red: `low-orbit` was the only table not on the list when the file was written, and it failed at
+    4.19 until the table was authored up.
+
+more-information: |
+  THE MEASURED SEQUENCE, kept because it is the evidence that the ledger only ever shrank:
+
+      before   low-orbit 4.19  crater-run 3.36  ion-storm 2.40  slipstream 2.23  long-climb 2.00  ring-belt 1.62
+      after    low-orbit 5.35  crater-run 5.25  ion-storm 5.46  slipstream 5.35  long-climb 5.28  ring-belt 5.32
+
+  AND WHAT THE AUTHORING ITSELF TAUGHT, which is not a decision and is the more useful half. Five
+  placements failed across three tables, each found by running a ball rather than by reading a file:
+
+    · A BUMPER NEAR A WALL IS A WEDGE. `ion-storm`'s fifth sat nine pixels of body from the lane divider
+      and the ball rattled between the two into the outlane on every run, never reaching a paddle.
+    · A DROP BANK ACROSS THE TABLE IS A WALL. Four targets spanning 116 of 183 pixels meant a ball down
+      the middle could not reach the flippers at all until the bank was cleared.
+    · AN UP-FACING FACE IS A SHELF unless a bumper nest puts speed into what lands on it. One held a
+      ball for four thousand frames without a drain.
+    · A ONE-WAY CEILING WITH A FLOOR UNDER IT IS A BOX. `slipstream`'s bank below its vanes trapped the
+      ball between the two.
+    · AND A LANE DECLARES NO COLLISION, so rollovers go where a target may not.
+
+  `long-climb` was authored after all five were known and its sixteen placements passed every gate on
+  the first run, which is the only evidence available that the rules are worth having.
