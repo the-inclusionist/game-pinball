@@ -99,11 +99,25 @@ export function cabinet(o: CabinetOptions): AuthoredComponent[] {
      *     stopped answering the flippers: the ball entered the play at a different angle and never
      *     reached a paddle.
      *
-     * ⚠️ THE SHAPE IS NOT THE DIFFICULTY. This bend is shared by five tables whose routes were tuned
-     * under the straight one, so changing it changes five layouts at once — and it wants the treatment
-     * the density and reachability work got: a measurement of where the ball ENTERS the play, and what
-     * that does to each table, BEFORE a line moves. Guessing at it three times is what this comment is
-     * for.
+     * ⚠️ AND THEN IT WAS MEASURED, WHICH IS WHAT THE THREE GUESSES SHOULD HAVE BEEN. The arc works: on
+     * the corner at radius 20, a full launch enters the play moving `(-0.77, 0.64)` where the straight
+     * slope gives `(-0.44, 0.90)` — much more leftward, and eighteen pixels higher. That IS the curve
+     * the Dev asked for, and it is not why it cannot be adopted.
+     *
+     * ⚠️ WHAT THE MEASUREMENT FOUND IS THAT THE TOP-LEFT OF EVERY TABLE IS EMPTY. A ball thrown to the
+     * left wall has nothing there to meet: it hugs the wall down past the funnel's mouth — which
+     * starts at x = 14 against a wall face at 7 — and out of the bottom without ever reaching a
+     * paddle. On `crater-run` and `long-climb` a flapping run and a quiet one came out IDENTICAL, 315
+     * and 471 frames, which is the playability gate's definition of a table the player watches.
+     *
+     * So the curve is right and every table is missing the furniture that a curve implies: something
+     * in the top-left corner to turn a sweeping ball back into the play. That is a change to six
+     * layouts, not to one line, and it is the next piece of authoring rather than a fix to this file.
+     *
+     * ⚠️ AND `low-orbit` WOULD NOT HAVE FOLLOWED ANYWAY, which is a wart of my own making. It does not
+     * call `cabinet()` at all — it was written before this module existed and was never converted — so
+     * every cabinet change since has reached five tables and skipped the flagship. Its walls, lane,
+     * bend, flippers and funnel are a copy that has been drifting quietly.
      */
     { name: 'wall.laneReturn', kind: 'wall', role: WALL,
       bounds: { x: divider - 14, y: 4, width: w - divider + 14, height: 18 },
