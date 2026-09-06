@@ -119,6 +119,22 @@ decision-outcome:
     § 7 — ONE AXIS, CALLED TWICE. The solver takes a position, a speed and a pair of sizes, and knows
     nothing about "vertical". A table wider than 320 scrolls horizontally through the same function.
 
+amendment-2026-09-06-dawn: |
+  THE PREDICTION HELD, AND NOTHING HAD TESTED IT. This record promised that "phase 8's horizontal
+  scrolling costs nothing: it is the same function with different sizes", on the strength of `stepAxis`
+  knowing nothing about vertical. That turned out to be exactly right — the horizontal axis differs in
+  three values and no logic: the window is the HUD's playfield rect, the world is the table's own width,
+  and the anchor is the MIDDLE of the window rather than the vertical's forward-looking one, because a
+  player following a ball sideways is not looking ahead of it and an off-centre anchor would swing the
+  view every time the ball turned round. That last one this record did not anticipate.
+
+  ⚠️ AND THE PROMISE WAS UNKEPT FOR AS LONG AS IT STOOD. `wide-arc` is 360 wide against a 320 screen, and
+  the renderer passed a literal `0` for the horizontal offset: forty columns of that table could never be
+  looked at, the ball rolled off the right of the screen and came back. The solver was correct and
+  complete and nothing called it — the same shape as every other finding of this week. Wired now, seen
+  moving in the browser over six distinct offsets as the ball crosses, and guarded both in `shell-boot`
+  and by a source check on `main.ts`, whose draw calls no unit test drives.
+
 consequences:
   good:
     - "The constraint the Dev stated in prose is now a property with a test behind it: the view cannot
