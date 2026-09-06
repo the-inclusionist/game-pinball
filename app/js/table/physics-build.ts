@@ -83,8 +83,23 @@ export function flipperGeometryOf(component: AuthoredComponent, ballRadius: numb
  * How much the flipper's own speed is added on top of the bounce. The original reads it from the table
  * data (attribute 803); an authored table has no such file, so it is a constant here and is declared as
  * a constant rather than smuggled in as a magic number.
+ *
+ * ⚠️ IT WAS 2, AND THAT NUMBER WAS CHOSEN WHILE THE KICK WAS MEANINGLESS. See `flipperMultFor` below:
+ * the transcribed formula was short by the paddle's length, so the whole term came out around twelve
+ * against ball speeds in the hundreds, and doubling twelve is still nothing. Restoring the length made
+ * the multiplier matter for the first time, and 2 was then measured: a player flapping both paddles
+ * drove the ball to 1953 px/s — six times a full plunger, and pinned against `physics/step`'s own
+ * clamp, which meant the clamp had become the design.
+ *
+ * ⚠️ ONE IS NOT A SMALLER GUESS. Two independent readings give it. It is `original-flippers`' own
+ * default for attribute 803 when the archive does not say — the value the port already trusts for the
+ * 1995 table. And it is what makes a paddle contribute exactly ITS OWN TIP SPEED once: the sweep is
+ * about 0.96 rad over 0.08 s, so ω is 12 rad/s, and at a reach of 26 that is 312 px/s — against a
+ * full plunger of 273 to 309. The strongest shot a player can make comes out level with the strongest
+ * launch, which is what a pinball feels like, and it falls out of the geometry rather than being
+ * dialled in.
  */
-export const FLIPPER_COLLISION_MULT = 2;
+export const FLIPPER_COLLISION_MULT = 1;
 
 /**
  * ⚠️ AND THE MULTIPLIER CARRIES A LENGTH, BECAUSE THE TRANSCRIBED FORMULA DIVIDES ONE OUT.

@@ -28,7 +28,7 @@
 // an authored table has no such file". It carries the length back. The 1995 table's flippers read their
 // own multiplier from the archive and are not touched.
 import { describe, test, expect } from 'vitest';
-import { buildPhysics, FRAME_SECONDS } from '../app/js/table/physics-build.js';
+import { buildPhysics, launchSpeedFor, FRAME_SECONDS } from '../app/js/table/physics-build.js';
 import { advanceFrame } from '../app/js/physics/step.js';
 import { PLAYABLE_TABLES } from '../app/js/table/catalog.js';
 import type { AuthoredTable } from '../app/js/table/authored.js';
@@ -131,5 +131,55 @@ describe('⚠️ a flipper sends the ball to the top', () => {
     }
 
     expect(peak, `arrived at ${arrived.toFixed(0)}`).toBeGreaterThan(arrived * 1.5);
+  });
+});
+
+/**
+ * ⚠️ AND A CEILING, BECAUSE THE FIRST FIX OVERSHOT AND NOTHING WOULD HAVE SAID SO.
+ *
+ * Restoring the paddle's length turned a kick of about twelve into one of about five hundred, and the
+ * gates above only ask whether the ball goes far enough. Measured afterwards, which is the point of
+ * measuring afterwards: a player flapping both paddles could drive the ball to 1953 px/s — 32 pixels
+ * a frame against a ball 6 pixels across, six times the speed of a full plunger.
+ *
+ * ⚠️ IT DID NOT TUNNEL, AND THAT IS NOT THE SAME AS BEING RIGHT. `physics/step` cuts every frame into
+ * half-radius substeps and clamps the ball at `radius * 200` — 600 px/s here — so the ball stayed on
+ * the table. What it did instead was live pinned against that clamp, which means the ceiling was doing
+ * the design's job: the table's own geometry no longer decided anything, because everything was as
+ * fast as the engine would allow.
+ *
+ * So the bar is the engine's own constant rather than a number to taste. A collision may overshoot the
+ * clamp WITHIN a frame — the clamp is applied before the movement, the boost after it — but a design
+ * that overshoots it by more than double is one where the clamp is the design.
+ */
+describe('⚠️ and a flipper does not turn the ball into a bullet', () => {
+  // `physics/step`'s own `MAX_SPEED_PER_RADIUS`, named here because a copy of a number is how two
+  // files start disagreeing. If that constant moves, this bar moves with it and somebody notices.
+  const ENGINE_CAP_PER_RADIUS = 200;
+
+  test.each(PLAYABLE_TABLES.map((t) => [t.name, t] as const))(
+    '%s: flapping cannot drive it past twice the engine’s clamp', (_name, table) => {
+    let peak = 0;
+    // Four rhythms, because the worst one differs per table and picking a single period would be
+    // choosing the answer. `flap8` is faster than any human; that is deliberate.
+    for (const flapEvery of [8, 16, 24, 40]) {
+      const physics = buildPhysics(table);
+      const ball = physics.spawnBall();
+      ball.direction = { x: 0, y: -1 };
+      ball.speed = launchSpeedFor(table);
+      for (let i = 0; i < 2000; i++) {
+        if (i % flapEvery === 0) { physics.setFlippers('left', true); physics.setFlippers('right', true); }
+        if (i % flapEvery === Math.floor(flapEvery / 2)) {
+          physics.setFlippers('left', false); physics.setFlippers('right', false);
+        }
+        advanceFrame([ball], physics.context, FRAME_SECONDS);
+        physics.takeHits();
+        peak = Math.max(peak, ball.speed);
+        if (ball.position.y > table.size.height + 20) break;
+      }
+    }
+
+    const clamp = table.ballRadius * ENGINE_CAP_PER_RADIUS;
+    expect(peak, `peaked at ${peak.toFixed(0)}; the clamp is ${clamp}`).toBeLessThan(clamp * 2);
   });
 });
