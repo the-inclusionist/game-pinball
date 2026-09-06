@@ -120,6 +120,7 @@ const SCENE_OF_TABLE: Readonly<Record<string, string>> = {
   'ion-storm': 'sky',
   'crater-run': 'mars',
   'long-climb': 'ice',
+  'ring-belt': 'space',
   'wide-arc': 'space',
   // Two hundred and forty pixels of climb. Red earth for a table that is all ascent.
   'narrow-tower': 'mars',

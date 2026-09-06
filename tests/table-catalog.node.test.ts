@@ -36,7 +36,7 @@ describe('all five tables open', () => {
     // The count stays pinned rather than becoming `>= 5`, because a table appearing in the catalogue is
     // a decision: it goes in the selector, it needs a world in the palette, and it has to survive the
     // playability gates. Updating this line is the cheapest possible way to be made to notice.
-    expect(CATALOG).toHaveLength(8);
+    expect(CATALOG).toHaveLength(9);
     expect(new Set(CATALOG.map((t) => t.name)).size, 'and no two share a name').toBe(CATALOG.length);
   });
 
@@ -136,12 +136,23 @@ describe('low-orbit — the conventional table', () => {
 });
 
 describe('wide-arc — the table wider than the screen', () => {
-  test('it is the only table the HUD has to OVERLAY', () => {
-    // The claim ADR-0002 § 5 made about phase 8, met by a real table for the first time.
+  test('⚠️ the HUD overlays exactly the tables that are wider than the screen, and no others', () => {
+    // This said `wide-arc` was the ONLY table the HUD has to overlay, and that was the honest claim
+    // while it was the only wide one — ADR-0002 § 5 predicted phase 8 would produce such a table and
+    // this was it, met for the first time.
+    //
+    // `ring-belt` is the second and the first meant to be played. So the claim moves from naming ONE
+    // TABLE to naming the PROPERTY: overlaying is what being wider than the screen costs, and it should
+    // follow from the width and from nothing else. A table that overlaid while fitting, or fitted while
+    // overlaying, would be a layout answering a question nobody asked it.
     for (const table of CATALOG) {
       const hud = layoutHud({ ...DEFAULT_HUD, playfieldWidth: table.size.width });
-      expect(hud.overlaying, table.name).toBe(table === WIDE_ARC);
+      expect(hud.overlaying, table.name).toBe(table.size.width >= DEFAULT_HUD.screenWidth);
     }
+    // And both sides of that happen, or it is a comparison with one answer.
+    const widths = CATALOG.map((t) => t.size.width);
+    expect(widths.some((w) => w >= DEFAULT_HUD.screenWidth), 'some table overlays').toBe(true);
+    expect(widths.some((w) => w < DEFAULT_HUD.screenWidth), 'and some table does not').toBe(true);
   });
 
   test('and the only one whose HORIZONTAL axis has anywhere to travel', () => {
@@ -158,10 +169,21 @@ describe('wide-arc — the table wider than the screen', () => {
     expect(state.offset).toBeLessThanOrEqual(horizontal.stopTolerance);
   });
 
-  test('every other table fits across the screen with room for the columns', () => {
-    for (const table of CATALOG.filter((t) => t !== WIDE_ARC)) {
-      expect(table.size.width, table.name).toBeLessThan(DEFAULT_HUD.screenWidth);
-    }
+  test('⚠️ and the tables WIDER than the screen are named, one by one', () => {
+    // This said "every other table fits", with `wide-arc` the single exception — and that was true for
+    // as long as `wide-arc` was the only table wider than 320. `ring-belt` is the second, and it is the
+    // first one MEANT TO BE PLAYED: the fixture exists to give `stepAxis` a horizontal case, and the
+    // game table exists to make a player use it.
+    //
+    // ⚠️ A LIST RATHER THAN A COMPARISON, because being wider than the screen is a DECISION. It costs
+    // the HUD its columns — `layoutHud` reports `overlaying` and the blocks move on top of the play,
+    // which ADR-0002 allows and does not like — and it costs the player sight of part of the table. A
+    // table that acquired that by somebody typing a larger number should stop here.
+    const WIDER_THAN_THE_SCREEN = ['wide-arc', 'ring-belt'];
+
+    const wide = CATALOG.filter((t) => t.size.width >= DEFAULT_HUD.screenWidth).map((t) => t.name);
+
+    expect(wide.sort()).toEqual([...WIDER_THAN_THE_SCREEN].sort());
   });
 });
 
@@ -189,7 +211,11 @@ describe('narrow-tower — where losing the flippers is most extreme', () => {
   test('it gives the HUD the widest columns of any table meant to be played', () => {
     // `bare-minimum` is narrower still, at 100, but it is a floor rather than a table. Among the four
     // that are actually laid out, this is the one where the HUD has the most room.
-    const playable = CATALOG.filter((t) => t !== BARE_MINIMUM);
+    // ⚠️ AMONG THE TABLES THAT HAVE COLUMNS AT ALL. `ring-belt` is 360 wide and has none: its HUD
+    // overlays the play, so its "margin" is negative and comparing it here would make the widest
+    // columns a fact about arithmetic rather than about layout.
+    const playable = CATALOG.filter((t) => t !== BARE_MINIMUM
+      && t.size.width < DEFAULT_HUD.screenWidth);
     const margins = playable.map((t) => DEFAULT_HUD.screenWidth - t.size.width);
 
     expect(Math.max(...margins)).toBe(DEFAULT_HUD.screenWidth - NARROW_TOWER.size.width);

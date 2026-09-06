@@ -161,6 +161,7 @@ const PAINTED = {
   'ion-storm': 7187,
   'crater-run': 7221,
   'long-climb': 8153,
+  'ring-belt': 8184,
   'wide-arc': 4801,
   'narrow-tower': 4037,
   'four-flippers': 3239,
