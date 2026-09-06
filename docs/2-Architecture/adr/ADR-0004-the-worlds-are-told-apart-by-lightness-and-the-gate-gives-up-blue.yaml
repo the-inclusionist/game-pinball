@@ -1,0 +1,186 @@
+---
+metadata:
+  status: "accepted"
+  date: 2026-09-06
+  decision-makers: [Dev]
+  consulted:
+    - "The Dev's answer of 2026-09-06, verbatim: 'Estilo e paleta: paletas baseadas na mesa original,
+       isto é, a origitnal tem predominância de azul (céu), outra com predominância de preto (espaço),
+       outra de vermelho terroso (marte) e assim por diante. Mesas compartilhando identidade visual.
+       Quem desenha: trabalho seu. O que a cor tem a dizer: paleta normal com alternativa CB-Safe
+       ajustavel via menu.'"
+    - "render/cvd-matrices (engine) — Machado, Oliveira & Fernandes 2009 at severity 1.0, the same
+       three simulation matrices the engine feeds its own screen filter"
+    - "ADR-0002 (this repository) — the HUD corners, which is why a settings control has nowhere
+       inside the 320x180 screen to live"
+    - "ADR-0010 pillar 10 (engine) — the art regime, and why what is drawn here is code"
+  informed: []
+
+title: The five worlds share an ORDER rather than a colour, and the CB-Safe palette buys separability with the gate's blue
+
+context-and-problem-statement: |
+  Phase 8 of the plan replaces the 1995 artwork with geometry and art authored for 320x180. The Dev
+  asked for three things at once, and they pull against each other:
+
+    1. Palettes drawn from the original table's own worlds — blue for sky, black for space, earthy red
+       for Mars, "e assim por diante".
+    2. The tables SHARING a visual identity.
+    3. A normal palette with a CB-Safe alternative, chosen from a menu.
+
+  ⚠️ (1) AND (2) CANNOT BOTH BE A COLOUR. If each table stands in a world of its own, then no colour is
+  constant across the five by construction: the ground that makes `narrow-tower` read as Mars is the
+  ground that stops it reading as sky. An identity built on a shared hue would have to give up the
+  worlds, and an identity built on nothing would leave five unrelated pictures.
+
+  ⚠️ AND (3) IS NOT A MATTER OF AVOIDING RED AND GREEN. That rule of thumb is satisfiable by a palette
+  nobody can read and violated by palettes that are perfectly legible. Worse, it points at the wrong
+  axis: protanopia and deuteranopia PRESERVE blue-yellow and lose red-green, while tritanopia does the
+  reverse. A pair of colours separated on one of those axes survives two simulations and collapses in
+  the third.
+
+  There was also a fourth problem, which nobody had asked about because nobody had measured: the single
+  palette already on screen was not legible. `free` sat 13.3 from the ground in CIE76 and `structure`
+  16.4 from `free` — on every table, for months. A lane the player cannot see is a lane that is not
+  there.
+
+decision-drivers:
+  - "The three requirements above, all of them, without quietly dropping one."
+  - "'O que a cor tem a dizer' — the colour still has to MEAN something. Separability is a constraint,
+     not the objective."
+  - "The measure must be the engine's own simulation matrices, so what is checked is what the player
+     will actually be shown."
+  - "The alternative must earn its place: if the normal palette survives the same test, the menu entry
+     promises something it does not do."
+
+considered-options:
+  - &hue "The shared identity is a hue: one ground for every table, worlds expressed some other way"
+  - &order "The shared identity is an ORDER: ground darkest, ball lightest, roles between them"
+  - &maximise "The CB-Safe palette maximises separation"
+  - &displace "The CB-Safe palette is the normal one, displaced as little as separability allows"
+
+pros-and-cons-of-the-options:
+  hue:
+    description: |
+      Every table on the same ground, with the worlds carried by something else — a border, a
+      backdrop, a decoration around the playfield.
+    pros:
+      - "The identity is obvious and needs no explanation."
+    cons:
+      - "⚠️ IT GIVES UP REQUIREMENT (1). The ground is most of the pixels on the screen; 'predominância'
+         is literally the colour with the most area. A world expressed anywhere else is not the world
+         the Dev described."
+      - "There is nowhere to put a decoration: the playfield fills the screen vertically (ADR-0002)."
+  order:
+    description: |
+      The ground carries the scene and changes per table. What every table shares is the arrangement:
+      the ground is the darkest thing on it, the ball the lightest, every component between them, and
+      the same role means the same everywhere.
+    pros:
+      - "Both (1) and (2) are satisfied, and neither is weakened to fit the other."
+      - "⚠️ IT IS A PROPERTY A TEST CAN HOLD, which a family resemblance is not. `tests/gfx-table-palette`
+         checks the lightness order on all five worlds in both palettes."
+      - "It is the property that actually helps a player: whoever learns to find the ball on one table
+         finds it on all five, because the ball is the brightest object in every world."
+    cons:
+      - "It is invisible as a stated rule — a person looking at two of the tables would not name it."
+  maximise:
+    description: |
+      Search the colour space for the palette whose smallest pairwise distance, under normal vision and
+      all three simulations, is as large as possible.
+    pros:
+      - "It produces the most separable palette there is, by a wide margin: 30.8 against 22."
+    cons:
+      - "⚠️ IT WAS TRIED, AND IT RETURNED SAND-YELLOW WATER, NEON-GREEN KEYS AND A MAGENTA STRUCTURE.
+         Every distance test passed. The objective knew what a colour was worth and nothing about what
+         it was FOR, and maximising pushes every colour to the edge of the gamut where the meanings
+         are."
+      - "It answers the Dev's 'o que a cor tem a dizer' with nothing."
+  displace:
+    description: |
+      Start from a feasible separable palette and walk each colour back TOWARD its normal value for as
+      long as the whole palette stays above the threshold. The hues that carry meaning — red for the
+      thing that takes your ball, gold for points, blue for water, green for a key, violet for a climb
+      — are pinned before the search runs.
+    pros:
+      - "Five of the eight colours barely move and three do not move at all, so the alternative reads
+         as the same table with different signals rather than a different game."
+      - "The one real change is legible and arguable, which a search result usually is not: see § 2."
+      - "It keeps the meanings, which is the requirement the maximiser silently spent."
+    cons:
+      - "The result clears the threshold by two units rather than ten. A later change to one colour is
+         much more likely to cross the line — which is why the line is a test and not a comment."
+
+decision-outcome:
+  chosen: [*order, *displace]
+  because: |
+    § 1 — THE IDENTITY IS AN ORDER. Five scenes: `sky`, `space`, `mars`, `ice`, `slate`. The first three
+    are the Dev's; `ice` continues the series; `slate` is not a world at all but the neutral ground
+    `bare-minimum` was already drawn on, kept unchanged so the table that exists to show the floor of
+    the format goes on showing exactly that. Each table names its world in `SCENE_OF_TABLE`, and there
+    is NO DEFAULT: a sixth table added tomorrow gets `undefined` and stops the test, rather than coming
+    out slate-grey and looking finished. Choosing a world is part of authoring a table.
+
+    § 2 — AND THE GATE GIVES UP BLUE. Measured against the engine's three simulation matrices, the
+    normal palette loses five pairs, and `water` is in four of them because cyan has somewhere to fall
+    in every direction. Blue is water's BY MEANING and the gate's only by this project's own
+    convention, so the gate is what moves. Once red-orange is hazard, gold is goal, green is key,
+    violet is climb and grey is the world, magenta is the one band left. It is not a taste decision; it
+    is what remains after the meanings are honoured.
+
+    § 3 — THE THRESHOLD IS 20 IN CIE76, AND IT IS NOT TUNED TO THE DATA. A just-noticeable difference
+    is about 2.3. Twenty is far past "these are two colours" and is chosen for the size things are
+    drawn at: a ball of radius 3 and edges 2 pixels wide on a 320x180 screen, where a colour has very
+    few pixels to make its case. The palettes were made to meet the number. The stored CB-Safe palette
+    clears 22, and the two units are headroom so that a later change fails loudly instead of drifting
+    across the line.
+
+    § 4 — NOBODY IS OPTED IN. The alternative is an alternative, not an improvement: it spends the
+    gate's blue. No browser reports colour vision and inferring it from anything else would be
+    inventing a fact about a person, so the default is the normal palette and the choice is the
+    player's.
+
+    § 5 — AND IT IS A KEY AS WELL AS A MENU. The Dev asked for a menu and there is one. `shell/controls`
+    already argues, for blind mode, that "a player who needs blind mode is not the player who is going
+    to find it in a settings panel"; a player who cannot tell the gate from the water is that same
+    player. C, beside B and S.
+
+consequences:
+  good:
+    - "Three colours that were already illegible on screen were found and fixed, by measurement rather
+       than by anyone noticing."
+    - "The CB-Safe claim is checked against the same matrices the engine shows the player, so it is a
+       measurement and not a genre convention."
+    - "⚠️ The alternative EARNS its place, and a test says so: it requires the normal palette to lose
+       pairs the CB-Safe one keeps. Without that, a copy of the normal palette under another name would
+       satisfy every other assertion in the file."
+    - "A shot of every table in both palettes is written to `shots/` on each run, because a mode nobody
+       has looked at is a mode nobody has checked."
+  bad:
+    - "⚠️ The role colours are shared across the five worlds while only the ground changes. That is what
+       makes the identity hold, and it also means the per-scene tests are largely the same test five
+       times. The scenes are distinguished by their ground and by nothing else."
+    - "Magenta is loud. It is what the constraint left once the meanings were pinned, and a person may
+       reasonably dislike it — but moving it means moving a meaning, which is a decision and not a
+       tweak."
+    - "CIE76 is the crudest of the CIE distances. It overstates differences in saturated blues, which
+       is exactly where `water` and the normal `gate` live. A later move to CIE2000 would tighten those
+       pairs, not loosen them."
+  ugly:
+    - "⚠️ THE MENU AND ITS OPENER SIT OUTSIDE THE 320x180 SCREEN, below the canvas. The four corners are
+       spoken for by ADR-0002 and the playfield fills the screen vertically, so there is nowhere inside
+       to put a settings control. There is precedent — the demonstration's file-picker panels live
+       there too — but this is an open question for the Dev rather than a decision taken here."
+    - "This makes the table legible; it does not make the game accessible. A player who reads no colour
+       at all is served by the sonar and the audio guide, which are a different mechanism entirely."
+
+more-information: |
+  Implemented in `app/js/gfx/table-palette.ts` (the colours), `app/js/shell/options.ts` (which one is in
+  force and where it is kept) and `app/js/shell/options-dialog.ts` (the menu). Held by
+  `tests/gfx-table-palette.node.test.ts`, which runs every colour through `CVD_MATRIX` and measures in
+  CIE Lab.
+
+  ⚠️ THE ENGINE'S COLOUR-BLINDNESS FILTERS ARE A DIFFERENT THING, not this under another name.
+  `render/cvd-matrices` also ships three CORRECTIONS, applied to the finished frame: they redistribute
+  the error in an image after the fact. This changes the colours at source, before any of that runs.
+  They compose, and neither replaces the other — a filter cannot recover a distinction that was never
+  encoded, and encoding one does not help a player who also needs the correction.

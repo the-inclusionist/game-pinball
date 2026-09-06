@@ -95,7 +95,7 @@ The validation configuration — the one that reads the original table — there
 machine that already has the original game. That is not a limitation to work around. It is the shape the
 licence imposes.
 
-## 4 · The art follows the engine's pillar 10, and today there is none
+## 4 · The art follows the engine's pillar 10, and what phase 8 draws is code
 
 Pillar 10 of the engine's ADR-0010 is blunt: **the art is not ours to licence.** In the engine, the art
 was made by a third party who holds the economic rights over it in full; there is no "our art" to place
@@ -107,11 +107,28 @@ whoever made it.
 Applied here, honestly, as of phase 8:
 
 - **There is no art in this repository.** `git ls-files` matches no image, font or audio file at all.
-- What phase 8 draws is not art in that sense. `gfx/table-view.ts` fills rectangles and circles with
-  eight colours from `ROLE_COLORS`, computed in code. **That is code**, and it is AGPL like everything
-  else around it. Calling it art would invoke a regime over something the regime does not reach.
-- The regime binds **from the moment real art arrives** — whether from the engine's artist or from a
-  generator. That has not happened, and the source is still an open decision.
+- What phase 8 draws is not art in that sense. `gfx/table-view.ts` draws each component as the shape it
+  collides with, in colours `gfx/table-palette.ts` computes per role and per world. **That is code**,
+  and it is AGPL like everything else around it. Calling it art would invoke a regime over something
+  the regime does not reach.
+- **The source is no longer an open decision.** Asked on 2026-09-06 who draws the phase-8 art, the Dev
+  answered: *"Quem desenha: trabalho seu."* So it is produced inside this work, on the Dev's
+  instruction, rather than sourced from a third party.
+
+⚠️ AND THAT CHANGES WHICH PROBLEM PILLAR 10 IS SOLVING HERE. The pillar exists to stop AGPL being
+extended over **somebody else's economic rights** — in the engine there is an artist who holds them in
+full, and giving them away would dispose of a right that is not the project's to dispose of. With the
+drawing produced inside this work there is no such third party to protect, so nothing here is being
+taken from anyone by the code's own licence covering it.
+
+That is a statement about **whose rights are at stake**, and deliberately not a claim about who owns
+machine-produced output. Whether such output attracts authorship at all is unsettled, and the
+uncertainty argues against asserting exclusive rights over it rather than for it — which sits
+comfortably with AGPL and would sit badly with a licence that depended on the claim. If the Dev needs
+a position stated for an administrative act, that is a question for a lawyer and not for this file.
+
+- The third-party regime still binds **from the moment third-party art arrives** — from the engine's
+  artist, from a stock source, from anywhere with a rights holder. That has not happened.
 
 Two rules apply the instant the first asset lands, and both come from the engine:
 
