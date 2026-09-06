@@ -46,15 +46,19 @@
 // the widest of the three — losing the ball down the middle should be the common way to lose it.
 
 import type { AuthoredTable } from './authored.js';
+import { cabinet, CABINET_LAMPS } from './cabinet.js';
 
 /** Half the ball. Every passable gap on this table is at least twice this. */
 export const BALL_RADIUS = 3;
+
+const WIDTH = 183;
+const HEIGHT = 235;
 
 const WALL = 'structure' as const;
 
 export const LOW_ORBIT: AuthoredTable = {
   name: 'low-orbit',
-  size: { width: 183, height: 235 },
+  size: { width: WIDTH, height: HEIGHT },
   ballRadius: BALL_RADIUS,
 
   /**
@@ -116,100 +120,38 @@ export const LOW_ORBIT: AuthoredTable = {
     },
   ],
   lamps: [
+    ...CABINET_LAMPS,
     'lamp.mission', 'lamp.jackpot',
     'lamp.bumper1', 'lamp.bumper2', 'lamp.bumper3',
     'lamp.target1', 'lamp.target2', 'lamp.target3',
     'lamp.lane1', 'lamp.lane2', 'lamp.lane3',
     'lamp.well1', 'lamp.well2', 'lamp.well3',
-    'lamp.ramp', 'lamp.outlaneLeft', 'lamp.outlaneRight',
+    // ⚠️ AND NOT THE OUTLANES OR THE INLANES: `CABINET_LAMPS` above declares those, and this list held
+    // them too until the cabinet arrived — four names declared twice, which the validator refuses. It
+    // is the same drift the components were: written here first, then written again in the shared
+    // module, and nobody reconciled the copies because nothing compared them.
+    'lamp.ramp',
     'lamp.drop1', 'lamp.drop2', 'lamp.drop3',
-    'lamp.inlaneLeft', 'lamp.inlaneRight',
   ],
 
   components: [
-    /* ===================== THE WALLS ===================== */
-    // The outer shell, and the one that separates the plunger lane from the play.
-    { name: 'wall.left', kind: 'wall', role: WALL, bounds: { x: 0, y: 0, width: 4, height: 235 },
-      collision: [{ kind: 'line', from: { x: 4, y: 0 }, to: { x: 4, y: 235 } }] },
-    { name: 'wall.right', kind: 'wall', role: WALL, bounds: { x: 179, y: 0, width: 4, height: 235 },
-      collision: [{ kind: 'line', from: { x: 179, y: 235 }, to: { x: 179, y: 0 } }] },
-    { name: 'wall.top', kind: 'wall', role: WALL, bounds: { x: 0, y: 0, width: 183, height: 4 },
-      collision: [{ kind: 'line', from: { x: 183, y: 4 }, to: { x: 0, y: 4 } }] },
-    // The lane divider stops 30 pixels short of the top: that opening is how a launched ball enters
-    // the play, and it is the only way in.
-    { name: 'wall.laneDivider', kind: 'wall', role: WALL,
-      bounds: { x: 162, y: 34, width: 4, height: 201 },
-      collision: [{ kind: 'line', from: { x: 162, y: 235 }, to: { x: 162, y: 34 } }] },
+    /**
+     * ⚠️ THE CABINET, AT LAST, AND THIS TABLE HAD BEEN WRITING ITS OWN FOR MONTHS.
+     *
+     * `table/cabinet` exists because five tables needed the same shell and copying it five times would
+     * have been five chances to re-make the two defects its header records. This table is where that
+     * shell was PROVED — its numbers are the ones the module was extracted from — and it was never
+     * converted to use it. So every cabinet change since reached five tables and skipped the sixth:
+     * the plunger's own collision face, the two inlanes, the ball-radius offset. Each had to be made
+     * twice, and the second time was noticed only because a test named this table.
+     *
+     * ⚠️ AND THE BOTTOM ASSEMBLY MOVES SEVEN PIXELS LEFT, which is the drift made visible. This file
+     * centred its flippers and drain on the TABLE — 183 / 2 — and `cabinet` centres them on the PLAY,
+     * `(w - 16) / 2`, because sixteen pixels of the width are the plunger lane and a ball never plays
+     * there. The cabinet's arithmetic is the right one; this file's was the first draft of it.
+     */
+    ...cabinet({ width: WIDTH, height: HEIGHT }),
 
-    // ⚠️ THE RETURN BEND, and the whole reason the table plays at all.
-    //
-    // Without it a launched ball goes straight up the lane, off the ceiling and straight back down the
-    // same lane: three balls out of three drained without ever entering the play. A plunger lane has
-    // to END IN A CURVE that turns the ball left across the top of the table, and this is the
-    // cheapest thing that is one — a single slope, steep enough to redirect and shallow enough not to
-    // stop the ball dead.
-    //
-    // It is wound right-to-left-and-up so its normal points DOWN into the lane, which is the side the
-    // rising ball arrives from.
-    { name: 'wall.laneReturn', kind: 'wall', role: WALL,
-      bounds: { x: 148, y: 4, width: 32, height: 18 },
-      collision: [{ kind: 'line', from: { x: 179, y: 21 }, to: { x: 148, y: 6 } }] },
-
-    /* ===================== THE PLUNGER LANE ===================== */
-    // ⚠️ THE FACE IS A BODY. See `table/cabinet`, where the same edge and the same reasoning are set
-    // out at length: a weak launch comes back down the lane, and without this there was nothing at the
-    // bottom of it — the ball fell through the launcher and out of the table. This table is
-    // hand-authored rather than built by `cabinet()`, which is why it needed the fix twice.
-    { name: 'plunger', kind: 'plunger', role: WALL, bounds: { x: 167, y: 200, width: 10, height: 32 },
-      collision: [{ kind: 'line', from: { x: 167, y: 200 }, to: { x: 177, y: 200 } }] },
-    { name: 'lane.launch', kind: 'lane', role: 'free', bounds: { x: 167, y: 40, width: 10, height: 158 },
-      scores: [500], control: 'LaneControl', lamps: ['lamp.ramp'] },
-
-    /* ===================== THE BOTTOM: FLIPPERS, OUTLANES, DRAIN ===================== */
-    // The gap between the flipper tips is 22 pixels — comfortably more than the ball, because the
-    // middle is where a ball is SUPPOSED to be losable.
-    { name: 'flipper.left', kind: 'flipper', role: WALL,
-      bounds: { x: 52, y: 206, width: 28, height: 7 },
-      flipper: {
-        pivot: { x: 52, y: 206 }, tipAtRest: { x: 80, y: 213 }, sweepDegrees: -55,
-        baseRadius: 3, tipRadius: 2, extendTime: 0.08, retractTime: 0.16,
-      } },
-    { name: 'flipper.right', kind: 'flipper', role: WALL,
-      bounds: { x: 102, y: 206, width: 28, height: 7 },
-      flipper: {
-        pivot: { x: 130, y: 206 }, tipAtRest: { x: 102, y: 213 }, sweepDegrees: 55,
-        baseRadius: 3, tipRadius: 2, extendTime: 0.08, retractTime: 0.16,
-      } },
-
-    // Each outlane is 12 wide: passable, and punishing.
-    /* ===================== THE FUNNEL ===================== */
-    //
-    // ⚠️ WITHOUT THESE THE FLIPPERS FLOAT IN OPEN SPACE, AND THE PLAYER IS A SPECTATOR.
-    //
-    // Measured: the ball crossed the flipper line at x = 5.7, ninety pixels left of the left flipper's
-    // pivot, bounced off the wall and slid UNDER both paddles into the drain. A run flapping the
-    // flippers and a run touching nothing came out identical — same frames, same score, same drain.
-    //
-    // Every pinball has this and I had left it out: the lower third is a funnel, two guides angling in
-    // from the side walls to the flipper pivots, narrowing the ball's path until the only way past is
-    // over a paddle. The OUTLANE is what sits outside a guide, reached through the gap at its top —
-    // which is what makes losing the ball there a piece of bad luck rather than the default route.
-    //
-    // Windings: each faces the play. Left runs down-right, right runs up-right. See `normalOf`.
-    { name: 'guide.left', kind: 'wall', role: WALL, bounds: { x: 14, y: 168, width: 38, height: 38 },
-      collision: [{ kind: 'line', from: { x: 14, y: 168 }, to: { x: 52, y: 206 } }] },
-    { name: 'guide.right', kind: 'wall', role: WALL, bounds: { x: 130, y: 168, width: 38, height: 38 },
-      collision: [{ kind: 'line', from: { x: 130, y: 206 }, to: { x: 168, y: 168 } }] },
-
-    { name: 'outlane.left', kind: 'lane', role: 'hazard',
-      bounds: { x: 20, y: 196, width: 12, height: 30 }, scores: [2000], control: 'LaneControl', lamps: ['lamp.outlaneLeft'] },
-    { name: 'outlane.right', kind: 'lane', role: 'hazard',
-      bounds: { x: 150, y: 196, width: 12, height: 30 }, scores: [2000], control: 'LaneControl', lamps: ['lamp.outlaneRight'] },
-
-    { name: 'drain', kind: 'drain', role: 'hazard', bounds: { x: 76, y: 226, width: 30, height: 8 },
-      control: 'DrainControl' },
-
-    /* ===================== THE BUMPERS ===================== */
     { name: 'bumper1', kind: 'bumper', role: WALL, bounds: { x: 48, y: 58, width: 18, height: 18 },
       scores: [500, 1000, 1500, 2000], control: 'BumperControl', lamps: ['lamp.bumper1'],
       collision: [{ kind: 'circle', at: { x: 57, y: 67 }, radius: 9 }] },
@@ -267,14 +209,6 @@ export const LOW_ORBIT: AuthoredTable = {
     // Inside each guide, where a ball that survives the funnel comes back down to the paddle. Every
     // pinball has these and this table had only the OUTLANES — so the lower third paid the player for
     // bad luck and nothing for good play, which is the wrong way round.
-    { name: 'inlane.left', kind: 'lane', role: 'free',
-      bounds: { x: 36, y: 198, width: 12, height: 20 },
-      scores: [1500], control: 'LaneControl', lamps: ['lamp.inlaneLeft'] },
-    { name: 'inlane.right', kind: 'lane', role: 'free',
-      bounds: { x: 134, y: 198, width: 12, height: 20 },
-      scores: [1500], control: 'LaneControl', lamps: ['lamp.inlaneRight'] },
-
-    /* ===================== THE REENTRY LANES ===================== */
     { name: 'lane1', kind: 'lane', role: 'free', bounds: { x: 40, y: 16, width: 12, height: 14 },
       scores: [1000], control: 'LaneControl', lamps: ['lamp.lane1'] },
     { name: 'lane2', kind: 'lane', role: 'free', bounds: { x: 62, y: 16, width: 12, height: 14 },

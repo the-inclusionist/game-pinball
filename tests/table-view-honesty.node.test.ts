@@ -174,7 +174,12 @@ const PAINTED = {
   // had never had, so the lower third pays for good play and not only for bad luck. +528 painted
   // pixels — 7519 with the bank against the lane divider, 7555 once it was moved under the bumpers
   // where it is reachable. This number is a golden: it moves when somebody says why.
-  'low-orbit': 7555,
+  // ⚠️ +214 when this table finally started calling `cabinet()`. It had been writing its own shell
+  // — all sixteen components — since before that module existed, so every cabinet change reached
+  // five tables and skipped this one. The difference is mostly the bottom assembly moving seven
+  // pixels left: this file centred the flippers and the drain on the TABLE, and the cabinet
+  // centres them on the PLAY, because sixteen pixels of the width are the plunger lane.
+  'low-orbit': 7769,
   // +572 on each of the four below: the cabinet's two inlanes, which five tables had never had.
   // The lower third paid 2000 for bad luck through the outlanes and nothing at all for good play.
   // ⚠️ +1768 when this table was authored up to the 1995 density: two more bumpers in the storm,

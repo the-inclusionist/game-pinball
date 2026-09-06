@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, test, expect } from 'vitest';
 import {
-  CATALOG, DEFAULT_TABLE, tableNamed,
+  CATALOG, DEFAULT_TABLE, PLAYABLE_TABLES, tableNamed,
   LOW_ORBIT, WIDE_ARC, NARROW_TOWER, FOUR_FLIPPERS, BARE_MINIMUM,
 } from '../app/js/table/catalog.js';
+import { cabinet } from '../app/js/table/cabinet.js';
 import {
   validateTable, toLiveTable, declaredComponentsOf, normalOf, type AuthoredTable,
 } from '../app/js/table/authored.js';
@@ -474,5 +475,53 @@ describe('⚠️ the camera can reach the bottom of every table', () => {
 
     expect(tallerThanTheDefault.map((t) => t.name).length,
       'tables the default camera cannot show the bottom of').toBeGreaterThan(0);
+  });
+});
+
+/**
+ * ⚠️ ONE CABINET, AND `low-orbit` WROTE ITS OWN FOR MONTHS.
+ *
+ * `table/cabinet` exists because five tables needed the same shell and copying it five times would
+ * have been five chances to re-make the two defects its header records — a lane with no return bend
+ * and flippers with no funnel, each of which made a table unplayable. `low-orbit` is where that shell
+ * was PROVED: the module's numbers were extracted from this file. And this file was never converted
+ * to use it.
+ *
+ * So every cabinet change since reached five tables and skipped the sixth. The plunger's own collision
+ * face, the two inlanes, the ball-radius offset — each had to be made twice, and the second time was
+ * noticed only because some test happened to name `low-orbit`. The Dev caught the word I had been
+ * hiding it behind: I had called the table "hand-authored", which reads as "made by a person" and is
+ * not what happened. I generated it like the other five and left it out of the refactor.
+ *
+ * This is the gate that stops the seventh table from doing the same. It asks the question the drift
+ * survived: does every playable table have exactly the components `cabinet()` produces, with the
+ * geometry `cabinet()` gives them?
+ */
+describe('⚠️ every playable table is built on the one cabinet', () => {
+  const shell = (table: AuthoredTable) => new Map(
+    cabinet({ width: table.size.width, height: table.size.height }).map((c) => [c.name, c]),
+  );
+
+  test.each(PLAYABLE_TABLES.map((t) => [t.name, t] as const))('%s has all of it', (_name, table) => {
+    const mine = new Map(table.components.map((c) => [c.name, c]));
+
+    for (const name of shell(table).keys()) {
+      expect(mine.has(name), `${name} is missing`).toBe(true);
+    }
+  });
+
+  test.each(PLAYABLE_TABLES.map((t) => [t.name, t] as const))(
+    '%s: and its shell is the cabinet’s, not a copy that has drifted', (_name, table) => {
+    // ⚠️ THE BOUNDS AND THE COLLISION, COMPARED. A table that declared `flipper.left` at its own
+    // coordinates would pass the test above and be exactly the defect this pair exists to catch —
+    // `low-orbit`'s flippers sat seven pixels right of the cabinet's for months, because it centred
+    // them on the TABLE and the cabinet centres them on the PLAY.
+    const mine = new Map(table.components.map((c) => [c.name, c]));
+
+    for (const [name, expected] of shell(table)) {
+      const actual = mine.get(name)!;
+      expect(actual.bounds, `${name} bounds`).toEqual(expected.bounds);
+      expect(actual.collision ?? null, `${name} collision`).toEqual(expected.collision ?? null);
+    }
   });
 });
