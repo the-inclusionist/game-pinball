@@ -53,6 +53,7 @@ import { fillCircle, fillCircleBehind } from '../gfx/table-view.js';
 import { halve, halveDepth } from '../gfx/scale.js';
 import {
   readLampSprites, readSprite, drawLamp, drawSpriteCentred, drawSpriteCentredBehind,
+  type LampSprite,
 } from '../gfx/original-sprites.js';
 import { pack, type Framebuffer } from '../gfx/framebuffer.js';
 import { kindOf } from '../i18n/names.js';
@@ -115,6 +116,12 @@ export interface Demo {
    * to match the ones they hand over.
    */
   readonly soundFiles: ReadonlyMap<number, string>;
+  /**
+   * ⚠️ WHICH PICTURE EACH COMPONENT IS SHOWING. Zero unless the component has said otherwise, and
+   * MINUS ONE means it is drawn as nothing — which is how a popup target disappears when it drops.
+   * Exposed because a sprite the size of a target on a table this busy cannot be found in the pixels.
+   */
+  readonly spriteFrames: ReadonlyMap<string, number>;
   /** The playfield's depth map, read from the archive. */
   readonly playfieldDepth: { readonly depths: Uint16Array; readonly stride: number } | null;
   /**
@@ -236,6 +243,20 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
     if (sound.fileName.toLowerCase().endsWith('.wav')) soundFiles.set(sound.groupIndex, sound.fileName);
   }
 
+  /**
+   * ⚠️ WHICH PICTURE EACH COMPONENT IS SHOWING, and it starts at zero for everything that has one.
+   *
+   * The background bitmap does NOT contain the bumpers, the targets or the barrier: the original
+   * composites them over it as sprites, which is why `SpriteSet(-1)` can make a popup target vanish at
+   * all. So a component is drawn at its own frame from the first frame of the game, and MINUS ONE is
+   * drawn as nothing.
+   *
+   * Every one of these has carried a `setSprite` hook since it was ported and no builder forwarded it,
+   * so a target dropping, a bumper lighting and the barrier rising were all invisible.
+   */
+  const spriteFrame = new Map<string, number>();
+  const noteSprite = (name: string, index: number): void => { spriteFrame.set(name, index); };
+
   const archiveSound = {
     // ⚠️ ZERO AND BELOW ARE NOT SOUNDS. `loader::play_sound` returns immediately for them, and the
     // first group the archive marks as a sound is a sentinel named `...` that is not a file at all.
@@ -243,6 +264,7 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
     play: (id: number) => { if (id > 0) o.onSoundId?.(id); },
   };
   const components = buildOriginalComponents(manifest, {
+    onSprite: noteSprite,
     // ⚠️ THE BUMPER SAYS WHEN IT FIRED, and that is when it is paid — see `payFor` and the wrapper it
     // is called from. A bumper reached through the wall wrapper alone is paid for every graze.
     onBumperFired: (name) => payFor(name),
@@ -471,6 +493,7 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
 
   for (const [name, target] of buildOriginalPopupTargets(manifest, table, {
     sound: archiveSound,
+    onSprite: noteSprite,
     table: { tiltLocked: false }, timer: components.timer, onStruck: (struck) => payFor(struck),
   })) popupTargets.set(name, target);
   buildOriginalOneways(manifest, {
@@ -485,6 +508,7 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
 
   for (const [name, target] of buildOriginalSoloTargets(manifest, table, {
     sound: archiveSound,
+    onSprite: noteSprite,
     table: { tiltLocked: false }, timer: components.timer, onStruck: (struck) => payFor(struck),
   })) soloTargets.set(name, target);
 
@@ -504,6 +528,7 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
   });
   buildOriginalFlags(manifest, {
     sound: archiveSound,
+    onSprite: noteSprite,
     table: { tiltLocked: false },
     grid: table.grid,
     timer: components.timer,
@@ -512,6 +537,7 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
   });
   buildOriginalRollovers(manifest, {
     sound: archiveSound,
+    onSprite: noteSprite,
     table: { tiltLocked: false },
     grid: table.grid,
     timer: components.timer,
@@ -550,7 +576,7 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
     }
   }
   const drainBlockers = buildOriginalBlockers(manifest, table, {
-    timer: components.timer, sound: archiveSound,
+    timer: components.timer, sound: archiveSound, onSprite: noteSprite,
   });
   for (const [name, kickout] of buildOriginalKickouts(manifest, table, {
     sound: archiveSound,
@@ -595,6 +621,23 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
    * the fuel all happened in silence. See `gfx/original-lamps`.
    */
   const lampSprites = readLampSprites(groups, { scale: PLAYFIELD_SCALE });
+  /**
+   * ⚠️ THE PARTS THAT ARE NOT LAMPS AND NOT THE BALL. Bumpers, targets, the barrier, the lanes and the
+   * flags all carry their own pictures, and every one of them was missing from the screen: the table
+   * showed its state through the lamps alone.
+   */
+  const componentSprites = new Map<string, LampSprite>();
+  for (const group of groups) {
+    const name = group.name;
+    if (!name || name.startsWith('lite') || name === 'ball' || name === 'table') continue;
+    const sprite = readSprite(groups, name, { scale: PLAYFIELD_SCALE });
+    if (!sprite) continue;
+    componentSprites.set(name, sprite);
+    // ⚠️ ZERO UNLESS THE COMPONENT HAS ALREADY SAID OTHERWISE. Some of them report their picture in
+    // their own constructor — the barrier hides itself, a lane shows itself — and seeding over that
+    // would put the barrier back on the table before anything raised it.
+    if (!spriteFrame.has(name)) spriteFrame.set(name, 0);
+  }
   /**
    * ⚠️ THE BALL'S OWN PICTURE, WHICH IS NINE PIXELS ACROSS. This drew a flat coloured disc from the day
    * it had a ball. The archive's own sprite records its corner as (0, 0) — the one bitmap in the file
@@ -667,6 +710,7 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
     wired: dispatch.wired,
     paidFlat,
     soundFiles,
+    spriteFrames: spriteFrame,
     get playfieldDepth() { return playfieldDepth; },
     get ballFrame() {
       const z = (ball.position as { z?: number }).z ?? table.ballRadius;
@@ -745,6 +789,12 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
         const poseIndex = Math.max(0, Math.min(Math.floor(ratio * last + 0.5), last));
         drawLamp(frame, sprite, poseIndex);
       });
+
+      // ⚠️ AND MINUS ONE IS DRAWN AS NOTHING, which is how a popup target disappears when it drops.
+      for (const [name, sprite] of componentSprites) {
+        const index = spriteFrame.get(name) ?? 0;
+        if (index >= 0) drawLamp(frame, sprite, index);
+      }
 
       const at = this.ballOnScreen();
       const radius = table.ballRadius * pixelsPerUnit;

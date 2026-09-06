@@ -26,6 +26,13 @@ export interface OriginalSoloOptions {
   readonly sound?: { play(soundId: number, source: unknown): void };
   /** `control::handler(ControlCollision, this)` — a HARD hit, which is the only kind that counts. */
   readonly onStruck?: (name: string) => void;
+  /**
+   * ⚠️ WHICH PICTURE THE COMPONENT IS SHOWING. Every one of these has carried a `setSprite` hook since
+   * it was ported and no builder forwarded it, so the state each component keeps — a target down, a
+   * bumper lit, a barrier up — was invisible. `-1` means "draw nothing", which is what a popup target
+   * does when it drops.
+   */
+  readonly onSprite?: (groupName: string, index: number) => void;
 }
 
 export function buildOriginalSoloTargets(
@@ -55,6 +62,7 @@ export function buildOriginalSoloTargets(
       softHitSoundId: visual.softHitSoundId,
       ...(o.sound ? { sound: o.sound } : {}),
       ...(o.onStruck ? { onHit: () => o.onStruck!(name) } : {}),
+      ...(o.onSprite ? { setSprite: (index: number) => o.onSprite!(name, index) } : {}),
     }));
   }
 

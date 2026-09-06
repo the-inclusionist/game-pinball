@@ -134,6 +134,13 @@ export interface OriginalComponentOptions {
   /** Tilt stops every collision component answering. False unless a game says otherwise. */
   readonly tiltLocked?: () => boolean;
   readonly onBumperFired?: (name: string) => void;
+  /**
+   * ⚠️ WHICH PICTURE THE COMPONENT IS SHOWING. Every one of these has carried a `setSprite` hook since
+   * it was ported and no builder forwarded it, so the state each component keeps — a target down, a
+   * bumper lit, a barrier up — was invisible. `-1` means "draw nothing", which is what a popup target
+   * does when it drops.
+   */
+  readonly onSprite?: (groupName: string, index: number) => void;
 }
 
 export function buildOriginalComponents(
@@ -191,6 +198,7 @@ export function buildOriginalComponents(
         hardHitSoundId: visual.kicker.hardHitSoundId,
         softHitSoundId: visual.softHitSoundId,
         ...(o.onBumperFired ? { onFire: () => o.onBumperFired!(name) } : {}),
+        ...(o.onSprite ? { setSprite: (index: number) => o.onSprite!(name, index) } : {}),
       });
       bumpers.set(name, bumper);
       frameCounts.set(name, states);

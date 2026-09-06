@@ -627,6 +627,30 @@ describe('⚠️ and a ball can be lost, which the demonstration counts', () => 
     expect(changed.length, 'a flipper’s worth of pixels').toBeGreaterThan(20);
   });
 
+  test('⚠️ the bumpers, the targets and the barrier are DRAWN, not only the lamps', () => {
+    // The background bitmap does not contain them: the original composites every component over it as
+    // a sprite, which is why `SpriteSet(-1)` can make a popup target vanish at all. Each of them has
+    // carried a `setSprite` hook since it was ported and no builder forwarded it, so a target dropping,
+    // a bumper lighting and the barrier rising were invisible.
+    const bytes = archive();
+    if (!bytes) return expect(existsSync(DAT)).toBe(false);
+    const demo = createDemo(bytes, { random: seeded() });
+
+    // Every component with a picture is showing frame zero from the first frame of the game.
+    expect(demo.spriteFrames.get('a_bump1'), 'idle').toBe(0);
+    const before = [...demo.render().pixels];
+
+    // ⚠️ A HARD HIT LIGHTS A BUMPER, and its frames are `2 * level` idle and `2 * level + 1` lit.
+    const ball = {
+      position: { x: 0, y: 0 }, direction: { x: 0, y: 1 }, speed: 20,
+      collisionDisabled: false, component: null as unknown, memory: { record: () => {} },
+    };
+    demo.components.bumpers.get('a_bump1')!.collision(ball, { x: 0, y: 0 }, { x: 0, y: 1 }, 0, null);
+
+    expect(demo.spriteFrames.get('a_bump1'), 'lit').toBe(1);
+    expect([...demo.render().pixels], 'and the picture says so').not.toEqual(before);
+  });
+
   test('⚠️ a lit lamp is DRAWN, which is the first time this table has shown its own state', () => {
     // Every light has been a component with an on flag since the component pass and none of them had
     // a picture: the missions, the ranks, the bumper levels and the fuel all happened in silence.

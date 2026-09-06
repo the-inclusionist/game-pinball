@@ -57,6 +57,13 @@ export interface OriginalFlagOptions {
   readonly onLoopReset?: (groupName: string) => void;
   /** How many pictures the flag walks around. Read from the archive by the caller that has them. */
   readonly frameCountOf?: (groupName: string) => number | undefined;
+  /**
+   * ⚠️ WHICH PICTURE THE COMPONENT IS SHOWING. Every one of these has carried a `setSprite` hook since
+   * it was ported and no builder forwarded it, so the state each component keeps — a target down, a
+   * bumper lit, a barrier up — was invisible. `-1` means "draw nothing", which is what a popup target
+   * does when it drops.
+   */
+  readonly onSprite?: (groupName: string, index: number) => void;
 }
 
 /** `TFlagSpinner`'s own eight pictures, when the caller does not say otherwise. */
@@ -103,6 +110,7 @@ export function buildOriginalFlags(
       ...(o.sound ? { sound: o.sound } : {}),
       ...(o.onSpin ? { onSpin: () => o.onSpin!(name) } : {}),
       ...(o.onLoopReset ? { onLoopReset: () => o.onLoopReset!(name) } : {}),
+      ...(o.onSprite ? { setSprite: (index: number) => o.onSprite!(name, index) } : {}),
     });
 
     component.collision = (ball, position, direction, distance, edge) =>

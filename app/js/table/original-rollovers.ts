@@ -58,6 +58,13 @@ export interface OriginalRolloverOptions {
   readonly sound?: SoundPlayer;
   /** Entering the lane. Leaving is silent and tells nobody — see `table/rollover`. */
   readonly onEnter?: (groupName: string) => void;
+  /**
+   * ⚠️ WHICH PICTURE THE COMPONENT IS SHOWING. Every one of these has carried a `setSprite` hook since
+   * it was ported and no builder forwarded it, so the state each component keeps — a target down, a
+   * bumper lit, a barrier up — was invisible. `-1` means "draw nothing", which is what a popup target
+   * does when it drops.
+   */
+  readonly onSprite?: (groupName: string, index: number) => void;
 }
 
 /**
@@ -123,6 +130,7 @@ export function buildOriginalRollovers(
       enterSoundId: visual.softHitSoundId,
       ...(o.sound ? { sound: o.sound } : {}),
       ...(o.onEnter ? { onEnter: () => o.onEnter!(name) } : {}),
+      ...(o.onSprite ? { setSprite: (index: number) => o.onSprite!(name, index) } : {}),
     });
 
     component.collision = (ball, position, direction, distance, edge) =>

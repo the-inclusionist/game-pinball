@@ -38,6 +38,13 @@ export function blockerNames(manifest: Table): Set<string> {
 export interface OriginalBlockerOptions {
   readonly timer: TimerService;
   readonly sound?: SoundPlayer;
+  /**
+   * ⚠️ WHICH PICTURE THE COMPONENT IS SHOWING. Every one of these has carried a `setSprite` hook since
+   * it was ported and no builder forwarded it, so the state each component keeps — a target down, a
+   * bumper lit, a barrier up — was invisible. `-1` means "draw nothing", which is what a popup target
+   * does when it drops.
+   */
+  readonly onSprite?: (groupName: string, index: number) => void;
 }
 
 /**
@@ -68,6 +75,7 @@ export function buildOriginalBlockers(
       enableSoundId: visual.soundIndex3,
       disableSoundId: visual.soundIndex4,
       ...(o.sound ? { sound: o.sound } : {}),
+      ...(o.onSprite ? { setSprite: (index: number) => o.onSprite!(name, index) } : {}),
     }));
   }
 

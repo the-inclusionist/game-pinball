@@ -148,6 +148,27 @@ describe('the lamps, as pictures', () => {
       .toEqual([0xff112233, 0xff112233, 0xff445566, 0xff112233]);
   });
 
+  test('⚠️ MINUS ONE DRAWS NOTHING, which is how everything in this game hides itself', () => {
+    // `SpriteSet(-1)`: a popup target that has dropped, a barrier that is not raised, a lane the ball
+    // is standing on. Every other out-of-range index is clamped into the list — this one must not be,
+    // or a target that has been knocked down goes on standing there.
+    const dst = createFramebuffer(2, 1);
+    const sprite = {
+      x: 0, y: 0,
+      frames: [{
+        at: null, x: 0, y: 0, width: 2, height: 1,
+        pixels: new Uint32Array([0xff445566, 0xff778899]), bytes: new Uint8ClampedArray(8),
+      }],
+    };
+
+    drawLamp(dst, sprite, -1);
+
+    expect([...dst.pixels], 'nothing at all').toEqual([0, 0]);
+    drawLamp(dst, sprite, 99);
+    expect([...dst.pixels], 'and anything past the end is still the last picture')
+      .toEqual([0xff445566, 0xff778899]);
+  });
+
   test('⚠️ and it CLIPS instead of wrapping onto the far edge', () => {
     // Every lamp on this file lands inside the playfield once the corner is off. One that did not
     // would otherwise reappear on the opposite side of the picture a row at a time, which reads as a

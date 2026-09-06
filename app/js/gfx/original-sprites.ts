@@ -240,6 +240,12 @@ export function readLampSprites(
  * edge of the picture a row at a time — an image that looks torn rather than misplaced.
  */
 export function drawLamp(dst: Framebuffer, sprite: LampSprite, frameIndex = 0): void {
+  // ⚠️ A NEGATIVE INDEX IS NOT A PICTURE, IT IS THE ABSENCE OF ONE. `SpriteSet(-1)` is how everything
+  // in this game hides itself: a popup target that has dropped, a barrier that is not raised, a lane
+  // the ball is standing on. Clamping it to zero — which is what the clamp below does to every other
+  // out-of-range value — draws the component at its resting picture instead of hiding it, and a target
+  // that has been knocked down goes on standing there.
+  if (frameIndex < 0) return;
   const src = sprite.frames[Math.max(0, Math.min(frameIndex, sprite.frames.length - 1))];
   if (!src) return;
 
