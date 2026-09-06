@@ -772,6 +772,8 @@ const title = mountTitle({
   screen: screens,
   t: shell.t,
   store: localStorage,
+  // The HUD is about a game in progress. Until one is, it has nothing to say.
+  onStarted: () => hud.setVisible(true),
 });
 
 /**
@@ -789,6 +791,11 @@ const hud = mountHud({
   doc: document, host: region, layout: shell.hud, screen: { ...DEFAULT_HUD, playfieldWidth: authored.size.width },
   t: shell.t,
 });
+
+// ⚠️ PUT AWAY UNTIL A GAME STARTS. The title and the selector cover the canvas, and "Jogador 1,
+// Bolas: 3" printed over a menu is the HUD answering a question nobody asked. The demonstration skips
+// the screens entirely, so it turns the HUD straight back on.
+hud.setVisible(screens.current === 'playing');
 
 // Exposed so the browser gate can confirm a real boot rather than a screenshot.
 Object.assign(window as unknown as Record<string, unknown>, {

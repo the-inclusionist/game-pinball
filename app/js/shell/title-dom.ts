@@ -71,6 +71,9 @@ export function mountTitle(o: TitleDomOptions): TitleDom {
     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
     gap: '4%', background: SURFACE, color: INK, fontFamily: FACE, textAlign: 'center',
     containerType: 'inline-size',
+    // ⚠️ THE SCREEN IS 320x180 AND THIS MAY NOT MAKE IT TALLER. Without this the buttons pushed
+    // `#game-region` down the page and the title sat half outside the canvas it is supposed to cover.
+    overflow: 'hidden', boxSizing: 'border-box', padding: '2%',
   });
 
   const title = o.doc.createElement('button');
@@ -89,13 +92,16 @@ export function mountTitle(o: TitleDomOptions): TitleDom {
     el.textContent = line;
     // Sized against the container rather than the viewport: the canvas is 320 wide whatever the page
     // is scaled to, and the title has to sit on the same grid as everything else drawn on it.
-    Object.assign(el.style, { fontSize: '13cqw', lineHeight: '1.2', letterSpacing: '0.05em' });
+    // ⚠️ SEVEN GLYPHS OF A FIXED-WIDTH FACE, and Press Start 2P is a full em wide each. At 13cqw
+    // "STUDENT" needs 91% of the width before letter-spacing and lost its first letter off the left
+    // edge. Nine leaves room for the spacing and for a longer word than either of these.
+    Object.assign(el.style, { fontSize: '9cqw', lineHeight: '1.25', letterSpacing: '0.04em' });
     title.appendChild(el);
   }
 
   const subtitle = o.doc.createElement('span');
   subtitle.textContent = TITLE_SUBTITLE;
-  Object.assign(subtitle.style, { fontSize: '7cqw', color: DIM, letterSpacing: '0.3em' });
+  Object.assign(subtitle.style, { fontSize: '5cqw', color: DIM, letterSpacing: '0.25em' });
   title.appendChild(subtitle);
   title.addEventListener('click', () => { o.screen.advance(); refresh(); });
   root.appendChild(title);
@@ -111,7 +117,7 @@ export function mountTitle(o: TitleDomOptions): TitleDom {
     button.textContent = table;
     button.setAttribute('data-table', table);
     Object.assign(button.style, {
-      font: 'inherit', fontSize: '4cqw', padding: '2% 4%', width: '100%',
+      font: 'inherit', fontSize: '3.4cqw', padding: '1.5% 3%', width: '100%',
       background: '#1a1e26', color: INK, border: `1px solid ${DIM}`, cursor: 'pointer',
     });
     button.addEventListener('click', () => {
@@ -143,12 +149,29 @@ export function mountTitle(o: TitleDomOptions): TitleDom {
   select.appendChild(back);
   root.appendChild(select);
 
+  /**
+   * ⚠️ `display`, NOT `hidden`, AND THE DIFFERENCE PUT BOTH SCREENS ON AT ONCE.
+   *
+   * `hidden` works by a rule in the user-agent stylesheet — `[hidden] { display: none }` — and every
+   * element here is laid out with an INLINE `display: flex`. An inline style beats a stylesheet, so
+   * setting `hidden` marked the elements and hid nothing: the title, the five table buttons and the
+   * back link all drew on top of each other on the first boot after this shipped.
+   *
+   * Found by opening the page. `tests/shell-options-dialog.browser` already asks this question of the
+   * palette dialog — "a closed dialog is really gone, not merely marked", measured with
+   * `getBoundingClientRect` — and that dialog passes because it sets no inline `display`. This module
+   * had no such test, and the same class of defect walked straight in.
+   */
+  const show = (el: HTMLElement, visible: boolean, as: string): void => {
+    el.style.display = visible ? as : 'none';
+  };
+
   function refresh(): void {
     const at = o.screen.current;
-    title.hidden = at !== 'title';
-    select.hidden = at !== 'select';
+    show(title, at === 'title', 'flex');
+    show(select, at === 'select', 'flex');
     // The whole screen steps aside once a game is running: the table is behind it.
-    root.hidden = at === 'playing';
+    show(root, at !== 'playing', 'flex');
 
     if (at !== 'select') return;
     // Read every time the selector opens, never cached: a game finished since it was last shown is

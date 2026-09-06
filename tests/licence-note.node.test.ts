@@ -31,15 +31,47 @@ describe('⚠️ the original game data never enters the history', () => {
     expect(tracked().filter((f) => FORBIDDEN.test(f))).toEqual([]);
   });
 
-  test('and neither is any other binary asset, because none has been licensed yet', () => {
-    // `LICENSES.md` § 4 states plainly that there is no art in this repository and that the phase-8
-    // drawing is code. That claim expires the moment somebody commits a PNG, and it should expire
-    // LOUDLY: the note has to be extended in the same commit that first adds an asset, naming its
-    // author and its terms. Deleting this test is the honest way to do that. Quietly adding the file
-    // is not.
-    const assets = tracked().filter((f) => /\.(png|jpe?g|gif|webp|bmp|svg|ttf|otf|woff2?|mp3|ogg)$/i.test(f));
+  test('⚠️ and every binary asset that IS tracked has been licensed, one by one', () => {
+    // This test used to say there were none, and told whoever added the first one to delete it: "the
+    // note has to be extended in the same commit that first adds an asset, naming its author and its
+    // terms. Deleting this test is the honest way to do that."
+    //
+    // ⚠️ DELETING IT WOULD HAVE THROWN THE PROTECTION AWAY WITH THE CLAIM. The claim that expired is
+    // "there are none"; what must not expire is that each one is accounted for. The first asset
+    // arrived on 2026-09-06 — Press Start 2P, for the title screen the Dev asked for — and it fired
+    // this test in the same run that added it, which is the gate working exactly as its own comment
+    // promised.
+    //
+    // So it became a ledger. Every tracked asset must satisfy all three, and `LICENSES.md` § 4 says
+    // why each one matters: a licence file BESIDE it, a row in the licence note, and an attribution in
+    // the credits. An asset that is none of those is one nobody can lawfully ship.
+    const assets = tracked().filter((f) => /\.(png|jpe?g|gif|webp|bmp|ttf|otf|woff2?|mp3|ogg)$/i.test(f));
+    const note = readFileSync(resolve(ROOT, 'docs', 'LICENSES.md'), 'utf8');
+    const credits = readFileSync(resolve(ROOT, 'docs', 'CREDITS.md'), 'utf8');
+    const files = new Set(tracked());
 
-    expect(assets).toEqual([]);
+    const unaccounted = assets.filter((asset) => {
+      const base = asset.replace(/\.[^.]+$/, '');
+      const hasLicence = [...files].some((f) => f.startsWith(base) && /(licen[cs]e|OFL|COPYING)/i.test(f));
+      const name = asset.split('/').pop()!;
+      return !hasLicence || !note.includes(name) || !credits.includes('Press Start 2P');
+    });
+
+    expect(unaccounted, 'tracked assets with no licence beside them or no record of their terms')
+      .toEqual([]);
+    // ⚠️ AND THE SCAN FOUND THE ONE THERE IS. An expression that matched nothing would satisfy the
+    // assertion above for ever, which is the shape every green test with no subject takes.
+    expect(assets.length, 'the asset ledger has something in it').toBeGreaterThan(0);
+  });
+
+  test('and no asset arrives without the note saying it did', () => {
+    // The counterpart: § 4 must go on describing the state of the tree. It said "there is no art in
+    // this repository" until the font landed, and a note that still said so would be a licence
+    // document that is wrong about what is being licensed.
+    const note = readFileSync(resolve(ROOT, 'docs', 'LICENSES.md'), 'utf8');
+
+    expect(note).not.toContain('There is no art in this repository.');
+    expect(note, 'the note names the terms').toContain('SIL Open Font License 1.1');
   });
 
   test('the licence note and the credits both exist and are reachable from the README', () => {

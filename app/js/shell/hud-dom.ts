@@ -41,7 +41,7 @@ export interface HudElement {
    * exactly how much of the style this module touches.
    */
   readonly style: Partial<Record<
-    'position' | 'left' | 'top' | 'width' | 'height' | 'minHeight' | 'overflow' | 'pointerEvents'
+    'display' | 'position' | 'left' | 'top' | 'width' | 'height' | 'minHeight' | 'overflow' | 'pointerEvents'
     | 'color' | 'containerType' | 'fontSize' | 'fontFamily' | 'fontVariantNumeric' | 'lineHeight'
     | 'textShadow' | 'textAlign' | 'whiteSpace',
     string
@@ -68,6 +68,8 @@ export interface HudDomOptions {
 
 export interface MountedHud {
   update(state: HudState): void;
+  /** Whether the HUD is on screen. See the implementation for why it is not always. */
+  setVisible(visible: boolean): void;
   destroy(): void;
 }
 
@@ -101,6 +103,7 @@ export function mountHud(o: HudDomOptions): MountedHud {
   const container = o.doc.createElement('div');
   container.className = 'pinball-hud';
   Object.assign(container.style, {
+    display: 'block',
     position: 'absolute', left: '0', top: '0', width: '100%', height: '100%',
     // See the header: the overlay is a caption, not a surface.
     pointerEvents: 'none',
@@ -151,6 +154,20 @@ export function mountHud(o: HudDomOptions): MountedHud {
         // Only where the shown text is not the whole meaning — the score's digits without the word.
         if (block.label) element.setAttribute('aria-label', block.label);
       }
+    },
+    /**
+     * Whether the HUD is on screen at all.
+     *
+     * ⚠️ IT IS NOT ALWAYS. The title screen and the table selector cover the canvas, and the score,
+     * the ball count and the player's name are about a game that has not started — "Jogador 1,
+     * Bolas: 3" printed over a menu is the HUD answering a question nobody asked.
+     *
+     * `display`, not `hidden`: the container is laid out with an inline `display`, and `[hidden]` is a
+     * user-agent stylesheet rule that an inline style beats. That exact confusion put the title and the
+     * selector on screen together on the first boot after they shipped.
+     */
+    setVisible(visible: boolean) {
+      container.style.display = visible ? 'block' : 'none';
     },
     destroy() {
       container.remove();
