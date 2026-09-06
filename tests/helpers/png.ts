@@ -133,3 +133,25 @@ export function readPng(bytes: Buffer): { width: number; height: number; pixels:
 
   return { width, height, pixels: new Uint32Array(out.buffer) };
 }
+
+/**
+ * Nearest neighbour, so the pixel grid stays exact — the same rule `gfx/table-view` renders under.
+ *
+ * ⚠️ HERE BECAUSE IT WAS IN TWO TEST FILES AND THE WRITER WAS IN THREE. `tests/gfx-original-shot` kept
+ * its own `crc32`, `chunk`, `png` and `magnify` while this module sat beside it — a hundred lines of
+ * PNG encoder written twice, in a repository whose comments warn about exactly that in five other
+ * places. Nothing had gone wrong with it yet, which is the only reason it survived: a duplicate that
+ * has not drifted looks like no duplicate at all.
+ */
+export function magnify(
+  bytes: Uint8Array | Uint8ClampedArray, width: number, height: number, by: number,
+): Uint8ClampedArray {
+  const out = new Uint8ClampedArray(width * by * height * by * 4);
+  for (let y = 0; y < height * by; y++) {
+    for (let x = 0; x < width * by; x++) {
+      const from = (Math.floor(y / by) * width + Math.floor(x / by)) * 4;
+      out.set(bytes.subarray(from, from + 4), (y * width * by + x) * 4);
+    }
+  }
+  return out;
+}

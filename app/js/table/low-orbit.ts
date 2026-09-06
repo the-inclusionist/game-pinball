@@ -259,6 +259,40 @@ export const LOW_ORBIT: AuthoredTable = {
     // Under the bumper nest is where a drop bank belongs and where every machine puts one: the ball
     // falls out of the bumpers onto it. The faces run LEFT TO RIGHT, so the normal is `(dy, -dx)` with
     // dy = 0 and dx positive — pointing up the screen, at the thing falling onto them.
+    /**
+     * ⚠️ THESE THREE MAY NOT BE MOVED ONTO THE PICTURE, AND THAT WAS FOUND BY TRYING IT.
+     *
+     * The Dev asked for the maps to be redone on top of his art — "fazer um mapa em cima de cada uma
+     * das imagens" — and this bank looked like the easiest case in the catalogue. His `low-orbit`
+     * draws a green rail across the table with three round pads set into it, and every green pixel of
+     * it was traced row by row rather than eyeballed:
+     *
+     *     the rail is a DOUBLE line at y 89 and y 94
+     *     drawn in runs of  x 33-54, 63-76, 85-100, 108-112
+     *     so the three PADS are the gaps, centred at x 58.5, 80.5 and 104
+     *
+     * These targets sit on the rail SEGMENTS with the pads in the gaps between them — eleven to twelve
+     * pixels out, which is four ball radii and well past the point where moving is churn.
+     *
+     * ⚠️ AND EVERY PLACEMENT THAT MOVES THEM FAILS `tests/table-playable`:
+     *
+     *     x 40, 62, 84  (as written here)          passes
+     *     x 40, 62, 90  (drop3 alone, +6)          passes
+     *     x 46, 68, 90  (+6 each)                  FAILS
+     *     x 51, 73, 96  (onto the pads)            FAILS
+     *     x 52, 74, 98  (onto the pads, 12 wide)   FAILS
+     *     x 51, 73, 84  (drop1 and drop2 only)     FAILS
+     *
+     * Both failures are the same pair every time: "the ball is eventually lost, and NOT through a hole
+     * in the table", and "flapping the flippers changes the ball's life". The ball stops reaching the
+     * paddles, so a flapping run and a quiet one come out identical — the gate's own definition of a
+     * table the player watches.
+     *
+     * ⚠️ SO THE GAPS BETWEEN THESE THREE ARE THE ROUTE, and the picture's pads are not where the route
+     * is. That is the thing worth writing down: mapping a table onto its art is not translation, it is
+     * re-tuning the play, and on this table the two want different geometry. Which one wins is the
+     * Dev's decision and not mine to take by moving a rectangle.
+     */
     { name: 'drop1', kind: 'target', role: 'key', bounds: { x: 40, y: 92, width: 16, height: 8 },
       scores: [1500], control: 'TargetBankControl', bank: 'bank.orbit', lamps: ['lamp.drop1'],
       collision: [{ kind: 'line', from: { x: 40, y: 92 }, to: { x: 56, y: 92 } }] },

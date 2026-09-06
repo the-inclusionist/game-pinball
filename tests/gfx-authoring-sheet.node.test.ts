@@ -24,7 +24,7 @@
 // table that exists.
 import { describe, test, expect } from 'vitest';
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
-import { buildPng, readPng } from './helpers/png.js';
+import { buildPng, magnify, readPng } from './helpers/png.js';
 import { drawTable } from '../app/js/gfx/table-view.js';
 import { PLAYABLE_TABLES } from '../app/js/table/catalog.js';
 import type { AuthoredTable } from '../app/js/table/authored.js';
@@ -42,17 +42,6 @@ function rule(bytes: Uint8ClampedArray, width: number, height: number): void {
 
   for (let x = 0; x < width; x += 10) for (let y = 0; y < height; y++) mark(x, y, level(x));
   for (let y = 0; y < height; y += 10) for (let x = 0; x < width; x++) mark(x, y, level(y));
-}
-
-function magnify(bytes: Uint8ClampedArray, width: number, height: number, by: number): Uint8Array {
-  const out = new Uint8Array(width * by * height * by * 4);
-  for (let y = 0; y < height * by; y++) {
-    for (let x = 0; x < width * by; x++) {
-      const from = (Math.floor(y / by) * width + Math.floor(x / by)) * 4;
-      out.set(bytes.subarray(from, from + 4), (y * width * by + x) * 4);
-    }
-  }
-  return out;
 }
 
 const backdropOf = (table: AuthoredTable): Uint32Array | undefined => {
@@ -83,10 +72,7 @@ describe('the authoring sheets', () => {
       mkdirSync('shots/authoring', { recursive: true });
       writeFileSync(
         `shots/authoring/${name}.png`,
-        buildPng(
-          new Uint8ClampedArray(magnify(fb.bytes, fb.width, fb.height, 3).buffer),
-          fb.width * 3, fb.height * 3,
-        ),
+        buildPng(magnify(fb.bytes, fb.width, fb.height, 3), fb.width * 3, fb.height * 3),
       );
 
       // The sheet is the table's own size, ruled and magnified — not a screen, not a window.
