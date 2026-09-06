@@ -108,7 +108,7 @@ const es: Record<string, string> = {
   'pinball.a11y.unavailableInDemo': 'La guía sonora todavía no describe la mesa de 1995.',
   'pinball.a11y.blindOff': 'Modo ciego desactivado.',
   'pinball.demo.ask': 'Modo demostración: elige tu PINBALL.DAT. El archivo no sale de esta máquina.',
-  'pinball.demo.caveat': 'La mesa de 1995: su física, sus luces, sus rampas y las veintitrés misiones. El panel lateral y los sprites de los objetivos aún no se dibujan.',
+  'pinball.demo.caveat': 'La mesa de 1995: su física, sus luces, sus rampas, sus sprites y las veintitrés misiones. El panel lateral se quitó a propósito — la puntuación y el resto van en las esquinas. La guía sonora todavía no describe esta mesa.',
   'pinball.demo.gameOver': 'Sin bolas.',
   'pinball.demo.music': 'Música (opcional): elige tu PINBALL.MID.',
   'pinball.demo.sounds': 'Sonidos (opcional): elige tus SOUND*.WAV — todos a la vez.',

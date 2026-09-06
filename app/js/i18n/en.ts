@@ -113,7 +113,12 @@ const en: Record<string, string> = {
   'pinball.a11y.unavailableInDemo': 'The audio guide does not describe the 1995 table yet.',
   'pinball.a11y.blindOff': 'Blind mode off.',
   'pinball.demo.ask': 'Demonstration mode: choose your PINBALL.DAT. The file never leaves this machine.',
-  'pinball.demo.caveat': 'The 1995 table: its physics, its lamps, its ramps and all twenty-three of its missions. The side panel and the sprites of its targets are not drawn yet.',
+  // ⚠️ WHAT IT SAYS HAS TO STAY TRUE. This said "the side panel and the sprites of its targets are
+  // not drawn yet" long after both had stopped being true — the targets ARE drawn, and the side
+  // panel is not a missing feature but decision 6 of the plan: it does not exist here, and the
+  // corners took its place. A caveat that describes an old build teaches the player the wrong thing
+  // about the one they are looking at.
+  'pinball.demo.caveat': 'The 1995 table: its physics, its lamps, its ramps, its sprites and all twenty-three of its missions. The side panel is gone on purpose — the score and the rest are in the corners. The audio guide does not describe this table yet.',
   'pinball.demo.gameOver': 'No balls left.',
   'pinball.demo.music': 'Music (optional): choose your PINBALL.MID.',
   'pinball.demo.sounds': 'Sounds (optional): choose your SOUND*.WAV — all of them at once.',
