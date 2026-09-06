@@ -63,6 +63,30 @@ function int16s(data: Uint8Array): number[] {
   return out;
 }
 
+/**
+ * The `table_objects` list: which archive group is which kind of thing.
+ *
+ * ⚠️ THE FIRST INTEGER IS NOT AN OBJECT. The spec marks it unknown and the pairs follow it; starting at
+ * zero shifts the whole list and every object gets its neighbor's group.
+ *
+ * ⚠️ AND IT IS EXPORTED BECAUSE A GROUP'S RECORDS DO NOT SAY WHAT IT IS. Record 601 is `PlungerPosition`
+ * and four SINKS carry it as well as the plunger, so "the first group with a 601" is not the plunger —
+ * it is `v_sink1`. This list is the only thing in the file that answers the question, and a builder
+ * that has the groups can now ask it without loading the whole table.
+ */
+export function readTableObjects(groups: readonly Group[]): TableObject[] {
+  const index = groups.findIndex((group) => group.name === TABLE_OBJECTS_GROUP);
+  const raw = intsOfGroup(groups, index < 0 ? null : index) ?? [];
+  const objects: TableObject[] = [];
+  for (let i = 1; i + 1 < raw.length; i += 2) {
+    objects.push({ type: raw[i]!, group: raw[i + 1]! });
+  }
+  return objects;
+}
+
+/** The group whose payload is the object list. */
+const TABLE_OBJECTS_GROUP = 'table_objects';
+
 function intsOfGroup(groups: readonly Group[], index: number | null): number[] | null {
   if (index === null) return null;
   const g = groups[index];
@@ -85,13 +109,5 @@ export function loadTable(file: Uint8Array): Table {
     ? { width: measures[0]!, height: measures[1]! }
     : null;
 
-  // THE FIRST INTEGER IS NOT AN OBJECT. The spec marks it unknown and the pairs follow it; starting at
-  // zero shifts the whole list and every object gets its neighbor's group.
-  const raw = intsOfGroup(groups, groupIndex('table_objects')) ?? [];
-  const tableObjects: TableObject[] = [];
-  for (let i = 1; i + 1 < raw.length; i += 2) {
-    tableObjects.push({ type: raw[i]!, group: raw[i + 1]! });
-  }
-
-  return { groups, groupIndex, tableSize, tableObjects };
+  return { groups, groupIndex, tableSize, tableObjects: readTableObjects(groups) };
 }

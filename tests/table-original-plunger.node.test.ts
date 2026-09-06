@@ -43,14 +43,44 @@ describe('the 1995 plunger', () => {
     // Before the plunger existed the table dropped its ball from a fifth of the way down, because
     // there was nothing to launch it with. A ball that starts in the middle of the table starts its
     // life already in play, and the whole launch lane is never seen.
+    //
+    // ⚠️ AND THE LITERAL, NOT `built.plungerPosition`. This test read the same lookup the spawn reads,
+    // so both moved together and it passed over a ball that was starting at (-2.62, -8.83) — the top
+    // of the table, in `v_sink1`'s mouth. Naming the number is what makes the two sides independent.
     const table = manifest();
     if (!table) return expect(existsSync(DAT)).toBe(false);
     const built = buildOriginalTable(table.groups);
 
     const ball = built.spawnBall()!;
 
-    expect(ball.position.x).toBeCloseTo(built.plungerPosition!.x, 3);
-    expect(ball.position.y).toBeCloseTo(built.plungerPosition!.y, 3);
+    expect(ball.position.x).toBeCloseTo(-7.021, 3);
+    expect(ball.position.y).toBeCloseTo(10.085, 3);
+  });
+
+  test('⚠️ RECORD 601 IS NOT THE PLUNGER\'S ALONE — four sinks carry it, and three come first', () => {
+    // `TPlunger`'s constructor reads record 601 and nothing else, which is true and was taken to mean
+    // that the first group carrying 601 IS the plunger. It is not: `v_sink1`, `v_sink2`, `v_sink3` and
+    // `v_sink7` carry it too, at group indices 338, 340, 342 and 344, and the plunger is at 473.
+    //
+    // A loop that stops at the first match finds `v_sink1`, whose 601 is (-2.62, -8.83). Everything
+    // else follows from that one predicate: the ball is born in a sink's mouth at the top of the table
+    // rather than on the plunger, so the plunger's draw moves nothing, so the launch lane is never
+    // travelled, so `s_onewy1` is never crossed, so `lite200`'s five-second timer is never armed, so
+    // the shoot-again lamp that every feed lights never goes out — and from the second ball onward
+    // every drain is a free save and THE GAME CANNOT END.
+    const table = manifest();
+    if (!table) return expect(existsSync(DAT)).toBe(false);
+
+    const carriers = table.groups
+      .map((group, index) => ({ index, name: group.name, at: plungerPosition(group) }))
+      .filter((entry) => entry.at !== null);
+    const built = buildOriginalTable(table.groups);
+
+    expect(carriers.map((entry) => entry.name),
+      'four sinks and the plunger, in the file\'s own order')
+      .toEqual(['v_sink1', 'v_sink2', 'v_sink3', 'v_sink7', 'plunger']);
+    expect(built.plungerPosition!.x, 'and the one chosen is the PLUNGER').toBeCloseTo(-7.021, 3);
+    expect(built.plungerPosition!.y).toBeCloseTo(10.085, 3);
   });
 
   test('⚠️ the material is the constructor’s 0.5, NOT the visual’s', () => {

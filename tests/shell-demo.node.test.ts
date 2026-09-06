@@ -30,6 +30,24 @@ function seeded(seed = 0x9e3779b9): () => number {
 }
 
 /**
+ * ⚠️ THE BALL STARTS ON THE PLUNGER NOW, so a run that wants it in play has to launch it.
+ *
+ * Until the plunger was found by its OBJECT TYPE, every ball was born at (-2.62, -8.83) — `v_sink1`'s
+ * record 601, near the top of the table — and was already falling by the time a test stepped the
+ * clock. Every seeded run in this file began mid-game without saying so, and the launch lane, the
+ * skill shot and `s_onewy1` were never touched by anything.
+ *
+ * ⚠️ AND A HUNDRED AND TWENTY FRAMES, NOT FORTY-FIVE. The plunger draws back a hundredth of its travel
+ * per frame; the three runs here that did plunge held it for 45 and let go of a plunger that had barely
+ * moved, so the ball bobbed at the bottom of the lane and went nowhere. Two seconds clears `s_onewy1`.
+ */
+const launch = (demo: ReturnType<typeof createDemo>): void => {
+  demo.plunge(true);
+  demo.step(120);
+  demo.plunge(false);
+};
+
+/**
  * How many pixels of the frame the BALL is responsible for, found by moving it.
  *
  * ⚠️ THE BALL IS THE ARCHIVE'S OWN SPRITE AND NOT A COLOUR THIS FILE PICKED, so it cannot be looked
@@ -203,6 +221,7 @@ describe('the 1995 table, from an ArrayBuffer', () => {
     if (!bytes) return expect(existsSync(DAT)).toBe(false);
 
     const demo = createDemo(bytes, { random: seeded() });
+    launch(demo);
     demo.step(900);
 
     expect(demo.scored.length).toBeGreaterThan(0);
@@ -233,6 +252,7 @@ describe('the 1995 table, from an ArrayBuffer', () => {
     const demo = createDemo(bytes, { random: seeded() });
     expect(demo.components.bumpers.size).toBe(7);
 
+    launch(demo);
     demo.step(900);
 
     // The ball reaches at least one of them in a ball's life on this table.
@@ -460,9 +480,7 @@ describe('⚠️ and a ball can be lost, which the demonstration counts', () => 
     if (!bytes) return expect(existsSync(DAT)).toBe(false);
     const heard: number[] = [];
     const demo = createDemo(bytes, { random: seeded(6), onSoundId: (id) => heard.push(id) });
-    demo.plunge(true);
-    demo.step(45);
-    demo.plunge(false);
+    launch(demo);
     demo.step(1800);
 
     expect(heard.length, 'something was heard').toBeGreaterThan(0);
@@ -500,9 +518,7 @@ describe('⚠️ and a ball can be lost, which the demonstration counts', () => 
     if (!bytes) return expect(existsSync(DAT)).toBe(false);
     const heard = new Set<number>();
     const demo = createDemo(bytes, { random: seeded(6), onSoundId: (id) => heard.add(id) });
-    demo.plunge(true);
-    demo.step(45);
-    demo.plunge(false);
+    launch(demo);
     demo.step(1800);
 
     const sounds = findSoundGroups(readGroups(new Uint8Array(bytes)));
@@ -524,9 +540,7 @@ describe('⚠️ and a ball can be lost, which the demonstration counts', () => 
     const bytes = archive();
     if (!bytes) return expect(existsSync(DAT)).toBe(false);
     const demo = createDemo(bytes, { random: seeded(2) });
-    demo.plunge(true);
-    demo.step(45);
-    demo.plunge(false);
+    launch(demo);
 
     let slowSeconds = 0;
     for (let second = 0; second < 30; second++) {
@@ -586,6 +600,7 @@ describe('⚠️ and a ball can be lost, which the demonstration counts', () => 
     if (!bytes) return expect(existsSync(DAT)).toBe(false);
     const demo = createDemo(bytes, { random: seeded() });
 
+    launch(demo);
     demo.step(600);
 
     const crossed = demo.touched.filter((name) => name.startsWith('a_roll'));
@@ -850,6 +865,7 @@ describe('⚠️ and a ball can be lost, which the demonstration counts', () => 
     if (!bytes) return expect(existsSync(DAT)).toBe(false);
     const demo = createDemo(bytes, { random: seeded(9) });
 
+    launch(demo);
     demo.plunge(true);
     demo.step(60);
     demo.plunge(false);
@@ -889,6 +905,7 @@ describe('⚠️ a bumper scores when it FIRES, not when it is grazed', () => {
     if (!bytes) return expect(existsSync(DAT)).toBe(false);
 
     const demo = createDemo(bytes, { random: seeded() });
+    launch(demo);
     demo.step(1800);
 
     const bumperTouches = demo.touched.filter((name) => demo.components.bumpers.has(name)).length;
@@ -910,6 +927,7 @@ describe('⚠️ and a target is never paid TWICE for one hit', () => {
     if (!bytes) return expect(existsSync(DAT)).toBe(false);
 
     const demo = createDemo(bytes, { random: seeded() });
+    launch(demo);
     demo.step(1800);
 
     const touches = demo.touched.filter((name) => /^a_targ/.test(name)).length;
