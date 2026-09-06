@@ -27,6 +27,7 @@ import {
 } from './shell/options.js';
 import { mountOptionsDialog } from './shell/options-dialog.js';
 import { titleScreen } from './shell/title.js';
+import { integerScale } from './shell/present.js';
 import { mountTitle } from './shell/title-dom.js';
 import { createLiveControls } from './table/live-controls.js';
 import { createRolloverWatch } from './table/rollovers.js';
@@ -236,13 +237,41 @@ const screen = createFramebuffer(DEFAULT_HUD.screenWidth, DEFAULT_HUD.screenHeig
 const canvas = document.createElement('canvas');
 canvas.width = screen.width;
 canvas.height = screen.height;
-canvas.style.width = '100%';
 canvas.style.imageRendering = 'pixelated';
+// ⚠️ NOT `width: 100%`, WHICH IS WHAT IT WAS AND WHAT THE DEV CAUGHT. Stretching a 320x180 buffer to
+// whatever the page offers gave a scale of 1.4688 in the running game: with `pixelated` that makes some
+// source pixels one screen pixel wide and others two, so the grid goes uneven, a one-pixel highlight
+// vanishes in one place and doubles in another, and the ball changes size as it crosses the table.
+canvas.style.display = 'block';
+canvas.style.margin = '0 auto';
 const region = document.getElementById('game-region')!;
 // ⚠️ RELATIVE, because the HUD's four blocks are absolutely positioned INSIDE it. Without this they
 // would be placed against the page and land wherever the document happens to put them.
 region.style.position = 'relative';
+
+/**
+ * Sizes the canvas at a WHOLE multiple of its buffer, and again whenever the window changes.
+ *
+ * ⚠️ THE PARENT IS MEASURED, NOT THE WINDOW. `#game-region` is what the page gives the game, and a page
+ * that puts the game in a column would otherwise get a canvas sized for the whole viewport and a
+ * horizontal scrollbar. `clientWidth` is zero before layout, which `integerScale` answers with 1 rather
+ * than with a canvas of no size.
+ */
+function fitCanvas(): void {
+  const parent = region.parentElement ?? region;
+  const times = integerScale(
+    { width: parent.clientWidth, height: window.innerHeight },
+    { width: screen.width, height: screen.height },
+  );
+  canvas.style.width = `${screen.width * times}px`;
+  canvas.style.height = `${screen.height * times}px`;
+  region.style.width = `${screen.width * times}px`;
+  region.style.height = `${screen.height * times}px`;
+  region.style.margin = '0 auto';
+}
 region.appendChild(canvas);
+fitCanvas();
+window.addEventListener('resize', fitCanvas);
 const context = canvas.getContext('2d')!;
 const image = context.createImageData(screen.width, screen.height);
 
