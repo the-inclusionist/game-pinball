@@ -24,7 +24,7 @@
 // launch varies in power and drift because a real one does; the flippers flap on a rhythm that varies
 // per ball because a player is not a metronome.
 import { describe, test, expect } from 'vitest';
-import { buildPhysics, drainedBy, launchSpeedFor, FRAME_SECONDS } from '../app/js/table/physics-build.js';
+import { buildPhysics, drainedBy, inPlungerLane, launchSpeedFor, FRAME_SECONDS } from '../app/js/table/physics-build.js';
 import { advanceFrame } from '../app/js/physics/step.js';
 import { PLAYABLE_TABLES } from '../app/js/table/catalog.js';
 import type { AuthoredTable } from '../app/js/table/authored.js';
@@ -50,6 +50,22 @@ function visits(table: AuthoredTable, balls: number): Map<string, number> {
     const seen = new Set<string>();
 
     for (let i = 0; i < 4000; i++) {
+      /**
+       * ⚠️ A BALL THAT FELL BACK DOWN THE LANE IS LAUNCHED AGAIN, BECAUSE A PLAYER WOULD.
+       *
+       * The Dev described exactly this: "se não tiver força para a bolinha sair do tubo, ela continua
+       * dentro do tubo caindo, permitindo ser lançada novamente." A survey that leaves it there is
+       * surveying a player who pulls the plunger once and then watches.
+       *
+       * ⚠️ AND IT WENT UNNOTICED BECAUSE THE DIVIDER LEAKED. Until the lane divider was given its
+       * second face, a weak launch's ball drifted sideways THROUGH the divider into the play and the
+       * survey carried on regardless. Closing that hole cost coverage on all six tables at once —
+       * eighteen components on `ion-storm` alone — and the loss was this line missing, not the fix.
+       */
+      if (inPlungerLane(table, ball) && ball.speed < 20) {
+        ball.direction = { x: 0, y: -1 };
+        ball.speed = launchSpeedFor(table) * (0.55 + random() * 0.45);
+      }
       if (i % flap === 0) { physics.setFlippers('left', true); physics.setFlippers('right', true); }
       if (i % flap === Math.floor(flap / 2)) {
         physics.setFlippers('left', false); physics.setFlippers('right', false);
@@ -67,6 +83,23 @@ function visits(table: AuthoredTable, balls: number): Map<string, number> {
       // exactly where it is launched and nowhere else.
       physics.flare?.advance(FRAME_SECONDS);
       advanceFrame([ball], physics.context, FRAME_SECONDS);
+      /**
+       * ⚠️ AND THE STUCK DETECTOR RUNS, BECAUSE IT RUNS IN THE GAME.
+       *
+       * `main` calls this every frame and this survey did not, which made it a survey of a different
+       * table — the third time that sentence has had to be written here, after the movers and the
+       * flare.
+       *
+       * ⚠️ AND IT CHANGED NOTHING MEASURABLE, WHICH IS ITSELF THE FINDING. `crater-run` holds
+       * FIFTY-TWO PER CENT of all ball-time in one band at y 120-139, and the histogram is byte for
+       * byte identical with this line and without it. The detector fires on a ball that is STILL, and
+       * a ball on that band is ROLLING — along the row of crater targets, whose faces were flat.
+       *
+       * So this line is here because the game runs it and a survey that does not is surveying a
+       * different table — the same reason the movers and the flare are advanced above — and NOT
+       * because it fixed anything. The ledge was fixed where it lived, by sloping the faces.
+       */
+      physics.stuck.check(ball, i * (1000 / 60));
       physics.takeHits();
       const { x, y } = ball.position;
       for (const c of table.components) {

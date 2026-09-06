@@ -207,6 +207,13 @@ describe('⚠️ the drawing tells the truth about what the ball can touch', () 
  * corner gained its mirror. Two quarter-circles of radius 20, eight chords each, and the same number
  * on every table because both are the cabinet's and both are anchored to a corner rather than scaled.
  * The three fixtures did not move: they hand-write the straight bend they were born with.
+ *
+ * ⚠️ AND UP AGAIN BY 414 ON FIVE AND 514 ON `crater-run`, when the plunger lane divider gained a
+ * SECOND FACE. It had play on one side and the plunger lane on the other and was wound for the play
+ * alone, so a ball in the lane walked straight through it — measured at 40, 120 and 300 pixels a
+ * second, crossing every time. Two faces means the divider is stroked twice, which is the whole
+ * difference. `crater-run` moved a hundred more than the rest because its crater bank was sloped in
+ * the same commit: a diagonal stroke paints more pixels than a horizontal one.
  */
 const PAINTED = {
   // ⚠️ 6991 UNTIL THE TABLE WAS AUTHORED UP TO THE 1995 DENSITY. `tests/table-density` measures the
@@ -221,32 +228,32 @@ const PAINTED = {
   // five tables and skipped this one. The difference is mostly the bottom assembly moving seven
   // pixels left: this file centred the flippers and the drain on the TABLE, and the cabinet
   // centres them on the PLAY, because sixteen pixels of the width are the plunger lane.
-  'low-orbit': 4946,
+  'low-orbit': 5350,
   // +572 on each of the four below: the cabinet's two inlanes, which five tables had never had.
   // The lower third paid 2000 for bad luck through the outlanes and nothing at all for good play.
   // ⚠️ +1768 when this table was authored up to the 1995 density: two more bumpers in the storm,
   // four drop targets in two flank shelves, three more arc rollovers and two ion trails down the
   // sides, and the eye rollover in the middle. Bumpers are the expensive ones to paint — a filled circle against a stroked line.
-  'ion-storm': 5293,
+  'ion-storm': 5727,
   // ⚠️ +1070: the two INLANES the cabinet now gives all five of its tables, and this table's own
   // authoring up to the 1995 density — two flank drop banks and a three-rollover reentry row.
-  'crater-run': 4269,
+  'crater-run': 4783,
   // ⚠️ +2640, the largest single move in this table: three more bumpers in a second gauntlet, a
   // four-target drop column up the left wall, two rebounders, four rollovers on the flanks and
   // three across the head. It is 300 tall against a 180 window and had 56 pixels of nothing in
   // the middle of its own climb.
-  'long-climb': 5720,
+  'long-climb': 6254,
   // ⚠️ +5437, and it is the last of the six to be authored up to the 1995 density — it was the
   // thinnest by a distance, at a THIRD of the archive's. Three more rocks on the belt, a
   // three-target drop column against each far wall, two rebounder cornices, and seventeen
   // rollovers spread across a table 360 wide whose outer thirds paid nothing at all.
   // -7 when the east scree column moved up twelve pixels: sixty balls never reached its lowest target,
   // which sat where the funnel has already gathered the ball toward the middle.
-  'ring-belt': 6976,
+  'ring-belt': 7390,
   // ⚠️ +2122 when this table was authored up to the 1995 density: two more eddies in the chamber, a
   // three-target drop COLUMN on its wall, two spillways in its corners, three wake rollovers and
   // two rebounders below the vanes.
-  'slipstream': 4711,
+  'slipstream': 5135,
   'wide-arc': 4313,
   // ⚠️ 3553 UNTIL THE BALL GAINED A RADIUS. `table/physics-build` now offsets every wall by it, the way
   // the original does and `physics/wall` already did for the 1995 table, and two of this fixture's

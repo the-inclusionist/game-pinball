@@ -54,7 +54,22 @@ const BANK = [42, 62, 82, 102, 122].map((x, i) => ({
   control: 'TargetBankControl',
   bank: BANK_NAME,
   lamps: [`lamp.crater${i + 1}`],
-  collision: [{ kind: 'line' as const, from: { x, y: 134 }, to: { x: x + 12, y: 134 } }],
+  /**
+   * ⚠️ SLOPED, AND THEY WERE FLAT. Left to right the normal points UP, so each of these is a FLOOR —
+   * and five floors side by side across the middle of a table are a LEDGE. Measured: `crater-run` held
+   * FIFTY-TWO PER CENT of all ball-time in the one band at y 120-139, so almost nothing below it was
+   * ever reached, and `probe.low` beneath them was met by none of sixty balls.
+   *
+   * ⚠️ AND THE STUCK DETECTOR DOES NOT SAVE IT, which is why this had to be fixed here. It fires on a
+   * ball that is STILL; a ball on a flat ledge is ROLLING, along the row, hitting each target in turn.
+   * The histogram is identical with the detector running and without it.
+   *
+   * Four pixels of drop over twelve — about eighteen degrees — so a ball that lands rolls off the
+   * right-hand end instead of living there. `docs/2-Architecture/adr/ADR-0006` already records "an
+   * up-facing horizontal face is a shelf the ball rests on"; this is the first time the rule has been
+   * caught applying to a row of targets rather than to one.
+   */
+  collision: [{ kind: 'line' as const, from: { x, y: 130 }, to: { x: x + 12, y: 134 } }],
 }));
 
 export const CRATER_RUN: AuthoredTable = {

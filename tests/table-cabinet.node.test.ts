@@ -232,3 +232,46 @@ describe('⚠️ is the ball in the plunger lane', () => {
     expect(inPlungerLane(table, ball)).toBe(false);
   });
 });
+
+/**
+ * ⚠️ THE LANE DIVIDER IS A WALL FROM BOTH SIDES, AND IT WAS A WALL FROM ONE.
+ *
+ * Found while designing the secret passage the Dev asked for — "que permitam que a bola saia pela
+ * lateral baixa ao invés de sair pelo topo" — because a door in a wall the ball can already walk
+ * through is not a door.
+ *
+ * `table/authored` states the rule this comes from: a collision line is ONE-SIDED and its winding
+ * decides which side. Every other wall in the cabinet has play on one side and the outside of the
+ * table on the other, so one face is all any of them needs. The divider is the only wall in the game
+ * with the PLAY on one side and the PLUNGER LANE on the other, and it was wound for the play alone.
+ *
+ * Measured before it was fixed: a ball in the lane pushed left at 40, 120 and 300 pixels a second
+ * crossed it every time, ending at x = 159, 158 and 157 against a divider whose left face is at 162.
+ * It did not slow down, because there was nothing there.
+ *
+ * ⚠️ AND IT IS NOT A HYPOTHETICAL. A ball gains sideways speed in the lane from the return bend and
+ * from the plunger's own face, and this repository's whole record is of geometry that "cannot happen"
+ * happening on the sixtieth ball.
+ */
+describe('⚠️ the lane divider holds from the lane side too', () => {
+  test.each(withPlunger)('%s: a ball shoved out of the lane stays in it', (name, table, plunger) => {
+    for (const speed of [40, 120, 300]) {
+      const physics = buildPhysics(table);
+      const ball = physics.spawnBall();
+      ball.position = { x: plunger.bounds.x + plunger.bounds.width / 2, y: plunger.bounds.y - 80 };
+      ball.direction = { x: -1, y: 0 };
+      ball.speed = speed;
+
+      for (let i = 0; i < 60; i++) {
+        advanceFrame([ball], physics.context, FRAME_SECONDS);
+        physics.takeHits();
+      }
+
+      // The divider's left face. Anything left of it is in the play, and the ball has no business
+      // there without going over the top of the lane.
+      const leftFace = table.size.width - 21;
+      expect(ball.position.x, `${name} at ${speed}: ended x=${ball.position.x.toFixed(1)}`)
+        .toBeGreaterThan(leftFace);
+    }
+  });
+});

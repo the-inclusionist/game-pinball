@@ -47,6 +47,7 @@ import type { ComponentKind } from '../i18n/names.js';
 import type { AuthoredMission } from './missions.js';
 import type { MoverPath } from './mover.js';
 import type { AuthoredStorm } from './storm.js';
+import type { AuthoredSecret } from './secret.js';
 // ⚠️ A VALUE IMPORT INTO A MODULE THAT `rollovers` ITSELF IMPORTS, and it is not a cycle: the
 // import going the other way is `import type`, which erases. The alternative was a third copy of
 // the list, and two copies of a rule is how this repository's last four defects were held open.
@@ -153,6 +154,15 @@ export interface AuthoredComponent {
    * component that declared both would have a shape that stays behind while the thing moves away.
    */
   readonly mover?: MoverPath;
+  /**
+   * This component is a SECRET DOOR: solid and drawn until the table opens it, then neither.
+   *
+   * ⚠️ THE DEV: "um ou dois cenários contendo passagens secretas que se abrem caso na primeira tacada
+   * a bola desça." See `table/secret` for why this is a condition on an ordinary blocker rather than a
+   * kind of its own — the drop targets already taught the physics and the renderer how to make a shape
+   * stop existing, and this is that on a different clock.
+   */
+  readonly secret?: AuthoredSecret;
   /**
    * The drop-target bank this component belongs to, by name.
    *
@@ -448,6 +458,24 @@ export function validateTable(table: AuthoredTable, o: ValidationOptions): strin
     if (!(table.storm.seconds > 0)) problems.push('storm: needs a time for its sweep');
     if (!(table.storm.drag > 0)) {
       problems.push('storm: needs a positive drag — a negative one adds energy instead of taking it');
+    }
+  }
+
+  /**
+   * ⚠️ TWO WAYS TO WRITE A SECRET DOOR THAT IS NOT ONE, and both of them validate, draw and play as
+   * something the player never notices. A door that opens after nought lost balls was never shut; a
+   * door with nothing solid in it is a passage that is always open. The gap IS the component, so a
+   * secret with no collision is the drop target's defect wearing the opposite mask — drawn shut and
+   * passed through.
+   */
+  for (const component of table.components) {
+    if (!component.secret) continue;
+    if (!(component.secret.afterLostBalls > 0)) {
+      problems.push(`${component.name}: a secret that opens after ${component.secret.afterLostBalls}`
+        + ' lost balls was never shut');
+    }
+    if (!component.collision?.length) {
+      problems.push(`${component.name}: a secret door needs a collision — it is a wall until it opens`);
     }
   }
 

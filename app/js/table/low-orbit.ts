@@ -230,7 +230,7 @@ export const LOW_ORBIT: AuthoredTable = {
       // all of them.
       bounds: { x: 74, y: 124, width: 42, height: 46 },
       scores: [3000], control: 'RebounderControl', lamps: ['lamp.droneLow'],
-      mover: { from: { x: 80, y: 130 }, to: { x: 110, y: 164 }, seconds: 1.6, radius: 5 } },
+      mover: { from: { x: 80, y: 130 }, to: { x: 110, y: 164 }, seconds: 1, radius: 5 } },
 
     /* ===================== THE DROP BANK ===================== */
     //

@@ -122,9 +122,29 @@ export function cabinet(o: CabinetOptions): AuthoredComponent[] {
     { name: 'wall.top', kind: 'wall', role: WALL, bounds: { x: 0, y: 0, width: w, height: 4 },
       collision: [{ kind: 'line', from: { x: w, y: 4 }, to: { x: 0, y: 4 } }] },
 
+    /**
+     * ⚠️ TWO FACES, AND IT HAD ONE. `table/authored` states the rule: a collision line is one-sided and
+     * its winding decides which side. Every other wall in this cabinet has the PLAY on one side and
+     * the outside of the table on the other, so a single face is all any of them needs. The divider is
+     * the only wall in the game with the play on one side and the PLUNGER LANE on the other, and it
+     * was wound for the play alone.
+     *
+     * ⚠️ SO A BALL IN THE LANE WALKED THROUGH IT. Measured before it was fixed, on every table: shoved
+     * left at 40, 120 and 300 pixels a second it crossed every time, ending at x = 132 against a left
+     * face at 162 — it did not even slow down, because there was nothing there. Found while designing
+     * the Dev's secret passage, because a door in a wall the ball can already walk through is not a
+     * door.
+     *
+     * The lane is the whole reason this is a wall at all. Both faces now, wound outward from the
+     * divider's own body: bottom-to-top on the left face points its normal into the play, and
+     * top-to-bottom on the right face points the other one into the lane.
+     */
     { name: 'wall.laneDivider', kind: 'wall', role: WALL,
       bounds: { x: divider, y: dividerTop, width: 4, height: h - dividerTop },
-      collision: [{ kind: 'line', from: { x: divider, y: h }, to: { x: divider, y: dividerTop } }] },
+      collision: [
+        { kind: 'line', from: { x: divider, y: h }, to: { x: divider, y: dividerTop } },
+        { kind: 'line', from: { x: divider + 4, y: dividerTop }, to: { x: divider + 4, y: h } },
+      ] },
 
     /**
      * ⚠️ THE RETURN BEND. Without it the table does not play at all — see this module's header. It is

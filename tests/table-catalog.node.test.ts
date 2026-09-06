@@ -403,23 +403,37 @@ describe('⚠️ every component of every table is announced, not only the lucky
 });
 
 describe('⚠️ a line is one-sided, and its winding decides which side', () => {
-  test('every wall faces INTO the table, not out of it', () => {
+  test('every wall faces somewhere the BALL can be, not out of the table', () => {
     // `lineInit` makes the normal `(dy, -dx)` and `rayIntersectLine` refuses a ray arriving at the
     // back, so a wall wound the wrong way is not a wall that feels odd — it is thin air. The first
     // draft of these tables got three of low-orbit's four walls backwards, and the symptom was a ball
     // falling straight through to y = 1600 on a table 200 tall.
+    //
+    // ⚠️ THIS USED TO ASK "DOES THE NORMAL POINT AT THE TABLE'S CENTRE", AND THAT WAS A PROXY THAT
+    // BROKE THE DAY A WALL HAD PLAY ON BOTH SIDES. `wall.laneDivider` has the playfield on its left
+    // and the PLUNGER LANE on its right; it needs a face each way, and the right-hand one points away
+    // from the centre by construction. The centre test called it backwards and it is not.
+    //
+    // The question the proxy was standing in for is this one: is there room for a BALL in front of
+    // this face? A wall wound outward answers no — one radius along its normal lands in the frame or
+    // outside it — and that is the defect, stated directly instead of approximated.
     const wrong: string[] = [];
 
     for (const table of CATALOG) {
-      const centre = { x: table.size.width / 2, y: table.size.height / 2 };
+      const r = table.ballRadius;
       for (const component of table.components) {
         if (component.kind !== 'wall') continue;
         for (const shape of component.collision ?? []) {
           if (shape.kind !== 'line') continue;
           const n = normalOf(shape);
-          const mid = { x: (shape.from.x + shape.to.x) / 2, y: (shape.from.y + shape.to.y) / 2 };
-          const inward = { x: centre.x - mid.x, y: centre.y - mid.y };
-          if (n.x * inward.x + n.y * inward.y <= 0) wrong.push(`${table.name}/${component.name}`);
+          const length = Math.hypot(n.x, n.y) || 1;
+          const front = {
+            x: (shape.from.x + shape.to.x) / 2 + (n.x / length) * r,
+            y: (shape.from.y + shape.to.y) / 2 + (n.y / length) * r,
+          };
+          const room = front.x > r && front.x < table.size.width - r
+            && front.y > r && front.y < table.size.height - r;
+          if (!room) wrong.push(`${table.name}/${component.name}`);
         }
       }
     }
