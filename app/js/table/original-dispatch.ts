@@ -1166,6 +1166,68 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
     }
   }
 
+  // ⚠️ THE WORMHOLE, WHICH IS THREE HOLES AND ONE ARRAY INDEX. Every path through `WormHoleControl`
+  // ends by flashing the lamps at index `i` and resetting SINK `i`'s timer — so the ball comes out of a
+  // hole it never went into, and the whole teleport is the choice of `i`.
+  //
+  // ⚠️ AND THE HOLD TIME COMES OFF THE HOLE THE BALL FELL INTO, not the one it leaves from. The arrival
+  // flash lasts exactly as long as that hole would have held the ball, so the lamp going out and the
+  // ball appearing are one event as far as the player can tell.
+  if (o.sinks) {
+    const wormSinks: WormholeSink[] = [];
+    for (const name of WORM_HOLE_SINKS.sinks) {
+      const sink = o.sinks.get(name);
+      if (!sink) break;
+      wormSinks.push({ timerTime: sink.holdTime, resetTimer: (seconds) => sink.scheduleRelease(seconds) });
+    }
+    const arrivalLamps = WORM_HOLE_SINKS.arrivalLamps
+      .map((name) => o.components.lights.get(name))
+      .filter((lamp): lamp is NonNullable<typeof lamp> => Boolean(lamp));
+    const arrowLamps = WORM_HOLE_SINKS.arrowLamps
+      .map((name) => o.components.lights.get(name))
+      .filter((lamp): lamp is NonNullable<typeof lamp> => Boolean(lamp));
+    const destinationLamp = o.components.lights.get(WORM_HOLE.destinationLamp);
+    const targetLamp = o.components.lights.get(WORM_HOLE.targetLamp);
+    // `TLightResetAndTurnOff` sent to a group, which is one message reaching every member —
+    // `feedAdapter` already spells that out, and it is all the wormhole asks of these two.
+    const wormHoleLights = feedAdapter(o.components, WORM_HOLE.wormHoleLights);
+    const arrowLights = feedAdapter(o.components, WORM_HOLE.arrowLights);
+
+    if (wormSinks.length === WORM_HOLE_SINKS.sinks.length
+      && arrivalLamps.length === WORM_HOLE_SINKS.arrivalLamps.length
+      && arrowLamps.length === WORM_HOLE_SINKS.arrowLamps.length
+      && destinationLamp && targetLamp && wormHoleLights && arrowLights) {
+      const callers = WORM_HOLE_SINKS.sinks.map((name): ControlledComponent => ({
+        name, scores: scoreRows.get(name)?.scores ?? [], control: null,
+      }));
+      const control = makeWormHoleControl({
+        sinks: wormSinks,
+        arrivalLamps,
+        arrowLamps: arrowLamps as unknown as ArrowLamp[],
+        destinationLamp,
+        targetLamp: targetLamp as unknown as LaneLight,
+        wormHoleLights,
+        arrowLights,
+        table: ctx.table,
+        lockBall: () => actions.bumpBallSinkLock(),
+        setReplay: (seconds) => actions.setReplay(seconds),
+        arrivalText: o.textFor(WORM_HOLE_SINKS.arrivalTextId),
+        // ⚠️ BY IDENTITY, NOT BY NAME. The control asks which of the three the caller IS, and the
+        // objects it is given are the ones registered below — a lookup by name would work until two
+        // holes were ever registered from different tables.
+        sinkIndexFor: (caller) => {
+          const index = callers.indexOf(caller);
+          return index < 0 ? undefined : index;
+        },
+      });
+
+      for (const caller of callers) {
+        byName.set(caller.name, caller);
+        controls.set(caller.name, (component) => control('ControlCollision', component, ctx));
+      }
+    }
+  }
+
   // ⚠️ MISSION ZERO IS A STATE, NOT A MISSION. The table sits in "awaiting deployment" until the ball
   // crosses one of the two deployment chutes — the same two one-ways the skill shot uses for its
   // payout and its loss, which is why they are looked up rather than bound again.
@@ -1263,68 +1325,6 @@ export function createOriginalDispatch(o: OriginalDispatchOptions): OriginalDisp
       }),
     },
   });
-
-  // ⚠️ THE WORMHOLE, WHICH IS THREE HOLES AND ONE ARRAY INDEX. Every path through `WormHoleControl`
-  // ends by flashing the lamps at index `i` and resetting SINK `i`'s timer — so the ball comes out of a
-  // hole it never went into, and the whole teleport is the choice of `i`.
-  //
-  // ⚠️ AND THE HOLD TIME COMES OFF THE HOLE THE BALL FELL INTO, not the one it leaves from. The arrival
-  // flash lasts exactly as long as that hole would have held the ball, so the lamp going out and the
-  // ball appearing are one event as far as the player can tell.
-  if (o.sinks) {
-    const wormSinks: WormholeSink[] = [];
-    for (const name of WORM_HOLE_SINKS.sinks) {
-      const sink = o.sinks.get(name);
-      if (!sink) break;
-      wormSinks.push({ timerTime: sink.holdTime, resetTimer: (seconds) => sink.scheduleRelease(seconds) });
-    }
-    const arrivalLamps = WORM_HOLE_SINKS.arrivalLamps
-      .map((name) => o.components.lights.get(name))
-      .filter((lamp): lamp is NonNullable<typeof lamp> => Boolean(lamp));
-    const arrowLamps = WORM_HOLE_SINKS.arrowLamps
-      .map((name) => o.components.lights.get(name))
-      .filter((lamp): lamp is NonNullable<typeof lamp> => Boolean(lamp));
-    const destinationLamp = o.components.lights.get(WORM_HOLE.destinationLamp);
-    const targetLamp = o.components.lights.get(WORM_HOLE.targetLamp);
-    // `TLightResetAndTurnOff` sent to a group, which is one message reaching every member —
-    // `feedAdapter` already spells that out, and it is all the wormhole asks of these two.
-    const wormHoleLights = feedAdapter(o.components, WORM_HOLE.wormHoleLights);
-    const arrowLights = feedAdapter(o.components, WORM_HOLE.arrowLights);
-
-    if (wormSinks.length === WORM_HOLE_SINKS.sinks.length
-      && arrivalLamps.length === WORM_HOLE_SINKS.arrivalLamps.length
-      && arrowLamps.length === WORM_HOLE_SINKS.arrowLamps.length
-      && destinationLamp && targetLamp && wormHoleLights && arrowLights) {
-      const callers = WORM_HOLE_SINKS.sinks.map((name): ControlledComponent => ({
-        name, scores: scoreRows.get(name)?.scores ?? [], control: null,
-      }));
-      const control = makeWormHoleControl({
-        sinks: wormSinks,
-        arrivalLamps,
-        arrowLamps: arrowLamps as unknown as ArrowLamp[],
-        destinationLamp,
-        targetLamp: targetLamp as unknown as LaneLight,
-        wormHoleLights,
-        arrowLights,
-        table: ctx.table,
-        lockBall: () => actions.bumpBallSinkLock(),
-        setReplay: (seconds) => actions.setReplay(seconds),
-        arrivalText: o.textFor(WORM_HOLE_SINKS.arrivalTextId),
-        // ⚠️ BY IDENTITY, NOT BY NAME. The control asks which of the three the caller IS, and the
-        // objects it is given are the ones registered below — a lookup by name would work until two
-        // holes were ever registered from different tables.
-        sinkIndexFor: (caller) => {
-          const index = callers.indexOf(caller);
-          return index < 0 ? undefined : index;
-        },
-      });
-
-      for (const caller of callers) {
-        byName.set(caller.name, caller);
-        controls.set(caller.name, (component) => control('ControlCollision', component, ctx));
-      }
-    }
-  }
 
   // ⚠️ THE BALL PUT BACK INTO PLAY, AND THE BARRIER THAT NOTHING COULD RAISE. `table/blocker` and
   // `control/feed` were both written and tested in their own passes and had never met: no path in this

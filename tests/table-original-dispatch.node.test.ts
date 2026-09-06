@@ -1526,7 +1526,7 @@ function missionContextOf(w: NonNullable<ReturnType<typeof wired>>): never {
   return context as never;
 }
 
-describe('⚠️ the sixteen missions that can run, and the seven that cannot', () => {
+describe('⚠️ the eighteen missions that can run without the holes, and the twenty-two with them', () => {
   test('a mission is declined WHOLE when one of its components is missing', () => {
     // `d.components.includes(caller)` — a mission counts hits on its own components, so half a mission
     // would count some of its hits and silently never finish.
@@ -1552,6 +1552,29 @@ describe('⚠️ the sixteen missions that can run, and the seven that cannot', 
     // destination and it is wired. The five still declined need the three sinks and `kickout2`.
     expect(w.dispatch.missionsRun.has(9)).toBe(true);
     expect(w.dispatch.missionsRun.has(22), 'secret red needs a sink').toBe(false);
+  });
+
+  test('⚠️ AND WITH THE HOLES, TWENTY-TWO OF THE TWENTY-THREE RUN', () => {
+    // The three secret missions and the two Maelstrom parts that were declined all wanted the same
+    // thing: a sink they could count hits on. With the wormhole's three wired, one row is left —
+    // `MaelstromPartEight`, which needs `kickout2`, the hyperspace hole.
+    //
+    // ⚠️ AND THE ORDER OF THIS FILE IS PART OF THE ANSWER. A mission's components are looked up in
+    // `byName` at the moment the controllers are built, so a component registered after that loop is
+    // invisible to it. The wormhole block was written at the end of the factory and the sinks were
+    // wired, tested and green while every mission that needed one stayed declined.
+    const w = wired({ gates: true, wormHole: true });
+    if (!w) return expect(existsSync(DAT)).toBe(false);
+    const tagOf = new Map(SCORE_COMPONENTS.map((row) => [row.name, row.tag]));
+
+    expect(w.dispatch.missionsRun.size).toBe(22);
+    for (const mission of [16, 22, 23, 30]) {
+      expect(w.dispatch.missionsRun.has(mission), `mission ${mission}`).toBe(true);
+    }
+    const declined = MISSION_TABLE.filter((row) => !w.dispatch.missionsRun.has(row.mission));
+    expect(declined.map((row) => row.name)).toEqual(['MaelstromPartEight']);
+    expect(declined[0]!.components.filter((name) => !w.dispatch.wired.has(tagOf.get(name) ?? '')))
+      .toEqual(['kickout2']);
   });
 
   test('⚠️ and a mission counts hits on ITS OWN components and ignores the rest', () => {
