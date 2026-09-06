@@ -17,11 +17,17 @@
 //     low-orbit    4.19    crater-run   3.36    ion-storm    2.40
 //     slipstream   2.23    long-climb   2.00    ring-belt    1.62
 //
-// And where they stand now, after two tables were authored up to the bar and the cabinet gained the
-// two INLANES that five of them had never had:
+// And where all six stand now, every one of them authored up to the bar rather than the bar moved:
 //
-//     low-orbit    5.35    crater-run   5.25    ion-storm    2.84
-//     slipstream   2.67    long-climb   2.37    ring-belt    1.85
+//     low-orbit    5.35    crater-run   5.25    ion-storm    5.46
+//     slipstream   5.35    long-climb   5.28    ring-belt    5.32
+//
+// ⚠️ WHAT THIS DOES NOT MEASURE, SAID PLAINLY, because a number that gets quoted deserves its limits
+// written beside it. Density counts components that carry a score row. It says nothing about whether
+// they are worth hitting, whether the routes between them are interesting, or whether the table is
+// fun — and a table stuffed with rollovers would score well here and play like a car park. What it
+// does answer is the question that was actually asked: whether these tables are as FULL as the one
+// this port exists to rebuild. They are. Whether they are as good is a judgement, and it is the Dev's.
 //
 // So "all six are thin" was also wrong. `low-orbit` is within a fifth of the original and `ring-belt`
 // is at a third of it. The complaint is right about four tables and nearly wrong about one, and that
@@ -60,15 +66,17 @@ function density(table: AuthoredTable): number {
  * that is the one edit this file exists to make somebody argue for.
  */
 const THIN: Readonly<Record<string, number>> = {
-  // ⚠️ EVERY NUMBER HERE MOVED WHEN THE CABINET GAINED ITS INLANES, and leaving the old ones would
-  // have been a ledger that no longer describes anything: the floors would have been two components
-  // below where the tables actually are, so each could have lost a feature and still passed. A ledger
-  // is only worth having while its numbers are today's.
+  // ⚠️ EMPTY, AND THAT IS THE POINT OF HAVING WRITTEN IT DOWN.
   //
-  // Rounded DOWN to two places, always. A floor recorded above where the table actually stands would
-  // pass today on the assertion's slack and refuse a table that had not moved — the ledger accusing
-  // somebody of a loss they did not cause. `long-climb` measures 2.3679 and was first written 2.37.
-  'ring-belt': 1.85,
+  // Six tables were on this list. Each came off by being authored up to the 1995 playfield's density
+  // rather than by the bar being moved, and the entries below record what the list held while the work
+  // was going on:
+  //
+  //     low-orbit 4.19 · crater-run 3.36 · ion-storm 2.40 · slipstream 2.23 · long-climb 2.00
+  //     ring-belt 1.62
+  //
+  // The list stays because the RULE stays: a table added tomorrow meets the bar or it is named here
+  // with what it measures, and a named table may not get any thinner. What is gone is the debt.
 };
 
 describe('⚠️ how much there is to hit', () => {

@@ -189,7 +189,11 @@ const PAINTED = {
   // three across the head. It is 300 tall against a 180 window and had 56 pixels of nothing in
   // the middle of its own climb.
   'long-climb': 10863,
-  'ring-belt': 8224,
+  // ⚠️ +5437, and it is the last of the six to be authored up to the 1995 density — it was the
+  // thinnest by a distance, at a THIRD of the archive's. Three more rocks on the belt, a
+  // three-target drop column against each far wall, two rebounder cornices, and seventeen
+  // rollovers spread across a table 360 wide whose outer thirds paid nothing at all.
+  'ring-belt': 13661,
   // ⚠️ +2122 when this table was authored up to the 1995 density: two more eddies in the chamber, a
   // three-target drop COLUMN on its wall, two spillways in its corners, three wake rollovers and
   // two rebounders below the vanes.
