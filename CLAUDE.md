@@ -40,6 +40,26 @@ populated locally by `npm run data:extract`.
   written before the implementation but the red was never observed, prove the same property by mutation
   and say that is what happened.
 - **Comments carry the reasoning, not the mechanics.** Say what fails silently if this line is wrong.
+- **Look at the output, not only at the assertions.** Every render gate in this repository asked about
+  a part — a lamp, a corner, a palette entry, a count of changed pixels — and none asked what the frame
+  looks like. Three defects lived in that gap at once: the 1995 side panel painted over a third of the
+  playfield, the demonstration's table sitting 69 columns left of where the HUD expected it, and a
+  `Framebuffer` built from two buffers whose `bytes` view read zero for every pixel. All three survived
+  more than seventeen hundred tests and were found by writing a PNG and opening it.
+  `tests/gfx-original-shot` now leaves one on disk per run, for the 1995 table, its screen and each of
+  the five authored ones. Reading the page's own words counts as output too: the caveat under the file
+  picker described a build from two months earlier.
+- **Distrust the claim you write while writing the test.** Four times in one night a test asserted
+  something the mutant said it could not see: a bumper's rectangle called square when the projection
+  foreshortens it, a "four corners beat two" comparison computed from the same two corners, an inset
+  read from the same value the blit used, and a performance bound seventy times too loose to notice a
+  sevenfold regression. Run the thing the test is supposed to catch. It is the only cheap way to find
+  out, and it has never once agreed with the reasoning.
+- **A test that reads by the same link as the code cannot fail.** The specific form this takes here:
+  asserting `component.position` against `built.plungerPosition` when both come from the same lookup, or
+  `lamp.messageField` against `ALIEN_MENACE.nextMission` when the code sets it from that constant. Name
+  the literal on one side. Three of the defects found this week were held in place by a test of this
+  shape that had been green for months.
 
 ## Toolchain
 
