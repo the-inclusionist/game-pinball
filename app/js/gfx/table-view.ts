@@ -237,19 +237,24 @@ export function drawTable(o: TableViewOptions): Framebuffer {
     const color = roleColor[role];
     const lit = litColors(palette.roles[role], role);
 
-    // ⚠️ A FLIPPER DECLARES ITS GEOMETRY SOMEWHERE ELSE, and falling through to the bounds fill for it
-    // brought back the very defect this branch was written to remove — a rectangle painted over space
-    // the ball flies through. Drawn at REST, because that is where it is until the player moves it.
-    if (component.kind === 'flipper' && component.flipper) {
-      const f = component.flipper;
-      // ⚠️ A LINE IS NOT LIT, AND THE FIRST VERSION OF THIS LIT IT. `EDGE_THICKNESS` is two pixels —
-      // the thinnest honest width for a wall the ball bounces off — and there is no room in two pixels
-      // for a body and an edge. Stamping the highlight half a pixel up covered the body AND widened
-      // the stroke: on screen the walls and the ramp turned pale, and the drawing began claiming area
-      // the physics does not have, which is the exact defect this module was fixed for once already.
-      strokeLine(fb, f.pivot.x, f.pivot.y, f.tipAtRest.x, f.tipAtRest.y, color);
-      continue;
-    }
+    /**
+     * ⚠️ A FLIPPER IS NOT DRAWN HERE AT ALL, AND IT USED TO BE — AT REST, FOR EVER.
+     *
+     * The Dev: "As pás não movem! Você não fez pás que movem quando apertamos botões!" They move. The
+     * physics swings them and `tests/table-playable` proves it — flapping changes where the ball ends
+     * up on every table. What did not move was the PICTURE.
+     *
+     * This function composes `tablePicture` ONCE per change: the camera then slides a window over it,
+     * which is what makes a software compositor affordable at this size. A flipper stroked in here is
+     * therefore stroked at its resting angle and stays there, whatever the paddle does. The comment
+     * that stood on this branch said "drawn at REST, because that is where it is until the player
+     * moves it" — and never asked what draws it once they do.
+     *
+     * Nothing did. So the flipper is drawn per frame instead, from the live geometry the physics
+     * already keeps, by `drawFlipper` below. Leaving the resting stroke here as well would paint a
+     * second paddle that never moves underneath the one that does.
+     */
+    if (component.kind === 'flipper') continue;
 
     if (!component.collision?.length) {
       // Nothing solid was declared, so the bounds is the whole claim and there is nothing to overstate.
@@ -311,6 +316,48 @@ export function drawBall(
   if (x + radius < into.x || x - radius > into.x + into.width) return;
   if (y + radius < into.y || y - radius > into.y + into.height) return;
   fillCircle(screen, x, y, radius, BALL_COLOR);
+}
+
+/**
+ * One flipper, at the angle it is at right now, drawn straight onto the screen.
+ *
+ * ⚠️ PER FRAME, WHICH IS THE WHOLE POINT. `drawTable` composes the table once and the camera slides a
+ * window over it; a flipper changes every frame the player holds a button, so it belongs with the ball
+ * in the things drawn after the blit rather than baked into what is blitted.
+ *
+ * Takes the two ENDS rather than a component, because the live geometry lives in `physics/flipper` —
+ * `rotOrigin` and `t1`, the tip already rotated by `currentAngle` — and this module has no business
+ * knowing how a swing is computed.
+ */
+export function drawFlipper(
+  screen: Framebuffer, from: { x: number; y: number }, to: { x: number; y: number },
+  color: number, into: Rect, offsetX: number, offsetY: number,
+): void {
+  const ax = into.x + from.x - Math.floor(offsetX);
+  const ay = into.y + from.y - Math.floor(offsetY);
+  const bx = into.x + to.x - Math.floor(offsetX);
+  const by = into.y + to.y - Math.floor(offsetY);
+
+  // ⚠️ CLIPPED TO THE WINDOW, NOT TO THE SCREEN. The HUD's blocks sit outside `into` on every table
+  // that has columns, and a paddle drawn across them would be the defect ADR-0002 exists to prevent —
+  // arriving from the one thing that draws after the blit instead of into it.
+  const steps = Math.max(1, Math.ceil(Math.max(Math.abs(bx - ax), Math.abs(by - ay))));
+  const half = EDGE_THICKNESS / 2;
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const x = ax + (bx - ax) * t;
+    const y = ay + (by - ay) * t;
+    for (let dy = -half; dy <= half; dy++) {
+      for (let dx = -half; dx <= half; dx++) {
+        const px = Math.round(x + dx);
+        const py = Math.round(y + dy);
+        if (px < into.x || px >= into.x + into.width) continue;
+        if (py < into.y || py >= into.y + into.height) continue;
+        if (px < 0 || px >= screen.width || py < 0 || py >= screen.height) continue;
+        screen.pixels[py * screen.width + px] = color;
+      }
+    }
+  }
 }
 
 /**

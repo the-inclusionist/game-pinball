@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, test, expect } from 'vitest';
 import {
-  drawTable, blitView, drawBall, fillRect, fillCircle, paletteOf, packRgb,
+  drawTable, blitView, drawBall, drawFlipper, fillRect, fillCircle, paletteOf, packRgb,
   ROLE_COLORS, PLAYFIELD_COLOR, BALL_COLOR,
 } from '../app/js/gfx/table-view.js';
 import { createFramebuffer } from '../app/js/gfx/framebuffer.js';
@@ -55,11 +55,64 @@ describe('drawing a table from its ROLES', () => {
     expect(ROLE_COLORS.hazard).not.toBe(ROLE_COLORS.goal);
   });
 
-  test('a flipper is structure and a well is a gate', () => {
+  test('a well is a gate', () => {
     const fb = drawTable({ table: LOW_ORBIT });
 
-    expect(at(fb, 60, 209)).toBe(ROLE_COLORS.structure);
     expect(at(fb, 90, 174)).toBe(ROLE_COLORS.gate);
+  });
+
+  test('⚠️ and a FLIPPER is not in this picture at all, which is the point of it', () => {
+    // It used to be, stroked at its resting angle — and `drawTable` composes the table ONCE per
+    // change, so the paddle swung in the physics and the picture showed it at rest for ever. The Dev
+    // found it by playing: "As pás não movem!"
+    //
+    // A flipper now belongs with the ball, in the things drawn AFTER the blit. Leaving the resting
+    // stroke here as well would paint a second paddle that never moves underneath the one that does,
+    // so its absence is the assertion.
+    const fb = drawTable({ table: LOW_ORBIT });
+
+    expect(at(fb, 60, 209), 'nothing is painted where the flipper rests')
+      .toBe(packRgb(paletteOf(LOW_ORBIT, false).ground));
+  });
+
+  test('⚠️ and drawFlipper puts it on the SCREEN, at whatever angle it is handed', () => {
+    // The live geometry comes from `physics/flipper` — `rotOrigin` and `t1`, the tip already rotated
+    // by `currentAngle`. This module takes two ends and knows nothing about how a swing is computed.
+    const screen = createFramebuffer(320, 180);
+    const into = { x: 69, y: 0, width: 183, height: 180 };
+
+    drawFlipper(screen, { x: 52, y: 26 }, { x: 80, y: 33 }, ROLE_COLORS.structure, into, 0, 0);
+
+    expect(at(screen, 69 + 52, 26), 'the pivot end is drawn').toBe(ROLE_COLORS.structure);
+    expect(at(screen, 69 + 80, 33), 'and the tip end').toBe(ROLE_COLORS.structure);
+  });
+
+  test('⚠️ and a DIFFERENT angle draws somewhere different, or it is not live at all', () => {
+    // The assertion that would fail on a version that drew the resting position whatever it was told.
+    const rest = createFramebuffer(320, 180);
+    const raised = createFramebuffer(320, 180);
+    const into = { x: 69, y: 0, width: 183, height: 180 };
+
+    drawFlipper(rest, { x: 52, y: 26 }, { x: 80, y: 33 }, ROLE_COLORS.structure, into, 0, 0);
+    drawFlipper(raised, { x: 52, y: 26 }, { x: 76, y: 12 }, ROLE_COLORS.structure, into, 0, 0);
+
+    let differing = 0;
+    for (let i = 0; i < rest.pixels.length; i++) if (rest.pixels[i] !== raised.pixels[i]) differing++;
+    expect(differing, 'the two angles are not the same picture').toBeGreaterThan(10);
+  });
+
+  test('⚠️ and it never draws outside the playfield window, whatever it is handed', () => {
+    // The one thing drawn after the blit is the one thing that could cross the HUD's columns, which is
+    // the rule ADR-0002 exists for. A flipper is clipped to `into`, not to the screen.
+    const screen = createFramebuffer(320, 180);
+    const into = { x: 69, y: 0, width: 183, height: 180 };
+
+    drawFlipper(screen, { x: -400, y: 90 }, { x: 400, y: 90 }, ROLE_COLORS.structure, into, 0, 0);
+
+    for (let x = 0; x < 320; x++) {
+      const inside = x >= into.x && x < into.x + into.width;
+      if (!inside) expect(at(screen, x, 90), `column ${x} is outside the window`).toBe(0);
+    }
   });
 
   test('⚠️ THE ROLE MOVES WITH THE MISSION, in the picture too', () => {

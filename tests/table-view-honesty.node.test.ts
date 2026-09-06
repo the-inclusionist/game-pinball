@@ -155,18 +155,23 @@ describe('⚠️ the drawing tells the truth about what the ball can touch', () 
  * A count catches it exactly, because widening a line cannot help but change one. The cost is that a
  * deliberate change to a table's geometry or to `EDGE_THICKNESS` must come here and update the number
  * ON PURPOSE — which is the point: area is not something to change by accident.
+ *
+ * ⚠️ EVERY NUMBER DROPPED ON 2026-09-06 AND THAT WAS THE FIX LANDING. Flippers left this picture: they
+ * were stroked at their resting angle into a composition made once per change, so the paddle swung in
+ * the physics and the screen showed it at rest for ever. They are drawn per frame now, with the ball,
+ * from the live geometry — so the area they used to occupy here is the area the counts lost.
  */
 const PAINTED = {
-  'low-orbit': 7479,
-  'ion-storm': 7187,
-  'crater-run': 7221,
-  'long-climb': 8153,
-  'ring-belt': 8184,
-  'slipstream': 6401,
-  'wide-arc': 4801,
-  'narrow-tower': 4037,
-  'four-flippers': 3239,
-  'bare-minimum': 744,
+  'low-orbit': 7311,
+  'ion-storm': 7005,
+  'crater-run': 7039,
+  'long-climb': 7971,
+  'ring-belt': 8016,
+  'slipstream': 6219,
+  'wide-arc': 4633,
+  'narrow-tower': 3873,
+  'four-flippers': 2923,
+  'bare-minimum': 668,
 };
 
 describe('⚠️ and the drawing never grows', () => {

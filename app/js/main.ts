@@ -18,7 +18,7 @@ import { toLiveTable, validateTable, type TableState } from './table/authored.js
 import { DEFAULT_CAMERA } from './shell/camera.js';
 import { DEFAULT_HUD } from './shell/hud.js';
 import { createFramebuffer } from './gfx/framebuffer.js';
-import { drawTable, blitView, drawBall } from './gfx/table-view.js';
+import { drawTable, blitView, drawBall, drawFlipper, ROLE_COLORS } from './gfx/table-view.js';
 import { buildPhysics, drainedBy, launchSpeedFor, FRAME_SECONDS } from './table/physics-build.js';
 import { advanceFrame } from './physics/step.js';
 import { bindPinballControls } from './shell/controls.js';
@@ -512,6 +512,20 @@ function step(frames: number): void {
   // ⚠️ BOTH AXES, AND THE HORIZONTAL ONE WAS A LITERAL ZERO. `wide-arc` is 360 wide against a window
   // of 320, so forty columns of it could never be looked at — the ball rolled off the right of the
   // screen and came back. The camera has always been able to do this; nothing asked it to.
+  /**
+   * ⚠️ THE FLIPPERS, EVERY FRAME, FROM THE LIVE GEOMETRY.
+   *
+   * They used to be stroked into `tablePicture`, which is composed once per change — so the paddle
+   * swung in the physics and the picture showed it at rest for ever. `rotOrigin` and `t1` are the
+   * pivot and the tip as the physics has them right now, `t1` already rotated by `currentAngle`.
+   */
+  for (const flipper of physics.flippers) {
+    drawFlipper(
+      screen, flipper.rotOrigin, flipper.t1, ROLE_COLORS.structure,
+      shell.hud.playfield, shell.cameraX.offset, shell.camera.offset,
+    );
+  }
+
   for (const ball of state.balls) {
     drawBall(
       screen, ball, authored.ballRadius, shell.hud.playfield,
