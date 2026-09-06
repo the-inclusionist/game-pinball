@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, test, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
-import { createDemo, DEMO_BALLS } from '../app/js/shell/demo.js';
+import { createDemo, hintFor, DEMO_BALLS } from '../app/js/shell/demo.js';
 import { SCORE_COMPONENTS } from '../app/js/control/score-table.js';
 import { findSoundGroups } from '../app/js/audio/sound-table.js';
 import { readGroups } from '../app/js/dat/partman.js';
@@ -873,5 +873,35 @@ describe('⚠️ and a target is never paid TWICE for one hit', () => {
 
     expect(touches, 'the ball did reach a target').toBeGreaterThan(0);
     expect(payments).toBeLessThanOrEqual(touches);
+  });
+});
+
+/**
+ * ⚠️ THE TABLE HAS TWO TEXT BOXES AND THE SCREEN HAS ONE FOOTER.
+ *
+ * `info_text_box` carries transient news — what an award just paid — and `mission_text_box` carries the
+ * standing state, shown until something replaces it. The footer was empty on purpose, with a comment
+ * saying the mission machine does not run on this table; it has run for a while, and the comment was
+ * keeping the screen wrong long after the code was right.
+ */
+describe('the one line the footer shows', () => {
+  const demo = (info: string, missionText: string, gameOver = false) => ({ info, missionText, gameOver });
+
+  test('the news wins while there is any', () => {
+    expect(hintFor(demo('BONUS 50000', 'SECRET MISSION RED'), 'OVER')).toBe('BONUS 50000');
+  });
+
+  test('and the mission is what is left when there is none', () => {
+    expect(hintFor(demo('', 'SECRET MISSION RED'), 'OVER')).toBe('SECRET MISSION RED');
+  });
+
+  test('⚠️ and the end of the game says so over both of them', () => {
+    // A player whose last ball is gone needs to know that before they need to know what the mission
+    // was — and the mission line stays up for ever, so it would otherwise be the last thing said.
+    expect(hintFor(demo('BONUS 50000', 'SECRET MISSION RED', true), 'OVER')).toBe('OVER');
+  });
+
+  test('and nothing at all when the table has said nothing', () => {
+    expect(hintFor(demo('', ''), 'OVER')).toBe('');
   });
 });

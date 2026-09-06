@@ -29,7 +29,7 @@ import { mountHud } from './shell/hud-dom.js';
 import { mountDemoPage } from './shell/demo-page.js';
 import { MUSIC_WINDOW, MUSIC_LOOKAHEAD } from './shell/demo.js';
 import { playSchedule } from './audio/midi-player.js';
-import { createDemo, type Demo } from './shell/demo.js';
+import { createDemo, hintFor, type Demo } from './shell/demo.js';
 import { keyOf } from './i18n/keys.js';
 import { createSoundBoard, releaseVoice } from './audio/sfx.js';
 import { soundEntriesOf, VOICES } from './audio/voices.js';
@@ -288,13 +288,14 @@ function step(frames: number): void {
       // ONE, with a comment saying nothing here could lose a ball — true until the drain was wired,
       // and the kind of stale comment that keeps a screen wrong long after the code is right.
       //
-      // The hint stays empty: the mission machine does not run on this table, so there is nothing
-      // honest to put in it.
+      // ⚠️ AND THE FOOTER CARRIES THE TABLE'S OWN WORDS NOW. It was empty with a comment saying the
+      // mission machine does not run here — true when it was written, false for a while: all
+      // twenty-three missions run. `hintFor` picks between the table's two text boxes.
       hud.update({
         score: demo.score.curScore,
         ballCount: demo.ballsLeft,
         playerNumber: 1,
-        hint: demo.gameOver ? shell.t('pinball.demo.gameOver') : '',
+        hint: hintFor(demo, shell.t('pinball.demo.gameOver')),
       });
     }
     return;

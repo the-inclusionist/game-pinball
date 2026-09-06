@@ -790,3 +790,21 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
     },
   };
 }
+
+/**
+ * The one line the HUD's footer shows, chosen from the two the table writes.
+ *
+ * ⚠️ THE TABLE HAS TWO TEXT BOXES AND THE SCREEN HAS ONE FOOTER. `info_text_box` carries transient
+ * news — what an award just paid — and `mission_text_box` carries the standing state, shown until
+ * something replaces it. So the news wins while there is any, and the mission is what is left.
+ *
+ * ⚠️ AND THE FOOTER WAS EMPTY ON PURPOSE UNTIL NOW, with a comment saying the mission machine does not
+ * run on this table. It has run for a while: twenty-three of twenty-three missions. The comment was
+ * true when it was written and had been keeping the screen wrong long after the code was right.
+ */
+export function hintFor(
+  demo: Pick<Demo, 'info' | 'missionText' | 'gameOver'>, gameOverText: string,
+): string {
+  if (demo.gameOver) return gameOverText;
+  return demo.info || demo.missionText;
+}
