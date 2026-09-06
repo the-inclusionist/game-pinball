@@ -3,6 +3,8 @@ import { describe, test, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
 import { createDemo } from '../app/js/shell/demo.js';
 import { MUSIC_LOOKAHEAD, MUSIC_WINDOW } from '../app/js/shell/demo.js';
+import { findSoundLinks, strandingRisks } from '../app/js/audio/sound-links.js';
+import { readGroups } from '../app/js/dat/partman.js';
 
 /**
  * ⚠️ THE SYNTHESIZER WAS WRITTEN AND IMPORTED BY NOTHING.
@@ -61,5 +63,71 @@ describe('the demonstration can be given music too', () => {
     // scheduling runs. If the second is not larger than the first, the audio thread reaches the end of
     // what it has before the next slice arrives — a click every few seconds that sounds like the file.
     expect(MUSIC_LOOKAHEAD).toBeGreaterThan(MUSIC_WINDOW);
+  });
+});
+
+/**
+ * ⚠️ AND SOUNDS, WHICH ARE SIXTY FILES INSTEAD OF ONE.
+ *
+ * Every noise a component makes is an index into the archive's own groups, and that group's String
+ * field is a WAV's file name. The files are Microsoft's like everything else, so the demonstration asks
+ * for them the way it asks for the table and the music — and a player who owns the game owns them.
+ */
+describe('the demonstration can be given the real sounds', () => {
+  test('it publishes the file each sound index wants, by name', () => {
+    const dat = bytesOf(DAT);
+    if (!dat) return expect(existsSync(DAT)).toBe(false);
+
+    const demo = createDemo(dat);
+
+    expect(demo.soundFiles.size, 'the shipped table declares this many').toBeGreaterThan(30);
+    // ⚠️ KEYED BY GROUP INDEX, which is what a component's record carries — not by a position in the
+    // list of sounds. `soundwave7`'s record says 56, and there is no forty-eighth sound to be had.
+    for (const [groupIndex, fileName] of demo.soundFiles) {
+      expect(groupIndex).toBeGreaterThan(0);
+      expect(fileName).toMatch(/\.wav$/i);
+    }
+  });
+
+  test('⚠️ and the sentinel that is not a file is not among them', () => {
+    // The first group the archive marks as a sound is named `...`, which is not a file name and never
+    // could be: it is the null slot, spelled. A loader that tried to open every declared sound would
+    // report it as a failure for ever.
+    const dat = bytesOf(DAT);
+    if (!dat) return expect(existsSync(DAT)).toBe(false);
+
+    const demo = createDemo(dat);
+
+    expect([...demo.soundFiles.values()]).not.toContain('...');
+  });
+
+  test('⚠️ SIX OF THE FORTY-SEVEN ARE NOT ON THIS MACHINE, and none of them is a timer', () => {
+    // The archive names forty-seven WAVs and this copy of the game has forty-one of them: `sound2`,
+    // `sound37`, `sound44`, `sound52`, `sound59` and `sound62` are declared and absent. That is a fact
+    // about the copy, not a defect in the port — the original answers a missing file with a duration
+    // of MINUS ONE and plays nothing.
+    //
+    // ⚠️ AND MINUS ONE MEANS NEVER. Seven components hand their sound's DURATION straight to a kickout
+    // timer, so a missing file among THOSE holds the ball for the rest of the game while a missing
+    // file anywhere else only makes the table quieter. `stranding` is the list that would matter, and
+    // it is the one that has to be empty.
+    const dat = bytesOf(DAT);
+    if (!dat) return expect(existsSync(DAT)).toBe(false);
+    const here = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/';
+    if (!existsSync(`${here}SOUND1.WAV`)) return expect(existsSync(`${here}SOUND1.WAV`)).toBe(false);
+
+    const demo = createDemo(dat);
+    const missing = [...demo.soundFiles.values()]
+      .filter((name) => !existsSync(here + name) && !existsSync(here + name.toUpperCase()));
+    const groups = readGroups(new Uint8Array(dat));
+    const report = strandingRisks(
+      findSoundLinks(groups),
+      (group) => demo.soundFiles.get(group) ?? null,
+      missing,
+    );
+
+    expect(missing.length, 'this copy is short of six').toBe(6);
+    expect(report.stranding, 'and not one of them holds a ball').toEqual([]);
+    expect(report.silent.length, 'they only make it quieter').toBeGreaterThan(0);
   });
 });

@@ -491,6 +491,17 @@ let demo: Demo | null = null;
  */
 let musicScheduledTo = 0;
 let musicStartedAt: number | null = null;
+/**
+ * ⚠️ THE TABLE'S OWN SOUNDS, BY THE GROUP INDEX ITS COMPONENTS CARRY. The archive names forty-seven
+ * WAVs and holds none of them; the player hands the files over the way they hand over the table and
+ * the tune, and this is where the two are matched by NAME — case-insensitively, because the archive
+ * spells them lower case and the files on a disc are upper.
+ *
+ * A component whose file was not given keeps the synthesised voice instead of falling silent: the
+ * roles are what let this port be played by somebody who does not own the original, and they do not
+ * stop being useful because somebody does.
+ */
+const archiveSounds = new Map<number, AudioBuffer>();
 const demoRequested = new URLSearchParams(location.search).get('demo') === 'original';
 const demoPage = demoRequested
   ? mountDemoPage({
@@ -504,6 +515,40 @@ const demoPage = demoRequested
     // called per sound because a browser will not start a context before a gesture, and the first
     // collision may well BE the gesture.
     onSound: (name) => { ensureAudio(); board.play(name); },
+    // ⚠️ THE REAL NOISE WHEN THERE IS ONE. A component reports the index of a group in the archive,
+    // and that group names a file. Played straight through the audio context rather than through the
+    // synthesised board, because there is nothing to synthesise: it is a recording.
+    onSoundId: (id) => {
+      const buffer = archiveSounds.get(id);
+      if (!buffer) return;
+      ensureAudio();
+      const context = ensureAC();
+      if (!context) return;
+      const source = context.createBufferSource();
+      source.buffer = buffer;
+      source.connect(context.destination);
+      source.start();
+    },
+    onSounds: async (files) => {
+      ensureAudio();
+      const context = ensureAC();
+      if (!context || !demo) return 0;
+      const byName = new Map(files.map((file) => [file.name.toLowerCase(), file]));
+
+      let loaded = 0;
+      for (const [groupIndex, fileName] of demo.soundFiles) {
+        const file = byName.get(fileName.toLowerCase());
+        if (!file) continue;
+        try {
+          archiveSounds.set(groupIndex, await context.decodeAudioData(await file.arrayBuffer()));
+          loaded++;
+        } catch {
+          // A file the browser cannot decode is skipped and counted as missing, which is what the
+          // original does with one it cannot open: the game is quieter, not broken.
+        }
+      }
+      return loaded;
+    },
     onMusic: (bytes) => {
       ensureAudio();
       if (!demo?.loadMusic(bytes)) return false;

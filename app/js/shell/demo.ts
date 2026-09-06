@@ -57,6 +57,7 @@ import {
 import { pack, type Framebuffer } from '../gfx/framebuffer.js';
 import { kindOf } from '../i18n/names.js';
 import { soundForKind } from '../audio/voices.js';
+import { findSoundGroups } from '../audio/sound-table.js';
 
 /**
  * ⚠️ HOW MUCH MUSIC IS HANDED TO THE AUDIO THREAD AT ONCE, and how far ahead of the playhead the
@@ -107,6 +108,13 @@ export interface Demo {
   readonly tripwires: ReadonlyMap<string, unknown>;
   /** The two ramps, which are triangles with their own gravity rather than walls. */
   readonly ramps: ReadonlyMap<string, unknown>;
+  /**
+   * ⚠️ WHICH FILE EACH SOUND INDEX WANTS, keyed by GROUP INDEX — which is what a component's record
+   * carries, and not a position in the list of sounds. The archive declares the names and holds none
+   * of the bytes; a player who owns the game owns the files, and this is what the shell needs in order
+   * to match the ones they hand over.
+   */
+  readonly soundFiles: ReadonlyMap<number, string>;
   /** The playfield's depth map, read from the archive. */
   readonly playfieldDepth: { readonly depths: Uint16Array; readonly stride: number } | null;
   /**
@@ -217,6 +225,17 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
    * every archive-indexed noise on this table was silent: the gates, the holes, the lanes, the trip
    * lines, the flags, the ramps, the one-ways, the targets, the barrier and the plunger.
    */
+  /**
+   * ⚠️ THE SENTINEL IS LEFT OUT. The first group the archive marks as a sound is named `...`, which is
+   * not a file name and never could be — it is the null slot, spelled, and `play_sound` rejects its
+   * index anyway. A caller that tried to open every declared sound would report it as a failure for
+   * ever.
+   */
+  const soundFiles = new Map<number, string>();
+  for (const sound of findSoundGroups(groups)) {
+    if (sound.fileName.toLowerCase().endsWith('.wav')) soundFiles.set(sound.groupIndex, sound.fileName);
+  }
+
   const archiveSound = {
     // ⚠️ ZERO AND BELOW ARE NOT SOUNDS. `loader::play_sound` returns immediately for them, and the
     // first group the archive marks as a sound is a sentinel named `...` that is not a file at all.
@@ -647,6 +666,7 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
     ramps,
     wired: dispatch.wired,
     paidFlat,
+    soundFiles,
     get playfieldDepth() { return playfieldDepth; },
     get ballFrame() {
       const z = (ball.position as { z?: number }).z ?? table.ballRadius;

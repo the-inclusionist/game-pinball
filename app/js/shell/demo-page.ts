@@ -28,6 +28,18 @@ export interface DemoPageOptions {
   readonly onMusic?: (bytes: ArrayBuffer) => boolean;
   /** Every noise the table makes, by voice name. Absent leaves the demonstration silent. */
   readonly onSound?: (name: string) => void;
+  /**
+   * ⚠️ THE PLAYER'S OWN `SOUND*.WAV`, offered beside the music. The archive names forty-seven of them
+   * and holds not one byte; they are Microsoft's like the table and the tune. Answers how many of the
+   * table's sounds the files covered, so the panel can say so instead of vanishing on a silent guess.
+   */
+  readonly onSounds?: (files: readonly File[]) => Promise<number> | number;
+  /**
+   * ⚠️ THE ARCHIVE'S OWN SOUND INDEX, which is a different thing from `onSound`'s role name. A
+   * component reports the index of a group in the `.DAT`, and that group names a WAV. The caller plays
+   * the file if the player gave it and does nothing if they did not — the role voice covers that case.
+   */
+  readonly onSoundId?: (id: number) => void;
 }
 
 export interface DemoPage {
@@ -101,6 +113,36 @@ export function mountDemoPage(o: DemoPageOptions): DemoPage {
   });
   musicPanel.append(musicLabel, musicInput);
 
+  /**
+   * ⚠️ A THIRD OFFER, AND THE ONLY ONE THAT TAKES MANY FILES AT ONCE. Sixty WAVs is not a thing to ask
+   * for one at a time, and `multiple` is the difference between a player humouring the demonstration
+   * and a player giving up on it.
+   */
+  const soundsPanel = o.doc.createElement('div');
+  Object.assign(soundsPanel.style, {
+    position: 'absolute', left: '0', bottom: '22px', width: '100%',
+    color: '#ffffff', font: '12px/1.3 system-ui, sans-serif',
+    background: 'rgba(26, 30, 38, 0.85)', padding: '4px', boxSizing: 'border-box',
+  });
+  const soundsLabel = o.doc.createElement('label');
+  soundsLabel.textContent = o.t('pinball.demo.sounds');
+  const soundsInput = o.doc.createElement('input');
+  soundsInput.type = 'file';
+  soundsInput.multiple = true;
+  soundsInput.accept = '.wav,.WAV';
+  soundsInput.setAttribute('aria-label', o.t('pinball.demo.sounds'));
+  soundsInput.addEventListener('change', () => {
+    const files = [...(soundsInput.files ?? [])];
+    if (!files.length || !o.onSounds) return;
+    void Promise.resolve(o.onSounds(files)).then((loaded) => {
+      // It says how many it took rather than disappearing: a player who handed over the wrong folder
+      // learns it here instead of wondering why the table is still quiet.
+      soundsLabel.textContent = o.t('pinball.demo.soundsLoaded', { n: loaded });
+      if (loaded > 0) soundsInput.remove();
+    });
+  });
+  soundsPanel.append(soundsLabel, soundsInput);
+
   input.addEventListener('change', () => {
     const file = input.files?.[0];
     if (!file) return;
@@ -111,9 +153,11 @@ export function mountDemoPage(o: DemoPageOptions): DemoPage {
         const demo = createDemo(bytes, {
           textFor: (id, params) => o.t(keyOf(id), params),
           ...(o.onSound ? { onSound: o.onSound } : {}),
+          ...(o.onSoundId ? { onSoundId: o.onSoundId } : {}),
         });
         panel.remove();
         if (o.onMusic) o.host.appendChild(musicPanel);
+        if (o.onSounds) o.host.appendChild(soundsPanel);
         o.onReady(demo);
       } catch (error) {
         o.onError(error instanceof Error ? error.message : String(error));
@@ -138,6 +182,7 @@ export function mountDemoPage(o: DemoPageOptions): DemoPage {
     destroy() {
       panel.remove();
       musicPanel.remove();
+      soundsPanel.remove();
     },
   };
 }

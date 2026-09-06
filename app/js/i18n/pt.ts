@@ -118,6 +118,8 @@ const pt: Record<string, string> = {
   'pinball.demo.caveat': 'A mesa de 1995: a física, as lâmpadas, as rampas e as vinte e três missões. O painel lateral e os sprites dos alvos ainda não são desenhados.',
   'pinball.demo.gameOver': 'Sem bolas.',
   'pinball.demo.music': 'Música (opcional): escolha o seu PINBALL.MID.',
+  'pinball.demo.sounds': 'Sons (opcional): escolha os seus SOUND*.WAV — todos de uma vez.',
+  'pinball.demo.soundsLoaded': '{n} sons da mesa carregados.',
   'pinball.demo.notMidi': 'Esse ficheiro não é MIDI padrão. O PINBALL2.MID não serve.',
   'pinball.demo.failed': 'Não consegui ler esse ficheiro: {n}',
   'pinball.event.attackBumpersRaised': 'Os para-choques do centro valem mais.',
