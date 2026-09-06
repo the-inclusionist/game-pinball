@@ -23,6 +23,25 @@
 // each clipped to the dirty rectangle. `buildOccludeList` precomputes who overlaps whom so that this
 // is a list walk rather than a search.
 
+// ========================= AND NOTHING CALLS IT, WHICH IS A DECISION =========================
+// The demonstration composites by hand instead: `frame.pixels.set(playfield.pixels)` and then the
+// lamps, the flippers, the components and the ball, every frame, all 43005 pixels of a 183x235 screen.
+// That is a full repaint where this module does a dirty-rectangle one, and at this size the full
+// repaint is a typed-array copy costing less than the bookkeeping that would avoid it. Dirty
+// rectangles, occlude lists and the save-and-restore under each ball are what a 1995 software renderer
+// needed on a 600x416 screen at 66 MHz; keeping the arithmetic of that on a screen an eighth the area
+// would be transcription for its own sake.
+//
+// The port keeps it because render.cpp is part of the engine this repository exists to port, and phase
+// 8's authored table may be big enough to want it. What that costs is worth stating plainly: its tests
+// exercise it against fixtures of their own making, so it has never composited a real table, and the
+// day something adopts it is the day it is first tried against one.
+//
+// The depth semantics it documents ARE live: the ball is drawn only where the scene behind it is
+// farther away, by `gfx/original-sprites.drawSpriteCentredBehind` reading the archive's own z-map. It
+// reads the depth directly rather than through `zdrv::paint`, which is the same comparison without the
+// buffer this module maintains.
+
 import { copyBitmap, type Framebuffer } from './framebuffer.js';
 import { fillZ, paint, paintFlat, type ZBuffer } from './zbuffer.js';
 import { enclosingBox, rectangleClip, type Rect } from '../maths/rect.js';
