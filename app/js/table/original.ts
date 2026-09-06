@@ -42,6 +42,7 @@ export const MAX_BALLS = 20;
 import type { Vector2 } from '../maths/maths.js';
 import type { Component } from '../physics/edges.js';
 import { EntryType, type Group } from '../dat/partman.js';
+import { ObjectType, readTableObjects } from '../dat/loader.js';
 import { floatAttribute, groupNamed } from '../dat/attributes.js';
 
 /** `TCollisionComponent`'s wall record. Every group that has one contributes geometry. */
@@ -361,16 +362,46 @@ export function buildOriginalTable(groups: readonly Group[], o: OriginalOptions 
 
   // The plunger, if the caller builds one. Its own line is already installed by the wall loop above;
   // what is missing without this is the component that pulls back and lets go.
+  //
+  // ⚠️ FOUND BY ITS OBJECT TYPE, NOT BY ITS RECORD. `TPlunger`'s constructor reads record 601 and
+  // nothing else, and this loop used to take the first group carrying one. Four SINKS carry it too —
+  // `v_sink1`, `v_sink2`, `v_sink3` and `v_sink7`, at group indices 338, 340, 342 and 344 — and the
+  // plunger is at 473. So the first match was `v_sink1`, whose 601 is (-2.62, -8.83): the top of the
+  // table.
+  //
+  // Everything else followed from that one predicate, and none of it looked like this defect. The ball
+  // was born in a sink's mouth instead of on the plunger, so the plunger's draw moved nothing; so the
+  // launch lane was never travelled; so `s_onewy1` was never crossed; so `lite200`'s five-second timer
+  // was never armed; so the shoot-again lamp that every feed lights never went out — and from the
+  // second ball onward every drain was a free save and the game could not end.
   let plunger: Plunger | null = null;
   let plungerAt: Vector2 | null = null;
-  for (let index = 0; index < groups.length; index++) {
-    const at = plungerPosition(groups[index]!);
+  for (const object of readTableObjects(groups)) {
+    if (object.type !== ObjectType.Plunger) continue;
+    const group = groups[object.group];
+    const at = group && plungerPosition(group);
     if (!at) continue;
     plungerAt = at;
-    plunger = o.plungerFor?.(groups, index) ?? null;
-    // The plunger's own extent, so a ball waiting on it is never mistaken for a stuck one.
-    const shape = floatAttribute(groups[index]!, WALL_RECORD);
-    if (shape?.length) controlBounds.push(boundsOfWall(shape));
+    plunger = o.plungerFor?.(groups, object.group) ?? null;
+    // ⚠️ THE WHOLE OF THE BALL'S WAIT, NOT JUST THE WALL. `CheckBallInControlBounds` asks whether the
+    // ball is inside the plunger's box before deciding it is stuck, and the plunger's wall record is a
+    // LINE — so the box this pushed was 1.6 wide and ZERO high, and no ball could ever be inside it.
+    //
+    // A ball dropped onto the plunger settled for a hundred and fifty frames, was declared stuck, and
+    // was thrown back to the spawn point at rest, over and over. Of sixty-one hold durations swept from
+    // 100 to 400 frames exactly ONE launched the ball: the release must land in the 0.025-second window
+    // while the ball is still touching, and the rescue kept snatching it out of contact.
+    //
+    // So the box spans from where record 601 puts the ball down to the line it comes to rest on, and
+    // the ball's own radius on every side.
+    const shape = floatAttribute(group, WALL_RECORD);
+    const wall = shape?.length ? boundsOfWall(shape) : null;
+    controlBounds.push({
+      xMin: Math.min(at.x, wall?.xMin ?? at.x) - ballRadius,
+      xMax: Math.max(at.x, wall?.xMax ?? at.x) + ballRadius,
+      yMin: Math.min(at.y, wall?.yMin ?? at.y) - ballRadius,
+      yMax: Math.max(at.y, wall?.yMax ?? at.y) + ballRadius,
+    });
     break;
   }
 

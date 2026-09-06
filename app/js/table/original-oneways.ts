@@ -14,6 +14,22 @@
 // Installed here rather than by `table/original`, which is told to skip these groups — building the
 // plain wall as well would put a solid line across a gate the ball is supposed to go through.
 
+// ========================= THE LAUNCH LANE IS A DEAD END, AND THAT IS THE DESIGN =========================
+// Worth writing down because it looks exactly like a defect and I chased it as one for a night.
+//
+// A launched ball runs the lane to y = -6.89 and comes back down. The two walls that stop it converge:
+// `group-5`'s curve moves right as it climbs (face at x = -7.19 falling to -6.48) while `group-7`'s
+// left face stays at about -6.6, so the corridor closes at roughly y = -7.7. The ball cannot get out
+// of the top.
+//
+// ⚠️ AND LAUNCH POWER MAKES NO DIFFERENCE, which is what settles it. A 61% pull and a full hundred both
+// stop at exactly y = -6.89. A ball short of energy stops wherever its energy ran out; a ball stopped
+// by geometry stops at the same place every time.
+//
+// So the ball is MEANT to come back down. The skill shot is scored on the way down — `s_trip1`, `s_trip2`
+// and `s_trip3` are crossed descending — and the ball enters the playfield at the bottom through
+// `s_onewy4`, which is where a real Space Cadet ball enters it too. Nothing here is broken.
+//
 import { createOneway, type Oneway } from './oneway.js';
 import type { LineEdge } from '../physics/edges.js';
 import { createCollisionComponent, type TableState } from './collision-component.js';
@@ -86,15 +102,22 @@ export function buildOriginalOneways(
       ...(o.sound ? { sound: o.sound as never } : {}),
     });
 
-    // The passing line first, because the component is built around it.
-    const [passingEdge] = installWall(
-      [data[0]!, data[1]!, data[2]!, data[3]!, data[4]!],
-      { component: { collision: () => {} }, offset: o.ballRadius * PASSING_OFFSET },
-    );
-    // And the blocking line on the SAME two points, wound the other way.
+    // ⚠️ THE BLOCKING LINE TAKES THE RECORD'S OWN ORDER, AND THE PASSING LINE REVERSES IT. `TOneway`'s
+    // constructor names the FIRST pair `linePt2` and the SECOND `linePt1`, and then builds
+    // `TLine(linePt2, linePt1)` — the file's order — as the wall, and `TLine(linePt1, linePt2)` as the
+    // one the ball may cross. This port had the two the other way round, so every one-way on the table
+    // blocked the side it should have opened.
+    //
+    // ⚠️ AND THE PASSING OFFSET IS NEGATIVE. `Offset(-CollisionCompOffset * 0.8f)`: the passing line is
+    // pushed INWARD, to the ball's side of the wall, which is what puts it in front of the bounce. With
+    // the sign lost it sits behind, and a ball arriving at the open face reaches the wall first.
     const [blockingEdge] = installWall(
-      [data[0]!, data[3]!, data[4]!, data[1]!, data[2]!],
+      [data[0]!, data[1]!, data[2]!, data[3]!, data[4]!],
       { component: { collision: () => {} }, offset: o.ballRadius },
+    );
+    const [passingEdge] = installWall(
+      [data[0]!, data[3]!, data[4]!, data[1]!, data[2]!],
+      { component: { collision: () => {} }, offset: -o.ballRadius * PASSING_OFFSET },
     );
     if (passingEdge?.kind !== 'line' || blockingEdge?.kind !== 'line') continue;
 

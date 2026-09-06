@@ -646,7 +646,12 @@ export function createDemo(archive: ArrayBuffer, o: DemoOptions = {}): Demo {
     drain: {
       table: drainTable,
       onOutcome: (outcome, over) => {
-        if (over) { gameOver = true; return; }
+        // ⚠️ A FINISHED GAME HAS TO STOP THE BALL, not just remember that it finished. This was a flag
+        // that gated nothing: the ball went on rolling, went on draining and went on being counted, so
+        // a full game ended with `ballsLeft` at -6 and mission 32's take-over ran once per drain.
+        // `pb::mode_change(GameModes::GameOver)` stops the table; here that is `TBall::Disable`, which
+        // clears the active flag AND the collisions so nothing it rests against can wake it.
+        if (over) { gameOver = true; ball.disable(); return; }
         // Every other outcome puts a ball back on the plunger. `multiballContinues` cannot happen
         // here, because this demonstration only ever has one ball in play.
         if (outcome !== 'multiballContinues') feedBall();

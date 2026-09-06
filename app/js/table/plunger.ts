@@ -15,6 +15,29 @@
 // If the ball is not touching the plunger during that window, the pull is spent for nothing. That is
 // exactly how a real plunger behaves, and it comes out of two numbers rather than any launch logic.
 //
+// ========================= HOW OFTEN THE LAUNCH ACTUALLY FIRES, MEASURED =========================
+// The window is 0.025 s — one and a half frames at sixty — and the ball has to be TOUCHING inside it.
+// A ball at rest on the plunger is not continuously in contact: it settles into a limit cycle at speed
+// 0.2 and touches every FOUR frames. So a release lands inside a contact about a third of the time.
+//
+// Swept over hold durations from 100 to 400 frames: 14 of 31 launched. That is the window and the limit
+// cycle, not a defect in either — but two things follow from it and both are worth knowing.
+//
+// ⚠️ A SCRIPTED PULL CAN BE PHASE-LOCKED AND NEVER FIRE. Forty press-release cycles of the same length
+// missed forty times: the cycle was a multiple of four frames, so every release landed in the same gap
+// between contacts. A test that retries a launch has to VARY the hold, or it is not retrying at all.
+//
+// ⚠️ AND A FULL PULL TAKES TWO AND A HALF SECONDS. `PullbackIncrement` is
+// `floor(MaxPullback / (ListBitmap->size() * 8))` and this plunger has twelve pictures, so the
+// increment is ONE and a hundred ticks of 0.025 s are needed for the full hundred. Two seconds of
+// holding is a 61% pull, which leaves the ball at speed 64 rather than 105. Nothing is wrong with that
+// — it is the original's own arithmetic — but a test that holds for 120 frames is not testing a full
+// launch.
+//
+// ⚠️ AND IT DOES NOT DECIDE WHERE THE BALL GETS TO, which I assumed here and then measured. A 61% pull
+// and a full hundred both stop at exactly y = -6.89: the top of the lane is closed, and a ball stopped
+// by geometry stops in the same place whatever it was launched with. See `table/original-oneways`.
+//
 // ========================= THE LAUNCH IS NEVER EXACTLY REPEATABLE =========================
 // `boost = rand() * Boost * 0.1 + Boost` — between 1.0 and 1.1 times what was pulled. A deliberate ten
 // per cent of jitter, so the same pull never gives the same shot twice.

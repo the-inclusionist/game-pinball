@@ -91,11 +91,15 @@ describe('the nine one-way gates', () => {
     const pass = { x: gate.passingEdge.x1 - gate.passingEdge.x0, y: gate.passingEdge.y1 - gate.passingEdge.y0 };
     const block = { x: gate.blockingEdge.x1 - gate.blockingEdge.x0, y: gate.blockingEdge.y1 - gate.blockingEdge.y0 };
 
-    // The passing line runs the record's own way; the blocking line runs back along it.
-    expect(pass.x).toBeCloseTo(raw.x1 - raw.x0, 6);
-    expect(pass.y).toBeCloseTo(raw.y1 - raw.y0, 6);
-    expect(block.x).toBeCloseTo(-pass.x, 6);
-    expect(block.y).toBeCloseTo(-pass.y, 6);
+    // ⚠️ THE BLOCKING LINE RUNS THE RECORD'S OWN WAY, and the passing line runs back along it.
+    // `TOneway`'s constructor names the FIRST pair `linePt2` and the SECOND `linePt1`, then builds
+    // `TLine(linePt2, linePt1)` — the file's order — as the wall. This was the other way round, so
+    // every one-way on the table blocked the face it should have opened; the launch lane's `s_onewy1`
+    // among them, which is why no ball this port ever fired left the lane.
+    expect(block.x).toBeCloseTo(raw.x1 - raw.x0, 6);
+    expect(block.y).toBeCloseTo(raw.y1 - raw.y0, 6);
+    expect(pass.x).toBeCloseTo(-block.x, 6);
+    expect(pass.y).toBeCloseTo(-block.y, 6);
   });
 
   test('⚠️ and the two offsets are NOT equal: four fifths one side, a whole radius the other', () => {
@@ -113,8 +117,12 @@ describe('the nine one-way gates', () => {
 
     expect(Math.hypot(toPass.x, toPass.y)).toBeCloseTo(radius * PASSING_OFFSET, 6);
     expect(Math.hypot(toBlock.x, toBlock.y)).toBeCloseTo(radius, 6);
-    // Reversed winding flips the perpendicular, so the two displacements point opposite ways.
-    expect(toPass.x * toBlock.x + toPass.y * toBlock.y).toBeLessThan(0);
+    // ⚠️ AND THE SAME SIDE, WHICH IS THE WHOLE POINT OF THE FOUR FIFTHS. Reversing the winding flips
+    // the perpendicular and `Offset(-CollisionCompOffset * 0.8f)` flips it back, so both lines land on
+    // one side of the segment with the passing line NEARER. That is what puts the pass in front of the
+    // bounce for a ball arriving at the open face. Sent to opposite sides — which is what dropping the
+    // minus sign does — the wall is the one the ball meets first and the gate never opens.
+    expect(toPass.x * toBlock.x + toPass.y * toBlock.y).toBeGreaterThan(0);
   });
 
   test('⚠️ the ball is let through the passing edge and the crossing is reported', () => {
