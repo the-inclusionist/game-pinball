@@ -219,6 +219,43 @@ export const RING_BELT: AuthoredTable = {
     { name: 'throat.east', kind: 'lane', role: 'free', bounds: { x: 290, y: 176, width: 14, height: 16 },
       scores: [1700], control: 'LaneControl', lamps: ['lamp.throatEast'] },
 
+    /* ===================== THE PROBES, METEOR TO METEOR ===================== */
+    //
+    // ⚠️ THE DEV'S THEME: "meteoros voando e sondas que interagem com a bolinha indo de meteoro em
+    // meteoro." The belt's eight rocks are the meteors; these run between them.
+    //
+    // One crosses the whole width under the belt, which on a table 360 wide is a body the player meets
+    // wherever the view happens to be — the same reasoning the belt itself was spread out for. The
+    // other climbs the right-hand approach, where nothing has ever moved.
+    //
+    // ⚠️ AND BOTH PATHS WERE REWRITTEN AFTER SIXTY BALLS MET NEITHER. The first crossed 230 pixels in
+    // six seconds — chosen so a body on the unseen third of a 360-wide table would not arrive at half
+    // a plunger's speed — and the arithmetic was right about the speed and wrong about the mechanic: a
+    // body that slow is somewhere the ball is not, essentially always. The second climbed the top
+    // right, which is where the ball ENTERS and then leaves.
+    //
+    // A mover is met where the traffic is, and for no longer than the traffic takes to arrive.
+    { name: 'probe.belt', kind: 'rebounder', role: 'goal',
+      /**
+       * ⚠️ ON THE RIGHT, WHICH IS WHERE THE BALL ACTUALLY IS, and three guesses said otherwise before
+       * anybody counted. The band between the belt and the ridges was surveyed over sixty balls: the
+       * ball spends 14% of its time there in x 260-279 and 2.8% on the centre line at 160-179, because
+       * it ENTERS from the top right and this table is wide enough that it never has to leave that
+       * side. "Put it where the funnel gathers everything" was reasoning about the bottom of the table
+       * applied to the middle of it.
+       *
+       * A static component in a thin part of the table is merely rarely hit. A MOVING one is never
+       * hit, because the ball has to be there at the same moment — which is why this needed measuring
+       * and the ridges beside it did not.
+       */
+      bounds: { x: 235, y: 122, width: 60, height: 12 },
+      scores: [3800], control: 'RebounderControl', lamps: ['lamp.probeBelt'],
+      mover: { from: { x: 240, y: 128 }, to: { x: 290, y: 128 }, seconds: 1.5, radius: 5 } },
+    { name: 'probe.rise', kind: 'rebounder', role: 'goal',
+      bounds: { x: 55, y: 185, width: 80, height: 10 },
+      scores: [3800], control: 'RebounderControl', lamps: ['lamp.probeRise'],
+      mover: { from: { x: 60, y: 190 }, to: { x: 130, y: 190 }, seconds: 1.8, radius: 5 } },
+
     /* ===================== THE CENTRE ===================== */
     // One target in the middle, so the ball that goes straight up still meets something.
     { name: 'core', kind: 'target', role: 'key', bounds: { x: 165, y: 52, width: 14, height: 14 },
@@ -238,5 +275,6 @@ export const RING_BELT: AuthoredTable = {
     'lamp.crest5', 'lamp.crest6', 'lamp.crest7', 'lamp.crest8',
     'lamp.outerWest', 'lamp.outerEast', 'lamp.innerWest', 'lamp.innerEast',
     'lamp.throatWest', 'lamp.throatEast', 'lamp.hub',
+    'lamp.probeBelt', 'lamp.probeRise',
   ],
 };

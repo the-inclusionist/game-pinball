@@ -158,6 +158,32 @@ export const CRATER_RUN: AuthoredTable = {
     { name: 'crest3', kind: 'lane', role: 'free', bounds: { x: 94, y: 16, width: 12, height: 14 },
       scores: [1200], control: 'LaneControl', lamps: ['lamp.crest3'] },
 
+    /* ===================== THE PROBES, ON THEIR CONVEYORS ===================== */
+    //
+    // ⚠️ THE DEV'S THEME FOR THIS TABLE: "sondas andando em esteiras que interagem com a bolinha." A
+    // conveyor is a straight run, which is what a `mover` is — so a probe is a rebounder with a path,
+    // and no new kind was needed for it.
+    //
+    // Two of them, at the two heights this table had nothing at: one under the crater bank where a
+    // ball that cleared the row comes down, and one low across the approach to the funnel. Both run
+    // HORIZONTALLY, because a conveyor does, and because a body crossing the ball's fall is met more
+    // often than one travelling with it.
+    //
+    // ⚠️ AND THEY ARE CLEAR OF EVERYTHING. The upper one spans y 105 to 115 against a bank at 120 and
+    // ramps ending at 104; the lower one sits above the funnel's own top at 193. A mover declares no
+    // collision — its body is its disc — so the validator cannot check overlap for it the way it can
+    // for a shape, and the arithmetic is written here instead.
+    { name: 'probe.high', kind: 'rebounder', role: 'goal',
+      bounds: { x: 35, y: 105, width: 102, height: 10 },
+      scores: [3500], control: 'RebounderControl', lamps: ['lamp.probeHigh'],
+      mover: { from: { x: 40, y: 110 }, to: { x: 132, y: 110 }, seconds: 2.8, radius: 5 } },
+    { name: 'probe.low', kind: 'rebounder', role: 'goal',
+      bounds: { x: 53, y: 177, width: 62, height: 10 },
+      scores: [3500], control: 'RebounderControl', lamps: ['lamp.probeLow'],
+      // ⚠️ SHORTER AND QUICKER THAN ITS FIRST PATH, which was 96 pixels in 2.2 seconds and met nothing
+      // in sixty balls. A long slow body is somewhere the ball is not, almost always.
+      mover: { from: { x: 110, y: 182 }, to: { x: 58, y: 182 }, seconds: 1.4, radius: 5 } },
+
     /* ===================== THE RIM ===================== */
     { name: 'rim1', kind: 'lane', role: 'goal', bounds: { x: 40, y: 16, width: 12, height: 14 },
       scores: [4000], control: 'LaneControl', lamps: ['lamp.rim1'] },
@@ -171,5 +197,6 @@ export const CRATER_RUN: AuthoredTable = {
     'lamp.rampLeft', 'lamp.rampRight', 'lamp.screeLeft', 'lamp.screeRight', 'lamp.rubble1', 'lamp.rubble2', 'lamp.rim1', 'lamp.rim2',
     'lamp.shelfWest1', 'lamp.shelfWest2', 'lamp.shelfEast1', 'lamp.shelfEast2',
     'lamp.crest1', 'lamp.crest2', 'lamp.crest3',
+    'lamp.probeHigh', 'lamp.probeLow',
   ],
 };

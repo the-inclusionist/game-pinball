@@ -196,10 +196,20 @@ export const LOW_ORBIT: AuthoredTable = {
       bounds: { x: 30, y: 82, width: 80, height: 12 },
       scores: [3000], control: 'RebounderControl', lamps: ['lamp.droneHigh'],
       mover: { from: { x: 36, y: 88 }, to: { x: 104, y: 88 }, seconds: 2.4, radius: 5 } },
+    // ⚠️ AND THE SECOND ONE CROSSES THE MIDDLE, because its first path was decoration. It ran down the
+    // right-hand edge and sixty balls never met it — a MOVING body is met far less often than a static
+    // one in the same place, since the ball has to be there at the same moment, and the right-hand
+    // edge was somewhere the ball rarely was at any moment.
     { name: 'drone.low', kind: 'rebounder', role: 'goal',
-      bounds: { x: 122, y: 150, width: 12, height: 46 },
+      //
+      // ⚠️ AND CLEAR OF THE LEFT PADDLE'S SHOT COLUMN, which its second path was not. Crossing x 56 to
+      // 104 put it directly above the pivot at 44.5, so the flipper's own gate — "the ball comes back
+      // higher than it fell from" — failed: the shot met a drone instead of open air. The drop bank
+      // taught the same lesson on this table and that gate has already been moved once for it; moving
+      // it again would be tuning a test to the furniture rather than placing the furniture.
+      bounds: { x: 70, y: 146, width: 60, height: 12 },
       scores: [3000], control: 'RebounderControl', lamps: ['lamp.droneLow'],
-      mover: { from: { x: 128, y: 156 }, to: { x: 128, y: 190 }, seconds: 1.8, radius: 5 } },
+      mover: { from: { x: 76, y: 152 }, to: { x: 124, y: 152 }, seconds: 1.6, radius: 5 } },
 
     /* ===================== THE DROP BANK ===================== */
     //

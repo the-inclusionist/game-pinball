@@ -54,10 +54,26 @@ function visits(table: AuthoredTable, balls: number): Map<string, number> {
       if (i % flap === Math.floor(flap / 2)) {
         physics.setFlippers('left', false); physics.setFlippers('right', false);
       }
+      /**
+       * ⚠️ THE TRAVELLING BODIES MOVE HERE TOO, AND THEY DID NOT UNTIL A PROBE WAS ADDED. This loop
+       * stepped the ball and left every mover at the start of its path, so "the ball reaches this
+       * component" was really "the ball reaches where this component begins". The frame loop advances
+       * them; a survey that does not is surveying a different table from the one that ships.
+       */
+      for (const { mover } of physics.movers) mover.advance(FRAME_SECONDS);
       advanceFrame([ball], physics.context, FRAME_SECONDS);
       physics.takeHits();
       const { x, y } = ball.position;
       for (const c of table.components) {
+        if (c.mover) {
+          // ⚠️ THE BODY, NOT ITS BOX. A mover's `bounds` is the whole path it can travel, so testing
+          // the box would call a probe "reached" when the ball crossed anywhere along the line it runs
+          // on — which is most of a table for the long ones, and would excuse exactly the component
+          // this file exists to catch.
+          const at = physics.movers.find((m) => m.name === c.name)!.mover.at;
+          if (Math.hypot(x - at.x, y - at.y) <= r + c.mover.radius) seen.add(c.name);
+          continue;
+        }
         const b = c.bounds;
         if (x + r >= b.x && x - r <= b.x + b.width && y + r >= b.y && y - r <= b.y + b.height) seen.add(c.name);
       }
