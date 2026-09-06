@@ -4,6 +4,10 @@ import { readFileSync, existsSync } from 'node:fs';
 import { decodePlayfield, readCamera, PROJECTION_CENTRE_RECORD } from '../app/js/gfx/original-view.js';
 import { readGroups, type Group } from '../app/js/dat/partman.js';
 import { PLAYFIELD_COLOR } from '../app/js/gfx/table-view.js';
+import { pack } from '../app/js/gfx/framebuffer.js';
+import { EntryType } from '../app/js/dat/partman.js';
+import { readBitmapHeader, HEADER_SIZE } from '../app/js/dat/bitmap8.js';
+import { unpackIndexed } from '../app/js/dat/indexed.js';
 
 /**
  * ⚠️ THE SECOND HALF OF THE DEMONSTRATION MODE: something to look at.
@@ -18,6 +22,24 @@ const archive = (): Group[] | null => {
   const buf = readFileSync(DAT);
   return readGroups(new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength));
 };
+
+/** How many times each palette index appears across every bitmap in the archive. */
+function usedPaletteIndices(groups: readonly Group[]): Map<number, number> {
+  const counts = new Map<number, number>();
+  for (const group of groups) {
+    for (const entry of group.entries) {
+      if (entry.type !== EntryType.Bitmap8 || !entry.data) continue;
+      const header = readBitmapHeader(entry.data);
+      const indices = unpackIndexed(entry.data.subarray(HEADER_SIZE), {
+        width: header.width,
+        height: header.height,
+        indexedStride: header.indexedStride ?? header.width,
+      });
+      for (const index of indices) counts.set(index, (counts.get(index) ?? 0) + 1);
+    }
+  }
+  return counts;
+}
 
 describe('the playfield, decoded', () => {
   test('it is 365 by 470, which is what an independent dump of this file reports', () => {
@@ -71,6 +93,53 @@ describe('the playfield, decoded', () => {
     for (let i = 0; i < frame.pixels.length; i += 97) seen.add(frame.pixels[i]!);
 
     expect(seen.size).toBeGreaterThan(20);
+  });
+
+  test('⚠️ index 255 is gdrv’s WHITE, not the file’s 252', () => {
+    // `gdrv::display_palette` does not read entry 255 out of the file: it writes pure white over it,
+    // the same way it writes the Windows system colours over 1..9 and leaves 246..254 at the memset’s
+    // zero. This archive’s own entry 255 is (252, 252, 252) — the ONLY near-white entry it carries —
+    // so a decoder that trusts the file paints every highlight in the game three units dark: the ball’s
+    // specular dot, every lamp’s hot spot, the flippers’ flags, the plunger. 1791 pixels in all.
+    const groups = archive();
+    if (!groups) return expect(existsSync(DAT)).toBe(false);
+
+    const frame = decodePlayfield(groups);
+
+    // (88, 92) of the table bitmap is index 255, and it is the first one that is.
+    expect(frame.pixels[92 * 365 + 88]).toBe(pack(255, 255, 255, 255));
+  });
+
+  test('⚠️ and EVERY pixel stays opaque, though gdrv would make 37810 of them holes', () => {
+    // gdrv’s map is written for sprites, where index 0 means “do not draw”. The playfield uses index 0
+    // for 37810 of its 171550 pixels — it is a colour there, not a hole — so the background decoder
+    // forces the alpha back on.
+    //
+    // The sampled test above kills the same mutant, and honesty says so: at 22% of the picture it could
+    // hardly miss. This one is its stronger form, and it is the one that would survive a partial
+    // failure — a transparency that reached only some rows, or only the 246-to-254 block.
+    const groups = archive();
+    if (!groups) return expect(existsSync(DAT)).toBe(false);
+
+    const frame = decodePlayfield(groups);
+    let clear = 0;
+    for (let i = 0; i < frame.pixels.length; i++) if (frame.bytes[i * 4 + 3] !== 255) clear++;
+
+    expect(clear, 'transparent pixels in the playfield').toBe(0);
+  });
+
+  test('⚠️ and 255 is the ONLY index where gdrv and the file disagree here', () => {
+    // The reason `gfx/gdrv` is worth wiring in at all, stated as a measurement rather than a hope.
+    // Of gdrv’s four overrides, this archive exercises exactly one: indices 1..9 appear in none of the
+    // 318 bitmaps, and 246..254 appear once, in `background` — the side panel, which decision 6 of the
+    // plan deleted. If this ever fails, the file changed and the reasoning above has to be redone.
+    const groups = archive();
+    if (!groups) return expect(existsSync(DAT)).toBe(false);
+
+    const used = usedPaletteIndices(groups);
+
+    for (let i = 1; i <= 9; i++) expect(used.get(i) ?? 0, `index ${i}`).toBe(0);
+    expect(used.get(255), 'the highlight').toBe(1791);
   });
 });
 

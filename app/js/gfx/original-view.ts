@@ -16,7 +16,8 @@
 // difference in y is three pixels, which is exactly the sort of thing that never announces itself: the
 // whole table would sit three pixels high and every collision would still be correct.
 
-import { createFramebuffer, pack, type Framebuffer } from './framebuffer.js';
+import { pack, type Framebuffer } from './framebuffer.js';
+import { applyPalette, buildDisplayPalette } from './gdrv.js';
 import { readBitmapHeader, HEADER_SIZE } from '../dat/bitmap8.js';
 import { unpackIndexed } from '../dat/indexed.js';
 import { readPalette } from '../dat/palette.js';
@@ -63,14 +64,27 @@ export function decodePlayfield(groups: readonly Group[]): Framebuffer {
     indexedStride: header.indexedStride ?? header.width,
   });
 
-  const frame = createFramebuffer(header.width, header.height);
-  for (let i = 0; i < indices.length; i++) {
-    const c = indices[i]!;
-    // ⚠️ OPAQUE, whatever the file says. Every alpha byte in PINBALL.DAT is zero — `dat/palette` says so
-    // in its own header — so trusting it would produce a table that is entirely invisible.
-    frame.pixels[i] = pack(palette.red(c), palette.green(c), palette.blue(c), 255);
-  }
-  return frame;
+  // ⚠️ THROUGH `gdrv::display_palette`, NOT STRAIGHT THROUGH THE FILE. Four blocks of the 256 entries
+  // are not the file's to decide — 0 transparent, 1 to 9 the Windows system colours, 246 to 254 never
+  // assigned, 255 pure white — and this archive exercises exactly one of them: its own entry 255 is
+  // (252, 252, 252), the only near-white colour it carries, and 1791 pixels across the table, the ball,
+  // every lamp and both flippers' flags are drawn with it. Read from the file they all come out three
+  // units dark, which is a difference nobody would ever see and nobody could ever explain.
+  return applyPalette(indices, opaque(buildDisplayPalette(palette)), header.width, header.height);
+}
+
+/** Alpha alone, in whichever byte this machine keeps it. */
+const OPAQUE = pack(0, 0, 0, 255);
+
+/**
+ * ⚠️ THE PLAYFIELD IS OPAQUE BY CONSTRUCTION, and `gdrv`'s map is written for SPRITES. There a zero
+ * word means "do not draw"; here index 0 is a colour like any other, used 37810 times, and handing the
+ * map over unaltered punches that many holes in the table. Every alpha byte in PINBALL.DAT is zero
+ * besides — `dat/palette` says so in its own header — so trusting the file would make it invisible
+ * outright. Both failures look like a broken decoder and neither reports anything.
+ */
+function opaque(display: Uint32Array): Uint32Array {
+  return display.map((color) => (color | OPAQUE) >>> 0);
 }
 
 export interface OriginalCamera {

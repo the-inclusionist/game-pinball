@@ -6,7 +6,7 @@ import { readBitmapHeader } from '../app/js/dat/bitmap8.js';
 import {
   readLampSprites, readSprite, drawLamp, drawSpriteCentred, TABLE_ORIGIN_RECORD,
 } from '../app/js/gfx/original-sprites.js';
-import { createFramebuffer } from '../app/js/gfx/framebuffer.js';
+import { createFramebuffer, pack } from '../app/js/gfx/framebuffer.js';
 
 /**
  * ⚠️ THE LAMPS ARE DRAWN WHERE THE WINDOW SAYS, NOT WHERE THE PLAYFIELD DOES.
@@ -312,6 +312,24 @@ describe('the ball’s own picture', () => {
     expect([ball.frames[0]!.width, ball.frames[0]!.height]).toEqual([9, 9]);
     // (0,0) in the window is (-137,-2) against the table's corner: the ball is not AT a place.
     expect([ball.x, ball.y]).toEqual([-137, -2]);
+  });
+
+  test('⚠️ its highlight is gdrv’s WHITE, and its index 0 is still a hole', () => {
+    // The ball has exactly one pixel of index 255, at (3, 3): the specular dot that makes it a sphere
+    // rather than a disc. `gdrv::display_palette` writes pure white over entry 255 without reading the
+    // file, and this archive's own entry 255 is (252, 252, 252) — so a decoder that trusts the palette
+    // dims the highlight on the ball, on every lamp and on both flippers' flags.
+    //
+    // The second half is what stops the fix from being a regression: gdrv's index 0 is transparent,
+    // and it has to STAY transparent here or the ball comes with a 9x9 black card behind it.
+    const groups = archive();
+    if (!groups) return expect(existsSync(DAT)).toBe(false);
+
+    const ball = readSprite(groups, 'ball')!;
+    const first = ball.frames[0]!;
+
+    expect(first.pixels[3 * 9 + 3], 'the highlight').toBe(pack(255, 255, 255, 255));
+    expect(first.pixels[0], 'and the corner, which is index 0').toBe(0);
   });
 
   test('⚠️ and each frame carries the POINT at which its size is right, in record 501', () => {

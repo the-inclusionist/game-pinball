@@ -34,7 +34,8 @@
 // index zero as the transparent one. Opaque, each lamp paints its own little black rectangle onto the
 // table and the picture fills with square holes.
 
-import { createFramebuffer, pack, type Framebuffer } from './framebuffer.js';
+import { type Framebuffer } from './framebuffer.js';
+import { applyPalette, buildDisplayPalette } from './gdrv.js';
 import { halve } from './scale.js';
 import { readBitmapHeader, HEADER_SIZE } from '../dat/bitmap8.js';
 import { unpackIndexed } from '../dat/indexed.js';
@@ -49,9 +50,6 @@ const FRAME_POSITION_RECORD = 501;
 export const TABLE_ORIGIN_RECORD = 'table';
 /** The palette every indexed bitmap in the archive is drawn through. See `gfx/original-view`. */
 const PALETTE_GROUP = 'background';
-/** `gdrv`: "Color 0: transparent". */
-const TRANSPARENT_INDEX = 0;
-
 /**
  * One picture of a component, with ITS OWN corner on the playfield.
  *
@@ -120,7 +118,13 @@ export function readSprite(
 }
 
 interface SpriteContext {
-  readonly palette: ReturnType<typeof readPalette>;
+  /**
+   * ⚠️ `gdrv::display_palette`, WHICH IS NOT THE FILE'S PALETTE. Index 0 is transparent — that is what
+   * makes a lamp a lamp rather than a rectangle — 1 to 9 are the Windows system colours, 246 to 254 are
+   * never assigned and stay transparent, and 255 is pure white. This archive's own entry 255 is
+   * (252, 252, 252), so the highlight on the ball and on every lamp is gdrv's white, not the file's.
+   */
+  readonly display: Uint32Array;
   readonly origin: { x: number; y: number };
 }
 
@@ -134,7 +138,10 @@ function spriteContext(groups: readonly Group[]): SpriteContext | null {
   if (!tableBitmap) return null;
   const header = readBitmapHeader(tableBitmap);
 
-  return { palette: readPalette(paletteData), origin: { x: header.x, y: header.y } };
+  return {
+    display: buildDisplayPalette(readPalette(paletteData)),
+    origin: { x: header.x, y: header.y },
+  };
 }
 
 /**
@@ -180,13 +187,10 @@ function decodeSprite(
       indexedStride: header.indexedStride ?? header.width,
     });
 
-    const frame = createFramebuffer(header.width, header.height);
-    for (let i = 0; i < indices.length; i++) {
-      const index = indices[i]!;
-      if (index === TRANSPARENT_INDEX) continue;
-      const { palette } = context;
-      frame.pixels[i] = pack(palette.red(index), palette.green(index), palette.blue(index), 255);
-    }
+    // The transparency is the palette's: entry 0 is the zero word, so an index-0 pixel is written as
+    // the transparent it already was. Skipping it and writing it are the same thing on a fresh
+    // framebuffer, and the palette is the one place the rule now lives.
+    const frame = applyPalette(indices, context.display, header.width, header.height);
 
     // Every frame's own corner, the table's taken off. The first frame's is also the sprite's.
     const fx = header.x - context.origin.x;
