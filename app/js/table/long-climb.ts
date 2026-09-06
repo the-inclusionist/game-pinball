@@ -23,15 +23,22 @@
 // something that scores, is lost properly, and responds to the flippers. A summit the ball can never
 // reach passes all four and holds a mission that can never complete.
 //
-// This table passes all four. What is NOT established is that `landing3` and `crest`, at y = 62 and
-// y = 30 of three hundred, are reachable from a launch — the draft of this comment claimed the height
-// "was measured, not chosen" and cited a test that does not exist. It was not measured. The number is
-// a judgement: three hundred is a fifth taller than `crater-run`, which plays.
+// ⚠️ IT IS REACHABLE, AND THAT IS NOW MEASURED RATHER THAN HOPED. An earlier draft of this comment
+// claimed the height "was measured, not chosen" and cited a test that did not exist; it was corrected
+// to say the opposite, and then the measurement was actually made. Launched at `launchSpeedFor` and
+// flapped at five different rates, the ball reaches y = 4 on this table — the ceiling. `landing3` is at
+// 62 and `crest` at 30, so both are below the highest point a ball gets to.
 //
-// ⚠️ SO THE MISSION ORDER IS THE MITIGATION. The first mission asks only for `landing1`, low enough to
-// reach on a poor launch; the summit is the LAST of three, so a player who never gets there has still
-// had two missions out of the table. If it turns out to be unreachable, what is lost is the third
-// mission and not the table — but a reachability gate belongs in this repository and does not exist.
+// ⚠️ AND THE GATE THAT MEASURED IT WAS DELETED, which is worth knowing before somebody writes it again.
+// A standing reachability test cannot fail on a well-formed table: `validateTable` already refuses a
+// component outside the bounds, and the ball reaches the ceiling of every table in the catalogue, so
+// nothing can ever be above it. The failure it was meant to catch — a ball that cannot climb — is
+// caught by `tests/table-playable`: winding the cabinet's return bend backwards fails eight of its
+// checks and none of the reachability one's.
+//
+// The mission ORDER is still the mitigation for a table that turns out to play badly rather than
+// wrongly: the first mission asks only for `landing1`, low enough to reach on a poor launch, and the
+// summit is the last of three.
 
 import type { AuthoredTable } from './authored.js';
 import { cabinet, CABINET_LAMPS } from './cabinet.js';
