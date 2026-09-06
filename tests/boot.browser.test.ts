@@ -114,11 +114,20 @@ describe('⚠️ the keyboard is bound to #game-region and NOT to the window', (
     region.focus();
     expect(document.activeElement, 'the region can hold focus').toBe(region);
 
-    // Space is the plunger. What it does depends on the table's state; what matters here is that the
-    // page consumed it rather than scrolling.
+    // ⚠️ AND THE BALL ACTUALLY LAUNCHES, which this test used to refuse to assert.
+    //
+    // It said: "Space is the plunger. What it does depends on the table's state; what matters here is
+    // that the page consumed it rather than scrolling." That sentence is why the game shipped
+    // unplayable. `physics.spawnBall()` returns a ball with `active: true`, and both launch paths were
+    // guarded on `!ball.active` — so the plunger key did nothing from the first frame to the last, and
+    // the only test that pressed it had decided in advance not to look at the result.
+    //
+    // A key that is "consumed" is not a key that works.
+    const before = debug().ball;
     await userEvent.keyboard(' ');
 
     expect(debug().problems, 'and nothing fell over doing it').toEqual([]);
+    expect(debug().ball.speed, 'the plunger launched the ball').toBeGreaterThan(before.speed);
   });
 
   test('and the region is reachable by keyboard at all, or none of that matters', () => {

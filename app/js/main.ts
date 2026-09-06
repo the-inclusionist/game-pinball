@@ -212,6 +212,26 @@ function sayUnavailable(): void {
 const shell = bootPinball({
   locale: 'pt',
   table,
+  /**
+   * ⚠️ THE TABLE'S OWN HEIGHT, AND WITHOUT THIS EVERY TALL TABLE LOSES ITS BOTTOM.
+   *
+   * `DEFAULT_CAMERA.worldHeight` is 235 — `low-orbit`'s height, and correct for exactly one table. It
+   * was never overridden, so the camera's travel was 235 - 180 = 55 on every table, and everything
+   * below that line was unreachable by the view:
+   *
+   *     ring-belt 240 → 5 rows lost      ion-storm 250 → 15
+   *     slipstream 245 → 10              crater-run 260 → 25
+   *                                      long-climb 300 → 65
+   *
+   * The Dev found it by playing: "crater run está sendo cortada na parte de baixo (mal dá pra
+   * enxergar as pás), long climb está mais coartada ainda". The flippers and the drain sat below the
+   * furthest the camera could scroll, so the bottom of the table — the part a pinball player reads the
+   * ball's line off — was never on screen.
+   *
+   * With the real height the maximum offset is `height - viewHeight`, which puts the LAST row of the
+   * table on the LAST row of the view: the base is aligned with the base, which is what was asked for.
+   */
+  camera: { ...DEFAULT_CAMERA, worldHeight: authored.size.height },
   // `cvdHost` is where the engine mounts its six colour-vision filters. Omitting it is not an error —
   // `createGame` reports it in `problems` instead of throwing — which is exactly how it went unnoticed
   // until the game was actually booted.
@@ -553,7 +573,19 @@ const unbindControls = bindPinballControls({
     if (demo) demo.setFlippers(side, extended);
     else physics.setFlippers(side, extended);
   },
-  launch: () => { if (!ball.active) launch(); },
+  /**
+   * ⚠️ GUARDED ON THE PHASE, NOT ON `ball.active`, AND THE DIFFERENCE MADE THE GAME UNSTARTABLE.
+   *
+   * `physics.spawnBall()` returns a ball with `active: true` — it is a ball that exists, sitting in the
+   * plunger lane. So `!ball.active` was FALSE from the first frame, `launch()` was never called, and
+   * the plunger key did nothing at all. Not "nothing until the table was ready": nothing, ever. The
+   * frame loop steps the ball only while `phase === 'playing'`, and the only thing that sets that is
+   * the launch that never ran.
+   *
+   * The question the guard is asking is "is a game already in progress", and that is what `phase`
+   * answers. `active` answers "does a ball exist", which was true before the player touched anything.
+   */
+  launch: () => { if (phase !== 'playing') launch(); },
   /**
    * ⚠️ AND THE HOLD, WHICH ONLY THE 1995 TABLE HAS. Its plunger is drawn back while the key is
    * down and fires at whatever was drawn; the authored table has no plunger component at all, so this
@@ -565,7 +597,9 @@ const unbindControls = bindPinballControls({
    */
   setPlunger: (pressed: boolean) => {
     if (demo) demo.plunge(pressed);
-    else if (pressed && !ball.active) launch();
+    // See `launch` above: the phase is what says whether a game is running. `ball.active` is true from
+    // the moment the ball is spawned, which is before anybody has pressed anything.
+    else if (pressed && phase !== 'playing') launch();
   },
   /**
    * ⚠️ AND NOT WHILE THE 1995 TABLE IS ON SCREEN, which is a gap being named rather than closed.

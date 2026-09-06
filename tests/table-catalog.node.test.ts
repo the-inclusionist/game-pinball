@@ -434,3 +434,37 @@ describe('⚠️ a line is one-sided, and its winding decides which side', () =>
     expect(wrong).toEqual([]);
   });
 });
+
+describe('⚠️ the camera can reach the bottom of every table', () => {
+  // The Dev found this by playing: "crater run está sendo cortada na parte de baixo (mal dá pra
+  // enxergar as pás), long climb está mais coartada ainda". `DEFAULT_CAMERA.worldHeight` is 235 —
+  // `low-orbit`'s height, right for exactly one table — and `main.ts` never overrode it. So the view's
+  // travel was 55 on every table and everything below that line was unreachable: the flippers and the
+  // drain, which is the part of a pinball a player reads the ball's line off.
+  //
+  // ⚠️ NOTHING COULD HAVE CAUGHT IT WHERE IT WAS. `shell-camera` tests the solver against configs it
+  // builds itself and every one of them is consistent; the defect was in what `main.ts` HANDED the
+  // solver, which no unit sees. This asks the question about the catalogue instead.
+  test.each(CATALOG.map((t) => [t.name, t] as const))(
+    '%s: the last row of the table can be the last row of the view',
+    (_name, table) => {
+      const config = { ...DEFAULT_CAMERA, worldHeight: table.size.height };
+      const furthest = maxOffsetOf(config);
+
+      expect(config.worldHeight - furthest, 'the top row still visible at full scroll')
+        .toBe(config.viewHeight);
+      expect(furthest, 'and a taller table scrolls further')
+        .toBe(Math.max(0, table.size.height - DEFAULT_CAMERA.viewHeight));
+    },
+  );
+
+  test('⚠️ and the DEFAULT alone is not enough, which is the whole defect', () => {
+    // If this ever comes back false, the default happens to fit every table and the override above
+    // stops being load-bearing — at which point somebody will remove it and the next tall table will
+    // lose its bottom again in silence.
+    const tallerThanTheDefault = CATALOG.filter((t) => t.size.height > DEFAULT_CAMERA.worldHeight);
+
+    expect(tallerThanTheDefault.map((t) => t.name).length,
+      'tables the default camera cannot show the bottom of').toBeGreaterThan(0);
+  });
+});
