@@ -177,7 +177,10 @@ const PAINTED = {
   'low-orbit': 7555,
   // +572 on each of the four below: the cabinet's two inlanes, which five tables had never had.
   // The lower third paid 2000 for bad luck through the outlanes and nothing at all for good play.
-  'ion-storm': 7257,
+  // ⚠️ +1768 when this table was authored up to the 1995 density: two more bumpers in the storm,
+  // four drop targets in two flank shelves, three more arc rollovers and two ion trails down the
+  // sides, and the eye rollover in the middle. Bumpers are the expensive ones to paint — a filled circle against a stroked line.
+  'ion-storm': 9277,
   // ⚠️ +1070: the two INLANES the cabinet now gives all five of its tables, and this table's own
   // authoring up to the 1995 density — two flank drop banks and a three-rollover reentry row.
   'crater-run': 7907,
