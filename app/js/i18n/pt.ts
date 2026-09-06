@@ -113,6 +113,7 @@ const pt: Record<string, string> = {
 
   /* ===================== HUD ===================== */
   'pinball.a11y.blindOn': 'Modo cego ligado. Use S para varrer a mesa.',
+  'pinball.a11y.unavailableInDemo': 'O guia sonoro ainda não descreve a mesa de 1995.',
   'pinball.a11y.blindOff': 'Modo cego desligado.',
   'pinball.demo.ask': 'Modo demonstração: escolha o seu PINBALL.DAT. O ficheiro não sai desta máquina.',
   'pinball.demo.caveat': 'A mesa de 1995: a física, as lâmpadas, as rampas e as vinte e três missões. O painel lateral e os sprites dos alvos ainda não são desenhados.',

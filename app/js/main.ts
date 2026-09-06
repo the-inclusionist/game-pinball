@@ -138,6 +138,16 @@ let blind = false;
  */
 const sonarPlayer = { i: 0, x: 0, y: 0, viz: 'normal' as const, guideT: 0 };
 
+/**
+ * Says, through the host's own live region, that the accessibility layer has nothing to describe here.
+ * The same channel the blind-mode announcement uses — an EVENT belongs in the live region, while the
+ * HUD blocks are readable on request and deliberately not live. See `shell/hud-dom`.
+ */
+function sayUnavailable(): void {
+  const status = document.getElementById('sr-status');
+  if (status) status.textContent = shell.t('pinball.a11y.unavailableInDemo');
+}
+
 const shell = bootPinball({
   locale: 'pt',
   table,
@@ -453,7 +463,24 @@ const unbindControls = bindPinballControls({
     if (demo) demo.plunge(pressed);
     else if (pressed && !ball.active) launch();
   },
+  /**
+   * ⚠️ AND NOT WHILE THE 1995 TABLE IS ON SCREEN, which is a gap being named rather than closed.
+   *
+   * The declaration the engine reads is built once at boot from the AUTHORED table, and the
+   * demonstration is an early return through the frame loop — `refreshObjective` is never called there
+   * and `sonarPlayer` is never moved. So in `?demo=original` the contract still answers with the
+   * authored table's targets and a ball position that stopped updating at boot.
+   *
+   * Blind mode and the sweep would therefore describe a table that is not on screen and point at
+   * components that are not there. A switch that gives a confident wrong answer is worse than one that
+   * says it cannot answer, so both are refused here and the reason is announced.
+   *
+   * Closing it properly means the demonstration presenting itself as a `LiveTable` so the declaration
+   * follows it — its components, its ball, its mission's remaining targets, which `control/mission` can
+   * already name. That is a piece of work, not a line.
+   */
   toggleBlindMode: () => {
+    if (demoRequested) return sayUnavailable();
     blind = !blind;
     // Announced through the host's own live region, which is where an EVENT belongs — the HUD blocks
     // are readable on request and deliberately not live. See `shell/hud-dom`.
@@ -468,7 +495,10 @@ const unbindControls = bindPinballControls({
    * engine's audio mixer. I chased that to zero twice before reading the reason, and it is written here
    * so nobody chases it a third time.
    */
-  sweep: () => shell.engine.sonar.sonar(sonarPlayer),
+  sweep: () => {
+    if (demoRequested) return sayUnavailable();
+    shell.engine.sonar.sonar(sonarPlayer);
+  },
   /**
    * ⚠️ THE BACK DOOR, AND ONLY THE 1995 TABLE HAS ONE. `bmax`, `rmax`, `gmax`, `1max`, `easy mode` and
    * `hidden test` are the Space Cadet's own codes and mean nothing on an authored table, so a

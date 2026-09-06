@@ -97,6 +97,28 @@ describe('the camera on a table wider than the window', () => {
     expect(source, 'the debug surface carries both axes').toMatch(/get cameraX\(\) \{ return shell\.cameraX; \}/);
   });
 
+  test('⚠️ and the accessibility keys are REFUSED while the 1995 table is on screen', () => {
+    // The declaration the engine reads is built once at boot from the AUTHORED table, and the
+    // demonstration is an early return through the frame loop: `refreshObjective` is never called
+    // there and `sonarPlayer` is never moved. So in `?demo=original` the contract answers with the
+    // authored table's targets and a ball position that stopped updating at boot — and blind mode and
+    // the sweep would describe a table that is not on screen.
+    //
+    // A switch that gives a confident wrong answer is worse than one that says it cannot answer. Both
+    // are refused, and the refusal is announced in the live region rather than being silence.
+    //
+    // ⚠️ AN INVENTORY, NOT A RUN, and weaker for it: `main.ts` is the browser entry point and no unit
+    // test drives it. The same pattern the sound-player and camera checks use, for the same reason.
+    const source = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../app/js/main.ts'), 'utf8');
+
+    // Two guards and one announcement, as plain text: a regex spanning lines would be a cleverer way
+    // of saying the same thing and a worse way of failing.
+    expect(source.match(/if \(demoRequested\) return sayUnavailable\(\);/g) ?? [],
+      'both keys check before they act').toHaveLength(2);
+    expect(source, 'and the refusal is spoken, not silent')
+      .toContain("shell.t('pinball.a11y.unavailableInDemo')");
+  });
+
   test('⚠️ and a table NO wider than the window does not move sideways at all', () => {
     // Which is every other authored table and the 1995 one. The horizontal camera is built for all of
     // them and is a no-op on all but `wide-arc`; a table that jittered sideways with nothing to show

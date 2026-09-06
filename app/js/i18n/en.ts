@@ -108,6 +108,9 @@ const en: Record<string, string> = {
 
   /* ===================== HUD ===================== */
   'pinball.a11y.blindOn': 'Blind mode on. Press S to sweep the table.',
+  // ⚠️ The 1995 table is drawn from the archive and the contract still describes the authored one,
+  // so the guide would point at components that are not on screen. Refused rather than answered.
+  'pinball.a11y.unavailableInDemo': 'The audio guide does not describe the 1995 table yet.',
   'pinball.a11y.blindOff': 'Blind mode off.',
   'pinball.demo.ask': 'Demonstration mode: choose your PINBALL.DAT. The file never leaves this machine.',
   'pinball.demo.caveat': 'The 1995 table: its physics, its lamps, its ramps and all twenty-three of its missions. The side panel and the sprites of its targets are not drawn yet.',
