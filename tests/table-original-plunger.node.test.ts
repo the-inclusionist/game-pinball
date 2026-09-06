@@ -6,6 +6,7 @@ import {
   PLUNGER_ELASTICITY, PLUNGER_SMOOTHNESS,
 } from '../app/js/table/original-plunger.js';
 import { buildOriginalTable } from '../app/js/table/original.js';
+import { readTableObjects } from '../app/js/dat/loader.js';
 import { loadTable } from '../app/js/dat/loader.js';
 import { readVisual } from '../app/js/dat/visual.js';
 import type { TimerService } from '../app/js/table/bumper.js';
@@ -81,6 +82,22 @@ describe('the 1995 plunger', () => {
       .toEqual(['v_sink1', 'v_sink2', 'v_sink3', 'v_sink7', 'plunger']);
     expect(built.plungerPosition!.x, 'and the one chosen is the PLUNGER').toBeCloseTo(-7.021, 3);
     expect(built.plungerPosition!.y).toBeCloseTo(10.085, 3);
+
+    // ⚠️ AN EQUIVALENT MUTANT, RECORDED. The lookup asks the `table_objects` list for the object whose
+    // TYPE is `Plunger`, and dropping that check leaves all 1722 tests green — because in this file the
+    // plunger is object 213 and the four sinks are 262 to 265, so "the first object whose group carries
+    // a 601" happens to be the plunger as well. The GROUPS are in the damaging order; the OBJECTS are
+    // not, and the old code walked the groups.
+    //
+    // The type check stays because it asks the question that has an answer rather than one that has a
+    // lucky answer here. What cannot be claimed is that a test on this archive tells the two apart, so
+    // the ordering is asserted instead — a file that reorders its objects will say so.
+    const objects = readTableObjects(table.groups);
+    const firstWithRecord = objects.findIndex(
+      (entry) => plungerPosition(table.groups[entry.group]!) !== null,
+    );
+    expect(table.groups[objects[firstWithRecord]!.group]!.name,
+      'the object list is in the harmless order').toBe('plunger');
   });
 
   test('⚠️ AND THE BALL WAITING ON IT IS NOT STUCK, which needs a box with height', () => {

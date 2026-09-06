@@ -41,9 +41,18 @@ function seeded(seed = 0x9e3779b9): () => number {
  * per frame; the three runs here that did plunge held it for 45 and let go of a plunger that had barely
  * moved, so the ball bobbed at the bottom of the lane and went nowhere. Two seconds clears `s_onewy1`.
  */
+let pullPhase = 0;
+
+/**
+ * ⚠️ AND THE HOLD HAS TO VARY, or a retry is not a retry. The release opens a window of 0.025 s — one
+ * and a half frames — in which the ball must be TOUCHING the plunger, and a ball at rest on it settles
+ * into a cycle that touches every four frames. So a launch fires about a third of the time, and forty
+ * press-release cycles of the SAME length miss forty times: the cycle is a multiple of four and every
+ * release lands in the same gap. See the note in `table/plunger`, which is where that was measured.
+ */
 const launch = (demo: ReturnType<typeof createDemo>): void => {
   demo.plunge(true);
-  demo.step(120);
+  demo.step(150 + (pullPhase++ % 4));
   demo.plunge(false);
 };
 
@@ -58,15 +67,55 @@ const launch = (demo: ReturnType<typeof createDemo>): void => {
 const play = (demo: ReturnType<typeof createDemo>, frames: number): void => {
   const at = demo.ball.position as { x: number; y: number };
   let waiting = 0;
+  pullPhase = 0;
   launch(demo);
   for (let f = 0; f < frames; f++) {
     const before = { x: at.x, y: at.y };
     demo.step(1);
+    // ⚠️ AND THE FLIPPERS ARE WORKED, because an unplayed ball drains. The 1995 launch lane is a dead
+    // end: the ball runs to the top, comes back down scoring the skill shot, and enters the playfield
+    // at the BOTTOM through `s_onewy4`. Nothing carries it back up the table but the flippers, so a run
+    // that never touches them sees the lower third and nothing else. See `table/original-oneways`.
+    if (at.y > 9 && f % 20 === 0) { demo.setFlippers('left', true); demo.setFlippers('right', true); }
+    if (f % 20 === 7) { demo.setFlippers('left', false); demo.setFlippers('right', false); }
     // A ball that has not moved for half a second and is down at the plunger's end of the lane is a
     // ball waiting to be launched, not a stuck one.
     waiting = Math.abs(at.x - before.x) + Math.abs(at.y - before.y) < 0.01 ? waiting + 1 : 0;
     if (waiting > 30 && at.y > 8) { launch(demo); waiting = 0; }
   }
+};
+
+/**
+ * ⚠️ THE BALL PUT WHERE THE TEST IS ABOUT, because the 1995 launch lane is a DEAD END.
+ *
+ * A launched ball runs to the top of the lane, comes back down scoring the skill shot, and enters the
+ * playfield at the BOTTOM through `s_onewy4` — which is what a real Space Cadet ball does. Nothing
+ * carries it back up but the flippers, so an unplayed run sees the lower third of the table and
+ * nothing else: no bumper, no target, no upper lane.
+ *
+ * Every test below that wanted one of those used to get it by accident. The ball was born at
+ * (-2.62, -8.83) — `v_sink1`'s record 601, mistaken for the plunger's — in the middle of the playfield
+ * with the bumpers around it, so `step(900)` wandered into them. That was never the game starting; it
+ * was the ball starting in the wrong place.
+ *
+ * So a test about a bumper puts the ball at the bumpers and says so, instead of hoping a seed walks
+ * there. What is lost is the incidental coverage of a long wander; what is gained is a test that fails
+ * for its own reason.
+ */
+const dropIntoPlayfield = (
+  demo: ReturnType<typeof createDemo>, frames: number, at: { x: number; y: number } = { x: 0, y: -8.5 },
+): void => {
+  const ball = demo.ball as unknown as {
+    position: { x: number; y: number }; direction: { x: number; y: number }; speed: number;
+  };
+  // The default is above the attack bumpers, which sit around (0, -3.7), (-1.4, -6.6) and (1.3, -6.0),
+  // heading down the table with a little sideways so the fall is not a straight line.
+  ball.position.x = at.x;
+  ball.position.y = at.y;
+  ball.direction.x = 0.2;
+  ball.direction.y = 1;
+  ball.speed = 6;
+  demo.step(frames);
 };
 
 /**
@@ -273,7 +322,7 @@ describe('the 1995 table, from an ArrayBuffer', () => {
     const demo = createDemo(bytes, { random: seeded() });
     expect(demo.components.bumpers.size).toBe(7);
 
-    play(demo, 900);
+    dropIntoPlayfield(demo, 900);
 
     // The ball reaches at least one of them in a ball's life on this table.
     expect(demo.touched.some((name) => demo.components.bumpers.has(name))).toBe(true);
@@ -365,7 +414,7 @@ describe('⚠️ and the demonstration can be HEARD, which it could not be at al
 
     const heard: string[] = [];
     const demo = createDemo(bytes, { onSound: (name) => heard.push(name), random: seeded() });
-    demo.step(900);
+    dropIntoPlayfield(demo, 900);
 
     const audible = demo.touched.filter((name) => {
       const kind = kindOf(name);
@@ -530,7 +579,10 @@ describe('⚠️ and a ball can be lost, which the demonstration counts', () => 
     if (!bytes) return expect(existsSync(DAT)).toBe(false);
     const heard: number[] = [];
     const demo = createDemo(bytes, { random: seeded(6), onSoundId: (id) => heard.push(id) });
-    play(demo, 1800);
+    // ⚠️ THE RIGHT-HAND SIDE, because that is where the parts that carry sound indices are. A fall down
+    // the middle passes bumpers and targets and hears three or four things; a fall down the left hears
+    // nothing at all, which would make this a test of where the ball was dropped.
+    dropIntoPlayfield(demo, 1800, { x: 1, y: -8 });
 
     expect(heard.length, 'something was heard').toBeGreaterThan(0);
     // ⚠️ AND ZERO IS NEVER ONE OF THEM. `play_sound` rejects anything at or below zero, and the first
@@ -567,7 +619,7 @@ describe('⚠️ and a ball can be lost, which the demonstration counts', () => 
     if (!bytes) return expect(existsSync(DAT)).toBe(false);
     const heard = new Set<number>();
     const demo = createDemo(bytes, { random: seeded(6), onSoundId: (id) => heard.add(id) });
-    play(demo, 1800);
+    dropIntoPlayfield(demo, 1800, { x: 1, y: -8 });
 
     const sounds = findSoundGroups(readGroups(new Uint8Array(bytes)));
     const byGroup = new Map(sounds.map((sound) => [sound.groupIndex, sound.fileName]));
@@ -587,14 +639,27 @@ describe('⚠️ and a ball can be lost, which the demonstration counts', () => 
     // collision, no drain.
     const bytes = archive();
     if (!bytes) return expect(existsSync(DAT)).toBe(false);
+    // ⚠️ AND THE BALL IS PUT IN THE MIDDLE, which is the only place this test is about. It used to
+    // arrive there by being born there; a ball that never crosses the centre proves nothing about the
+    // well either way. The count also stops at the drain: a ball waiting on the plunger for the rest
+    // of the thirty seconds is not going nowhere, it is waiting to be launched.
     const demo = createDemo(bytes, { random: seeded(2) });
-    launch(demo);
+    const middle = demo.ball as unknown as {
+      position: { x: number; y: number }; direction: { x: number; y: number }; speed: number;
+    };
+    middle.position.x = 0;
+    middle.position.y = 4;
+    middle.direction.x = 0.1;
+    middle.direction.y = 1;
+    middle.speed = 8;
 
     let slowSeconds = 0;
     for (let second = 0; second < 30; second++) {
       const before = { x: demo.ball.position.x, y: demo.ball.position.y };
       demo.step(60);
       const moved = Math.hypot(demo.ball.position.x - before.x, demo.ball.position.y - before.y);
+      // Down at the plunger's end is a ball waiting for a launch, not a ball caught in the middle.
+      if (demo.ball.position.y > 8) break;
       if (moved < 0.3) slowSeconds++;
     }
 
@@ -641,17 +706,21 @@ describe('⚠️ and a ball can be lost, which the demonstration counts', () => 
 
   test('⚠️ the ball ROLLS ACROSS the launch lanes, and each crossing is scored once', () => {
     // Eighteen lanes were installed as plain walls until now, so the ball BOUNCED off every one of
-    // them. Six hundred frames of the default run cross two of the launch lanes three times between
-    // them — and the crossings are paid by `ReentryLanesRolloverControl`, never flat, because the
-    // lane's own edges carry its component and the wall wrapper never sees them at all.
+    // them. The crossings are paid by the lane's own control, never flat, because the lane's own edges
+    // carry its component and the wall wrapper never sees them at all.
+    //
+    // ⚠️ AND THE LANE IT CROSSES IS `a_roll7`, WHICH IS THE ONE ON THE WAY IN. This asked for `a_roll1`
+    // and `a_roll2` — two of the re-entry lanes in the middle of the table — and got them because the
+    // ball was born up there. A launched ball crosses the lane the skill shot's exit puts it on, and
+    // this is now a test of the real path rather than of where the ball happened to be dropped.
     const bytes = archive();
     if (!bytes) return expect(existsSync(DAT)).toBe(false);
     const demo = createDemo(bytes, { random: seeded() });
 
-    play(demo, 600);
+    play(demo, 900);
 
     const crossed = demo.touched.filter((name) => name.startsWith('a_roll'));
-    expect([...new Set(crossed)].sort()).toEqual(['a_roll1', 'a_roll2']);
+    expect([...new Set(crossed)].sort()).toEqual(['a_roll7']);
     expect(demo.paidFlat.filter((name) => name.startsWith('a_roll')), 'never flat').toEqual([]);
     expect(demo.scored.filter((name) => name.startsWith('roll')).length).toBe(crossed.length);
   });
@@ -901,8 +970,12 @@ describe('⚠️ and a ball can be lost, which the demonstration counts', () => 
   });
 
   test('⚠️ a ball that reaches a wormhole hole is SWALLOWED and given back, once', () => {
-    // The one seed in twelve whose ball finds `v_sink2` on its own. Two touches over two thousand
-    // frames: swallowed, thrown back out two seconds later, and it falls in again much later.
+    // ⚠️ THE BALL IS PUT AT THE HOLE, because no launched ball finds it. This used to be "the one seed
+    // in twelve whose ball finds `v_sink2` on its own" — true when the ball was born in the middle of
+    // the playfield and wandered for two thousand frames. A ball that starts on the plunger enters the
+    // playfield at the bottom and drains; twelve seeds find the hole zero times.
+    //
+    // Two touches either way: swallowed, thrown back out two seconds later, and it falls in again.
     //
     // ⚠️ AND THE POOL DOES NOT GROW, which is the whole of what `TBall::Disable` clearing
     // `CollisionDisabledFlag` buys. Without it the swallowed ball went on being tested against the
@@ -912,11 +985,8 @@ describe('⚠️ and a ball can be lost, which the demonstration counts', () => 
     if (!bytes) return expect(existsSync(DAT)).toBe(false);
     const demo = createDemo(bytes, { random: seeded(9) });
 
-    launch(demo);
-    demo.plunge(true);
-    demo.step(60);
-    demo.plunge(false);
-    demo.step(2000);
+    // `v_sink2`'s own record 601, which is where it holds a ball it has swallowed.
+    dropIntoPlayfield(demo, 2000, { x: 3.17, y: -9.76 });
 
     expect(demo.touched.filter((name) => name === 'v_sink2').length).toBe(2);
     expect(demo.table.balls.length, 'one ball, in and out of the hole').toBe(1);
@@ -952,13 +1022,21 @@ describe('⚠️ a bumper scores when it FIRES, not when it is grazed', () => {
     if (!bytes) return expect(existsSync(DAT)).toBe(false);
 
     const demo = createDemo(bytes, { random: seeded() });
-    play(demo, 1800);
+    dropIntoPlayfield(demo, 1800);
 
     const bumperTouches = demo.touched.filter((name) => demo.components.bumpers.has(name)).length;
     const bumperScores = demo.scored.filter((name) => /^bump/.test(name)).length;
 
     expect(bumperTouches, 'the ball did reach a bumper').toBeGreaterThan(0);
-    expect(bumperScores).toBeLessThan(bumperTouches);
+    // ⚠️ AND EQUAL IS THE HEALTHY CASE HERE, which it did not used to be. This asked for STRICTLY fewer
+    // payments than touches, and got them because the ball was born among the bumpers and dawdled: a
+    // ball rolling along one grazes it for frames on end, and a graze must pay nothing. A ball dropped
+    // in from above hits each bumper squarely, so every touch is a hard hit and every hard hit pays.
+    //
+    // What this can still catch is the double — the wall wrapper paying a component that already pays
+    // itself. That a GRAZE pays nothing has its own test, in `table-bumper-sink`, where the hit can be
+    // made soft on purpose instead of waited for.
+    expect(bumperScores).toBeLessThanOrEqual(bumperTouches);
   });
 });
 
@@ -973,7 +1051,7 @@ describe('⚠️ and a target is never paid TWICE for one hit', () => {
     if (!bytes) return expect(existsSync(DAT)).toBe(false);
 
     const demo = createDemo(bytes, { random: seeded() });
-    play(demo, 1800);
+    dropIntoPlayfield(demo, 1800);
 
     const touches = demo.touched.filter((name) => /^a_targ/.test(name)).length;
     const payments = demo.scored.filter((name) => /^target/.test(name)).length;
