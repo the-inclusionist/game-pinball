@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, test, expect } from 'vitest';
 import {
-  drawTable, blitView, drawBall, fillRect, fillCircle,
+  drawTable, blitView, drawBall, fillRect, fillCircle, paletteOf, packRgb,
   ROLE_COLORS, PLAYFIELD_COLOR, BALL_COLOR,
 } from '../app/js/gfx/table-view.js';
 import { createFramebuffer } from '../app/js/gfx/framebuffer.js';
@@ -18,11 +18,32 @@ describe('drawing a table from its ROLES', () => {
     expect(fb.height).toBe(235);
   });
 
-  test('empty playfield is the playfield colour', () => {
+  test('⚠️ empty playfield is the colour of the table’s OWN world', () => {
     const fb = drawTable({ table: LOW_ORBIT });
 
+    // This test used to say `PLAYFIELD_COLOR` — one neutral ground for every table — and it was right
+    // until the tables were given worlds to stand in. `low-orbit` stands in `sky`, and the ground is
+    // where a scene lives: it is most of the pixels on the screen, which is what makes it the colour
+    // the table reads as.
+    //
+    // ⚠️ AND IT IS NOT THE NEUTRAL ONE, asserted rather than assumed. Without this line the test would
+    // pass just as well if `sceneOf` returned nothing for every table and all five fell to slate,
+    // which is the exact failure the scene map was written without a default to avoid.
     // A spot with nothing on it: between the target bank and the bumpers.
-    expect(at(fb, 30, 90)).toBe(PLAYFIELD_COLOR);
+    expect(at(fb, 30, 90)).toBe(packRgb(paletteOf(LOW_ORBIT, false).ground));
+    expect(at(fb, 30, 90), 'low-orbit is not on the neutral ground').not.toBe(PLAYFIELD_COLOR);
+  });
+
+  test('and the CB-Safe alternative changes what is drawn, without moving the table’s world', () => {
+    const normal = drawTable({ table: LOW_ORBIT });
+    const safe = drawTable({ table: LOW_ORBIT, cbSafe: true });
+
+    // The ground carries the scene, so switching the palette must not move the player to another
+    // planet: same world, different signals on it.
+    expect(at(safe, 30, 90), 'the world is unchanged').toBe(at(normal, 30, 90));
+    let differing = 0;
+    for (let i = 0; i < normal.pixels.length; i++) if (normal.pixels[i] !== safe.pixels[i]) differing++;
+    expect(differing, 'something on the table is drawn differently').toBeGreaterThan(0);
   });
 
   test('the drain is drawn as a HAZARD, and it is the only warm colour', () => {

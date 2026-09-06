@@ -201,6 +201,20 @@ describe('the frames the AUTHORED tables draw', () => {
             screen.width, screen.height, MAGNIFY)),
       );
 
+      // ⚠️ AND THE SAME TABLE IN THE OTHER PALETTE, because a mode nobody has looked at is a mode
+      // nobody has checked. `tests/gfx-table-palette` proves the CB-Safe colours stay apart under
+      // three simulations; it cannot tell whether the result is a table a person would want to look
+      // at. That question only has an answer on disk.
+      const safePicture = drawTable({ table, cbSafe: true });
+      const safeScreen = createFramebuffer(320, 180);
+      blitView(safeScreen, safePicture, layout.playfield, offsetX, offsetY);
+      writeFileSync(
+        `shots/authored-${name}-cb-safe.png`,
+        png(safeScreen.width * MAGNIFY, safeScreen.height * MAGNIFY,
+          magnify(new Uint8Array(safeScreen.bytes.buffer, safeScreen.bytes.byteOffset,
+            safeScreen.bytes.length), safeScreen.width, safeScreen.height, MAGNIFY)),
+      );
+
       // The same weak-on-purpose claims as the 1995 shot: that this is a picture in the right place.
       let drawn = 0;
       for (let y = 0; y < layout.playfield.height; y++) {

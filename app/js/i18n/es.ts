@@ -104,6 +104,13 @@ const es: Record<string, string> = {
   'pinball.award.scored': '{points} puntos',
 
   /* ===================== HUD ===================== */
+  'pinball.scene.sky': 'Cielo',
+  'pinball.scene.space': 'Espacio',
+  'pinball.scene.mars': 'Marte',
+  'pinball.scene.ice': 'Hielo',
+  'pinball.scene.slate': 'Neutro',
+  'pinball.palette.normal': 'Colores normales',
+  'pinball.palette.cbSafe': 'Colores para daltonismo',
   'pinball.a11y.blindOn': 'Modo ciego activado. Pulsa S para barrer la mesa.',
   'pinball.a11y.unavailableInDemo': 'La guía sonora todavía no describe la mesa de 1995.',
   'pinball.a11y.blindOff': 'Modo ciego desactivado.',

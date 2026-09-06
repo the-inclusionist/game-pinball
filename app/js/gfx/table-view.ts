@@ -47,22 +47,29 @@
 import type { Role } from '@the-inclusionist/engine/core/contract.js';
 import { createFramebuffer, pack, type Framebuffer } from './framebuffer.js';
 import type { AuthoredTable } from '../table/authored.js';
+import { paletteFor, sceneOf, type Rgb, type TablePalette } from './table-palette.js';
 import type { Rect } from '../shell/hud.js';
 
-/** One colour per role. See this module's header for why it is not one per kind. */
-export const ROLE_COLORS: Readonly<Record<Role, number>> = {
-  // The only warm colour on the table, and used for nothing else.
-  hazard: pack(200, 60, 50, 255),
-  goal: pack(240, 210, 90, 255),
-  key: pack(120, 200, 140, 255),
-  gate: pack(110, 140, 210, 255),
-  structure: pack(90, 96, 110, 255),
-  climb: pack(150, 120, 190, 255),
-  water: pack(70, 150, 190, 255),
-  free: pack(52, 58, 70, 255),
-};
+/** A palette colour as the framebuffer wants it. Opaque: nothing on the table is see-through. */
+export const packRgb = (c: Rgb): number => pack(c.r, c.g, c.b, 255);
 
-export const PLAYFIELD_COLOR = pack(26, 30, 38, 255);
+/**
+ * ⚠️ THE COLOURS MOVED OUT OF THIS FILE, to `gfx/table-palette`, and the reason is not tidiness.
+ *
+ * There is no longer ONE set of them. Each table stands in a world of its own — the Dev asked for the
+ * 1995 table's blue sky, the black of space, the earthy red of Mars — and beside every world there is
+ * a CB-Safe alternative the player can choose. A module constant cannot answer "what colour is the
+ * ground" any more, because the honest answer is "on which table, for which player".
+ *
+ * What is left here is the packing, and these three, which mean exactly what they say: the colours of
+ * the NORMAL palette on the NEUTRAL ground. `bare-minimum` is drawn in them and so is anything that
+ * needs a colour without having a table to ask about.
+ */
+export const ROLE_COLORS: Readonly<Record<Role, number>> = Object.fromEntries(
+  Object.entries(paletteFor('slate', { cbSafe: false }).roles).map(([role, c]) => [role, packRgb(c)]),
+) as Record<Role, number>;
+
+export const PLAYFIELD_COLOR = packRgb(paletteFor('slate', { cbSafe: false }).ground);
 
 /**
  * How wide a collision line is drawn. Two pixels rather than one: a single-pixel edge disappears against
@@ -70,7 +77,7 @@ export const PLAYFIELD_COLOR = pack(26, 30, 38, 255);
  * see is the same defect this whole module was just fixed for, pointing the other way.
  */
 export const EDGE_THICKNESS = 2;
-export const BALL_COLOR = pack(235, 240, 245, 255);
+export const BALL_COLOR = packRgb(paletteFor('slate', { cbSafe: false }).ball);
 
 /** Fills a rectangle, clipped to the buffer. Nothing here draws outside its target. */
 export function fillRect(fb: Framebuffer, rect: Rect, color: number): void {
@@ -131,6 +138,14 @@ export interface TableViewOptions {
   readonly table: AuthoredTable;
   /** The components the running mission is counting. They are drawn as goals whatever they are. */
   readonly missionTargets?: readonly string[];
+  /**
+   * The alternative palette, which the player chooses and nothing else may choose for them.
+   *
+   * ⚠️ ABSENT MEANS THE NORMAL ONE, never "work out which is better". A caller that forgets to pass
+   * the player's setting draws the table they did not ask for, and that is a defect to find rather
+   * than a preference to infer.
+   */
+  readonly cbSafe?: boolean;
 }
 
 /**
@@ -141,14 +156,19 @@ export function drawTable(o: TableViewOptions): Framebuffer {
   const { table } = o;
   const fb = createFramebuffer(table.size.width, table.size.height);
   const targets = new Set(o.missionTargets ?? []);
+  const palette = paletteOf(table, o.cbSafe ?? false);
+  const roleColor = Object.fromEntries(
+    Object.entries(palette.roles).map(([role, c]) => [role, packRgb(c)]),
+  ) as Record<Role, number>;
 
-  fillRect(fb, { x: 0, y: 0, width: table.size.width, height: table.size.height }, PLAYFIELD_COLOR);
+  fillRect(fb, { x: 0, y: 0, width: table.size.width, height: table.size.height },
+    packRgb(palette.ground));
 
   for (const component of table.components) {
     // THE ROLE MOVES WITH THE MISSION, in the picture as well as in the contract: a bumper the
     // mission is counting is drawn as a goal, and goes back to furniture when it stops counting.
     const role = targets.has(component.name) ? 'goal' : component.role;
-    const color = ROLE_COLORS[role];
+    const color = roleColor[role];
 
     // ⚠️ A FLIPPER DECLARES ITS GEOMETRY SOMEWHERE ELSE, and falling through to the bounds fill for it
     // brought back the very defect this branch was written to remove — a rectangle painted over space
@@ -172,6 +192,16 @@ export function drawTable(o: TableViewOptions): Framebuffer {
   }
 
   return fb;
+}
+
+/**
+ * The palette a table is drawn in: its own world, in the variant the player asked for.
+ *
+ * An unplaced table falls to `slate`, the neutral, and `tests/gfx-table-palette` is what stops that
+ * from becoming how a new table gets its colours.
+ */
+export function paletteOf(table: AuthoredTable, cbSafe: boolean): TablePalette {
+  return paletteFor(sceneOf(table.name) ?? 'slate', { cbSafe });
 }
 
 /**

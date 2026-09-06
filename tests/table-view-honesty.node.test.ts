@@ -1,6 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, test, expect } from 'vitest';
-import { drawTable, PLAYFIELD_COLOR, EDGE_THICKNESS } from '../app/js/gfx/table-view.js';
+import { drawTable, paletteOf, packRgb, EDGE_THICKNESS } from '../app/js/gfx/table-view.js';
+
+/**
+ * The colour of nothing, on THIS table.
+ *
+ * ⚠️ IT USED TO BE ONE CONSTANT for every table, and that stopped being true when the tables were
+ * given worlds to stand in: `low-orbit`'s ground is the blue of its sky, `narrow-tower`'s the red of
+ * Mars. Comparing against the neutral would count every pixel of every table as painted, and this
+ * whole file would pass by finding lies everywhere and reporting the first twelve.
+ *
+ * It reads the ground the same way the renderer does, which would hide a fault in `paletteOf`
+ * itself — but that is not what this file is asking about. What is painted where is; that the
+ * ground is the table's own colour and not the neutral is asserted in `tests/gfx-table-view`.
+ */
+const groundOf = (table: AuthoredTable) => packRgb(paletteOf(table, false).ground);
 import { CATALOG } from '../app/js/table/catalog.js';
 import type { AuthoredTable } from '../app/js/table/authored.js';
 
@@ -83,7 +97,7 @@ describe('⚠️ the drawing tells the truth about what the ball can touch', () 
 
       for (let y = 0; y < fb.height; y++) {
         for (let x = 0; x < fb.width; x++) {
-          if (fb.pixels[y * fb.width + x] === PLAYFIELD_COLOR) continue;
+          if (fb.pixels[y * fb.width + x] === groundOf(table)) continue;
           if (!isSolidAt(table, x + 0.5, y + 0.5)) lies.push(`${x},${y}`);
         }
       }
@@ -109,9 +123,10 @@ describe('⚠️ the drawing tells the truth about what the ball can touch', () 
     // from the flipper. It was painted while flippers carried a collision line, stopped being painted
     // when the renderer started drawing collisions, and started again when flippers stopped declaring
     // one. Third time it has been wrong, and the first time anything says so.
-    const fb = drawTable({ table: CATALOG.find((t) => t.name === 'low-orbit')! });
+    const lowOrbit = CATALOG.find((t) => t.name === 'low-orbit')!;
+    const fb = drawTable({ table: lowOrbit });
 
-    expect(fb.pixels[212 * fb.width + 53]).toBe(PLAYFIELD_COLOR);
+    expect(fb.pixels[212 * fb.width + 53]).toBe(groundOf(lowOrbit));
   });
 
   test('wide-arc’s ramp corner is empty space, and is drawn as empty space', () => {
@@ -120,6 +135,6 @@ describe('⚠️ the drawing tells the truth about what the ball can touch', () 
     const wideArc = CATALOG.find((t) => t.name === 'wide-arc')!;
     const fb = drawTable({ table: wideArc });
 
-    expect(fb.pixels[170 * fb.width + 328]).toBe(PLAYFIELD_COLOR);
+    expect(fb.pixels[170 * fb.width + 328]).toBe(groundOf(wideArc));
   });
 });

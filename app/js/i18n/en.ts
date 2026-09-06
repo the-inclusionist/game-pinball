@@ -107,6 +107,13 @@ const en: Record<string, string> = {
   'pinball.award.scored': '{points} points',
 
   /* ===================== HUD ===================== */
+  'pinball.scene.sky': 'Sky',
+  'pinball.scene.space': 'Space',
+  'pinball.scene.mars': 'Mars',
+  'pinball.scene.ice': 'Ice',
+  'pinball.scene.slate': 'Neutral',
+  'pinball.palette.normal': 'Normal colours',
+  'pinball.palette.cbSafe': 'Colour-blind safe',
   'pinball.a11y.blindOn': 'Blind mode on. Press S to sweep the table.',
   // ⚠️ The 1995 table is drawn from the archive and the contract still describes the authored one,
   // so the guide would point at components that are not on screen. Refused rather than answered.
