@@ -80,8 +80,34 @@ KNEE = CEILING * 0.5
 #: make a table with a big highlight darker everywhere else to compensate.
 TARGET_LSTAR = 25.0
 
-#: How many colours survive. Quantisation is what keeps six pictures inside a precache budget meant
-#: for school laptops; at this size the loss is not visible and the saving is four to one.
+#: How many colours survive.
+#:
+#: ⚠️ MEASURED, AFTER THIS CONSTANT WAS FIRST JUSTIFIED WITH A SENTENCE NOBODY HAD CHECKED. It said
+#: "the loss is not visible and the saving is four to one" and BOTH HALVES WERE WRONG. Encoding each
+#: table at four counts and comparing against the unquantised picture in CIE76:
+#:
+#:                  64          128         192         256        full
+#:     low-orbit    3.40 dE     2.30        1.59        1.37       50.8 KB
+#:     ion-storm    6.92        4.98        4.14        3.69       72.7 KB
+#:     crater-run   2.37        1.62        1.39        1.13       64.7 KB
+#:     slipstream   3.28        2.30        1.84        1.65       92.1 KB
+#:     long-climb   5.11        3.56        2.91        2.69       92.6 KB
+#:     ring-belt    2.83        2.30        2.07        1.95      153.7 KB
+#:
+#: THE SAVING IS BETWEEN 2.6x AND 3.0x, not four. And the loss IS visible on two tables: CIE76 calls
+#: about 2.3 the smallest difference a person notices, and `ion-storm` averages 4.14 at this count
+#: with `long-climb` at 2.91. The worst one per cent of pixels is worse still — 15 to 23 dE, which on
+#: the palette's own scale is a different colour. That is scenery rather than a role, so it costs
+#: legibility nothing, but it is not "not visible" and saying so was inventing evidence.
+#:
+#: ⚠️ AND THE NUMBER SURVIVES THE CORRECTION, WHICH IS WHY IT IS STILL 192. The curve has its knee
+#: here: 64 to 128 buys a third of the error back, 128 to 192 another quarter, and 192 to 256 only a
+#: tenth for another 10% of the bytes. Going unquantised would cost 330 KB across the six for the
+#: remaining 1.4 to 4.1 dE of scenery.
+#:
+#: The trade against the precache budget is the Dev's, and the numbers above are what he would be
+#: deciding on. The plan's budget worry is written in megabytes — a 3 MB SoundFont — so 330 KB is not
+#: obviously refused; it simply has not been asked.
 COLOURS = 192
 
 

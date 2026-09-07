@@ -137,7 +137,14 @@ consequences:
     - "3:1 holds at every component boundary on every table, in both palettes, measured off the
        composed picture rather than off the array that produced it."
     - "The art is visible. Median lightness goes from L* 7.1 to between 20.6 and 25.2, and the
-       pictures got smaller as well: 30-116 KB down to 18-60 KB."
+       pictures got smaller as well: 30-116 KB down to 17-60 KB.
+
+       ERRATUM 2026-09-06, the same day: this line first said '18-60 KB', which was measured on the
+       first import and drifted by a kilobyte when the highlights were given a shoulder instead of a
+       cut. Corrected in place under ADR-0057 (engine). The neighbouring claim in
+       `scripts/import-art.py` — that quantising to 192 colours costs nothing visible and saves four
+       to one — was NOT drift: it was written without being measured, and it is wrong on both halves.
+       The measurement now lives beside the constant."
     - "A dark surround under a lit thing is what a shadow looks like, so the components stop floating
        on the picture and start standing on the table. That was not designed; it fell out."
     - "The art pipeline exists as a file that says what it does, and a seventh table is now possible

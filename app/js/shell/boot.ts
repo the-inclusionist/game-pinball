@@ -28,10 +28,36 @@
 // no phases and the pad assistant because it has no pad. A pinball has both, so it declines nothing,
 // and that empty object is the honest answer rather than an oversight.
 //
-// ========================= BUT IT IS ONLY NAVIGABLE WHEN PAUSED =========================
+// ========================= AND IT IS NAVIGABLE FOR NOBODY, WHICH IS A CORRECTION =========================
 // `isNavigable` answers "is it menu time?". The engine's default is `true`, which suits a game with no
 // phases. A pinball's tick belongs to the CLOCK — the contract's own sixth field says so — and a ball
-// in play does not wait while somebody walks a menu. So this answers `true` only while paused.
+// in play does not wait while somebody walks a menu. So this answered `true` while paused.
+//
+// ⚠️ AND THAT IS WHAT MADE THE PAUSE MENU IMPOSSIBLE TO OPERATE. The Dev: "O jogo não tem pause com
+// h/enter ainda, para acessar um menu com opções de voltar, editar controle, modos de acessibilidade
+// para visão etc." Measured in a real browser before anything was changed: Enter DID pause and the
+// menu DID open with the focus on "Continuar", and then no cabinet key did anything. The game paused
+// and could not be un-paused.
+//
+// ⚠️ THE MECHANISM, TRACED RATHER THAN GUESSED. The engine's `ui/menu-nav` attaches
+// `win.addEventListener('keydown', menuNavKey, true)` — a WINDOW CAPTURE listener — and its first act
+// is `if (!ctx.isNavigable()) return;`. Capture at the window runs before every listener in the page,
+// so while this game said "navigable" the engine consumed Enter, A, D, J, K and H before they reached
+// anything. Instrumented: the codes arrive at `window` and never reach `#game-region`, let alone the
+// menu inside it. `KeyU` survived, which is why the plunger alone still worked and made the failure
+// look arbitrary.
+//
+// ⚠️ AND WHAT THAT BOUGHT WAS NOTHING, WHICH IS THE PART I HAD NEVER CHECKED. The comment that put it
+// there said the engine's menus "have been waiting on a state nothing could ever enter" — reasoning,
+// not a measurement. This port draws its OWN pause menu, in its own DOM; the engine has nothing on
+// screen to navigate while it is up. So the declaration handed away the cabinet in exchange for
+// walking a menu that does not exist.
+//
+// ⚠️ AND THIS IS THE SEAM TO REOPEN, NOT A DEAD END. The Dev asked for "editar controle" and "modos de
+// acessibilidade para visão" — the engine HAS a binding wizard and colour-blindness filters, and
+// reaching them means letting `menu-nav` run while an ENGINE menu is showing. The predicate then
+// becomes "an engine menu is up", which is a fact about the engine's state and not about this game's
+// phase. That is the shape of the fix; what it is not is `phase === 'paused'`.
 //
 // ========================= TWO THINGS ABOUT THE ENGINE THAT ARE EASY TO GET WRONG =========================
 //   · `update(dt)` COUNTS IN FRAMES, not seconds. `shell/camera`'s damping is per frame for that
@@ -128,7 +154,14 @@ export interface BootOptions {
   readonly locale: Locale;
   readonly table: LiveTable;
   readonly host: HostLike;
-  readonly phase: () => Phase;
+  /**
+   * ⚠️ GONE, AND ITS ABSENCE IS THE DECISION. This was here for `isNavigable`, which answered
+   * `phase === 'paused'` and by doing so handed the engine every navigation key at window-capture —
+   * see this module's header for the measurement. `isNavigable` is constant now, so the phase is not
+   * a thing the engine needs to be told, and a declared option nothing reads is a promise this
+   * interface cannot keep. When engine menus become reachable the predicate will ask whether ONE IS
+   * ON SCREEN, which is a different question and takes a different argument.
+   */
   readonly isBlindMode?: () => boolean;
   readonly sonarPlayers?: () => SonarPlayerLike[];
   readonly camera?: CameraConfig;
@@ -185,8 +218,14 @@ export function createPinballOptions(o: BootOptions): PinballGameOptions {
     declaration,
     host: o.host,
     declines: pinballDeclines(),
-    // A ball in play does not wait while somebody walks a menu.
-    isNavigable: () => o.phase() === 'paused',
+    /**
+     * ⚠️ NEVER, UNTIL AN ENGINE MENU IS ACTUALLY ON SCREEN. See this module's header: answering `true`
+     * while paused handed the engine every navigation key at window-capture, for menus this game does
+     * not show, and left its own pause menu inoperable. A ball in play does not wait while somebody
+     * walks a menu either — both halves of the old comment were right about the game and wrong about
+     * who was listening.
+     */
+    isNavigable: () => false,
     ...(o.isBlindMode ? { isBlindMode: o.isBlindMode } : {}),
     ...(o.sonarPlayers ? { sonarPlayers: o.sonarPlayers } : {}),
   };

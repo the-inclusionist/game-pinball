@@ -192,9 +192,14 @@ describe('⚠️ and it owns the cabinet while it is up', () => {
 
   test('every cabinet key is taken off the game behind it', () => {
     const h = harness();
-    h.menu.open();
 
-    const escaped = cabinetKeys.filter((code) => !h.swallows(code));
+    // ⚠️ REOPENED BEFORE EACH ONE, because the plunger and start now TAKE an entry rather than being
+    // merely swallowed — the menu shuts behind them, and a menu that is shut owns nothing. Testing
+    // them in one open menu measured the first key and then five keys against a closed one.
+    const escaped = cabinetKeys.filter((code) => {
+      h.menu.open();
+      return !h.swallows(code);
+    });
 
     expect(escaped, 'these reached the game underneath').toEqual([]);
   });

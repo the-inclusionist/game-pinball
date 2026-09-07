@@ -112,6 +112,20 @@ export function mountPauseMenu(o: PauseMenuOptions): PauseMenu {
   };
 
   const buttons: HTMLElement[] = [];
+  let cursor = 0;
+
+  /** Takes an entry: the menu shuts first, so a handler that opens a screen is not drawing under it. */
+  const choose = (entry: PauseEntry): void => {
+    root.style.display = 'none';
+    handlers[entry]();
+  };
+
+  /** Puts the cursor on an entry, wrapping. The cursor IS the focus — see the `focus` listener below. */
+  const moveTo = (index: number): void => {
+    cursor = ((index % PAUSE_ENTRIES.length) + PAUSE_ENTRIES.length) % PAUSE_ENTRIES.length;
+    buttons[cursor]?.focus();
+  };
+
   for (const entry of PAUSE_ENTRIES) {
     const button = o.doc.createElement('button');
     button.textContent = o.t(`pinball.pause.${entry}`);
@@ -119,43 +133,79 @@ export function mountPauseMenu(o: PauseMenuOptions): PauseMenu {
       font: 'inherit', fontSize: '3.4cqw', padding: '1.5% 6%', width: '60%',
       background: '#1a1e26', color: '#e8ecf4', border: '1px solid #8a93a6', cursor: 'pointer',
     });
-    button.addEventListener('click', () => {
-      // Closed FIRST, so a handler that opens another screen is not drawing under this one.
-      root.style.display = 'none';
-      handlers[entry]();
-    });
+    button.addEventListener('click', () => choose(entry));
+    /**
+     * ⚠️ FOCUS WRITES THE CURSOR BACK, so Tab and the flippers cannot disagree about where the player
+     * is. The same arrangement as `shell/high-score-dialog`, and for the same reason: a highlight
+     * kept beside the focus is two answers to one question.
+     */
+    button.addEventListener('focus', () => { if (cursor !== buttons.indexOf(button)) moveTo(buttons.indexOf(button)); });
     root.appendChild(button);
     buttons.push(button);
   }
 
   /**
-   * ⚠️ THE CABINET IS THIS MENU'S WHILE IT IS UP, AND IT WAS NOT.
+   * ⚠️ THE CABINET DRIVES THIS MENU, WHICH IS WHAT THE DEV ASKED FOR AND WHAT IT DID NOT DO.
    *
-   * This lives inside `#game-region`, which is where `bindPinballControls` binds, so every keydown on
-   * an entry bubbled into the game — and Enter is START, which is `togglePause`. Measured in a real
-   * browser: Enter on "Cores da mesa" RESUMED the game on the way past and then opened the palette
-   * over a table that had started playing again.
+   * His report: "O jogo não tem pause com h/enter ainda, para acessar um menu com opções de voltar,
+   * editar controle, modos de acessibilidade para visão etc." Measured in a real browser before
+   * changing anything: Enter DID pause and the menu DID open with the focus on "Continuar" — and the
+   * second Enter did nothing at all. The game paused and could not be un-paused.
    *
-   * `Continuar` survived only by an accident of ordering, which is why this looked fine: Chromium's
-   * sequence for Enter on a button is keydown, then the click, then keyup — so the pause toggled to
-   * playing on the way past and `onResume` set playing again, and `enterPhase` is idempotent. Two
-   * wrongs, in the one entry anybody presses.
+   * ⚠️ AND THE CAUSE WAS MINE, ONE COMMIT OLD. This menu lives inside `#game-region`, where
+   * `bindPinballControls` binds, so its keys were bubbling into the game — Enter on "Cores da mesa"
+   * resumed the table behind the dialog it opened. The fix took the four cabinet keys off the game,
+   * and took them off the BROWSER too: `preventDefault` cancelled the platform's own activation of
+   * the focused button, so the press that should have chosen "Continuar" chose nothing.
    *
-   * No handlers: this menu wants none of the four, and that is exactly why they must not reach the
-   * paddles behind it. `ownCabinetKeys` swallows first and handles second.
+   * `Continuar` had survived the original bug by an accident of ordering — Chromium's sequence for
+   * Enter on a button is keydown, then the click, then keyup, so the pause toggled to playing on the
+   * way past and `onResume` set playing again, and `enterPhase` is idempotent. Two wrongs cancelling
+   * in the one entry anybody presses, which is why nothing saw it until the keys were fixed.
+   *
+   * ⚠️ SO THE ANSWER IS NOT TO GO BACK TO LEANING ON THE PLATFORM. It is to make this menu work the
+   * way the machine works, which is what the Dev is describing and what `shell/high-score-dialog`
+   * already does: the FLIPPERS walk the entries, BUTTON 1 takes the one under the cursor, and START
+   * closes the menu — the same key that opened it, which is what a start button on a cabinet means.
+   *
+   * Space still activates the focused button, because it is not a cabinet key and the platform's own
+   * mechanisms are worth keeping: that is whackwhack's rule and this menu is made of real `<button>`s
+   * precisely so it holds.
    */
   ownCabinetKeys(root as unknown as Parameters<typeof ownCabinetKeys>[0], {
     isOpen: () => root.style.display !== 'none',
+    on: {
+      left: () => moveTo(cursor - 1),
+      right: () => moveTo(cursor + 1),
+      plunger: () => choose(PAUSE_ENTRIES[cursor]!),
+      // Start opened this menu, so start closes it. `resume` is the entry that means exactly that.
+      pause: () => choose('resume'),
+    },
   });
 
   o.host.appendChild(root);
 
   return {
     element: root,
+    /**
+     * ⚠️ IDEMPOTENT, AND IT WAS NOT — WHICH IS WHY NOTHING IN THIS MENU EVER MOVED.
+     *
+     * `main`'s frame loop runs `phase === 'paused' ? open() : close()` EVERY FRAME, on purpose: "the
+     * menu follows the phase rather than the key, so every way of pausing opens it". So `open()` is
+     * called sixty times a second while the menu is up, and it took the focus every time.
+     *
+     * Measured: `.focus()` on the third entry moves the focus there and a `focusin` puts it straight
+     * back on "Continuar" within the same frame. Every flipper press, every Tab, every click on
+     * another entry was being undone before the player could see it — the menu looked frozen, and the
+     * only entry reachable was the one the cursor was nailed to.
+     *
+     * The focus is taken on the TRANSITION, which is what "opening" meant all along.
+     */
     open(): void {
+      if (root.style.display === 'flex') return;
       root.style.display = 'flex';
       // The first entry, so a player who opened this by accident presses the same key twice and is back.
-      buttons[0]?.focus();
+      moveTo(0);
     },
     close(): void { root.style.display = 'none'; },
     /**

@@ -181,9 +181,21 @@ export interface CabinetOwner {
  * then the click, then `keyup`. So resume toggled to playing and then resumed again, and
  * `enterPhase` is idempotent. Two wrongs, in the one entry anybody tests.
  *
- * ⚠️ AND AN ACTION WITH NO HANDLER IS STILL TAKEN. That is the whole point: a pause menu does not
- * want the flippers, and precisely because it does not want them, the flippers must not reach the
- * paddles behind it. Swallowing is the service; handling is optional.
+ * ⚠️ AND AN ACTION WITH NO HANDLER IS STILL TAKEN OFF THE GAME. That is the whole point: a pause menu
+ * does not want the flippers, and precisely because it does not want them, the flippers must not
+ * reach the paddles behind it. Swallowing is the service; handling is optional.
+ *
+ * ⚠️ BUT ONLY A HANDLED ACTION HAS ITS DEFAULT CANCELLED, AND THAT DISTINCTION IS A BUG BEING FIXED.
+ * The first version called `preventDefault()` on every cabinet key it took — which on the pause menu
+ * cancelled the BROWSER'S OWN activation of the focused button. So `Enter` opened the menu, put the
+ * focus on "Continuar", and then did nothing at all: the second press was swallowed before the game
+ * could toggle the pause and cancelled before the platform could press the button. The game paused
+ * and could not be un-paused, which is what the Dev reported.
+ *
+ * `stopPropagation` is what "this screen owns the cabinet" means — the key does not reach the game.
+ * `preventDefault` is a different claim: it says the browser should not do its own thing with this
+ * key either, and that is only true when this screen has something of its own to do instead. A menu
+ * of real `<button>`s is relying on the platform, exactly as whackwhack's rule says it should.
  *
  * ⚠️ THE ACCESSIBILITY KEYS ARE DELIBERATELY NOT HERE. Blind mode, the sonar sweep and the palette
  * are on B, S and C, and they are switches for how the game is PERCEIVED rather than controls of the
@@ -197,9 +209,15 @@ export function ownCabinetKeys(root: KeyTarget, owner: CabinetOwner): void {
     if (!owner.isOpen()) return;
     const action = ACTIONS.find((name) => DEFAULT_BINDINGS[name].includes(event.code));
     if (!action) return;
-    event.preventDefault();
+
+    // Always: the key does not reach the game behind this screen.
     event.stopPropagation();
-    owner.on?.[action]?.();
+
+    const handler = owner.on?.[action];
+    if (!handler) return;
+    // Only when this screen does something of its own with it. See the header.
+    event.preventDefault();
+    handler();
   });
 }
 

@@ -32,7 +32,7 @@ function table(over: Partial<LiveTable> = {}): LiveTable {
 const host = { doc: {} as Document, win: {} as Window };
 
 function options(over: Partial<BootOptions> = {}): BootOptions {
-  return { locale: 'pt', table: table(), host, phase: () => 'playing', ...over };
+  return { locale: 'pt', table: table(), host, ...over };
 }
 
 /** Stands in for the engine's `createGame`, which the entry point supplies for real. */
@@ -324,23 +324,40 @@ describe('what is handed to the engine', () => {
     expect(createPinballOptions(options()).declines).toEqual({});
   });
 
-  test('it is navigable only while PAUSED', () => {
-    // The tick belongs to the clock. A ball in play does not wait while somebody walks a menu.
-    const playing = createPinballOptions(options({ phase: () => 'playing' }));
-    const paused = createPinballOptions(options({ phase: () => 'paused' }));
-
-    expect(playing.isNavigable()).toBe(false);
-    expect(paused.isNavigable()).toBe(true);
+  test('⚠️ it is navigable for NOBODY, and that is a correction', () => {
+    /**
+     * This asserted `paused -> true` and was the decision, not a description of one: the engine may
+     * walk its own menus while the game is stopped. Measured in a real browser, what it actually did
+     * was hand the engine every navigation key.
+     *
+     * `ui/menu-nav` attaches a WINDOW-CAPTURE keydown listener that begins `if (!ctx.isNavigable())
+     * return;`. Window capture runs before every listener in the page, so while this game said
+     * "navigable" the engine consumed Enter, A, D, J, K and H before they reached anything — and this
+     * port draws its OWN pause menu, so the engine had nothing on screen to navigate with them. The
+     * game paused and could not be un-paused, which is what the Dev reported.
+     *
+     * `KeyU` survived, which is why the plunger alone kept working and the failure looked arbitrary.
+     *
+     * ⚠️ AND THE REPLACEMENT IS NOT "false FOR EVER". The predicate that belongs here is "an ENGINE
+     * menu is on screen", which is a fact about the engine's state rather than about this game's
+     * phase — and it is what the Dev's "editar controle" and "modos de acessibilidade para visão"
+     * will need, because those ARE the engine's own menus. `tests/pause-menu-cabinet.browser` is what
+     * would go red if this came back as a phase test.
+     */
+    expect(createPinballOptions(options()).isNavigable(),
+      'the engine must not take the keys, in any phase').toBe(false);
   });
 
-  test('the phase is asked EVERY time, not read once at boot', () => {
-    let phase: 'playing' | 'paused' = 'playing';
-    const built = createPinballOptions(options({ phase: () => phase }));
-
-    expect(built.isNavigable()).toBe(false);
-    phase = 'paused';
-
-    expect(built.isNavigable()).toBe(true);
+  test('⚠️ and the PHASE is no longer among the things the engine is told', () => {
+    /**
+     * This was "the phase is asked EVERY time, not read once at boot" — a real property of a real
+     * option, and the option is gone. `isNavigable` was the only reader, it is constant now (see the
+     * test above for why), and a declared option nothing reads is a promise the interface cannot
+     * keep. Deleting the assertion silently would leave the seam looking as though it still carried
+     * the phase, so this is what replaced it: the fact itself.
+     */
+    expect(Object.keys(options())).not.toContain('phase');
+    expect('phase' in createPinballOptions(options())).toBe(false);
   });
 
   test('blind mode is passed through only when the host offers it', () => {

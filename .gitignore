@@ -43,3 +43,6 @@ Thumbs.db
 art/*.jpg
 art/*.jpeg
 art/*.png
+
+# Python bytecode from `scripts/import-art.py`, which runs locally and never in CI.
+__pycache__/

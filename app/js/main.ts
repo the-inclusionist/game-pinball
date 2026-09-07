@@ -386,7 +386,6 @@ const shell = bootPinball({
   // `createGame` reports it in `problems` instead of throwing — which is exactly how it went unnoticed
   // until the game was actually booted.
   host: { doc: document, win: window, cvdHost: document.getElementById('cvd-filters') },
-  phase: () => phase,
   isBlindMode: () => blind,
   sonarPlayers: () => [sonarPlayer],
 }, createGame);
