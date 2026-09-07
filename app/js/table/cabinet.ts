@@ -85,16 +85,29 @@ function arcInward(
   return shapes;
 }
 
+/**
+ * Where the plunger lane is, for anything outside this module that has to know.
+ *
+ * ⚠️ PUBLISHED RATHER THAN COPIED, and the reason is the defect that made it necessary. The comet
+ * drill's drag slowed EVERY ball everywhere, including one climbing the tunnel, and no table in the
+ * catalogue could launch while a mission was running. Fixing that means the shell has to be able to
+ * ask "is this ball still in the lane" — and a second copy of `w - 21` in `main.ts` is a number that
+ * would go on answering after this module changed it, which is how the drop targets and the cabinet
+ * itself each drifted once already.
+ */
+export function plungerLaneOf(o: CabinetOptions): { laneX: number; divider: number; dividerTop: number } {
+  return { laneX: o.width - 16, divider: o.width - 21, dividerTop: 34 };
+}
+
 export function cabinet(o: CabinetOptions): AuthoredComponent[] {
   const { width: w, height: h } = o;
 
   // The plunger lane runs down the right-hand side. Ten wide plus a four-wide divider, which is what
   // `low-orbit` uses and what the ball fits through without rattling.
-  const laneX = w - 16;
-  const divider = w - 21;
+  const { laneX, divider } = plungerLaneOf(o);
   // ⚠️ THE DIVIDER STOPS SHORT OF THE TOP. That opening is how a launched ball enters the play and it
   // is the only way in — a divider running the full height is a table with a sealed lane.
-  const dividerTop = 34;
+  const { dividerTop } = plungerLaneOf(o);
 
   // The bottom assembly, measured UP from the floor rather than scaled: a flipper is sized against the
   // ball. `low-orbit`'s numbers, which are the ones that were played.

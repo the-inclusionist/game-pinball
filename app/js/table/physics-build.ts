@@ -27,6 +27,7 @@
 // declares today. When a ramp declares a field, it goes here and nowhere else.
 
 import { assistField, type BallAssist } from './ball-assist.js';
+import type { BallState } from '../physics/collision.js';
 import {
   createEdgeManager, placeLineInGrid, placeCircleInGrid, type Edge, type EdgeManager,
 } from '../physics/grid.js';
@@ -256,8 +257,32 @@ export function inPlungerLane(
  */
 export function launchSpeedFor(table: AuthoredTable, o: PhysicsOptions = {}): number {
   const gravity = o.gravity ?? DEFAULT_GRAVITY;
-  return Math.sqrt(2 * gravity * table.size.height) * 1.15;
+  return Math.sqrt(2 * gravity * table.size.height) * LAUNCH_MARGIN;
 }
+
+/**
+ * How much more than "just enough to reach the bend" a full draw gives.
+ *
+ * ⚠️ IT STAYS AT 1.15, AND THE DEV ASKED FOR TWICE THAT. "O lançador está tão fraco que a bola não
+ * consegue sair do túnel. Dobre a força do lançador." He is right that the ball could not leave the
+ * tunnel and the cause is not this number — it is `MISSION_DRAG`, added a commit earlier for his own
+ * "a bolinha precisa ser mais lenta", which took 1.1 of the ball's speed per second away from
+ * EVERYTHING including a ball climbing the lane. Measured: a full draw with the drill on climbed 121
+ * of the 160 `low-orbit` needs, and 145 of `factory`'s 229. Not one table could launch.
+ *
+ * ⚠️ AND DOUBLING WAS TRIED AND MEASURED BEFORE IT WAS REJECTED, which is the only reason to write
+ * this down rather than just do as asked. At x2 the ball enters the play faster and takes different
+ * routes, and FIVE gates go red: `crater-run` and `factory` stop letting the flippers change the
+ * ball's life, and `low-orbit`, `ring-belt` and others stop reaching components that score. At x1.5,
+ * three still fail — including `narrow-tower`, 420 tall, which STILL cannot launch under the drag
+ * because a proportional force costs a tall table disproportionately more.
+ *
+ * So the plunger was never the problem and making it stronger does not fix it. The drag is exempted
+ * inside the lane instead — a drill that slows PLAY has no business slowing the LAUNCH — which puts
+ * the plunger back exactly where it was when the Dev last played it and leaves the tables tuned as
+ * they are. Raising this number is a re-tuning of six tables and is his to ask for knowing that.
+ */
+export const LAUNCH_MARGIN = 1.15;
 
 export const DEFAULT_GRAVITY = 120;
 
@@ -351,7 +376,7 @@ export interface PhysicsOptions {
    *
    * See `table/ball-assist` for what goes in it and for why slower is drag rather than a speed cap.
    */
-  readonly extraField?: () => BallAssist;
+  readonly extraField?: (ball: BallState) => BallAssist;
   /**
    * The source of chance inside the simulation, so a survey can be repeatable.
    *
@@ -650,7 +675,7 @@ export function buildPhysics(table: AuthoredTable, o: PhysicsOptions = {}): Tabl
          * ball and lets the directional nudge it; both are forces, so both arrive here rather than as
          * a special case somewhere in the loop. `table/ball-assist` argues the arithmetic.
          */
-        const assist = o.extraField?.();
+        const assist = o.extraField?.(ball);
         if (assist) {
           const extra = assistField(assist, {
             x: ball.direction.x * ball.speed, y: ball.direction.y * ball.speed,

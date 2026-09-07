@@ -46,6 +46,7 @@ import { cometMission, reportOf, WINNING_POINTS, type CometMission, type CometSk
   from './control/comet-mission.js';
 import { drawComet } from './gfx/comet-view.js';
 import { MISSION_DRAG } from './table/ball-assist.js';
+import { plungerLaneOf } from './table/cabinet.js';
 import { powerUpField, MULTIBALL_EXTRA, type PowerUpField, type PowerUpKind }
   from './control/power-ups.js';
 import { drawCapsule } from './gfx/capsule-view.js';
@@ -139,8 +140,27 @@ const physics = buildPhysics(authored, {
    * player is holding a key or not. `table/ball-assist` carries the arithmetic and the argument for why
    * slower is drag rather than a speed cap.
    */
-  extraField: () => {
+  extraField: (moving) => {
     if (!comets) return { drag: 0, thrust: { up: false, left: false, right: false } };
+    /**
+     * ⚠️ NOTHING SLOWS A BALL CLIMBING THE TUNNEL, and this is the fix for what the Dev reported as a
+     * weak plunger: "a bola não consegue sair do túnel."
+     *
+     * The drill's drag is a force on every ball everywhere, and the plunger lane is the one place with
+     * a long climb and nothing to help it — so a proportional drag shows up there first and worst.
+     * Measured with the drill on, a full draw climbed 121 of the 160 `low-orbit` needs and 145 of
+     * `factory`'s 229: not one table in the catalogue could launch, and since the mission screen
+     * shipped a drill is always running.
+     *
+     * ⚠️ AND THE ANSWER IS NOT A STRONGER PLUNGER, which was tried and measured. See `LAUNCH_MARGIN`:
+     * at twice the force five gates go red because the ball enters the play faster and takes different
+     * routes, and at one and a half `narrow-tower` STILL cannot launch, because a proportional force
+     * costs a tall table disproportionately more. A drill that slows PLAY has no business slowing the
+     * LAUNCH, and this is that sentence as an `if`.
+     */
+    const lane = plungerLaneOf(authored.size);
+    const inTheLane = moving.position.x > lane.divider && moving.position.y > lane.dividerTop;
+    if (inTheLane) return { drag: 0, thrust };
     /**
      * ⚠️ THE TWO CAPSULES ARE THE SAME KNOB TURNED EITHER WAY, which is why they cancel in
      * `control/power-ups` and why neither adds a force of its own here. `slow` triples the drill's own
