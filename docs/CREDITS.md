@@ -101,11 +101,12 @@ The reasoning is in [`docs/LICENSES.md` §4.1](LICENSES.md) and beside the files
 | | |
 |---|---|
 | files | `start.png`, `background.png` (in `app/assets/screens/`) |
-| supplied by | José Rocha |
+| tool | Google Gemini ("Nano Banana") |
+| prompted by | José Rocha |
 | when | September 2026 |
-| made by | **not recorded** — see `docs/LICENSES.md` §4.2 |
-| terms | **not recorded** — see `app/assets/screens/LICENSE.txt` |
+| dedication | CC0 1.0 Universal — see `app/assets/screens/LICENSE.txt` |
+| copyright claimed | none |
 
-⚠️ These two are the only assets in this repository whose origin is not written down. They are used
-because the Dev asked for them by name; what may be done with them by anyone else is a question this
-project cannot answer yet, and says so rather than guessing.
+These two shipped for a day with their terms recorded as **not known**, because the licence in §4.1
+follows from who or what made a picture and nobody had said. The Dev then did: *"todas as imagens em
+art/ foram feitas pelo gemini (nanobanana)."* The dedication is the playfields' and for the same reason.

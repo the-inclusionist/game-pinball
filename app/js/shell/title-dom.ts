@@ -123,33 +123,24 @@ export function mountTitle(o: TitleDomOptions): TitleDom {
     // "STUDENT" needs 91% of the width before letter-spacing and lost its first letter off the left
     // edge. Nine leaves room for the spacing and for a longer word than either of these.
     /**
-     * ⚠️ A CHERRY BORDER, AND IT IS DOING TWO JOBS. The Dev asked for it — "Crie uma borda em volta de
-     * SPACE STUDENT na cor cereja" — in the same message that took the dimming off the photograph
-     * behind it, and the two go together: nothing holds the ground down any more, so the letters hold
-     * themselves up. A white face inside a cherry outline reads on a sunrise and on black space alike,
-     * because what the eye finds is the EDGE rather than the fill.
+     * ⚠️ NO BORDER, ASKED FOR AFTER LOOKING AT ONE: "Retire o contorno vermelho de space student."
      *
-     * ⚠️ `paint-order: stroke fill` OR THE BORDER EATS THE LETTER. `-webkit-text-stroke` is centred on
-     * the glyph's own outline by default, so half of a 0.4cqw stroke lands INSIDE the letter and a
-     * fixed-width face at this size loses most of its counters. Painting the stroke first and the fill
-     * over it puts the whole width outside, which is what a border means.
-     */
-    /**
-     * ⚠️ BRUSHED METAL WITH SEAMS AND BOLTS, asked for after the white: "Troque o preenchimento de
-     * space student de branco para cinza metálico com enfeites (parafusos, linhas)."
+     * The cherry stroke had been doing a job as well as a look — the photograph behind it is undimmed,
+     * so nothing holds the ground down and the letters were holding themselves up. Taking it off gives
+     * that job to something else or gives it up, and giving it up is not available: measured against
+     * `start.png`, the plate's own mid-tone is Y 0.52 and the picture reaches Y 0.90 across the sunrise
+     * it is set over. Light on light is 1.5:1 there — the word would be legible over space and gone
+     * over the sun.
      *
-     * Three background layers painted THROUGH the glyphs — bolts, seams, then the metal itself — with
-     * `background-clip: text`. Nothing is drawn beside the letters; the letters are the window.
+     * ⚠️ SO IT TAKES THE TREATMENT THE BYLINE ALREADY HAS, AND THAT CHOICE IS MINE. A tight dark
+     * shadow is a ring of DARK rather than a ring of colour: it is not a contorno, it costs the
+     * letterforms nothing, and it works against a bright ground the way an outline does. It is the
+     * minimum that keeps the title readable over the picture the Dev chose to leave alone, and it is
+     * named here as an addition rather than smuggled in as a detail.
      *
-     * ⚠️ AND THE LIGHTEST PART OF THE METAL CARRIES THE CONTRAST. The cherry border is Y 0.1398 and a
-     * plain mid-grey against it is 2.1:1 — under what a shape needs. Real metal is not one grey: the
-     * highlight along the top is Y 0.90, which clears 4.5:1, and the darker band and the seams are
-     * decoration INSIDE a letter whose edge is already carried. `tests/screen-art` measures the pair
-     * that has to hold.
-     *
-     * ⚠️ AND IT DEGRADES TO A SOLID LIGHT FILL. `color` is still set, so an engine that ignores
-     * `-webkit-text-fill-color` shows near-white letters inside a cherry border rather than nothing at
-     * all — which is what `background-clip: text` alone would leave.
+     * ⚠️ AND THE METAL IS WHY THE SHADOW IS ENOUGH. `background-clip: text` paints a plate with a
+     * highlight along the top at Y 0.90 and a shadow through the middle; the letter already has
+     * internal contrast, so what the shadow has to supply is only its EDGE.
      */
     Object.assign(el.style, {
       fontSize: '9cqw', lineHeight: '1.25', letterSpacing: '0.04em',
@@ -165,11 +156,21 @@ export function mountTitle(o: TitleDomOptions): TitleDom {
       backgroundSize: '12px 12px, auto, auto',
       WebkitBackgroundClip: 'text', backgroundClip: 'text',
       WebkitTextFillColor: 'transparent',
-      // ⚠️ 0.84 AND IT WAS 0.42, ASKED FOR AFTER LOOKING: "Deixe a borda de space student duas vezes
-      // mais grossa." Twice the width, which `paint-order: stroke fill` puts entirely OUTSIDE the
-      // glyph — so the letters keep their counters at double the border, which they would not if the
-      // stroke were still centred on the outline.
-      WebkitTextStrokeWidth: '0.84cqw', WebkitTextStrokeColor: CHERRY, paintOrder: 'stroke fill',
+      /**
+       * ⚠️ `drop-shadow` AND NOT `text-shadow`, WHICH WAS TRIED FIRST AND PAINTED THE LETTERS BLACK.
+       *
+       * The paint order is the whole of it: an element's BACKGROUND goes down first — and with
+       * `background-clip: text` that background IS the metal — then the text shadow, then the text
+       * fill, which here is transparent. So the shadow lands ON TOP of the plate and the word came out
+       * dark with a metal rim. Found by opening the page; nothing in the computed style says it.
+       *
+       * `filter: drop-shadow` runs on the element AFTER it has been rendered, so it takes the shape of
+       * what is actually visible — the clipped metal — and draws behind it. Stacked twice, tight, it is
+       * a ring of dark rather than a ring of colour: not a contorno, and it costs the letterforms
+       * nothing.
+       */
+      filter: 'drop-shadow(0 0 0.3cqw #05070c) drop-shadow(0 0 0.9cqw #05070c)'
+        + ' drop-shadow(0 0.15cqw 0.4cqw rgba(0, 0, 0, 0.85))',
     });
     title.appendChild(el);
   }

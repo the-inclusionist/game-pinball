@@ -4,42 +4,67 @@ The two screen photographs in this directory
     start.png        behind the title screen
     background.png   behind the table selector and the mission screen
 
-⚠️ THEIR PROVENANCE IS NOT YET RECORDED, AND THAT IS A DECISION OWED RATHER THAN
-AN OVERSIGHT.
+are dedicated to the public domain under
 
-The six playfield pictures in `app/assets/tables/` are dedicated under CC0 1.0
-on a fact the Dev supplied about them — they are machine-generated, by Google
-Gemini, prompted by him — and `docs/LICENSES.md` §4.1 records why that fact, and
-not a preference, decided the licence. A Creative Commons licence operates on a
-copyright; a copyright needs a human author (Lei 9.610/98 art. 11); so what a
-picture may be licensed as depends on who or what made it.
+    CC0 1.0 Universal (CC0 1.0) Public Domain Dedication
+    https://creativecommons.org/publicdomain/zero/1.0/legalcode
 
-These two arrived as `art/start.jpg` and `art/background.jpg` with no such fact
-attached. Writing CC0 on them by analogy would be asserting the same conclusion
-from an assumption instead of from evidence, in the one file whose whole purpose
-is to state obligations accurately — which is exactly what §4.1 says this
-repository does not get to do.
+and NO COPYRIGHT IS CLAIMED OVER THEM.
 
-So this note records what IS known:
+Provenance
+----------
 
-    derived by    reduction to 320x180, dimming to a ceiling of Y 0.1469 (the
-                  contrast the screens' text needs against them), and
-                  quantisation to 192 colours, by scripts/import-art.py
-    masters       art/start.jpg and art/background.jpg, not versioned — see
-                  .gitignore and art/README.md
-    supplied by   José Rocha, September 2026
-    made by       NOT RECORDED
+    tool          Google Gemini ("Nano Banana")
+    prompted by   José Rocha
+    when          September 2026
+    derived by    reduction to 320x180 and quantisation to 192 colours.
+                  `background.png` is also dimmed to a ceiling of Y 0.1469 --
+                  the contrast the menus' text needs against it; `start.png`
+                  is NOT, at the Dev's instruction ("nao use filtro para
+                  escurecer, deixe a imagem original"), and the title carries
+                  its own contrast instead. See scripts/import-art.py.
+                  The masters are not versioned; see .gitignore and
+                  art/README.md.
 
-What to write here once that is answered
-----------------------------------------
+Why CC0 and not a share-alike licence
+-------------------------------------
 
-If they were generated the way the playfields were, this file becomes a copy of
-`app/assets/tables/LICENSE.txt` with the two names changed, and `art/README.md`
-and `docs/LICENSES.md` §4.1 gain a line each.
+The same argument as the playfields', for the same reason, and the reason is a
+fact rather than a preference: these pictures are machine-generated.
 
-If a person made them, or if they came from somewhere else, then the answer is
-whatever that person or that source licenses them under, and pillar 10 applies
-in its ordinary form: the art is not ours to licence, and it travels beside the
-code under its own terms rather than under the AGPL.
+A Creative Commons licence operates ON A COPYRIGHT. It grants permissions a
+rights-holder has and attaches conditions to them; where there is no copyright
+there is nothing for it to act on. A copyright needs a human author -- Lei
+9.610/98 art. 11, "Autor e a pessoa fisica criadora de obra literaria, artistica
+ou cientifica" -- and the United States Copyright Office has reached the same
+conclusion for material without human authorship.
 
-The code that draws them is AGPL-3.0-or-later like the rest of the repository.
+So ShareAlike here would assert a restriction nobody would have standing to
+enforce. CC0 works whether or not a copyright exists: it dedicates any rights
+that may exist, and carries a permissive fallback licence for the jurisdictions
+where a dedication is not possible. It asserts nothing that might turn out to be
+false.
+
+Using the output was never the same question. Google's terms for Gemini do not
+claim ownership of output and permit its use. That is PERMISSION, and only the
+copyright question decides what licence can be applied.
+
+The full argument, and what would change the answer, is in docs/LICENSES.md
+SS 4.1 and 4.2.
+
+⚠️ THIS FILE RECORDED A QUESTION UNTIL 2026-09-07, AND THAT IS WORTH KEEPING.
+
+These two arrived with no provenance attached, and CC0 was NOT written on them
+by analogy with the six playfields -- because the whole of the argument above is
+that the licence follows from WHO OR WHAT MADE THE PICTURE, and applying its
+conclusion to files whose origin nobody had stated would have been asserting it
+from an assumption, in the one file whose purpose is to state obligations
+accurately.
+
+The Dev then supplied the fact: "todas as imagens em art/ foram feitas pelo
+gemini (nanobanana)." That is what this file now rests on, and it covers every
+master in `art/` rather than these two alone.
+
+Note that this dedication covers THESE FILES. The code that draws them is
+AGPL-3.0-or-later like the rest of the repository; the two travel together as an
+aggregate, each under its own terms.

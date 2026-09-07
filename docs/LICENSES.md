@@ -134,31 +134,37 @@ Applied here, honestly, as of phase 8:
   answered: *"Quem desenha: trabalho seu."* So it is produced inside this work, on the Dev's
   instruction, rather than sourced from a third party.
 
-### 4.2 · The two screen photographs are shipped with their terms UNRECORDED
+### 4.2 · The screen photographs are the same case, and the same dedication
 
-Added 2026-09-07, and this section exists to say that a question is open rather than to answer it.
+Opened 2026-09-07 as a question, closed the same day by a fact the Dev supplied.
 
 The Dev asked for `background.jpg` behind the menus and `start.jpg` behind the title. Reduced to the
-game's own 320x180 grid and dimmed to the contrast their text needs, they ship as:
+game's own 320×180 grid, they ship as `app/assets/screens/start.png` and `background.png`.
+
+⚠️ **AND CC0 WAS NOT WRITTEN ON THEM BY ANALOGY.** §4.1 above reaches CC0 for the playfields on a fact
+about *them* — that they are machine-generated — and the whole of that argument is that the licence
+follows from **who or what made the picture**. These two arrived with no such fact attached, so this
+section was first written to say exactly that: what was known, what was not, and what to write once it
+was answered. Applying §4.1's conclusion to files whose origin nobody had stated would have been
+asserting it from an assumption, in the document whose only purpose is to state obligations accurately.
+
+The answer, in his words: *"todas as imagens em art/ foram feitas pelo gemini (nanobanana)."*
+
+That covers **every master in `art/`** rather than these two alone — the seven playfields and the two
+screens — so §4.1's argument applies unchanged and the dedication is the same:
 
 | | |
 |---|---|
-| files | `app/assets/screens/start.png`, `app/assets/screens/background.png` |
-| supplied by | José Rocha, September 2026 |
-| made by | **NOT RECORDED** |
-| terms | **NOT RECORDED** |
+| files | `start.png`, `background.png` in `app/assets/screens/`, beside their `LICENSE.txt` |
+| tool | Google Gemini ("Nano Banana") |
+| prompted by | José Rocha, September 2026 |
+| dedication | **CC0 1.0 Universal** |
+| copyright claimed | none |
 
-⚠️ **AND CC0 WAS NOT WRITTEN ON THEM BY ANALOGY.** §4.1 above reaches CC0 for the playfields on a fact
-the Dev supplied — they are machine-generated — and the whole of that argument is that the licence
-follows from **who or what made the picture**, because a Creative Commons licence operates on a
-copyright and a copyright needs a human author. Applying the conclusion to two files whose origin
-nobody has stated would be asserting it from an assumption, in the document whose only purpose is to
-state obligations accurately.
-
-`app/assets/screens/LICENSE.txt` records what is known, what is not, and what to write once the Dev
-answers: if they came from the same tool as the playfields, this section becomes a copy of §4.1; if a
-person made them, or they came from elsewhere, pillar 10 applies in its ordinary form and the art
-travels beside the code under its own terms.
+⚠️ **AND THE QUESTION IS KEPT IN THE RECORD RATHER THAN TIDIED AWAY.** A section that had said "not
+recorded" for a day and now says CC0 is a section that shows the rule working: the fact came first and
+the licence followed it. Deleting the intervening state would leave a document that looks as though it
+had always known.
 
 ### 4.1 · The table art is machine-generated, and it is dedicated under CC0 1.0
 

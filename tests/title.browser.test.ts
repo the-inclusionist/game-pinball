@@ -356,35 +356,40 @@ describe('⚠️ the photograph behind each screen', () => {
  * up.
  */
 describe('⚠️ the title holds itself up on an undimmed photograph', () => {
-  test('SPACE and STUDENT are brushed metal inside a cherry border', () => {
-    const { at } = build();
-    const lines = [...host.querySelectorAll<HTMLElement>('.pinball-title button > span')];
-    // The two title lines are the first two spans; the subtitle and the byline follow.
-    for (const line of lines.slice(0, 2)) {
+  test('⚠️ SPACE and STUDENT are brushed metal with NO border, and carry their own edge', () => {
+    /**
+     * ⚠️ THE BORDER WAS ASKED FOR AND THEN ASKED AWAY: "Retire o contorno vermelho de space student."
+     * So this test flipped from "the border is there" to "the border is gone" — and it keeps the half
+     * that was never about the look. The stroke was holding the letters up over an undimmed
+     * photograph; with it gone, something has to, and the shadow does.
+     *
+     * A test that only checked the stroke was absent would pass on a title that had become invisible
+     * over the sunrise, which is the state this whole screen has been fighting since the dimming came
+     * off.
+     */
+    build();
+    const lines = [...host.querySelectorAll<HTMLElement>('.pinball-title button > span')].slice(0, 2);
+    expect(lines, 'the two title lines').toHaveLength(2);
+
+    for (const line of lines) {
       const css = getComputedStyle(line);
-      expect(css.webkitTextStrokeColor, `${line.textContent} has no cherry border`)
-        .toBe('rgb(210, 4, 45)');
-      expect(parseFloat(css.webkitTextStrokeWidth), `${line.textContent}'s border has no width`)
-        .toBeGreaterThan(0);
-      // ⚠️ AND THE STROKE IS PAINTED FIRST, or half of it lands inside the glyph and a fixed-width
-      // face at this size loses its counters.
-      expect(css.paintOrder, 'the border is painted over the letter instead of behind it')
-        .toContain('stroke');
+      expect(parseFloat(css.webkitTextStrokeWidth) || 0, `${line.textContent} still has a border`)
+        .toBe(0);
       /**
-       * ⚠️ THE FACE IS BRUSHED METAL NOW, NOT WHITE. "Troque o preenchimento de space student de branco
-       * para cinza metálico com enfeites (parafusos, linhas)." It is painted as three backgrounds
-       * clipped to the glyphs, so what says it is there is `background-clip` and the layers — `color`
-       * survives only as the fallback for an engine that ignores `-webkit-text-fill-color`.
+       * ⚠️ `filter` AND NOT `text-shadow`, and the difference is not cosmetic. A text shadow is painted
+       * BETWEEN the element's background and the text fill — and with `background-clip: text` the
+       * background IS the metal — so a shadow lands on top of the plate and the word comes out black.
+       * That shipped for one build and was found by opening the page. `drop-shadow` runs after the
+       * element is rendered and draws behind what is actually visible.
        */
-      // ⚠️ ONE VALUE PER BACKGROUND LAYER, which is why this looks for the word rather than equality:
-      // three layers report `text, text, text`, and an engine that shortened it to one would still be
-      // clipping. What must not appear is `border-box`, which is a metal rectangle beside the letters.
+      expect(css.filter, `${line.textContent} has nothing carrying its edge`).toContain('drop-shadow');
+      expect(css.textShadow, `${line.textContent} would paint over its own metal`).toBe('none');
+      // ⚠️ AND THE METAL IS STILL THERE. The fill is three backgrounds clipped to the glyphs.
       expect(css.webkitBackgroundClip || css.backgroundClip, 'the metal is not clipped to the letters')
         .toContain('text');
       expect(css.backgroundImage, 'there are no bolts').toContain('radial-gradient');
       expect(css.backgroundImage, 'there are no seams').toContain('repeating-linear-gradient');
     }
-    void at;
   });
 
   test('⚠️ PINBALL is cherry, has no border, glows, and flickers', () => {

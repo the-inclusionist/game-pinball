@@ -1,12 +1,13 @@
 <!-- SPDX-License-Identifier: CC0-1.0 -->
 # The table art
 
-**Seven playfield pictures, one per playable table.** They are dedicated under
+**Seven playfield pictures, one per playable table, and two screen photographs.** They are dedicated under
 [CC0 1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/) and **no copyright is
 claimed over them**.
 
 | | |
 |---|---|
+| covers | every master in this directory — the seven playfields and `start.jpg`/`background.jpg` |
 | tool | Google Gemini ("Nano Banana") |
 | prompted by | José Rocha |
 | when | September 2026 |

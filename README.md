@@ -112,9 +112,9 @@ copyleft travels one way. The upstream decompilation is MIT.
 Art follows its own author's terms and the tree holds two kinds of it. **Press Start 2P** in
 `app/assets/fonts`, under the SIL Open Font License 1.1, copied verbatim beside the file. And six
 The two photographs behind the menus are `app/assets/screens/` — reduced from the Dev's masters to the
-game's own 320x180 grid and dimmed to the contrast the text on them needs. Their terms are **not yet
-recorded**: `app/assets/screens/LICENSE.txt` says what is known about them, what is not, and what to
-write once that is answered.
+game's own 320x180 grid. They are **CC0 1.0**, like the playfields and for the same reason: every master
+in `art/` was generated with Google Gemini, so there is no human author for a copyright to attach to.
+`app/assets/screens/LICENSE.txt` carries the argument.
 playfield pictures in `app/assets/tables`, generated with Google Gemini and dedicated **CC0 1.0 with no
 copyright claimed** — because a Creative Commons licence operates on a copyright and a copyright needs
 a human author. `app/assets/tables/LICENSE.txt` carries the argument beside the files.
