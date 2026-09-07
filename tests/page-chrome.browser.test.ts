@@ -56,6 +56,36 @@ describe('the page has chrome of its own', () => {
   test('and there is no white band above it from the default body margin', () => {
     expect(getComputedStyle(document.body).marginTop).toBe('0px');
   });
+
+  test('⚠️ and the game is a WHOLE multiple of 320x180 that fits the window', () => {
+    /**
+     * ⚠️ WHOLE MULTIPLES ARE THE POINT, not tidiness. The canvas is 320x180 of pixel art scaled by CSS
+     * with `image-rendering: pixelated`; at 2.5x every other row of pixels comes out twice as tall as
+     * its neighbour, and the ball — six pixels across — changes shape as it moves. Measured across
+     * window sizes: 640x400 gives 2x, 1280x800 gives 4x.
+     *
+     * ⚠️ AND WHAT THIS DOES NOT CATCH IS WRITTEN DOWN, because the first version of the comment
+     * claimed it did. It said a padding or a border on `#game-region` would break the fit and be
+     * caught here; adding `padding: 7px` leaves it green, because the assertion is about the CANVAS
+     * and a padding does not resize the canvas — and at the viewport this runs in, the region grows
+     * to 334px inside 414 and still fits. A fractional scale is what it catches, and that mutation
+     * does go red.
+     */
+    const canvas = document.querySelector('canvas')!;
+    const box = canvas.getBoundingClientRect();
+
+    expect(box.width % 320, `the canvas is ${box.width}px wide, not a multiple of 320`).toBe(0);
+    expect(box.height % 180, `the canvas is ${box.height}px tall, not a multiple of 180`).toBe(0);
+    expect(box.width / 320, 'and the two axes are scaled by the same amount').toBe(box.height / 180);
+
+    expect(box.width, 'the game is wider than the window').toBeLessThanOrEqual(document.body.clientWidth);
+    expect(box.height, 'the game is taller than the window').toBeLessThanOrEqual(window.innerHeight);
+
+    // And the box AROUND it, which is what a padding or a border would grow.
+    const region = document.getElementById('game-region')!.getBoundingClientRect();
+    expect(region.width, 'the region is wider than the window').toBeLessThanOrEqual(document.body.clientWidth);
+    expect(region.height, 'the region is taller than the window').toBeLessThanOrEqual(window.innerHeight);
+  });
 });
 
 describe('⚠️ the live regions are for a reader, not for the page', () => {
