@@ -142,6 +142,29 @@ async function stopTheWorld(): Promise<void> {
   await allKeysUp();
 }
 
+/**
+ * Everything about the running game that could make a paddle assertion fail for a reason that is not
+ * the paddle. Put into the MESSAGE of the assertions below rather than asserted.
+ *
+ * ⚠️ THIS IS HERE BECAUSE THESE TWO TESTS FAILED UNDER SHUFFLE AND COULD NOT BE REPRODUCED. About one
+ * run in four of the whole browser suite, on `raising a FLIPPER` and `the OTHER paddle moves
+ * independently`; every time on their own, and every time paired with the file most likely to disturb
+ * them. Eighteen consecutive clean runs later there was still nothing to look at — a seed and a
+ * count, and no state.
+ *
+ * The failure prints a seed and `--sequence.seed=<n>` replays the order, which is the repository's
+ * existing answer and was not enough here: what the seed could not say is what the GAME was doing.
+ * Guessing at a fix for something that cannot be reproduced would be adding unverified changes to
+ * working code, so this adds evidence instead: the next occurrence names the phase, the camera and
+ * the ball, and one of those is either the cause or eliminates itself.
+ */
+function running(): string {
+  const d = debug();
+  const ball = d.ball;
+  return `phase=${d.phase} cameraY=${d.cameraY.toFixed(1)} playfieldX=${d.playfieldX.toFixed(1)} `
+    + `ball=(${ball.x.toFixed(1)},${ball.y.toFixed(1)}) active=${ball.active} speed=${ball.speed.toFixed(2)}`;
+}
+
 /** Waits for the game's own animation frames rather than a timer, so this follows the real loop. */
 const frames = (n: number): Promise<void> => new Promise((resolve) => {
   let left = n;
@@ -180,7 +203,8 @@ describe('the frame follows the simulation', () => {
     key('KeyA', 'keydown');
     await frames(6);
 
-    expect(differingIn(before, frame(), box), 'the left paddle is drawn where it now is')
+    expect(differingIn(before, frame(), box),
+      `the left paddle is drawn where it now is — ${running()} box=${JSON.stringify(box)}`)
       .toBeGreaterThan(0);
     await allKeysUp();
   });
@@ -194,7 +218,8 @@ describe('the frame follows the simulation', () => {
 
     await allKeysUp();
 
-    expect(differingIn(raised, frame(), box), 'the paddle came down again').toBeGreaterThan(0);
+    expect(differingIn(raised, frame(), box), `the paddle came down again — ${running()}`)
+      .toBeGreaterThan(0);
   });
 
   test('⚠️ and the OTHER paddle moves independently, or one key drives both', async () => {
@@ -209,7 +234,8 @@ describe('the frame follows the simulation', () => {
     await frames(6);
     const rightUp = frame();
 
-    expect(differingIn(before, rightUp, box), 'the right paddle moved').toBeGreaterThan(0);
+    expect(differingIn(before, rightUp, box), `the right paddle moved — ${running()}`)
+      .toBeGreaterThan(0);
     // ⚠️ AND THE LEFT ONE DID NOT, or one key drives both. `four-flippers` exists in the catalogue
     // because this port already assumed there was a single pair.
     expect(differingIn(before, rightUp, leftBox), 'the left paddle stayed where it was').toBe(0);

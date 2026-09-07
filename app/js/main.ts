@@ -1530,6 +1530,16 @@ Object.assign(window as unknown as Record<string, unknown>, {
     /** Exposed so the browser gate can look at the pixels rather than at a screenshot. */
     get screen() { return screen; },
     get picture() { return tablePicture; },
+    /**
+     * Whether the table's own picture arrived.
+     *
+     * ⚠️ ADDED FOR `tests/art-reaches-the-screen`, AND BECAUSE THAT GATE WAS FLAKY WITHOUT IT. It
+     * waited a fixed thirty frames for an ASYNCHRONOUS fetch-and-decode and then read the pixels —
+     * green on its own, and about one run in twelve of the whole browser suite it read a playfield
+     * with no art in it at all and reported 0.0%. A fixed frame count is a bet on how busy the
+     * machine is. This is the fact the test was inferring, so it can wait for it instead.
+     */
+    get backdropLoaded() { return backdrop !== undefined; },
     get ball() { return { x: ball.position.x, y: ball.position.y, speed: ball.speed, active: ball.active }; },
     /** What the ball has touched, and what the control layer made of it. */
     get hits() { return hits; },

@@ -56,6 +56,8 @@ interface PinballDebug {
   problems: readonly string[];
   table: string;
   picture: { bytes: Uint8ClampedArray; width: number; height: number };
+  /** Whether `loadBackdrop` resolved with a usable picture. See `main`, where it says why. */
+  backdropLoaded: boolean;
 }
 
 const debug = (): PinballDebug => (window as unknown as { __pinball: PinballDebug }).__pinball;
@@ -103,8 +105,22 @@ beforeAll(async () => {
     <svg id="cvd-filters" width="0" height="0" aria-hidden="true" focusable="false"></svg>
   `;
   await import('../app/js/main.js');
-  // The picture is fetched and decoded asynchronously; the composition that uses it is a later frame.
-  await frames(30);
+
+  /**
+   * ⚠️ WAITED FOR, NOT COUNTED. This was `await frames(30)`, and thirty frames is a bet on how busy
+   * the machine is: green on its own and, about one run in twelve of the whole browser suite, reading
+   * a playfield with NO ART IN IT and reporting 0.0% — the exact number the failure mode this file
+   * exists for produces. A gate that cannot tell "the art never loaded" from "the art has not loaded
+   * YET" is a gate that will one day be silenced as flaky, on the day it is right.
+   *
+   * The wait is on the LOADING, which is the asynchronous part. Whether the loaded picture then
+   * reaches the composed playfield is the question below, and it is still asked of the pixels.
+   */
+  const deadline = 600;
+  for (let i = 0; i < deadline && !debug().backdropLoaded; i++) await frames(1);
+  expect(debug().backdropLoaded, `the art did not load within ${deadline} frames`).toBe(true);
+  // And the composition that uses it happens on a later frame than the one that received it.
+  await frames(4);
 });
 
 describe('the picture the repository ships is the picture the player gets', () => {
