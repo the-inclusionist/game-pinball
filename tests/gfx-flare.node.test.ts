@@ -104,9 +104,17 @@ describe('the colours the flare paints', () => {
 describe('the flare painted into a table', () => {
   const rowColor = (flareAt: number | undefined, y: number): number => {
     const fb = drawTable({ table: ION_STORM, ...(flareAt === undefined ? {} : { flareAt }) });
-    // Column 2: inside the left wall's four pixels is furniture, so read one that is not. The wall is
-    // at x 0..3 and the lane divider is far to the right; x = 8 at y = 60 is open ground.
-    return fb.pixels[y * ION_STORM.size.width + 8]!;
+    /**
+     * ⚠️ COLUMN 20, AND IT USED TO BE 8. The comment here said "the wall is at x 0..3 and the lane
+     * divider is far to the right; x = 8 at y = 60 is open ground", which was true about the WALL and
+     * stopped being enough: `gfx/surround` darkens the backdrop for six pixels around whatever stands
+     * on it, so x = 8 is inside the left wall's shadow and is no longer ground the flare owns.
+     *
+     * Measured rather than nudged — the untouched columns at y = 60 are 10..55 and 79..91, and 20 is
+     * in the middle of the first run. This is the surround being visible in a test that is about
+     * something else, which is the cheapest possible way to find out that it works.
+     */
+    return fb.pixels[y * ION_STORM.size.width + 20]!;
   };
 
   test('a row at the centre of the band is painted the flare\'s core', () => {

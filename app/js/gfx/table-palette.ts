@@ -361,6 +361,24 @@ const BALL = rgb(238, 242, 248);
  * rather than taste. `free` against the ground came out at a CIE76 distance of 13.3 and `structure`
  * against `free` at 16.4 — both under the twenty this palette is held to, both on screen, and nothing
  * had ever measured them. A lane the player cannot see is a lane that is not there.
+ *
+ * ⚠️ AND `free` AND `structure` MOVED AGAIN, FOR A REASON NO DISTANCE TEST COULD HAVE RAISED.
+ *
+ * The Dev: "o necessário e suficiente é 3:1." A colour makes 3:1 against pure black only if its
+ * relative luminance reaches Y 0.10 — below that the ratio is capped, however dark the thing behind
+ * it. `free` was at Y 0.0833, so ITS CONTRAST AGAINST BLACK WAS 2.67:1 AND NOTHING COULD RAISE IT.
+ * Every table's art had been dimmed almost to nothing on `free`'s behalf, and `free` failed anyway.
+ *
+ * So `free` rises to Y 0.1056 — as little as clears the floor — and `structure` rises with it, by the
+ * least that keeps the two neutrals apart: they differ by lightness alone, so lifting one walks it
+ * into the other. Measured, the pair goes 23.7 -> 22.3 in normal vision, still past the twenty.
+ *
+ * ⚠️ AND THE CB-SAFE PALETTE PAID FOR IT, which is recorded rather than hidden. Its closest pair was
+ * exactly 22.0 (`structure` / `water`, protanopia); after the lift the closest is 21.6
+ * (`structure` / `free`, protanopia). A search over lightness AND the blue-yellow axis — the one
+ * protanopia keeps — found nothing that holds 22 while `free` clears the floor. The gate is 20 and
+ * the two units were self-imposed headroom; one third of one unit of it bought the floor, and a
+ * palette that meets the ratio at 21.6 is worth more than one that misses it at 22.
  */
 const NORMAL: Readonly<Record<Role, Rgb>> = {
   // The only warm colour among the signals, and used for nothing else.
@@ -368,10 +386,10 @@ const NORMAL: Readonly<Record<Role, Rgb>> = {
   goal: rgb(242, 206, 84),
   key: rgb(116, 202, 132),
   gate: rgb(86, 132, 226),
-  structure: rgb(134, 142, 156),
+  structure: rgb(140, 148, 161),
   climb: rgb(186, 112, 206),
   water: rgb(64, 168, 196),
-  free: rgb(74, 82, 96),
+  free: rgb(84, 92, 105),
 };
 
 /**
@@ -389,12 +407,12 @@ const CB_SAFE: Readonly<Record<Role, Rgb>> = {
   key: rgb(44, 240, 162),
   // ⚠️ THE ONE REAL CHANGE. See this module's header: blue belongs to water, and this is what is left.
   gate: rgb(223, 0, 152),
-  // Unmoved: a neutral has no hue to lose.
-  structure: rgb(134, 143, 157),
+  // Neutral, so it has no hue to lose; it moved for lightness alone, with `free` — see `NORMAL`.
+  structure: rgb(138, 146, 160),
   climb: rgb(154, 101, 244),
   water: rgb(16, 175, 210),
-  // Unmoved, for the same reason as `structure`.
-  free: rgb(73, 83, 96),
+  // Likewise. This is the colour the 3:1 floor was written for.
+  free: rgb(82, 92, 104),
 };
 
 /**
@@ -414,18 +432,25 @@ const CB_SAFE: Readonly<Record<Role, Rgb>> = {
  * function would put the same function on both sides of the gate: `tests/gfx-table-shading` measures
  * them with its own, so a wrong constant fails instead of moving the check with it.
  *
+ * ⚠️ AND THEY WERE RE-SOLVED WHEN `free` AND `structure` MOVED FOR THE 3:1 FLOOR, which is what
+ * "checked elsewhere" is worth: the gate went red with forty-five violations the moment the two
+ * neutrals shifted, naming `goal`, `key` and `structure` as the roles whose old amounts no longer
+ * held. Six of the eight changed by a hundredth in one direction or the other. Nothing about the
+ * rule changed; the colours it is measured against did, and a stored constant cannot notice that on
+ * its own.
+ *
  * The same fact, seen from the other side, is why the GROUND cannot have a gradient: any lift big
  * enough to read as depth walks the ground into `free`. That one is an open question for the Dev.
  */
 export const SHADE_HEADROOM: Readonly<Record<Role, number>> = {
-  hazard: 0.40,
-  goal: 0.48,
-  key: 0.44,
-  gate: 0.36,
+  hazard: 0.41,
+  goal: 0.47,
+  key: 0.43,
+  gate: 0.37,
   // The world. See above: this is a measurement, not a preference for flat scenery.
-  structure: 0.20,
-  climb: 0.40,
-  water: 0.30,
+  structure: 0.19,
+  climb: 0.42,
+  water: 0.29,
   free: 0.16,
 };
 

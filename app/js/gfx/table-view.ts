@@ -46,9 +46,10 @@
 
 import type { Role } from '@the-inclusionist/engine/core/contract.js';
 import { createFramebuffer, pack, type Framebuffer } from './framebuffer.js';
-import type { AuthoredTable } from '../table/authored.js';
+import type { AuthoredComponent, AuthoredTable } from '../table/authored.js';
 import { flareGrip } from '../table/storm.js';
 import { glowInto, type Light } from './lighting.js';
+import { applySurround, buildSurround, surroundCeiling, type SurroundLayer } from './surround.js';
 import { LANE_SEGMENTS } from '../table/lane-progress.js';
 import {
   paletteFor, sceneOf, shade, backdropAt, flareColor, SHADE_HEADROOM, type Rgb, type TablePalette,
@@ -482,6 +483,84 @@ function paintFlareOver(fb: Framebuffer, table: AuthoredTable, o: TableViewOptio
   }
 }
 
+/**
+ * Every role a table actually draws, once.
+ *
+ * A role nothing on this table wears contributes no shadow, and asking for its footprint would be a
+ * full pass over the components to paint nothing.
+ */
+function rolesOf(table: AuthoredTable): Role[] {
+  return [...new Set(table.components.map((c) => c.role))];
+}
+
+/**
+ * How dark the backdrop has to be at each pixel of a table, so that what stands there clears 3:1.
+ *
+ * ⚠️ THE FOOTPRINT IS TAKEN BY DRAWING, which is the whole point of `drawComponents` being separate.
+ * A fresh framebuffer is transparent; a component paints opaque; so the pixels with any alpha are
+ * exactly the pixels that component covers, under whatever rule the renderer used to get there — a
+ * lane's rails, a bumper's disc, a wall's two-pixel stroke. Restating those rules here is the defect
+ * this repository has paid for four times, and `gfx/surround`'s header records what it cost the once
+ * it was tried: a shadow over 76% of `low-orbit`.
+ *
+ * ⚠️ AND NOTHING IS HIDDEN WHILE IT IS MEASURED. A dropped target and an unopened secret door are
+ * both drawn here, because the surround is computed once and has to hold for every state the table
+ * passes through. A shadow that appeared when a target stood back up would be a light going on.
+ */
+const SURROUNDS = new WeakMap<AuthoredTable, Map<string, Float32Array>>();
+
+/**
+ * ⚠️ KEYED ON THE PALETTE'S OWN COLOURS, NOT ON A `cbSafe` FLAG, and that is a defect being closed
+ * rather than a preference. `drawBackground` receives a `palette` AND a `TableViewOptions` carrying
+ * `cbSafe`, so the same call describes one fact twice — and the two disagreed the first time anything
+ * asked: `tests/gfx-surround` composed with the CB-Safe palette while the surround was computed for
+ * the normal one, and six tables came out at 2.99:1 for a reason that had nothing to do with the
+ * arithmetic under suspicion. The colours the caller actually passed are the only honest key.
+ */
+function signatureOf(palette: TablePalette): string {
+  return Object.values(palette.roles).map((c) => `${c.r},${c.g},${c.b}`).join('|');
+}
+
+export function surroundOf(table: AuthoredTable, palette: TablePalette): Float32Array {
+  let byPalette = SURROUNDS.get(table);
+  if (!byPalette) {
+    byPalette = new Map();
+    SURROUNDS.set(table, byPalette);
+  }
+  const key = signatureOf(palette);
+  const held = byPalette.get(key);
+  if (held) return held;
+
+  const { width, height } = table.size;
+  const layers: SurroundLayer[] = [];
+
+  for (const role of rolesOf(table)) {
+    const scratch = createFramebuffer(width, height);
+    drawComponents(scratch, table, palette, { table }, (c) => c.role === role);
+
+    const painted = new Uint8Array(width * height);
+    for (let i = 0; i < painted.length; i++) painted[i] = scratch.bytes[i * 4 + 3]! === 0 ? 0 : 1;
+
+    const c = palette.roles[role];
+    layers.push({ painted, ceiling: surroundCeiling(luminanceOf(c)) });
+  }
+
+  const built = buildSurround(width, height, layers);
+  byPalette.set(key, built);
+  return built;
+}
+
+const SRGB = new Float64Array(256);
+for (let v = 0; v < 256; v++) {
+  const c = v / 255;
+  SRGB[v] = c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+}
+
+/** Relative luminance, sRGB — the same arithmetic every contrast check in this repository uses. */
+function luminanceOf(c: Rgb): number {
+  return 0.2126 * SRGB[c.r]! + 0.7152 * SRGB[c.g]! + 0.0722 * SRGB[c.b]!;
+}
+
 export function drawBackground(
   fb: Framebuffer, table: AuthoredTable, palette: TablePalette, o: TableViewOptions,
 ): void {
@@ -510,6 +589,7 @@ export function drawBackground(
     fb.pixels.set(o.backdrop);
     paintLightsOver(fb, table, palette, o);
     paintFlareOver(fb, table, o);
+    applySurround(fb, surroundOf(table, palette));
     return;
   }
   /**
@@ -594,19 +674,48 @@ export function drawBackground(
     fillRect(fb, { x: 0, y: 0, width: table.size.width, height: table.size.height },
       packRgb(palette.ground));
   }
+
+  /**
+   * ⚠️ LAST, AND AFTER THE LIGHTS ON PURPOSE. A light lifts the ground to ADR-0007's ceiling, which is
+   * brighter than four of the eight roles can clear 3:1 against — so a floodlight beside a lane would
+   * put the lane's own contrast under the requirement, and a lamp switching on would make a component
+   * harder to see. The surround is a requirement and the glow is decoration; the requirement wins
+   * wherever the two meet, which is a ring six pixels wide and nowhere else.
+   */
+  applySurround(fb, surroundOf(table, palette));
 }
 
 export function drawTable(o: TableViewOptions): Framebuffer {
   const { table } = o;
   const fb = createFramebuffer(table.size.width, table.size.height);
-  const targets = new Set(o.missionTargets ?? []);
-  const lamps = new Set(o.litLamps ?? []);
   const palette = paletteOf(table, o.cbSafe ?? false);
   drawBackground(fb, table, palette, o);
+  drawComponents(fb, table, palette, o);
+  return fb;
+}
+
+/**
+ * Every component of a table, onto whatever is already in the framebuffer.
+ *
+ * ⚠️ SEPARATE FROM `drawTable` SO THAT THE FOOTPRINT CAN BE ASKED FOR RATHER THAN RESTATED. The rules
+ * below — a lane is rails, a component with no collision is its bounds, a mover is not drawn here at
+ * all — decide which pixels a component actually covers, and `gfx/surround` needs exactly that to
+ * know where the backdrop has to be darkened. Writing them out a second time there would be this
+ * repository's most expensive recurring defect: one rule with two copies, one of them not keeping up.
+ *
+ * `only` narrows it to the components a caller cares about; absent means all of them.
+ */
+export function drawComponents(
+  fb: Framebuffer, table: AuthoredTable, palette: TablePalette, o: TableViewOptions,
+  only?: (component: AuthoredComponent) => boolean,
+): void {
+  const targets = new Set(o.missionTargets ?? []);
+  const lamps = new Set(o.litLamps ?? []);
 
   const hidden = new Set(o.hidden ?? []);
 
   for (const component of table.components) {
+    if (only && !only(component)) continue;
     // A dropped target is below the playfield: nothing of it is drawn, and the ground shows through.
     if (hidden.has(component.name)) continue;
     // THE ROLE MOVES WITH THE MISSION, in the picture as well as in the contract: a bumper the
@@ -687,8 +796,6 @@ export function drawTable(o: TableViewOptions): Framebuffer {
       else strokeLine(fb, shape.from.x, shape.from.y, shape.to.x, shape.to.y, color);
     }
   }
-
-  return fb;
 }
 
 /**
