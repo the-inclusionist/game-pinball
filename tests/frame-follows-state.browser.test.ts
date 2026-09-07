@@ -236,6 +236,19 @@ beforeAll(async () => {
     <svg id="cvd-filters" width="0" height="0" aria-hidden="true" focusable="false"></svg>
   `;
   await import('../app/js/main.js');
+  /**
+   * ⚠️ INTO A GAME THE WAY A PLAYER GETS INTO ONE, which this file used not to do: it booted `main`
+   * and pressed game keys with the TITLE SCREEN still covering the table. That worked for as long as
+   * nothing but `phase` decided what a key meant, and stopped the day pause learned to ask whether
+   * there is a table on the screen at all — because there was not one, and the refusal was right.
+   *
+   * A test that drives the game from a state a player cannot be in is a test measuring something the
+   * product does not do.
+   */
+  document.querySelector<HTMLElement>('.pinball-title button')?.click();
+  await frames(4);
+  document.querySelector<HTMLElement>('[data-table]')?.click();
+  await frames(5);
   region().focus();
   await frames(4);
 });

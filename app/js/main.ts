@@ -355,6 +355,17 @@ const table: LiveTable = {
 let phase: Phase = 'title';
 
 /**
+ * What pausing interrupted, so that resuming can put it back.
+ *
+ * ⚠️ WITHOUT THIS, MAKING PAUSE WORK BEFORE THE LAUNCH BREAKS THE LAUNCH. `phase` is `'title'` in
+ * three ordinary places — before the first ball, between balls, and after the last one — and the
+ * plunger is guarded by `if (phase !== 'playing')`. A game resumed unconditionally into `'playing'`
+ * with the ball still sitting on the plunger refuses the plunger key from then on, which is a worse
+ * dead key than the one being fixed.
+ */
+let resumeTo: Phase = 'playing';
+
+/**
  * ⚠️ BLIND MODE HAD NO SWITCH. `createGame` reads it through a callback the game owns and `main.ts`
  * supplied none, so the engine's default `() => false` stood and the audio guide never fired — two
  * commits after the contract's target list was filled in for that guide to use.
@@ -1047,8 +1058,29 @@ const cabinet = {
    * `shell/hud-dom` already makes and the same one blind mode announces through.
    */
   togglePause: () => {
-    if (phase === 'playing') enterPhase('paused');
-    else if (phase === 'paused') enterPhase('playing');
+    if (phase === 'paused') return enterPhase(resumeTo);
+    /**
+     * ⚠️ THE QUESTION IS WHETHER A TABLE IS ON THE SCREEN, NOT WHETHER A BALL IS MOVING, and getting
+     * that wrong is what the Dev reported as "troquei de mesa e o menu de pausa já se tornou
+     * inacessível".
+     *
+     * This used to read `if (phase === 'playing')`, so pause did nothing at all while the phase was
+     * `'title'` — which is the state the game is in before the first launch, between balls, and after
+     * the last one is lost. Changing tables lands the player in the first of those every single time:
+     * "Mesas" reloads with `?table=`, and the new table opens with the ball parked on the plunger. The
+     * pause menu is the ONLY way back to the selector, so the player who had just used it to change
+     * tables could not use it again.
+     *
+     * The worst of the three is the finished game: `launch` refuses a fourth ball by design, so the
+     * phase can never leave `'title'` again and the only exit left was reloading the page.
+     *
+     * ⚠️ AND IT STILL REFUSES ON THE TITLE AND THE SELECTOR, which is what `screens` answers and
+     * `phase` cannot: there the game is not merely between balls, there is no game. A pause menu over
+     * the table selector would offer "Continuar" with nothing to continue.
+     */
+    if (screens.current !== 'playing') return;
+    resumeTo = phase;
+    enterPhase('paused');
   },
 };
 
@@ -1552,7 +1584,9 @@ const pauseMenu = mountPauseMenu({
   t: shell.t,
   score: () => live.score.curScore,
   bindings: () => bindings,
-  onResume: () => { enterPhase('playing'); region.focus(); },
+  // ⚠️ `resumeTo`, NOT `'playing'`, FOR THE REASON THE KEY USES IT: "Continuar" on a game paused
+  // before the launch has to give the ball back to the plunger, not declare it in play.
+  onResume: () => { enterPhase(resumeTo); region.focus(); },
   /**
    * ⚠️ AND THE MENU STAYS SHUT BEHIND IT. `mountPauseMenu` hides itself before calling a handler so
    * that whatever opens next is not drawing under it — but the phase is still `paused`, and the frame
