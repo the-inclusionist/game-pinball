@@ -109,6 +109,15 @@ physics defect and would be the most important thing in this document. It is che
    ball never travels sideways on this table" — that expired twice over: the plunger now fires along a
    lane that leans, and a wall keeps the speed along it. Measured: the ball left the table at x = 100.8
    of a table 100 wide, and `drainedBy` answered `outside`.
+6. **Nine degrees on the two fixtures as well, and the floor is replaced by a refusal.** The Dev:
+   "a inclinação de narrow-tower e bare-minimum devem ser 9 graus TAMBÉM."
+   - `bare-minimum` takes them as it is: 100×181 leaves a top playfield of 21.7, which is 3.6 balls.
+   - `narrow-tower` cannot at 120×420 — it needs `width ≥ 45 + 0.3168 × height` = 178 and has 120, so
+     the walls cross 58 units before the top. **It becomes 180×420**, the Dev's choice between widening
+     and shortening: "o propósito dela é altura extrema", and shortening is what throws that away.
+   - `MIN_TOP_BALLS` goes. In its place `validateTable` REFUSES a table whose walls would cross, which
+     is the same protection without an arbitrary number inside it: a table that cannot exist is a
+     table that must not open, and one that is merely tight is the author's business.
 
 ### A5 · The twelve gates
 
@@ -188,26 +197,71 @@ in screen space — it is the cabinet's glass, and glass does not move — and t
 of the composite the inverse map lands on. A quad that moved with the camera would be a table that
 changes shape while the player watches the ball.
 
-### B5 · How much lean the picture adds — the one open number
+### B5 · There is no number to choose, and that was the correction
 
-⚠️ **THE GEOMETRY ALREADY LEANS NINE DEGREES**, so the picture starts from a table that is already a
-trapezium and adds to it. `low-orbit` is 183 wide at the base and 108 at the top before the renderer
-touches it.
+⚠️ **I OFFERED THE DEV A `topScale` AND A CHOICE BETWEEN "the heights change" AND "the heights do not",
+AND BOTH WERE WRONG.** His answer: *"Não faz sentido. O que pedi para fazer é simular um deslocamento da
+câmera do zênite para a direção do horizonte de modo a formar um trapézio cujos ângulos internos da base
+sejam de 81 graus."*
 
-The quad is one number: how wide the top edge is drawn against the bottom.
+A camera tilting from the zenith toward the horizon FORESHORTENS THE FAR END. A transform that narrows
+the top without shortening it is a shear, not a camera — and a second taper chosen by hand on top of the
+geometry's nine degrees is a second camera, which is not a thing a photograph can contain.
 
-| topScale | what it looks like | the ball at the top |
-|---|---|---|
-| 1.0 | today: the geometry's lean only | 6 px |
-| **0.90 (recommended)** | reads as a plane tilted back; the Dev's second image is near here | 5.4 px |
-| 0.80 | strong; the top third starts to feel far away | 4.8 px |
-| 0.70 | a diorama; the ball at the top is smaller than the HUD's text | 4.2 px |
+So the whole of Part B has one degree of freedom and the nine degrees already spent it:
 
-**Recommendation: 0.90**, with the criterion written into a gate — the ball must stay at least four
-pixels across anywhere on the screen, because it is the one object whose position the player reads every
-frame, and because `ADR-0008` measures contrast at boundaries that a two-pixel ball does not have.
+```
+k        = topWidth / baseWidth          fixed by the 81° base angles
+height   = h · k · ln(1/k) / (1 − k)     the image of a rectangle, not a choice
+ballSize = 6 · (width at its row) / (width at the base)
+```
 
-I will build it at 0.90 and it is one constant to change.
+⚠️ **AND THE BALL SHRINKS WITH IT, WHICH THE DEV ASKED FOR IN THOSE WORDS**: "a bolinha também deve
+encolher conforme chega ao topo, tendo a mesma proporção no topo em relação à largura quando está no topo
+que em relação à base quando está na base." Everything standing on the table obeys the same projection —
+the ball, the comets, the capsules, the movers' discs. Anything with a radius the taper did not already
+reach is scaled by the local width, in the live layer, before the warp.
+
+What the projection does to the catalogue, measured against a 180-tall view:
+
+| table | k | drawn height | camera travel |
+|---|---:|---:|---:|
+| low-orbit | 0.593 | 179 | **fits whole** |
+| slipstream | 0.576 | 184 | 4 |
+| ion-storm | 0.567 | 186 | 6 |
+| crater-run | 0.550 | 190 | 10 |
+| long-climb | 0.481 | 204 | 24 |
+| factory | 0.474 | 205 | 25 |
+| ring-belt | 0.789 | 213 | 33 |
+| wide-arc | 0.754 | 242 | 62 |
+| four-flippers | 0.668 | 170 | **fits whole** |
+| bare-minimum | 0.427 | 115 | **fits whole** |
+| narrow-tower | 0.261 | 199 | 19 |
+
+⚠️ **THIS AMENDS ADR-0001 AND THE RECORD IS OWED.** "A câmera segue a bola e perder as pás de vista faz
+parte do jogo" was decided against a `low-orbit` that scrolled 55 pixels. Under a real camera it scrolls
+none: five of the eleven tables fit on the screen entirely, and the fixture that exists to give the
+camera 240 pixels of travel gives it 19. The camera is not removed and nothing about it is rewritten —
+it simply has less to do, and that is a consequence of a later decision rather than a reversal of an
+earlier one. The ADR gets an amendment saying so, in the same commit as the warp.
+
+### B5.1 · What the shrinking ball costs, stated before it is built
+
+The physics ball is SIX ACROSS EVERYWHERE and must be: every gap in every table is authored against that
+number, and the lane's clearance is why the lane slides instead of being squeezed. Drawing it smaller
+near the top means the picture and the physics disagree about where its edge is.
+
+Measured: at the top of `long-climb`, the widest disagreement in the catalogue, the drawn ball is 2.9
+across against a collision that is 6 — so at the instant it bounces there is a gap of about 1.6 units,
+A QUARTER OF A BALL, between the picture and the wall it hit.
+
+⚠️ **THE COHERENT ALTERNATIVE IS TO TAPER THE COLLISION RADIUS TOO**, and it is not being taken now. A
+ball whose radius shrinks with the field keeps every gap the same number of ball-widths at every height —
+it would have prevented the pockets this plan's Part A exists to close, and it would let the lane taper
+like everything else. It is also deep: `physics/wall` bakes the radius into every edge at build time
+through `offsetLine`, so a height-dependent radius changes how the grid is built, how flippers are
+derived and how the drain is tested. It is named here so that the quarter-ball gap, when the Dev sees
+it, is a known price and not a surprise.
 
 ### B6 · The corners the warp leaves empty
 
@@ -247,7 +301,7 @@ into an index table, which turns the per-pixel work into one array read.
 7. B2 — the live layer, with the six draw calls moved into it. Green before the warp exists.
 8. B3–B4 — the warp, behind the constant, at 1.0 first: **the picture must be pixel-identical at
    topScale 1.0**, which is the gate that proves the resample is not lying before anything leans.
-9. B5 — turn it to 0.90 and look at it.
+9. B5 — turn the projection on, at the angle the geometry already fixed, and look at it.
 
 **The risk that is worth naming now:** step 8's identity check is the whole safety of Part B. A resample
 that is a fraction of a pixel off at 1.0 will be a fraction off everywhere, and every render gate in

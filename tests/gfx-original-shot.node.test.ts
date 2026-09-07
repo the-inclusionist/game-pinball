@@ -41,7 +41,7 @@ import { createFramebuffer } from '../app/js/gfx/framebuffer.js';
 import { drawDemoInto } from '../app/js/shell/demo-page.js';
 import { layoutHud, DEFAULT_HUD } from '../app/js/shell/hud.js';
 import { drawTable, blitView } from '../app/js/gfx/table-view.js';
-import { CATALOG } from '../app/js/table/catalog.js';
+import { AUTHORED_TABLES, CATALOG } from '../app/js/table/catalog.js';
 import { buildPng, magnify } from './helpers/png.js';
 
 const DAT = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/PINBALL.DAT';
@@ -131,6 +131,44 @@ describe('the frame the demonstration draws', () => {
     expect(layout.playfield.x, 'the table is inset, not flush left').toBeGreaterThan(0);
     expect(leftEdge, 'and nothing is drawn in the HUD column beside it').toBe(0);
   });
+});
+
+describe('the MAPS the authored tables are drawn from', () => {
+  /**
+   * ⚠️ THE TABLE UPRIGHT AND WHOLE, WHICH IS NOT WHAT ANY OTHER SHOT SHOWS. Everything else in this
+   * file is composed onto a 320x180 screen through a camera, so a table 420 tall appears one screenful
+   * at a time and already leaning nine degrees.
+   *
+   * ⚠️ AND IT EXISTS BECAUSE THE DEV ASKED FOR IT IN THOSE WORDS: "quero os mapas sem deformação da
+   * wide-arc, four-flipper e bare minimum, assim como o novo mapa sem deformação da narrow-tower. Quem
+   * deforma é o algoritmo do programa." He paints the art these tables are laid over, and art is
+   * painted on a RECTANGLE — `table/perspective` leans the picture afterwards, along with everything
+   * standing on it. A reference showing the lean would be a reference that asks him to paint it twice.
+   *
+   * So these come from `AUTHORED_TABLES`, the tables as their files write them, and they are the whole
+   * table at its own size rather than a window onto it.
+   */
+  test.each(AUTHORED_TABLES.map((table) => [table.name, table] as const))(
+    '%s: the whole table, upright, written to shots/',
+    (name, table) => {
+      const picture = drawTable({ table });
+
+      mkdirSync('shots', { recursive: true });
+      writeFileSync(
+        `shots/map-${name}.png`,
+        buildPng(
+          magnify(
+            new Uint8Array(picture.bytes.buffer, picture.bytes.byteOffset, picture.bytes.length),
+            picture.width, picture.height, MAGNIFY,
+          ),
+          picture.width * MAGNIFY, picture.height * MAGNIFY,
+        ),
+      );
+
+      expect(picture.width, 'the map is the table, not a window onto it').toBe(table.size.width);
+      expect(picture.height).toBe(table.size.height);
+    },
+  );
 });
 
 describe('the frames the AUTHORED tables draw', () => {

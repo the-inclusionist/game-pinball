@@ -303,9 +303,12 @@ const PAINTED = {
   // met one time in four, and the table gained the funnel guides it had never had. That is +1285
   // painted pixels — 984 of them the wider landing — and it is a change to the TABLE, not to the
   // drawing: this number is a golden, so it moves only when somebody says why.
-  'narrow-tower': 3713,
+  // ⚠️ +222 when it was widened from 120 to 180 so it could take nine degrees at all. A wider table
+  // paints a wider ceiling, a longer bottom landing and two guides that reach further.
+  'narrow-tower': 3935,
   'four-flippers': 3018,
-  'bare-minimum': 276,
+  // ⚠️ -8 when its lean went from 8.64 degrees to the full nine: the floor that held it back is gone.
+  'bare-minimum': 268,
 };
 
 /**

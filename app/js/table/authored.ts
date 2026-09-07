@@ -46,6 +46,7 @@ import type { Role } from '@the-inclusionist/engine/core/contract.js';
 import type { ComponentKind } from '../i18n/names.js';
 import type { AuthoredMission } from './missions.js';
 import type { MoverPath } from './mover.js';
+import { leanOf, playfieldTopOf } from './perspective.js';
 import type { AuthoredStorm } from './storm.js';
 import type { AuthoredSecret } from './secret.js';
 // ⚠️ A VALUE IMPORT INTO A MODULE THAT `rollovers` ITSELF IMPORTS, and it is not a cycle: the
@@ -286,6 +287,25 @@ export function validateTable(table: AuthoredTable, o: ValidationOptions): strin
 
   if (!(table.size.width > 0) || !(table.size.height > 0)) {
     problems.push('size: width and height must be positive');
+  }
+  /**
+   * ⚠️ A TABLE WHOSE WALLS WOULD CROSS CANNOT OPEN, and this is what replaced a floor on the lean.
+   *
+   * `table/perspective` leans every table nine degrees — the Dev's "todas as mesas em trapézios com
+   * angulos internos de 81 graus na base" — which narrows the playfield by `2 x tan(9 deg) x height`.
+   * A table tall enough for that to exceed its own width is not a tight design, it is an inside-out
+   * one: its left wall ends up right of its right wall and every component between them is outside
+   * both. `narrow-tower` was exactly that at 120x420, by 58 units, and it was widened to 180.
+   *
+   * ⚠️ THE BAR IS ZERO AND NOT A BALL, which is deliberate. A top four balls wide was the old floor and
+   * it was a number somebody chose; crossing is a fact about the geometry. A table with three units of
+   * playfield at the ceiling is unplayable up there and that is its author's business, and a gate that
+   * refused it would be this file inventing a design rule.
+   */
+  if (playfieldTopOf(table) <= 0) {
+    problems.push(`size: ${table.size.width}x${table.size.height} leaves no playfield at the top —`
+      + ` the nine-degree lean needs a width over ${
+        Math.ceil(21 + 2 * leanOf() * table.size.height)}`);
   }
   if (!(table.ballRadius > 0)) {
     problems.push('ballRadius: must be positive — it is the metric the narration uses');

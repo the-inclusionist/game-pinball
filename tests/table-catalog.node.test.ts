@@ -230,7 +230,13 @@ describe('narrow-tower — where losing the flippers is most extreme', () => {
     const margins = playable.map((t) => DEFAULT_HUD.screenWidth - t.size.width);
 
     expect(Math.max(...margins)).toBe(DEFAULT_HUD.screenWidth - NARROW_TOWER.size.width);
-    expect(DEFAULT_HUD.screenWidth - NARROW_TOWER.size.width).toBe(200);
+    /**
+     * ⚠️ 140, AND IT WAS 200. `narrow-tower` was 120 wide until the Dev put every table on the same
+     * nine degrees: at 120 by 420 the two walls cross 58 units before the top, so it was widened to
+     * 180 — the least that lean allows over that height. It is still the narrowest table here, and it
+     * still gives the HUD the widest columns; there is simply less of them.
+     */
+    expect(DEFAULT_HUD.screenWidth - NARROW_TOWER.size.width).toBe(140);
   });
 });
 

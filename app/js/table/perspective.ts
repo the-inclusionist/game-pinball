@@ -71,39 +71,34 @@ import { plungerLaneOf } from './cabinet.js';
 export const LEAN_DEGREES = 9;
 
 /**
- * How wide the PLAYFIELD has to stay at the top, measured in balls.
+ * The lean, as dx per dy. Nine degrees, on every table.
  *
- * ⚠️ THE FLOOR EXISTS BECAUSE OF `narrow-tower`, AND IT IS A RULE RATHER THAN AN EXCEPTION LIST. That
- * table is 120 wide and 420 tall; at nine degrees the two walls CROSS before they reach the top —
- * 2 × 420 × tan 9° is 133 units of narrowing out of 120 available. The instruction is not difficult
- * there, it is geometrically impossible, and the Dev's own sentence names `long-climb` and `ring-belt`,
- * which are tables a player is offered. `narrow-tower` is a fixture: it exists to give the camera 240
- * pixels of vertical travel to follow.
+ * ⚠️ IT USED TO HAVE A FLOOR AND THE DEV TOOK IT OFF: "a inclinação de narrow-tower e bare-minimum devem
+ * ser 9 graus TAMBÉM." The floor was `MIN_TOP_BALLS` — nine degrees, or the steepest lean leaving four
+ * balls of playfield at the top, whichever was shallower — and it existed because `narrow-tower` at
+ * 120x420 cannot take nine degrees at all: its walls cross 58 units before the top.
  *
- * So: nine degrees, or the steepest lean that leaves four balls of PLAYFIELD at the top, whichever is
- * shallower. The playfield rather than the table, because the lane down the right-hand side carries its
- * own width all the way up — what a ball needs room in is the part it is played on.
+ * ⚠️ THE ANSWER WAS THE TABLE, NOT THE ANGLE. `narrow-tower` is 180 wide now, which is what nine degrees
+ * over 420 requires, and `bare-minimum` takes them as it is — 21.7 units of playfield at the top, which
+ * is three and a half balls and is its author's business.
  *
- * It is stated once instead of eleven times, it bites on two fixtures and on no table a player is
- * offered, and a table authored tomorrow at some other size gets a playable top instead of an inverted
- * one.
+ * What replaces the floor is a REFUSAL, in `validateTable`: a table whose walls would cross cannot open.
+ * That is the same protection with no arbitrary number inside it. A table that is merely tight at the
+ * top is a design; a table whose sides pass through each other is not a table.
  */
-export const MIN_TOP_BALLS = 4;
+export function leanOf(_table?: unknown): number {
+  return Math.tan((LEAN_DEGREES * Math.PI) / 180);
+}
 
 /**
- * The lean this table can actually take, as dx per dy.
+ * How wide the playfield — the part left of the plunger lane — is at the ceiling.
  *
- * Every table a player is offered comes out at the full nine degrees; see the constant above for the
- * two fixtures that do not and why the answer is a floor rather than a special case.
+ * Zero or less means the walls cross before they get there, which is what `validateTable` refuses.
  */
-export function leanOf(table: {
+export function playfieldTopOf(table: {
   readonly size: { readonly width: number; readonly height: number };
-  readonly ballRadius: number;
 }): number {
-  const full = Math.tan((LEAN_DEGREES * Math.PI) / 180);
-  const { divider } = plungerLaneOf(table.size);
-  const room = (divider - MIN_TOP_BALLS * 2 * table.ballRadius) / (2 * table.size.height);
-  return Math.min(full, Math.max(0, room));
+  return plungerLaneOf(table.size).divider - 2 * leanOf() * table.size.height;
 }
 
 /** How a table's points move sideways. */

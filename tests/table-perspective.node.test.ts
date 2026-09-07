@@ -31,18 +31,9 @@
 // were played — and the table opens toward the player from there.
 import { describe, test, expect } from 'vitest';
 import { CATALOG, PLAYABLE_TABLES } from '../app/js/table/catalog.js';
-import { LEAN_DEGREES, leanOf, taper, MIN_TOP_BALLS }
+import { LEAN_DEGREES, leanOf, taper, playfieldTopOf }
   from '../app/js/table/perspective.js';
-import { plungerLaneOf } from '../app/js/table/cabinet.js';
-import type { AuthoredTable } from '../app/js/table/authored.js';
-
-/**
- * How wide the PLAYFIELD is at the ceiling — the part left of the plunger lane, which is the part a
- * ball is played on. The lane carries its own width all the way up and is not room to move in.
- */
-function playfieldTop(table: AuthoredTable): number {
-  return plungerLaneOf(table.size).divider - 2 * leanOf(table) * table.size.height;
-}
+import { validateTable, type AuthoredTable } from '../app/js/table/authored.js';
 
 /** Every point a component puts on the playfield, so a sweep can ask about all of them. */
 function pointsOf(table: AuthoredTable): { x: number; y: number }[] {
@@ -63,44 +54,44 @@ describe('the lean itself', () => {
     expect(LEAN_DEGREES).toBe(9);
   });
 
-  test.each(PLAYABLE_TABLES.map((t) => [t.name, t] as const))(
+  test.each(CATALOG.map((t) => [t.name, t] as const))(
     '%s leans the full nine', (_name, table) => {
       /**
-       * Every table a player is offered takes the whole angle. The floor below is a rule about
-       * geometry, and no playable table is anywhere near it.
+       * ⚠️ EVERY TABLE, AND THE FIXTURES USED TO BE EXEMPT. `MIN_TOP_BALLS` capped the lean at whatever
+       * left four balls of playfield at the top, which took `narrow-tower` down to 5.1° and
+       * `bare-minimum` to 8.6°. The Dev took the cap off — "a inclinação de narrow-tower e bare-minimum
+       * devem ser 9 graus TAMBÉM" — and `narrow-tower` was widened from 120 to 180 to be able to take
+       * them. A fixture that leans differently from the tables is a fixture measuring a different game.
        */
       expect(Math.atan(leanOf(table)) * (180 / Math.PI)).toBeCloseTo(LEAN_DEGREES, 6);
     },
   );
 
-  test('⚠️ and the one table where nine degrees is impossible gets the steepest it can take', () => {
+  test('⚠️ and a table whose walls would cross is refused rather than bent', () => {
     /**
-     * ⚠️ `narrow-tower` IS 120 WIDE AND 420 TALL, and at nine degrees the two walls CROSS before they
-     * reach the top: 2 × 420 × tan 9° = 133 units of narrowing out of 120. The instruction is not hard
-     * there, it is geometrically impossible, and the Dev's own sentence is about `long-climb` and
-     * `ring-belt` — tables a player is offered.
+     * What replaced the floor. `narrow-tower` at 120x420 is the case that made it necessary: nine
+     * degrees narrows the playfield by 133 units and it has 99, so the left wall ends up right of the
+     * right one and every component between them is outside both.
      *
-     * ⚠️ SO THE RULE HAS A FLOOR RATHER THAN AN EXCEPTION LIST. Nine degrees, or the steepest lean that
-     * leaves the top four balls wide, whichever is shallower. It bites on exactly one table today, it
-     * is stated once instead of eleven times, and a table authored tomorrow at some other size gets a
-     * playable top instead of an inverted one.
+     * ⚠️ THE VALIDATOR SAYS SO INSTEAD OF THE TRANSFORM SILENTLY REDUCING THE ANGLE, which is what the
+     * floor did. A table that cannot exist should not open, and it should say why in the same words a
+     * person would use to fix it — the width it would need.
      */
-    const tower = CATALOG.find((t) => t.name === 'narrow-tower')!;
-    const lean = leanOf(tower);
-    const top = playfieldTop(tower);
+    const impossible: AuthoredTable = {
+      ...PLAYABLE_TABLES[0]!, name: 'impossible', size: { width: 120, height: 420 },
+    };
 
-    expect(Math.atan(lean) * (180 / Math.PI), 'it took an angle it cannot take')
-      .toBeLessThan(LEAN_DEGREES);
-    expect(top, 'the top is narrower than the floor allows')
-      .toBeCloseTo(MIN_TOP_BALLS * 2 * tower.ballRadius, 6);
+    expect(playfieldTopOf(impossible), 'the walls do not actually cross at this size')
+      .toBeLessThan(0);
+    expect(validateTable(impossible, { viewHeight: 180 }).join(' '))
+      .toMatch(/leaves no playfield at the top/);
   });
 
   test.each(CATALOG.map((t) => [t.name, t] as const))(
-    '%s keeps a top a ball can get through', (name, table) => {
-      const top = playfieldTop(table);
+    '%s can hold a playfield at all', (name, table) => {
+      const top = playfieldTopOf(table);
 
-      expect(top, `${name} closes to ${top.toFixed(1)} at the top`)
-        .toBeGreaterThanOrEqual(MIN_TOP_BALLS * 2 * table.ballRadius - 1e-9);
+      expect(top, `${name} closes to ${top.toFixed(1)} at the top`).toBeGreaterThan(0);
     },
   );
 });
