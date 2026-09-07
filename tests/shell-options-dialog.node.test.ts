@@ -75,9 +75,18 @@ function harness(initial: PaletteChoice = 'normal') {
   const escape = () => {
     for (const fn of root().keys) fn({ key: 'Escape', preventDefault() {} });
   };
+  /** Whether a key pressed on the dialog is taken off the game behind it. */
+  const swallows = (code: string): boolean => {
+    let stopped = false;
+    for (const fn of root().keys) {
+      fn({ code, key: code, preventDefault() {}, stopPropagation() { stopped = true; } } as never);
+    }
+    return stopped;
+  };
   const closer = () => descendants(root())
     .find((el) => el.tag === 'button' && el.attributes['aria-pressed'] === undefined);
   return {
+    swallows,
     dialog, host, registered, chosen, root, buttons, created, escape, closer,
     restored: () => restored,
     setCurrent: (c: PaletteChoice) => { current = c; },
@@ -242,5 +251,34 @@ describe('getting back out of it', () => {
     dialog.open();
 
     expect(buttons()[0]!.focused, 'the first choice takes the focus').toBeGreaterThan(0);
+  });
+});
+
+describe('⚠️ and it owns the cabinet while it is up', () => {
+  // The same hole the pause menu had, and this dialog is opened FROM that menu over a PAUSED game:
+  // Enter on a palette choice would pick the palette and run `togglePause` on the way past, resuming
+  // the table behind the dialog the player is reading. `shell/controls.ownCabinetKeys` holds the
+  // measurement; this is the third place that one line was needed, which is why it is a function.
+  test('every cabinet key is taken off the game behind it', () => {
+    const h = harness();
+    h.dialog.open();
+
+    const escaped = ['KeyA', 'KeyJ', 'KeyD', 'KeyK', 'KeyU', 'Enter', 'KeyH']
+      .filter((code) => !h.swallows(code));
+
+    expect(escaped, 'these reached the game underneath').toEqual([]);
+  });
+
+  test('⚠️ but blind mode, the sonar and the palette key pass through', () => {
+    const h = harness();
+    h.dialog.open();
+
+    expect(['KeyB', 'KeyS', 'KeyC'].filter((code) => h.swallows(code))).toEqual([]);
+  });
+
+  test('and a dialog that is put away owns nothing', () => {
+    const h = harness();
+
+    expect(h.swallows('Enter')).toBe(false);
   });
 });

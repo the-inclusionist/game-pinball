@@ -38,6 +38,8 @@ import { PALETTE_CHOICES, PALETTE_LABEL, type PaletteChoice } from './options.js
  * dialog by it, so it is exported rather than written twice — once here and once wherever the pause
  * menu wants to open this.
  */
+import { ownCabinetKeys } from './controls.js';
+
 export const OPTIONS_DIALOG_ID = 'pinball-options';
 
 /** What this module uses of the engine's overlay registry. Narrow, so a test needs one method. */
@@ -148,6 +150,19 @@ export function mountOptionsDialog(o: OptionsDialogOptions): OptionsDialog {
     if (event.key !== 'Escape') return;
     event.preventDefault();
     close();
+  });
+
+  /**
+   * ⚠️ THE SAME HOLE THE PAUSE MENU HAD, and this dialog is opened FROM that menu, over a paused game.
+   * It lives inside `#game-region` where `bindPinballControls` binds, so Enter on a palette choice
+   * would pick the palette and run `togglePause` on the way past — resuming the game behind the
+   * dialog the player is reading. See `ownCabinetKeys` for the measurement.
+   *
+   * ⚠️ AND THIS IS THE THIRD COPY OF A ONE-LINE RULE, which is why the rule is a function. The first
+   * two were written a commit apart and the second only existed because the first was noticed.
+   */
+  ownCabinetKeys(root as unknown as Parameters<typeof ownCabinetKeys>[0], {
+    isOpen: () => !root.hidden,
   });
 
   o.host.appendChild(root);

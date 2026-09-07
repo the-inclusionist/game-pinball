@@ -31,6 +31,8 @@
 // global would be a menu nothing could open. That is how the palette shipped with a button that
 // reported the wrong choice, once.
 
+import { ownCabinetKeys } from './controls.js';
+
 export const PAUSE_MENU_ID = 'pinball-pause';
 
 /**
@@ -125,6 +127,26 @@ export function mountPauseMenu(o: PauseMenuOptions): PauseMenu {
     root.appendChild(button);
     buttons.push(button);
   }
+
+  /**
+   * ⚠️ THE CABINET IS THIS MENU'S WHILE IT IS UP, AND IT WAS NOT.
+   *
+   * This lives inside `#game-region`, which is where `bindPinballControls` binds, so every keydown on
+   * an entry bubbled into the game — and Enter is START, which is `togglePause`. Measured in a real
+   * browser: Enter on "Cores da mesa" RESUMED the game on the way past and then opened the palette
+   * over a table that had started playing again.
+   *
+   * `Continuar` survived only by an accident of ordering, which is why this looked fine: Chromium's
+   * sequence for Enter on a button is keydown, then the click, then keyup — so the pause toggled to
+   * playing on the way past and `onResume` set playing again, and `enterPhase` is idempotent. Two
+   * wrongs, in the one entry anybody presses.
+   *
+   * No handlers: this menu wants none of the four, and that is exactly why they must not reach the
+   * paddles behind it. `ownCabinetKeys` swallows first and handles second.
+   */
+  ownCabinetKeys(root as unknown as Parameters<typeof ownCabinetKeys>[0], {
+    isOpen: () => root.style.display !== 'none',
+  });
 
   o.host.appendChild(root);
 

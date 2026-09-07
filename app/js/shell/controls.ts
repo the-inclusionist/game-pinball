@@ -155,6 +155,54 @@ export interface ControlOptions {
 }
 
 /** Binds the keys. Returns the undo, because a game that cannot be unbound cannot be torn down. */
+/** The four positions a cabinet actually has. The accessibility keys are not among them. */
+export type CabinetAction = 'left' | 'right' | 'plunger' | 'pause';
+
+export interface CabinetOwner {
+  /** Whether this screen is up. A screen that is put away owns nothing. */
+  isOpen(): boolean;
+  /** What each cabinet key does here. An action with no entry is still SWALLOWED — see below. */
+  readonly on?: Partial<Record<CabinetAction, () => void>>;
+}
+
+/**
+ * Gives one screen the cabinet for as long as it is up.
+ *
+ * ⚠️ THIS EXISTS BECAUSE EVERY OVERLAY IN THIS GAME LIVES INSIDE `#game-region`, WHICH IS WHERE
+ * `bindPinballControls` BINDS. A keydown on a menu button therefore bubbles straight into the game,
+ * and `preventDefault` says nothing about that — it speaks to the browser, not to a listener further
+ * up the tree.
+ *
+ * ⚠️ AND IT WAS ALREADY COSTING SOMETHING. Measured in a real browser: pressing Enter on the pause
+ * menu's "Cores da mesa" ran `togglePause` on the way past — so the game RESUMED, the ball started
+ * moving, and the palette opened over a table that was playing. `Continuar` survived only by an
+ * accident of ordering that is worth writing down, because it is what made this look fine: the
+ * measured sequence for Enter on a button is `keydown` (which bubbled and toggled the pause on),
+ * then the click, then `keyup`. So resume toggled to playing and then resumed again, and
+ * `enterPhase` is idempotent. Two wrongs, in the one entry anybody tests.
+ *
+ * ⚠️ AND AN ACTION WITH NO HANDLER IS STILL TAKEN. That is the whole point: a pause menu does not
+ * want the flippers, and precisely because it does not want them, the flippers must not reach the
+ * paddles behind it. Swallowing is the service; handling is optional.
+ *
+ * ⚠️ THE ACCESSIBILITY KEYS ARE DELIBERATELY NOT HERE. Blind mode, the sonar sweep and the palette
+ * are on B, S and C, and they are switches for how the game is PERCEIVED rather than controls of the
+ * cabinet — this module has argued since it was written that they must work everywhere. A screen
+ * that swallowed them would be the first place they did not.
+ */
+export function ownCabinetKeys(root: KeyTarget, owner: CabinetOwner): void {
+  const ACTIONS: readonly CabinetAction[] = ['left', 'right', 'plunger', 'pause'];
+
+  root.addEventListener('keydown', (event: KeyboardEvent) => {
+    if (!owner.isOpen()) return;
+    const action = ACTIONS.find((name) => DEFAULT_BINDINGS[name].includes(event.code));
+    if (!action) return;
+    event.preventDefault();
+    event.stopPropagation();
+    owner.on?.[action]?.();
+  });
+}
+
 export function bindPinballControls(o: ControlOptions): () => void {
   const bindings = o.bindings ?? DEFAULT_BINDINGS;
 

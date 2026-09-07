@@ -46,7 +46,7 @@
 import {
   scorePosition, placeScore, readTable, writeTable, MAX_NAME, type HighScoreStore,
 } from '../control/high-score.js';
-import { DEFAULT_BINDINGS } from './controls.js';
+import { ownCabinetKeys } from './controls.js';
 
 export const HIGH_SCORE_DIALOG_ID = 'pinball-high-score';
 
@@ -257,46 +257,25 @@ export function mountHighScoreDialog(o: HighScoreDialogOptions): HighScoreDialog
   }
 
   /**
-   * The cabinet, read from the one table that defines it.
+   * The cabinet, for as long as this screen is up.
    *
-   * ⚠️ FROM `DEFAULT_BINDINGS` AND NOT FROM LITERALS. The Dev has already changed this scheme once —
-   * "E não o mapeamento atual" — and a second copy of the key codes here would be a screen that went
-   * on answering to the old keys after the cabinet moved.
+   * ⚠️ `ownCabinetKeys` RATHER THAN A KEYDOWN OF ITS OWN, and the reason is in its own comment: every
+   * overlay here lives inside the element `bindPinballControls` binds to, so the keys have to be
+   * taken off the game and not merely off the browser. This screen was the first to notice; the pause
+   * menu had the same hole and it was live there.
+   *
+   * ⚠️ START SAVES, AND IT IS NOT THE SAME AS PRESSING THE DONE KEY. A player who has spelled their
+   * name should not have to walk the cursor to the end of the alphabet to finish; the machine has a
+   * start button and on this screen that is what it is for.
    */
-  const isCabinet = (action: 'left' | 'right' | 'plunger' | 'pause', code: string): boolean =>
-    DEFAULT_BINDINGS[action].includes(code);
-
-  root.addEventListener('keydown', (event: KeyboardEvent) => {
-    if (root.style.display === 'none') return;
-
-    /**
-     * ⚠️ AND THE KEY IS TAKEN OFF THE GAME, NOT JUST OFF THE BROWSER.
-     *
-     * This dialog lives inside `#game-region`, which is the element `bindPinballControls` binds to. A
-     * keydown on a letter therefore bubbles straight into the cabinet: pressing START to save would
-     * save the score AND toggle the pause, and every flipper press would flap a paddle behind the
-     * screen. `preventDefault` does nothing about that — it speaks to the browser, not to a listener
-     * further up.
-     *
-     * The game is over by the time this screen is up, which is exactly why it would have been found by
-     * somebody playing rather than by anything reasoning about it: the effects are all invisible.
-     *
-     * ⚠️ ONLY THE FOUR THIS SCREEN USES. Blind mode, the sonar sweep and the palette are on B, S and C
-     * and pass straight through, because they are switches for how the game is PERCEIVED rather than
-     * controls of the cabinet — `shell/controls` has argued since it was written that they must work
-     * everywhere, and a screen that swallowed them would be the first place they did not.
-     */
-    const take = (): void => { event.preventDefault(); event.stopPropagation(); };
-
-    if (isCabinet('left', event.code)) { take(); moveTo(cursor - 1); return; }
-    if (isCabinet('right', event.code)) { take(); moveTo(cursor + 1); return; }
-    if (isCabinet('plunger', event.code)) { take(); activate(cursor); return; }
-    /**
-     * ⚠️ START SAVES, AND IT IS NOT THE SAME AS THE DONE KEY BEING PRESSED. A player who has spelled
-     * their name should not have to walk the cursor to the end of the alphabet to finish; the machine
-     * has a start button and on this screen that is what it is for.
-     */
-    if (isCabinet('pause', event.code)) { take(); record(); }
+  ownCabinetKeys(root as unknown as Parameters<typeof ownCabinetKeys>[0], {
+    isOpen: () => root.style.display !== 'none',
+    on: {
+      left: () => moveTo(cursor - 1),
+      right: () => moveTo(cursor + 1),
+      plunger: () => activate(cursor),
+      pause: () => record(),
+    },
   });
 
   o.host.appendChild(root);

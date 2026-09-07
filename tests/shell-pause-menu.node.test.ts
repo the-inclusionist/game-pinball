@@ -34,18 +34,22 @@ interface FakeElement {
   tag: string; id: string; className: string; textContent: string;
   attributes: Record<string, string>; style: Record<string, string>;
   children: FakeElement[]; clicks: (() => void)[]; focused: number;
+  keys: ((e: { code: string; key: string; preventDefault(): void; stopPropagation(): void }) => void)[];
 }
 
 function fakeElement(tag: string): FakeElement {
   const el: FakeElement = {
     tag, id: '', className: '', textContent: '', attributes: {}, style: {},
-    children: [], clicks: [], focused: 0,
+    children: [], clicks: [], focused: 0, keys: [],
   };
   return Object.assign(el, {
     setAttribute(name: string, value: string) { el.attributes[name] = value; },
     appendChild(child: FakeElement) { el.children.push(child); return child; },
     focus() { el.focused++; },
-    addEventListener(type: string, fn: never) { if (type === 'click') el.clicks.push(fn as () => void); },
+    addEventListener(type: string, fn: never) {
+      if (type === 'click') el.clicks.push(fn as () => void);
+      if (type === 'keydown') el.keys.push(fn);
+    },
   });
 }
 
@@ -64,7 +68,16 @@ function harness() {
     onQuit: () => done.push('quit'),
   });
   const buttons = () => created.filter((e) => e.tag === 'button');
-  return { menu, host, done, buttons, root: () => host.children[0]! };
+  const root = (): FakeElement => host.children[0]!;
+  /** Whether a key pressed on the menu is taken off the game behind it. */
+  const swallows = (code: string): boolean => {
+    let stopped = false;
+    for (const fn of root().keys) {
+      fn({ code, key: code, preventDefault() {}, stopPropagation() { stopped = true; } } as never);
+    }
+    return stopped;
+  };
+  return { menu, host, done, buttons, swallows, root };
 }
 
 describe('what the menu offers', () => {
@@ -157,5 +170,51 @@ describe('using it', () => {
     // `overlays.register(id, ...)` and `closeById` both take the id, so it is exported rather than
     // written twice — the same arrangement `shell/options-dialog` records for the palette.
     expect(harness().root().id).toBe(PAUSE_MENU_ID);
+  });
+});
+
+describe('⚠️ and it owns the cabinet while it is up', () => {
+  /**
+   * MEASURED IN A REAL BROWSER, NOT REASONED ABOUT. This menu lives inside `#game-region`, which is
+   * where `bindPinballControls` binds, so every keydown on an entry bubbled into the game — and Enter
+   * is START, which is `togglePause`.
+   *
+   * ⚠️ SO ENTER ON "CORES DA MESA" RESUMED THE GAME AND THEN OPENED THE PALETTE OVER IT. The ball
+   * started moving behind a menu the player was reading. `Continuar` survived only by an accident of
+   * ordering: Chromium's measured sequence for Enter on a button is keydown, then the click, then
+   * keyup — so the pause toggled to playing on the way past and `onResume` set playing again, and
+   * `enterPhase` is idempotent. Two wrongs in the one entry anybody presses.
+   *
+   * The flippers matter for the same reason and are less visible: a paddle flapping behind an open
+   * menu is a table that is being played by somebody who is not looking at it.
+   */
+  const cabinetKeys = ['KeyA', 'KeyJ', 'KeyD', 'KeyK', 'KeyU', 'Enter', 'KeyH'];
+
+  test('every cabinet key is taken off the game behind it', () => {
+    const h = harness();
+    h.menu.open();
+
+    const escaped = cabinetKeys.filter((code) => !h.swallows(code));
+
+    expect(escaped, 'these reached the game underneath').toEqual([]);
+  });
+
+  test('⚠️ but the accessibility keys pass straight through', () => {
+    // Blind mode, the sonar sweep and the palette are on B, S and C. They are switches for how the
+    // game is PERCEIVED and `shell/controls` has argued since it was written that they must work
+    // everywhere — a screen that swallowed them would be the first place they did not.
+    const h = harness();
+    h.menu.open();
+
+    const swallowed = ['KeyB', 'KeyS', 'KeyC'].filter((code) => h.swallows(code));
+
+    expect(swallowed, 'these were eaten by the menu').toEqual([]);
+  });
+
+  test('and a menu that is closed owns nothing at all', () => {
+    // Otherwise the pause key that OPENS the menu would be swallowed by the menu it is opening.
+    const h = harness();
+
+    expect(h.swallows('Enter'), 'a put-away menu still ate a key').toBe(false);
   });
 });
