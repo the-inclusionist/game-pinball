@@ -68,6 +68,11 @@ REQUIRED_RATIO = 3.0
 #: The brightest a picture may be, so the ball clears the ratio against it wherever it goes.
 CEILING = (BALL_LUMINANCE + 0.05) / REQUIRED_RATIO - 0.05
 
+#: Where the shoulder starts: half the ceiling. Below it a picture is untouched; above it the last
+#: half of the headroom is spent asymptotically, so nothing clips. See `reduce_one` for the
+#: measurement that chose it over a hard cut and over the two other knees tried.
+KNEE = CEILING * 0.5
+
 #: Where a picture's median lands: CIE L* 25, a night picture rather than a black one.
 #:
 #: ⚠️ THE MEDIAN AND NOT THE MEAN, because these pictures are mostly dark with small bright things in
@@ -86,8 +91,16 @@ def to_linear(a):
 
 
 def to_srgb(a):
+    """Linear light to sRGB bytes, rounding DOWN.
+
+    ⚠️ DOWN, LIKE `gfx/surround.ENCODE`, AND FOR THE SAME REASON. Rounding to nearest put
+    `slipstream`'s brightest pixel at Y 0.2632 against a ceiling of 0.2615 -- so the ball, whose 3:1
+    against the backdrop IS that ceiling, came out at 2.98:1 over part of one table. The shoulder
+    above never reaches the ceiling by construction; the encoder was putting it there. A bound may
+    only ever be missed on the safe side.
+    """
     out = np.where(a <= 0.0031308, 12.92 * a, 1.055 * np.maximum(a, 0) ** (1 / 2.4) - 0.055)
-    return np.clip(np.round(out * 255.0), 0, 255).astype(np.uint8)
+    return np.clip(np.floor(out * 255.0), 0, 255).astype(np.uint8)
 
 
 def luminance(linear):
@@ -135,10 +148,31 @@ def reduce_one(name):
     # each has a small very bright thing in it. The ceiling is a bound on a PIXEL, so it is enforced
     # on the pixels that break it and nowhere else -- the same argument, and the same arithmetic, as
     # `gfx/surround.applySurround`.
+    #
+    # ⚠️ AND IT ROLLS OFF RATHER THAN CUTTING, which was the FIRST version and cost real picture.
+    # A hard clip at the ceiling left 9.7% of `low-orbit`, 14.0% of `ion-storm` and 22.3% of
+    # `slipstream` sitting at exactly one luminance -- a fifth of a picture with its detail gone, on
+    # the table whose bright streaks ARE its content. And it was not the master's fault: 0.01% of
+    # `slipstream`'s master has all three channels at 250 or over, so the flat band was made here.
+    #
+    # Everything under the knee is untouched; above it the remaining headroom is spent asymptotically,
+    # so the order of two pixels is never lost and nothing ever reaches the ceiling exactly. Measured
+    # at three knees, this one keeps every median where it was (20.4 to 25.0, unchanged) and takes the
+    # share sitting within one per cent of the ceiling from 9.7-22.3% down to 0.00-0.01% on five of
+    # the six tables.
+    #
+    # ⚠️ `slipstream` STAYS AT 15.4% AND THAT IS ITS DISTRIBUTION, NOT A BUG HERE. Its median is
+    # Y 0.0073 -- space is black, and correctly so -- so placing that median at L* 25 is a x6.0 scale,
+    # which stretches a wide band of mid-tones past the ceiling before the knee compresses them back
+    # together. The alternative was measured too: anchoring a high percentile instead of the median
+    # drops it to a median of L* 2.5, which is the near-black the Dev complained about in the first
+    # place. This is the better half of a real trade, and it is his to re-decide.
     over = luminance(lifted)
-    hot = over > CEILING
+    hot = over > KNEE
     if hot.any():
-        lifted[hot] *= (CEILING / over[hot])[:, None]
+        headroom = CEILING - KNEE
+        rolled = KNEE + headroom * (1.0 - np.exp(-(over[hot] - KNEE) / headroom))
+        lifted[hot] *= (rolled / over[hot])[:, None]
 
     out = to_srgb(lifted)
     picture = Image.fromarray(out, 'RGB').quantize(colors=COLOURS, method=Image.MEDIANCUT)

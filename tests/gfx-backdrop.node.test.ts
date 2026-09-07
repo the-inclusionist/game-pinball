@@ -33,6 +33,8 @@ import { readFileSync, existsSync } from 'node:fs';
 import { drawTable, drawBackground, paletteOf } from '../app/js/gfx/table-view.js';
 import { createFramebuffer } from '../app/js/gfx/framebuffer.js';
 import { PLAYABLE_TABLES } from '../app/js/table/catalog.js';
+import { paletteFor, sceneOf } from '../app/js/gfx/table-palette.js';
+import { readPng } from './helpers/png.js';
 import type { AuthoredTable } from '../app/js/table/authored.js';
 
 /** The width and height a PNG declares, straight out of its IHDR. */
@@ -125,5 +127,50 @@ describe('⚠️ and the flare still sweeps over it, because the flare is a mech
     const high = drawTable({ table, backdrop, flareAt: 200 });
 
     expect([...low.pixels]).not.toEqual([...high.pixels]);
+  });
+});
+
+// ============================================================================================
+// ⚠️ THE ONE PROMISE `scripts/import-art.py` MAKES THAT NOTHING COULD CHECK.
+//
+// The reduction holds every pixel of every picture under the ceiling the BALL sets: the ball is the
+// one thing on a table that can be anywhere, so it is the one thing `gfx/surround` cannot precompute
+// a shadow for, and 3:1 against (238, 242, 248) allows a backdrop up to Y 0.2615.
+//
+// ⚠️ AND THAT SCRIPT CAN NEVER BE PART OF A GATE. The masters are gitignored — eighteen megabytes for
+// six pictures, `art/README.md` has the argument — so there is no input for it in a clone and nothing
+// automated can re-run it. Its promise is therefore only checkable on its OUTPUT, which is versioned.
+//
+// It has already been broken once, in the commit that made it: the shoulder never reaches the ceiling
+// by construction, and then `np.round` put `slipstream`'s brightest pixel a byte over it — 2.98:1
+// against a requirement of 3, from an encoder rounding the wrong way. That is the second time in two
+// days that a bound was missed by one byte of rounding; `gfx/surround.ENCODE` records the first.
+describe('⚠️ and no shipped picture is brighter than the ball can be seen against', () => {
+  const LINEAR = new Float64Array(256);
+  for (let v = 0; v < 256; v++) {
+    const c = v / 255;
+    LINEAR[v] = c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  }
+
+  test.each(PLAYABLE_TABLES.map((t) => [t.name, t] as const))('%s', (name, table) => {
+    const art = readPng(readFileSync(assetOf(table)));
+    const ball = paletteFor(sceneOf(name) ?? 'slate', { cbSafe: false }).ball;
+    const luminance = (r: number, g: number, b: number): number =>
+      0.2126 * LINEAR[r]! + 0.7152 * LINEAR[g]! + 0.0722 * LINEAR[b]!;
+    const ballY = luminance(ball.r, ball.g, ball.b);
+
+    let brightest = 0;
+    for (let i = 0; i < art.width * art.height; i++) {
+      const word = art.pixels[i]!;
+      // The reader's own byte order, read back the way `tests/helpers/png` writes it.
+      brightest = Math.max(brightest,
+        luminance(word & 0xff, (word >> 8) & 0xff, (word >> 16) & 0xff));
+    }
+    const ratio = (ballY + 0.05) / (brightest + 0.05);
+
+    expect([art.width, art.height], `${name} is the playfield size`)
+      .toEqual([table.size.width, table.size.height]);
+    expect(Math.round(ratio * 100) / 100, `${name}: the ball reads ${ratio.toFixed(3)}:1 at its worst`)
+      .toBeGreaterThanOrEqual(3);
   });
 });
