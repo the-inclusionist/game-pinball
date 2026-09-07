@@ -340,6 +340,28 @@ export interface PhysicsOptions {
    * instead of the number.
    */
   readonly gravity?: number;
+  /**
+   * The source of chance inside the simulation, so a survey can be repeatable.
+   *
+   * ⚠️ THIS EXISTS BECAUSE `tests/table-reachable` CALLED ITSELF DETERMINISTIC AND WAS NOT. It seeds a
+   * generator and steers the LAUNCH with it — direction, speed, how often the flippers flap — and
+   * then everything downstream reached for `Math.random`:
+   *
+   *   · `physics/stuck.unstuckBall` — `o.random ?? Math.random` — the nudge that frees a wedged ball,
+   *     which is the one this survey actually walks into: it drives the stuck detector every frame,
+   *     deliberately, "because it runs in the game".
+   *   · `physics/step`'s `throwBall` — `p.random ?? Math.random` — every kickout, well and hole that
+   *     catches the ball and throws it back.
+   *
+   * So a component could be reached on one run and missed on the next. The gate failed about once in
+   * every six full runs of the node suite and passed every time on its own, which reads as an order
+   * dependence and is not one — and it named a COMPONENT, which points the reader at the table.
+   *
+   * ⚠️ AND IT IS OPTIONAL, BECAUSE THE GAME WANTS THE REAL THING. A pinball whose nudge went the same
+   * way every time would be a pinball a player could learn to exploit; `Math.random` is the right
+   * default and the survey is the caller that wants otherwise.
+   */
+  readonly random?: () => number;
 }
 
 export function buildPhysics(table: AuthoredTable, o: PhysicsOptions = {}): TablePhysics {
@@ -573,7 +595,10 @@ export function buildPhysics(table: AuthoredTable, o: PhysicsOptions = {}): Tabl
     flippers,
     movers,
     flare,
-    stuck: createStuckWatch(table, { relaunch: o.relaunch ?? (() => {}) }),
+    stuck: createStuckWatch(table, {
+      relaunch: o.relaunch ?? (() => {}),
+      ...(o.random ? { random: o.random } : {}),
+    }),
     flipperNamed: (name) => flipperByName.get(name),
     /**
      * Switches a component's edges on or off.
@@ -642,6 +667,8 @@ export function buildPhysics(table: AuthoredTable, o: PhysicsOptions = {}): Tabl
         position: { x, y },
         direction: { x: 0, y: -1 },
         speed: 0,
+        // The ball's own chance, used by `throwBall` when a kickout releases it. See `PhysicsOptions`.
+        ...(o.random ? { random: o.random } : {}),
       });
     },
   };

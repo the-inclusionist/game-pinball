@@ -42,7 +42,12 @@ function visits(table: AuthoredTable, balls: number): Map<string, number> {
   const r = table.ballRadius;
 
   for (let n = 0; n < balls; n++) {
-    const physics = buildPhysics(table);
+    /**
+     * ⚠️ THE SIMULATION'S CHANCE IS THE SEEDED ONE TOO, which is what makes the comment on `rng` true.
+     * Steering only the launch left the stuck detector's nudge — driven every frame, on purpose —
+     * drawing from `Math.random`, so this survey was reproducible right up to the first wedged ball.
+     */
+    const physics = buildPhysics(table, { random });
     const ball = physics.spawnBall();
     ball.direction = { x: (random() - 0.5) * 0.12, y: -1 };
     ball.speed = launchSpeedFor(table) * (0.55 + random() * 0.45);
@@ -191,5 +196,45 @@ describe('⚠️ every component the ball is meant to meet, it meets', () => {
           .toBe(true);
       }
     }
+  });
+});
+
+/**
+ * ⚠️ FEWER BALLS THAN THE SURVEY ITSELF, AND THE REASON IS A PRICE. At `BALLS` the determinism check
+ * runs every table's survey TWICE and costs 24.6 seconds — against 7 for the surveys it is checking,
+ * on a node suite that takes 15 in total. Two thirds of a minute to pin one property is a gate people
+ * start skipping. At this count it is about eight seconds and covers all six tables.
+ *
+ * What that trades away is stated: the one real disagreement ever seen was on `ring-belt` at the full
+ * count, and it has not been reproduced since — with the fix or without it. So this is not the gate
+ * that caught that; it is the gate that keeps the property true from here on.
+ */
+const DETERMINISM_BALLS = 20;
+
+describe('⚠️ and the survey is DETERMINISTIC, which it said it was and was not', () => {
+  /**
+   * `rng` above carries the comment "Deterministic, so a finding is reproducible", and `visits` seeds
+   * a fresh one on every call — so two identical surveys ought to agree exactly.
+   *
+   * ⚠️ THEY DID NOT, AND THAT IS WHY THIS GATE WAS INTERMITTENT. It failed about once in every six
+   * full runs of the node suite, on `low-orbit`, `crater-run`, `long-climb` or `ring-belt`, and passed
+   * every time it was run on its own — which reads as an order dependence and is not one. The
+   * simulation reaches for `Math.random` in two places that this survey walks straight into:
+   *
+   *   · `physics/step`'s `throwBall` — `p.random ?? Math.random` — which is every kickout, well and
+   *     hole that catches the ball and throws it back out.
+   *   · `physics/stuck`'s `unstuckBall` — `o.random ?? Math.random` — which is the nudge that frees a
+   *     wedged ball, and a four-thousand-frame survey wedges plenty of them.
+   *
+   * The seeded generator was steering the LAUNCH and nothing after it. So a component could be
+   * reached on one run and missed on the next, and the failure named a component rather than the
+   * cause — which is the worst way for a gate to be wrong, because it points at the table.
+   */
+  test.each(PLAYABLE_TABLES.map((t) => [t.name, t] as const))('%s twice is the same survey', (name, table) => {
+    const once = visits(table, DETERMINISM_BALLS);
+    const twice = visits(table, DETERMINISM_BALLS);
+
+    expect([...twice.entries()].sort(), `${name}: two identical surveys disagreed`)
+      .toEqual([...once.entries()].sort());
   });
 });
