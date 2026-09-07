@@ -7,29 +7,29 @@
 // them in a way a colour-blind player cannot see would answer it for some children and not others.
 // `tests/gfx-comet-view` holds this: the two kinds must come out pixel-identical apart from the digits.
 //
-// ========================= THE COLOUR, AND WHY ONE COLOUR IS NOT ENOUGH =========================
-// The comet has to be told apart from two things that sit at opposite ends:
+// ========================= THE COLOUR, AND WHY THE RIM CARRIES IT =========================
+// ⚠️ THE DEV CHOSE IT: "Cometas devem ser azuis na borda e no número, brancos internamente, e terem
+// cauda." So the body is white, the rim and the digits are blue, and the tail follows.
 //
-//   the playfield art, which runs from black up to Y = 0.2615 (the ceiling `import-art.py` dims it to,
-//     so that the near-white BALL clears 3:1 against it),
-//   the ball itself, at Y = 0.8846.
+// White is the one fill that could not be picked freely before: the BALL is near-white, and two
+// near-white things touching are one thing. What makes it work is that the boundary a player reads is
+// no longer the fill — it is the RIM. Where the ball meets a comet the pair is white against blue, at
+// 5.5:1; where a comet meets the table it is white against a ground held under a ceiling, at 3:1.
 //
-// ⚠️ AND THERE IS NO SINGLE COLOUR THAT CLEARS 3:1 AGAINST BOTH, which is worth writing down because
-// the first version of this file claimed there was and the gate caught it. Against art that can be as
-// bright as 0.2615, WCAG 1.4.11 leaves only Y >= 0.8845 (as bright as the ball, so it fails against
-// the ball) or Y <= 0.0538 (so dark it fails against the black parts of the art). The window is empty.
+// ⚠️ AND THE HALO IS STILL WHAT HOLDS THE SECOND HALF. The art runs up to Y 0.2615 and white needs its
+// neighbours under Y 0.2453 to clear 3:1, so the ring of art immediately outside every comet is
+// brought down to that. It is a smaller correction than the amber needed — the two numbers are close —
+// but "smaller" is not "none", and `tests/gfx-comet-view` measures it on real pixels.
 //
-// So the comet does what every other component on these tables already does: it carries its own local
-// darkening. `gfx/surround` computes, for a colour of luminance Y, the brightest a neighbouring pixel
-// may be — and lays that ceiling over the ring of art immediately outside the shape. The difference is
-// only that a comet is somewhere new every frame, so the shadow is laid down as it is drawn instead of
-// being cached per palette.
-//
-// `COMET_BODY` is then chosen against the BALL alone, at Y = 0.2490: 3.13:1 against it, with the
-// halo bringing whatever is behind under 0.0497, which is 3.00:1 the other way.
+// ========================= AND THE TAIL POINTS WHERE IT CAME FROM =========================
+// A comet's tail is the part of it that is being left behind, so it trails UP from a falling one. Drawn
+// as a few discs of shrinking size and fading alpha along the reverse of its travel — which is the
+// cheapest thing that reads as motion at this resolution, and the only one that survives a shape six
+// pixels across.
+
 import { drawNumber, numberWidth, DIGIT_HEIGHT } from './digits.js';
 import { pack, type Framebuffer } from './framebuffer.js';
-import { packRgb, rimOf } from './table-view.js';
+import { packRgb } from './table-view.js';
 import { shade, type Rgb } from './table-palette.js';
 import type { Rect } from '../shell/hud.js';
 import { COMET_RADIUS, type Comet } from '../control/comet-mission.js';
@@ -41,25 +41,42 @@ const LINEAR_CHANNEL = (byte: number): number => {
   return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
 };
 
-/** Measured: Y = 0.2490, which clears 3:1 against the ball. The halo below handles the ground. */
-export const COMET_BODY: Rgb = { r: 183, g: 125, b: 42 };
+/**
+ * "brancos internamente" — the fill.
+ *
+ * ⚠️ COOLER THAN THE BALL ON PURPOSE, AND THAT IS NOT WHAT SEPARATES THEM. The ball is (238, 242, 248)
+ * and this is (236, 242, 252); at a glance they are the same white, and they are meant to be — what
+ * tells a comet from the ball is that a comet is six times across and has a blue ring and a number in
+ * it. Making the fills far apart would have cost the white the Dev asked for to solve a problem the rim
+ * already solves.
+ */
+export const COMET_BODY: Rgb = { r: 236, g: 242, b: 252 };
 
 /**
- * The digits.
+ * "azuis na borda e no número" — the rim and the digits, one colour.
  *
- * ⚠️ 4.5:1 AND NOT 3:1, because this is TEXT and not a shape. Against the body it measures 5.4:1. A
- * number a player has to read under time pressure is the one thing here that has to be easy.
+ * Measured against the body at 5.5:1, which is what WCAG 1.4.3 wants of TEXT and more than 1.4.11 asks
+ * of the ring. The digits are the thing a player has to read under time pressure, so they take the
+ * stricter of the two.
  */
-export const COMET_INK: Rgb = { r: 16, g: 14, b: 20 };
+export const COMET_BLUE: Rgb = { r: 28, g: 86, b: 214 };
 
-/** How much lighter the top of the disc is than its body — the same trick every component uses. */
-const COMET_SHADE = 0.34;
+/**
+ * How much darker the bottom of the disc is than its body.
+ *
+ * ⚠️ ONE-SIDED NOW, BECAUSE THE BODY IS WHITE. The old amber had a lit top and a shaded bottom, which
+ * is how every component on these tables is drawn; a white face cannot have a lighter top — there is
+ * nowhere above white to go — so the shading is all in the lower half and the top stays the fill.
+ */
+const COMET_SHADE = 0.16;
 
 const BODY = packRgb(COMET_BODY);
-const TOP = packRgb(shade(COMET_BODY, COMET_SHADE));
+const TOP = BODY;
 const BOTTOM = packRgb(shade(COMET_BODY, -COMET_SHADE));
-const RIM = packRgb(rimOf(COMET_BODY));
-const INK = packRgb(COMET_INK);
+// ⚠️ THE RIM IS THE DEV'S BLUE RATHER THAN `rimOf(body)`. `rimOf` takes a colour 55% toward black,
+// which on white is a grey — and he asked for blue. The blue is dark enough to do the same job.
+const RIM = packRgb(COMET_BLUE);
+const INK = packRgb(COMET_BLUE);
 
 /**
  * The brightest a pixel just outside a comet may be, so the comet clears 3:1 against it.
@@ -72,6 +89,17 @@ const HALO_CEILING = surroundCeiling(
   0.2126 * LINEAR_CHANNEL(COMET_BODY.r) + 0.7152 * LINEAR_CHANNEL(COMET_BODY.g)
   + 0.0722 * LINEAR_CHANNEL(COMET_BODY.b),
 );
+
+/**
+ * How far the tail reaches behind a comet, as a multiple of its radius, and in how many steps.
+ *
+ * ⚠️ DISCS RATHER THAN A TAPERED SHAPE. At this resolution a comet is eighteen pixels across and a
+ * drawn triangle would be four pixels wide at its base — an artefact rather than a tail. Four discs of
+ * shrinking size, each fainter than the last, is what reads as a streak when every one of them is a
+ * handful of pixels.
+ */
+const TAIL_REACH = 2.6;
+const TAIL_STEPS = 4;
 
 /** Below this many pixels across, the digits are left out rather than drawn as mush. */
 const READABLE_DIAMETER = DIGIT_HEIGHT + 4;
@@ -204,10 +232,22 @@ export function drawComet(
   if (cy + radius < into.y || cy - radius > into.y + into.height) return;
 
   if (comet.state === 'bursting') {
-    // ⚠️ NO HALO ON A BURST. It is translucent and on its way out — darkening the art behind something
-    // that is disappearing would leave a shadow of a thing that is no longer there.
+    // ⚠️ NO HALO AND NO TAIL ON A BURST. It is translucent and on its way out — darkening the art
+    // behind something that is disappearing would leave a shadow of a thing that is no longer there,
+    // and a tail on something that has stopped travelling is a streak going nowhere.
     ring(screen, cx, cy, radius, comet.alpha, into);
     return;
+  }
+
+  /**
+   * ⚠️ THE TAIL GOES UP, WHICH IS WHERE THE COMET CAME FROM. It falls, so what it leaves behind is
+   * above it. Drawn BEFORE the disc so the head sits on top of its own streak rather than under it.
+   */
+  for (let step = TAIL_STEPS; step >= 1; step--) {
+    const along = (step / TAIL_STEPS) * TAIL_REACH * radius;
+    const size = radius * (1 - 0.6 * (step / TAIL_STEPS));
+    if (size < 1) continue;
+    disc(screen, cx, cy - along, size, comet.alpha * 0.34 * (1 - step / (TAIL_STEPS + 1)), into);
   }
 
   halo(screen, cx, cy, radius, into);

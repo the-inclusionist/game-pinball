@@ -55,8 +55,15 @@ export const SPAWN_INTERVAL = 2.6;
  */
 export const COMET_RADIUS = 9;
 
-/** "Eles caem lentamente" — table units a second. Ten seconds of falling is ninety units. */
-export const FALL_SPEED = 9;
+/**
+ * "Eles caem lentamente" — table units a second.
+ *
+ * ⚠️ FIVE, AND IT WAS NINE. The Dev looked at nine and said "e devem ser ainda mais lentos". Ten
+ * seconds of falling is fifty units now, which on a table 235 tall is a fifth of it — slow enough that
+ * a player can pick which comet to go for rather than reacting to the one in front of them, which is
+ * the difference between a drill and a reflex test.
+ */
+export const FALL_SPEED = 5;
 
 /** "O jogador ganha o jogo ao completar 20 pontos de missão." */
 export const WINNING_POINTS = 20;

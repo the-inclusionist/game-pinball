@@ -6,7 +6,7 @@
 // drill, and a hint carried in colour is one that some children get and others do not.
 import { describe, test, expect } from 'vitest';
 import { createFramebuffer, type Framebuffer } from '../app/js/gfx/framebuffer.js';
-import { drawComet, COMET_BODY, COMET_INK } from '../app/js/gfx/comet-view.js';
+import { drawComet, COMET_BODY, COMET_BLUE } from '../app/js/gfx/comet-view.js';
 import { drawNumber, numberWidth, GLYPHS, DIGIT_WIDTH, DIGIT_HEIGHT } from '../app/js/gfx/digits.js';
 import { COMET_RADIUS, type Comet } from '../app/js/control/comet-mission.js';
 import { paletteFor, type Rgb } from '../app/js/gfx/table-palette.js';
@@ -111,14 +111,31 @@ describe('the colour is a measurement, not a preference', () => {
       .toBeGreaterThanOrEqual(3);
   });
 
-  test('⚠️ and 3:1 against the ball, which is the other thing on the same pixels', () => {
-    expect(ratio(body, luminance(ball)), 'the ball and a comet read as the same object')
-      .toBeGreaterThanOrEqual(3);
+  /**
+   * ⚠️ THIS USED TO ASK FOR 3:1 BETWEEN THE COMET'S FILL AND THE BALL, and the Dev's colour retires the
+   * question rather than failing it. He asked for white comets — "brancos internamente" — and the ball
+   * is near-white, so the fills now measure 1.00:1 against each other and are MEANT to.
+   *
+   * What separates them is the blue ring, which is the pair that is actually adjacent when a ball
+   * touches a comet. That is the assertion below, and it is the same claim this one was making: the
+   * player can tell the two apart where they meet.
+   */
+
+  test('⚠️ and the blue clears 4.5:1 against the white, because it is the RIM AND the digits', () => {
+    /**
+     * ⚠️ ONE COLOUR DOING TWO JOBS, so it takes the stricter of the two bars. As a ring, WCAG 1.4.11
+     * would ask 3:1; as the number a player has to read while it falls, 1.4.3 asks 4.5:1. The Dev put
+     * them on the same colour — "azuis na borda e no número" — so the number decides.
+     */
+    expect(ratio(luminance(COMET_BLUE), body), 'the number is the one thing here that must be easy')
+      .toBeGreaterThanOrEqual(4.5);
   });
 
-  test('⚠️ and the digits clear 4.5:1 against the comet, because they are TEXT', () => {
-    expect(ratio(luminance(COMET_INK), body), 'the number is the one thing here that must be easy')
-      .toBeGreaterThanOrEqual(4.5);
+  test('⚠️ and the ball is told from a comet by the RIM, not by the fill', () => {
+    // They are both white, deliberately: "brancos internamente". Two near-white things touching are one
+    // thing unless something between them is not white, and that is what the blue ring is for.
+    expect(ratio(luminance(COMET_BLUE), luminance(ball)), 'the ball meets the rim, and cannot see it')
+      .toBeGreaterThanOrEqual(3);
   });
 });
 
