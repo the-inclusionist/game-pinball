@@ -175,6 +175,39 @@ async function stopTheWorld(): Promise<void> {
    */
   debug().resetView();
   await allKeysUp();
+  await settle();
+}
+
+/**
+ * Waits until both paddles have actually stopped, instead of assuming a frame budget was enough.
+ *
+ * ⚠️ THIS IS THE THING `allKeysUp`'s 24 FRAMES WAS GUESSING AT, and the guess stopped being right the
+ * day the comet drill started slowing the table's clock: a retraction that took 14 frames takes 24 at
+ * three fifths of the pace, and `stopTheWorld` handed the next test a paddle still coming down. Three
+ * differing pixels in the box the test asserts is EMPTY, read as "one key drives both paddles".
+ *
+ * ⚠️ AND IT IS A CANDIDATE FOR THE FLAKE THIS FILE RECORDS ABOVE — twice in fifty shuffled runs, on
+ * these same two tests, never reproduced. A budget that is *just* enough fails when anything makes the
+ * paddle a little slower, and this is what "a little slower" looked like when it finally arrived in a
+ * form big enough to see every time. That is a candidate and not a diagnosis: the flake was never
+ * reproduced, so it cannot be declared fixed, and the note above stays where it is.
+ *
+ * ⚠️ AND THE TIP IS READ RATHER THAN THE PIXELS. `flipperBox` asserts about the camera and clamps to
+ * the screen; a settle loop built on it would fail for reasons that have nothing to do with settling.
+ * A paddle that is not moving has a tip that does not move — including one being HELD at full
+ * extension, which is settled too.
+ */
+async function settle(): Promise<void> {
+  const tips = (): string =>
+    debug().flippers.map((f) => `${f.tip.x.toFixed(4)},${f.tip.y.toFixed(4)}`).join('|');
+  let previous = tips();
+  for (let i = 0; i < 200; i++) {
+    await frames(2);
+    const now = tips();
+    if (now === previous) return;
+    previous = now;
+  }
+  throw new Error(`the paddles never stopped: ${tips()}`);
 }
 
 /**

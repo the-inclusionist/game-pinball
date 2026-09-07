@@ -502,11 +502,17 @@ describe('booting', () => {
    * start of its path for ever while the ball bounces off it there.
    *
    * No unit can see either line. This is the gate written before the fourth instance instead of after.
+   *
+   * ⚠️ AND "WITH THE WORLD" IS `tableSeconds` NOW, NOT THE FRAME COUNT. The comet drill slows the
+   * table's own clock, and a crane still sweeping at full speed past a ball at three fifths would hit
+   * harder during a mission than outside one. The line this reads for is the one that keeps them in the
+   * same time as the ball they can collide with; matching the old real-time expression would pass on a
+   * mover that had fallen out of it.
    */
   test('⚠️ the frame loop advances the movers AND draws them', () => {
     const source = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../app/js/main.ts'), 'utf8');
 
-    expect(source, 'they are advanced with the world').toMatch(/mover\.advance\(frames \* FRAME_SECONDS\)/);
+    expect(source, 'they are advanced with the world').toMatch(/mover\.advance\(tableSeconds\)/);
     expect(source, 'and drawn where they are').toMatch(/drawMover\(\s*screen, mover\.at/);
   });
 

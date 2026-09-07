@@ -4,25 +4,45 @@
 // ⚠️ THE DEV: "Com missões de cometa, a bolinha precisa ser mais lenta, e deve ser possível ter um leve
 // controle sobre ela com o direcional, como se ela fosse capaz de produzir uma leve propulsão."
 //
-// ========================= BOTH ARE FORCES, AND THE SEAM ALREADY EXISTED =========================
+// ========================= AND SLOWER IS THE CLOCK, NOT A FORCE =========================
+// ⚠️ THIS FILE SHIPPED A DRAG FIRST, `-k·v` AT k = 1.1, AND THE DEV FOUND WHAT IT COST BY PLAYING IT:
+// "o jogo perdeu jogabilidade em vários pontos: além do túnel, se a bolinha cai em uma plataforma, ela
+// corre o risco de parar, e rola devagar demais em ladeiras ao invés de rodar de forma fluida."
+//
+// The argument for the drag was that it is proportional — a cap flattens a good shot and a poor one to
+// the same speed, `-k·v` does not — and that argument was correct AND ABOUT THE WRONG QUESTION. It asked
+// what happens to the ball's SPEED and never asked what happens to WHERE THE BALL CAN GO. A drag is
+// dissipative: it takes energy out of the table and gives none back, so
+//
+//   · on a level surface nothing acts along the surface at all and the speed decays as e^(-kt). The
+//     ball parks, and nothing in the model ever starts it again.
+//   · on a slope the roll is capped at g·sinθ/k — 28 units a second on a 15° ramp, however long it is.
+//   · sideways, where gravity never helps, the TOTAL travel is bounded by v/k for the life of the ball.
+//     36 units at 40 a second: less than half the width of the smallest table in the catalogue.
+//
+// The tunnel was only the first place it showed, because the climb is long and nothing helps it. The
+// commit that exempted the lane cured the symptom that had been reported and left the mechanism running
+// everywhere else — which is `CLAUDE.md`'s "one cause found is not the whole cause" happening again.
+//
+// ⚠️ WHAT WAS ASKED FOR IS A PACE: time to see a comet and choose it. Scaling the simulated step gives
+// exactly that. The same forces integrated over a shorter step trace THE SAME CURVE THROUGH THE SAME
+// POINTS, reached later — no energy leaves the table, so no surface becomes a trap and no slope is too
+// shallow to roll down. Everything already tuned against the full-speed table stays tuned: the bumpers,
+// the flipper strength, `LAUNCH_MARGIN`, the drain budgets, the gate that measures the storm.
+//
+// And it needs no exemption for the plunger lane. The launch is not weakened; it is watched in slow
+// motion, which is why `tests/launch-clears-the-lane` now measures the same climb with the drill on and
+// off and expects the same number.
+//
+// ========================= THE STEERING IS STILL A FORCE, AND THE SEAM IS STILL THERE ==================
 // `physics/step` calls `fieldEffects(ball, destination)` once per ball per frame and adds what it writes
-// to the velocity. Gravity has answered through it since the physics was ported, and `table/storm`'s
-// flare drag became the second user — its comment says what that meant: "a seam with one user, which is
-// how a seam stops being one." This is the third and the fourth.
+// to the velocity. Gravity has answered through it since the physics was ported and `table/storm`'s
+// flare drag became the second user — a real drag, on a real medium, which is what the mechanism is for.
+// The push is the third, and it belongs there for the reason the slowdown does not: it is a force.
 //
-// So neither is a special case bolted onto the ball, and the physics never hears the word "mission". It
-// is handed a force per frame and does what it has always done with one.
-//
-// ========================= AND SLOWER IS DRAG, NOT A CAP =========================
-// ⚠️ THE OBVIOUS IMPLEMENTATION IS `if (speed > max) speed = max`, and it is wrong in a way that would
-// be found by playing rather than by reading. A cap takes energy out of a fast ball and nothing out of a
-// slow one: a bumper's kick would vanish at the top of its arc, a hard flip and a soft one would arrive
-// at the same speed, and the table would stop rewarding a good shot anywhere below the cap.
-//
-// `-k·v` is proportional. Everything slows by the same FRACTION, the ordering of a strong shot and a
-// weak one survives, and because `physics/step` multiplies by the frame time the ball loses a share of
-// its speed per SECOND rather than per frame — stable at any frame rate. It is the same shape the flare
-// already uses, for the same reason.
+// ⚠️ AND IT SURVIVES THE CLOCK UNCHANGED, which is the quiet argument for scaling time. Thrust and
+// gravity are both accelerations, so a scaled clock weakens both by the same factor and their RATIO —
+// the whole design of "leve" — is exactly what it was. The steered path has the same shape at any pace.
 
 /** Which way the player is pushing. Three, because down is gravity's and is not offered — see below. */
 export interface ThrustState {
@@ -31,16 +51,49 @@ export interface ThrustState {
   readonly right: boolean;
 }
 
+/** Nobody leaning on anything. Exported because six of the seven tables are always in this state. */
+export const NO_THRUST: ThrustState = { up: false, left: false, right: false };
+
 /**
- * How much of its speed the ball loses per second while a drill is running.
+ * How fast the table's own clock runs while a drill is on.
  *
- * ⚠️ 1.1, WHICH IS A LITTLE OVER HALF ITS SPEED A SECOND, and the number is a playability decision
- * rather than a measurement. What it has to be is enough that a player can pick which comet to go for —
- * the comets themselves came down from 9 units a second to 5 for the same reason — without turning the
- * table into treacle: a ball that cannot reach the top of the playfield cannot complete anything the
- * table asks of it either.
+ * ⚠️ 0.6, AND IT IS A PLAYABILITY DECISION RATHER THAN A MEASUREMENT — the same kind of number the
+ * comets' own fall speed is, and it replaces a drag the Dev played and rejected. What it has to be is
+ * slow enough that a player can pick which comet to go for, and fast enough that the table still reads
+ * as a pinball table: three fifths of the pace is a visible slowdown that no ball ever gets stuck in,
+ * because nothing about the geometry has changed.
  */
-export const MISSION_DRAG = 1.1;
+export const MISSION_TIME_SCALE = 0.6;
+
+/**
+ * And with the `slow` capsule taken.
+ *
+ * ⚠️ TWO THIRDS OF THE DRILL'S OWN PACE, not two thirds of the table's, so the capsule reads as a change
+ * from what the player is currently living with rather than from a speed they last saw before the
+ * mission started.
+ */
+export const SLOWED_TIME_SCALE = 0.4;
+
+/**
+ * The clock the physics is stepped with, as a fraction of real time.
+ *
+ * ⚠️ THE TWO CAPSULES ARE THE SAME KNOB TURNED EITHER WAY, which is why `control/power-ups` cancels one
+ * when the other is taken and why neither adds a force of its own anywhere. `fast` is the table AT ITS
+ * OWN PACE — already five thirds of what the drill leaves, and the one value on the dial that needs no
+ * tuning because every other table in the catalogue is played at it. A number above 1 would be a speed
+ * this game has never run a ball at, on geometry authored for the speed it has.
+ */
+export function missionTimeScale(
+  o: { drill: boolean; slow: boolean; fast: boolean },
+): number {
+  if (!o.drill) return 1;
+  // ⚠️ SLOW BEFORE FAST, and the game cannot reach the state where it matters. It is pinned by a test
+  // anyway because the two failures are not symmetric: a ball that is too slow is only slow, and a
+  // ball that is too fast is a ball the player loses to a defect.
+  if (o.slow) return SLOWED_TIME_SCALE;
+  if (o.fast) return 1;
+  return MISSION_TIME_SCALE;
+}
 
 /**
  * The push, in table units per second squared.
@@ -69,27 +122,5 @@ export function thrustField(thrust: ThrustState): { x: number; y: number } {
     x: ((thrust.right ? 1 : 0) - (thrust.left ? 1 : 0)) * THRUST,
     // `y` grows downward, so pushing UP is negative.
     y: (thrust.up ? -1 : 0) * THRUST,
-  };
-}
-
-export interface BallAssist {
-  /** How much of its speed the ball loses per second. Nought while no drill is running. */
-  readonly drag: number;
-  readonly thrust: ThrustState;
-}
-
-/**
- * The whole assist as one force, ready to be added to gravity.
- *
- * Takes the ball's velocity because drag is against it: `physics/step` hands `fieldEffects` the ball, so
- * the caller has both halves and this needs no knowledge of either.
- */
-export function assistField(
-  assist: BallAssist, velocity: { x: number; y: number },
-): { x: number; y: number } {
-  const push = thrustField(assist.thrust);
-  return {
-    x: push.x - assist.drag * velocity.x,
-    y: push.y - assist.drag * velocity.y,
   };
 }

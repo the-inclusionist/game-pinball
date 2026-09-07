@@ -26,7 +26,7 @@
 // kickers that push; this has gravity, pointing down the table, because that is what an authored table
 // declares today. When a ramp declares a field, it goes here and nowhere else.
 
-import { assistField, type BallAssist } from './ball-assist.js';
+import { thrustField, type ThrustState } from './ball-assist.js';
 import type { BallState } from '../physics/collision.js';
 import {
   createEdgeManager, placeLineInGrid, placeCircleInGrid, type Edge, type EdgeManager,
@@ -265,10 +265,11 @@ export function launchSpeedFor(table: AuthoredTable, o: PhysicsOptions = {}): nu
  *
  * ⚠️ IT STAYS AT 1.15, AND THE DEV ASKED FOR TWICE THAT. "O lançador está tão fraco que a bola não
  * consegue sair do túnel. Dobre a força do lançador." He is right that the ball could not leave the
- * tunnel and the cause is not this number — it is `MISSION_DRAG`, added a commit earlier for his own
+ * tunnel and the cause was not this number — it was `MISSION_DRAG`, added a commit earlier for his own
  * "a bolinha precisa ser mais lenta", which took 1.1 of the ball's speed per second away from
  * EVERYTHING including a ball climbing the lane. Measured: a full draw with the drill on climbed 121
- * of the 160 `low-orbit` needs, and 145 of `factory`'s 229. Not one table could launch.
+ * of the 160 `low-orbit` needs, and 145 of `factory`'s 229. Not one table could launch. That drag is
+ * gone — the drill slows the CLOCK now, see `table/ball-assist` — and this number outlived it.
  *
  * ⚠️ AND DOUBLING WAS TRIED AND MEASURED BEFORE IT WAS REJECTED, which is the only reason to write
  * this down rather than just do as asked. At x2 the ball enters the play faster and takes different
@@ -369,14 +370,17 @@ export interface PhysicsOptions {
   /**
    * An extra force the SHELL supplies, added to gravity every frame.
    *
-   * ⚠️ THE PHYSICS NEVER HEARS THE WORD "MISSION", which is the point of the shape. The Dev asked for a
-   * slower ball while the comet drill is on and a little steering with the directional; both of those
-   * are FORCES, and `fieldEffects` has been the place a force goes since gravity was the only one. A
-   * function rather than a value, because it changes every frame — the player is holding a key or not.
+   * ⚠️ THE PHYSICS NEVER HEARS THE WORD "MISSION", which is the point of the shape. The Dev asked for
+   * a little steering with the directional while the comet drill is on; that is a FORCE, and
+   * `fieldEffects` has been the place a force goes since gravity was the only one. A function rather
+   * than a value, because it changes every frame — the player is holding a key or not.
    *
-   * See `table/ball-assist` for what goes in it and for why slower is drag rather than a speed cap.
+   * ⚠️ AND THE OTHER HALF OF THAT ASK IS NOT HERE ANY MORE. "A bolinha precisa ser mais lenta" was
+   * first answered with a drag through this same hook, and the Dev played it and reported what a
+   * dissipative force costs: a ball that parks on a level surface and creeps down slopes. It is now the
+   * simulated step that shrinks, which this file never sees — see `table/ball-assist`.
    */
-  readonly extraField?: (ball: BallState) => BallAssist;
+  readonly extraField?: (ball: BallState) => ThrustState;
   /**
    * The source of chance inside the simulation, so a survey can be repeatable.
    *
@@ -671,17 +675,19 @@ export function buildPhysics(table: AuthoredTable, o: PhysicsOptions = {}): Tabl
         destination.y = gravity;
 
         /**
-         * ⚠️ AND THE SHELL'S OWN FORCE, WHICH IS THE THIRD USER OF THIS HOOK. The Dev's drill slows the
-         * ball and lets the directional nudge it; both are forces, so both arrive here rather than as
-         * a special case somewhere in the loop. `table/ball-assist` argues the arithmetic.
+         * ⚠️ AND THE SHELL'S OWN FORCE, WHICH IS THE THIRD USER OF THIS HOOK. The directional gives the
+         * ball a light push during a comet drill; it is a force, so it arrives here rather than as a
+         * special case somewhere in the loop. `table/ball-assist` argues the arithmetic.
+         *
+         * ⚠️ AND IT NEEDS NO KNOWLEDGE OF THE CLOCK. The push is an acceleration and so is gravity, so
+         * a slowed table weakens both by the same factor and the ratio between them — which is the whole
+         * of what "leve" means — is the same at any pace.
          */
-        const assist = o.extraField?.(ball);
-        if (assist) {
-          const extra = assistField(assist, {
-            x: ball.direction.x * ball.speed, y: ball.direction.y * ball.speed,
-          });
-          destination.x += extra.x;
-          destination.y += extra.y;
+        const thrust = o.extraField?.(ball);
+        if (thrust) {
+          const push = thrustField(thrust);
+          destination.x += push.x;
+          destination.y += push.y;
         }
 
         /**
