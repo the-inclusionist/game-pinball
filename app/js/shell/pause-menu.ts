@@ -39,7 +39,17 @@ export const PAUSE_MENU_ID = 'pinball-pause';
  * Resume first because it is what most opens of this menu end in, and Quit last because it is the one
  * that cannot be undone.
  */
-export const PAUSE_ENTRIES = ['resume', 'tables', 'title', 'quit'] as const;
+/**
+ * ⚠️ `colours` IS HERE BECAUSE IT WAS A BUTTON UNDER THE CANVAS. The Dev: "Cores da mesa deveria estar
+ * no menu de pausa, não num rodapé que exige rolagem da tela." He is right, and the comment that put
+ * it there had a reason that expired: it said the ENGINE's pause menu has no entry to add one to,
+ * which is true and stopped mattering the day this port grew a pause menu of its own. The button
+ * outlived its own justification by the length of one feature.
+ *
+ * Second, after Resume: it is the setting a player is most likely to have opened this menu for, and
+ * the three that follow all end the game or the table.
+ */
+export const PAUSE_ENTRIES = ['resume', 'colours', 'tables', 'title', 'quit'] as const;
 
 export type PauseEntry = typeof PAUSE_ENTRIES[number];
 
@@ -48,6 +58,8 @@ export interface PauseMenuOptions {
   readonly host: Pick<HTMLElement, 'appendChild'>;
   readonly t: (key: string) => string;
   readonly onResume: () => void;
+  /** Opens the palette dialog. See `PAUSE_ENTRIES` for why it lives here and not under the canvas. */
+  readonly onColours: () => void;
   readonly onTables: () => void;
   readonly onTitle: () => void;
   readonly onQuit: () => void;
@@ -63,6 +75,8 @@ export interface PauseMenu {
    * game. A close that fired `onResume` would resume it twice.
    */
   close(): void;
+  /** Puts the focus on the colours entry — see the implementation for why that matters. */
+  focusColours(): void;
   readonly element: HTMLElement;
 }
 
@@ -92,7 +106,7 @@ export function mountPauseMenu(o: PauseMenuOptions): PauseMenu {
   root.appendChild(heading);
 
   const handlers: Readonly<Record<PauseEntry, () => void>> = {
-    resume: o.onResume, tables: o.onTables, title: o.onTitle, quit: o.onQuit,
+    resume: o.onResume, colours: o.onColours, tables: o.onTables, title: o.onTitle, quit: o.onQuit,
   };
 
   const buttons: HTMLElement[] = [];
@@ -122,5 +136,13 @@ export function mountPauseMenu(o: PauseMenuOptions): PauseMenu {
       buttons[0]?.focus();
     },
     close(): void { root.style.display = 'none'; },
+    /**
+     * The colours entry, so whatever it opens can hand the focus back to it.
+     *
+     * ⚠️ HANDING FOCUS BACK IS NOT A COURTESY. Hiding the element the focus is inside leaves the focus
+     * nowhere and the next Tab starts at the top of the document — which `main` already records for
+     * the button this entry replaced.
+     */
+    focusColours(): void { buttons[PAUSE_ENTRIES.indexOf('colours')]?.focus(); },
   };
 }

@@ -1285,24 +1285,12 @@ const optionsDialog = mountOptionsDialog({
   // ⚠️ BACK TO THE BUTTON THAT OPENED IT. Hiding the element the focus is inside leaves the focus
   // nowhere: the next Tab starts at the top of the document. `optionsButton` is declared below and
   // read at call time, which is the only order that works — the button's own handler needs the dialog.
-  restoreFocus: () => optionsButton.focus(),
+  // ⚠️ BACK TO THE ENTRY THAT OPENED IT. Hiding the element the focus is inside leaves the focus
+  // nowhere: the next Tab starts at the top of the document. `pauseMenu` is declared below and read at
+  // call time, which is the only order that works — the menu's own handler needs the dialog.
+  restoreFocus: () => pauseMenu.focusColours(),
 });
 
-/**
- * And something to open it with.
- *
- * ⚠️ A BUTTON, BECAUSE THE ENGINE'S PAUSE MENU HAS NO ENTRY TO ADD ONE TO. `SettingsPanelApi` registers
- * OVERLAYS — a close and a place in the Escape chain — and offers no way to put a line in the pause
- * list, so a dialog with no opener of its own would be a dialog nothing opens. It is a real `<button>`
- * inside the game region: reachable by Tab, by pointer, and by a screen reader, and it announces the
- * setting rather than a symbol.
- */
-const optionsButton = document.createElement('button');
-optionsButton.id = 'pinball-options-open';
-optionsButton.className = 'pinball-options-open';
-optionsButton.textContent = shell.t('pinball.palette.title');
-optionsButton.addEventListener('click', () => optionsDialog.open());
-region.appendChild(optionsButton);
 
 /**
  * ⚠️ THE FIRST SCREEN, AND THE ONE COMPROMISE IN IT, NAMED RATHER THAN HIDDEN.
@@ -1385,6 +1373,14 @@ const pauseMenu = mountPauseMenu({
   host: region,
   t: shell.t,
   onResume: () => { enterPhase('playing'); region.focus(); },
+  /**
+   * ⚠️ AND THE MENU STAYS SHUT BEHIND IT. `mountPauseMenu` hides itself before calling a handler so
+   * that whatever opens next is not drawing under it — but the phase is still `paused`, and the frame
+   * loop reopens the menu on the next draw. So the dialog would appear and be buried a sixtieth of a
+   * second later. Resuming first is wrong too: the ball would be moving while the player picks a
+   * colour. The loop is told to leave the menu alone while the dialog is up.
+   */
+  onColours: () => { optionsDialog.open(); },
   onTables: () => { leaveGame(); screens.show('select'); title.refresh(); },
   onTitle: () => { leaveGame(); screens.show('title'); title.refresh(); },
   /**

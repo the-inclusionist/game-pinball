@@ -24,6 +24,9 @@
 // That distinction is the whole reason Quit and Title are not the same entry, and it is stated here
 // because a reader will otherwise ask.
 import { describe, test, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { mountPauseMenu, PAUSE_MENU_ID, PAUSE_ENTRIES } from '../app/js/shell/pause-menu.js';
 import { createTranslator } from '../app/js/i18n/index.js';
 
@@ -55,6 +58,7 @@ function harness() {
     host: host as never,
     t: (key) => key,
     onResume: () => done.push('resume'),
+    onColours: () => done.push('colours'),
     onTables: () => done.push('tables'),
     onTitle: () => done.push('title'),
     onQuit: () => done.push('quit'),
@@ -64,10 +68,25 @@ function harness() {
 }
 
 describe('what the menu offers', () => {
-  test('⚠️ four entries, and the Dev asked for three of them by name', () => {
+  test('⚠️ five entries, and the Dev asked for four of them by name', () => {
     // "dar quit, voltar à tela inicial e escolher outras mesas" — plus resuming, which is what a pause
     // menu is for and which no list mentions because it is the obvious one.
-    expect([...PAUSE_ENTRIES]).toEqual(['resume', 'tables', 'title', 'quit']);
+    //
+    // ⚠️ AND `colours`, WHICH HE ASKED FOR SEPARATELY AND LATER: "Cores da mesa deveria estar no menu
+    // de pausa, não num rodapé que exige rolagem da tela." It had been a `<button>` under the canvas
+    // since before this menu existed, justified by a comment saying the ENGINE's pause menu has no
+    // entry to add one to — true, and irrelevant from the day this port grew a menu of its own.
+    expect([...PAUSE_ENTRIES]).toEqual(['resume', 'colours', 'tables', 'title', 'quit']);
+  });
+
+  test('⚠️ and nothing outside this menu opens the palette any more', () => {
+    // The other half of his complaint: a control in a footer is a control that needs the page
+    // scrolled. `main.ts` built `pinball-options-open` and appended it to the game region; it is gone,
+    // and this reads the source because no unit drives the entry point.
+    const source = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../app/js/main.ts'), 'utf8');
+
+    expect(source, 'the footer button is gone').not.toMatch(/pinball-options-open/);
+    expect(source, 'and the menu opens the dialog instead').toMatch(/onColours: \(\) => \{ optionsDialog\.open\(\); \}/);
   });
 
   test('each entry is a button with its own translated label', () => {
@@ -89,7 +108,8 @@ describe('what the menu offers', () => {
       doc: { createElement: (tag: string) => fakeElement(tag) } as never,
       host: host as never,
       t: (key) => createTranslator('en')(key),
-      onResume: () => {}, onTables: () => {}, onTitle: () => {}, onQuit: () => {},
+      onResume: () => {}, onColours: () => {}, onTables: () => {}, onTitle: () => {},
+      onQuit: () => {},
     });
     for (const child of host.children[0]!.children) created.push(child.textContent);
     // The heading plus four entries, and every one of them a different string.

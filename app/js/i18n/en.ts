@@ -146,6 +146,7 @@ const en: Record<string, string> = {
   'pinball.hud.paused': 'Paused',
   'pinball.pause.heading': 'Paused',
   'pinball.pause.resume': 'Continue',
+  'pinball.pause.colours': 'Table colours',
   'pinball.pause.tables': 'Change table',
   'pinball.pause.title': 'Title screen',
   // ⚠️ "End game", not "Quit". A page cannot close its own window, so the entry says what it does:

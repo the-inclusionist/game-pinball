@@ -158,6 +158,7 @@ const pt: Record<string, string> = {
   'pinball.hud.paused': 'Pausado',
   'pinball.pause.heading': 'Pausa',
   'pinball.pause.resume': 'Continuar',
+  'pinball.pause.colours': 'Cores da mesa',
   'pinball.pause.tables': 'Trocar de mesa',
   'pinball.pause.title': 'Tela inicial',
   'pinball.pause.quit': 'Encerrar partida',
