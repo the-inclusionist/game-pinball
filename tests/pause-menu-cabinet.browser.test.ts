@@ -189,6 +189,19 @@ describe('⚠️ and the vision correction the plan promised actually reaches th
     };
     const world = document.querySelector<HTMLElement>('#game-region canvas')!.parentElement!;
 
+    /**
+     * ⚠️ AND THE FILTER IT NAMES REALLY EXISTS, which nothing else here asks. The rest of this test
+     * checks that the STRING `url(#cvd-fix-deuter)` reaches the element — and a `url()` pointing at
+     * nothing applies cleanly and does nothing at all, which is this repository's most frequent defect
+     * wearing a filter's name. `createGame` installs the six matrices into `<svg id="cvd-filters">`
+     * and reports "sem host de filtros" when it cannot find one; this is the other end of that, in
+     * the page, which is the only place the two can be compared.
+     */
+    const host = document.getElementById('cvd-filters');
+    const installed = [...(host?.querySelectorAll('filter') ?? [])].map((f) => f.id);
+    expect(installed, 'the engine installed no colour-vision filters')
+      .toEqual(expect.arrayContaining(['cvd-fix-protan', 'cvd-fix-deuter', 'cvd-fix-tritan']));
+
     choose('deuteranopia');
     await frames(3);
     // ⚠️ THE ENGINE'S OWN url(), NOT A COLOUR THIS GAME COMPUTED. The filter is an SVG matrix the
