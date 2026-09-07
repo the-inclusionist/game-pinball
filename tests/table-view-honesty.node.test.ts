@@ -276,6 +276,15 @@ const PAINTED = {
   // -7 when the east scree column moved up twelve pixels: sixty balls never reached its lowest target,
   // which sat where the funnel has already gathered the ball toward the middle.
   'ring-belt': 7390,
+  /**
+   * ⚠️ THE SEVENTH TABLE, AND ITS NUMBER IS A FIRST ENTRY RATHER THAN A CHANGE. `factory` was authored
+   * onto the Dev's own picture and came in at 6591 painted pixels of a 55,632-pixel table — under the
+   * gantry, the gauges, the bay doors, the rocket's fins and the two deflectors.
+   *
+   * It is the largest of the six by area because it is the tallest table here at 304, and the ledger
+   * exists so that a future edit which paints MORE has to be argued for rather than noticed later.
+   */
+  'factory': 6591,
   // ⚠️ +2122 when this table was authored up to the 1995 density: two more eddies in the chamber, a
   // three-target drop COLUMN on its wall, two spillways in its corners, three wake rollovers and
   // two rebounders below the vanes.

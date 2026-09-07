@@ -227,6 +227,12 @@ const pt: Record<string, string> = {
   'pinball.hud.shootAgain': 'Jogue de novo',
   // ⚠️ AND IT SAYS THE KEY IS HELD. The caption on the selection screen has width for one word a line,
   // and the moment the player needs to know that the plunger STRETCHES is this one: a ball in the lane.
+  'pinball.mission.factory.gauges': 'Confira os tres manometros.',
+  'pinball.mission.factory.gauges2': 'Agora suba a passarela.',
+  'pinball.mission.factory.bay': 'Abra as tres comportas.',
+  'pinball.mission.factory.bay2': 'Agora acenda os motores.',
+  'pinball.mission.factory.lanes': 'Cruze as tres pistas.',
+  'pinball.mission.factory.lanes2': 'Agora os tres pocos.',
   /**
    * ⚠️ THE COMET MISSION. The Dev: "o jogador deve escolher um número de 2 a 9... aparecerá na fase
    * cometas caindo do céu com um número dentro." These are the only words the drill has, so they carry

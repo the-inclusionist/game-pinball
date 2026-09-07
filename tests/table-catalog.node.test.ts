@@ -37,7 +37,9 @@ describe('all five tables open', () => {
     // The count stays pinned rather than becoming `>= 5`, because a table appearing in the catalogue is
     // a decision: it goes in the selector, it needs a world in the palette, and it has to survive the
     // playability gates. Updating this line is the cheapest possible way to be made to notice.
-    expect(CATALOG).toHaveLength(10);
+    // ⚠️ ELEVEN NOW: `factory`, which the Dev asked for by name — "Crie a mesa factory, com base em
+    // factory.jpg" — and which is the first here authored straight onto its picture.
+    expect(CATALOG).toHaveLength(11);
     expect(new Set(CATALOG.map((t) => t.name)).size, 'and no two share a name').toBe(CATALOG.length);
   });
 

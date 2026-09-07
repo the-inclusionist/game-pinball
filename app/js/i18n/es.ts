@@ -205,6 +205,12 @@ const es: Record<string, string> = {
   'pinball.hud.balls': 'Bolas: {n}',
   'pinball.hud.gameOver': 'Fin del juego',
   'pinball.hud.shootAgain': 'Juega de nuevo',
+  'pinball.mission.factory.gauges': 'Revisa los tres manometros.',
+  'pinball.mission.factory.gauges2': 'Ahora sube la pasarela.',
+  'pinball.mission.factory.bay': 'Abre las tres compuertas.',
+  'pinball.mission.factory.bay2': 'Ahora enciende los motores.',
+  'pinball.mission.factory.lanes': 'Cruza las tres pistas.',
+  'pinball.mission.factory.lanes2': 'Ahora los tres pozos.',
   /**
    * ⚠️ THE COMET MISSION. The Dev: "o jogador deve escolher um número de 2 a 9... aparecerá na fase
    * cometas caindo do céu com um número dentro." These are the only words the drill has, so they carry

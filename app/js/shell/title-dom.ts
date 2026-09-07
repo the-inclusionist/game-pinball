@@ -226,7 +226,7 @@ export function mountTitle(o: TitleDomOptions): TitleDom {
    */
   const chooseColumn = o.doc.createElement('div');
   Object.assign(chooseColumn.style, {
-    display: 'flex', flexDirection: 'column', gap: '1.5cqw', alignItems: 'stretch', flex: '1 1 0',
+    display: 'flex', flexDirection: 'column', gap: '1.1cqw', alignItems: 'stretch', flex: '1 1 0',
   });
   const readColumn = o.doc.createElement('div');
   Object.assign(readColumn.style, {
@@ -280,7 +280,17 @@ export function mountTitle(o: TitleDomOptions): TitleDom {
        * it was drawn, and smoothing it is the one thing that turns it into a smudge.
        */
       Object.assign(thumb.style, {
-        width: '5cqw', height: '5cqw', objectFit: 'contain', imageRendering: 'pixelated',
+        /**
+         * ⚠️ 4.2 AND IT WAS 5, AND THE SEVENTH TABLE IS WHY. `factory` joined the selector and pushed
+         * it to 178.5 pixels of the 180 it has, against a gate that wants a line to spare. Six rows
+         * fitted at five; seven do not, and the thumbnail is the tallest thing in a row.
+         *
+         * This is the second time this screen has paid for something: the thumbnails themselves cost
+         * the panels their padding. What is being spent each time is the height ADR-0002 traded away
+         * to keep the flippers uncovered, and there is not much of it left — an eighth table will need
+         * a different layout rather than another shave.
+         */
+        width: '4.2cqw', height: '4.2cqw', objectFit: 'contain', imageRendering: 'pixelated',
         flex: '0 0 auto',
       });
       button.appendChild(thumb);

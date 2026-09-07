@@ -334,6 +334,12 @@ const SCENE_OF_TABLE: Readonly<Record<string, string>> = {
   'ion-storm': 'sky',
   // The Moon, from the Dev's theme. It stood on Mars until there was a theme to stand it on.
   'crater-run': 'moon',
+  /**
+   * ⚠️ THE BAY IS INDOORS, WHICH IS THE FIRST TIME ANY TABLE HERE HAS BEEN. Every other world in this
+   * catalogue is a place with a sky in it; `factory.jpg` is a gantry with a roof, lit by spotlights and
+   * by the rocket's own exhaust. `slate` is the world with no horizon in it, which is what a room is.
+   */
+  'factory': 'slate',
   // The launch pad, from the Dev's theme. It stood on ice until there was one.
   'long-climb': 'pad',
   'ring-belt': 'rings',

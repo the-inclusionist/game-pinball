@@ -223,6 +223,12 @@ const en: Record<string, string> = {
   'pinball.hud.shootAgain': 'Shoot again',
   // ⚠️ And it says to HOLD. The selector's legend has room for one word per line, and the moment a
   // player needs to know the plunger draws back is this one: a ball in the lane, waiting.
+  'pinball.mission.factory.gauges': 'Check the three gauges.',
+  'pinball.mission.factory.gauges2': 'Now climb the walkway.',
+  'pinball.mission.factory.bay': 'Open the three bay doors.',
+  'pinball.mission.factory.bay2': 'Now light the engines.',
+  'pinball.mission.factory.lanes': 'Cross the three lanes.',
+  'pinball.mission.factory.lanes2': 'Now the three wells.',
   /**
    * ⚠️ THE COMET MISSION. The Dev: "o jogador deve escolher um número de 2 a 9... aparecerá na fase
    * cometas caindo do céu com um número dentro." These are the only words the drill has, so they carry

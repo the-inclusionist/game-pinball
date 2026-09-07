@@ -59,6 +59,9 @@ SIZES = {
     'slipstream': (183, 245),
     'long-climb': (183, 300),
     'ring-belt': (360, 240),
+    # ⚠️ THE MASTER IS 1600x2656, AN ASPECT OF 0.6024, AND 183/0.6024 IS 303.8. Rounding to 304 keeps
+    # the picture unstretched to within a fifth of a pixel; the importer's crop would take the rest.
+    'factory': (183, 304),
 }
 
 #: The ball's own luminance, from `gfx/table-palette.BALL` = (238, 242, 248).

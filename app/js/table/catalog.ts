@@ -14,6 +14,9 @@
 //                 flippers is at its most extreme, which is where that decision should be judged.
 //   four-flippers two pairs of flippers and TWO drains, which is the first table to contradict the
 //                 assumption every module inherited from the 1995 one.
+//   factory       the Dev's assembly bay, laid out on his own picture: a rocket in a gantry with its
+//                 engines already lit. The first table here whose subject is a MACHINE rather than a
+//                 place, and the first authored straight onto the art rather than fitted to it after.
 //   bare-minimum  exactly what the validator demands and nothing else. The floor of the format.
 //
 // ⚠️ THE VALIDATOR PASSES ALL FIVE, AND ONLY ONE OF THEM IS WORTH PLAYING. That is not a gap in the
@@ -31,12 +34,14 @@ import { WIDE_ARC } from './wide-arc.js';
 import { NARROW_TOWER } from './narrow-tower.js';
 import { FOUR_FLIPPERS } from './four-flippers.js';
 import { BARE_MINIMUM } from './bare-minimum.js';
+import { FACTORY } from './factory.js';
 
-export { LOW_ORBIT, ION_STORM, SLIPSTREAM, RING_BELT, LONG_CLIMB, CRATER_RUN, WIDE_ARC, NARROW_TOWER, FOUR_FLIPPERS, BARE_MINIMUM };
+export { LOW_ORBIT, ION_STORM, SLIPSTREAM, RING_BELT, LONG_CLIMB, CRATER_RUN, FACTORY, WIDE_ARC, NARROW_TOWER, FOUR_FLIPPERS, BARE_MINIMUM };
 
 /** Every authored table. The first is the default. */
 export const CATALOG: readonly AuthoredTable[] = [
-  LOW_ORBIT, ION_STORM, SLIPSTREAM, RING_BELT, LONG_CLIMB, CRATER_RUN, WIDE_ARC, NARROW_TOWER, FOUR_FLIPPERS, BARE_MINIMUM,
+  LOW_ORBIT, ION_STORM, SLIPSTREAM, RING_BELT, LONG_CLIMB, CRATER_RUN, FACTORY,
+  WIDE_ARC, NARROW_TOWER, FOUR_FLIPPERS, BARE_MINIMUM,
 ];
 
 /**
@@ -53,7 +58,7 @@ export const CATALOG: readonly AuthoredTable[] = [
  * SELECTOR lists.
  */
 export const PLAYABLE_TABLES: readonly AuthoredTable[] = [
-  LOW_ORBIT, ION_STORM, CRATER_RUN, LONG_CLIMB, RING_BELT, SLIPSTREAM,
+  LOW_ORBIT, ION_STORM, CRATER_RUN, LONG_CLIMB, RING_BELT, SLIPSTREAM, FACTORY,
 ];
 
 /** The one the game opens with. */
