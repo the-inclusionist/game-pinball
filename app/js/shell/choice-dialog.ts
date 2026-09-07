@@ -31,7 +31,7 @@
 // A hand-written element interface would let this drift away from the DOM it runs on; the tests cast
 // their fakes in, which is the same bargain `shell/controls` strikes for its key region.
 
-import { PALETTE_CHOICES, PALETTE_LABEL, type PaletteChoice } from './options.js';
+
 
 /**
  * ⚠️ THE ID IS THE HANDLE THE ENGINE KEEPS. `register`, `closeById` and `restoreFocus` all address a
@@ -40,14 +40,32 @@ import { PALETTE_CHOICES, PALETTE_LABEL, type PaletteChoice } from './options.js
  */
 import { ownCabinetKeys } from './controls.js';
 
-export const OPTIONS_DIALOG_ID = 'pinball-options';
+/**
+ * ⚠️ GENERIC OVER THE CHOICE, BECAUSE THE SECOND ONE ARRIVED. This was `mountOptionsDialog`, bound to
+ * `PaletteChoice` in five places out of a hundred and eighty-five lines. The Dev then asked for
+ * "modos de acessibilidade para visão", which is the same shape — a short list of mutually exclusive
+ * settings, one mark, an Escape, a place in the engine's overlay chain and the cabinet taken off the
+ * game — and copying the file would have been this repository's most expensive recurring defect
+ * arriving for the sixth time.
+ *
+ * What is NOT generic is the id: `register`, `closeById` and `restoreFocus` all address a dialog by
+ * it, so each caller brings its own and two dialogs cannot collide in the engine's registry.
+ */
 
 /** What this module uses of the engine's overlay registry. Narrow, so a test needs one method. */
 export interface OverlayRegistry {
   register(id: string, entry: { close: () => void; inEscapeChain: boolean }): void;
 }
 
-export interface OptionsDialogOptions {
+export interface ChoiceDialogOptions<T extends string> {
+  /** The engine's handle for this dialog, and the DOM id. One per dialog. */
+  readonly id: string;
+  /** The i18n key for the heading. */
+  readonly titleKey: string;
+  /** The choices, in the order they are offered. */
+  readonly choices: readonly T[];
+  /** The i18n key for each choice's label. */
+  readonly labelOf: Readonly<Record<T, string>>;
   readonly doc: Pick<Document, 'createElement'>;
   /**
    * Where the dialog is mounted, which must be inside the game region.
@@ -64,8 +82,8 @@ export interface OptionsDialogOptions {
    * uninvolved, so a choice captured at mount would go on claiming the normal palette for the rest of
    * the session — telling the one player who cannot check for themselves the wrong answer.
    */
-  readonly current: () => PaletteChoice;
-  readonly onChoose: (choice: PaletteChoice) => void;
+  readonly current: () => T;
+  readonly onChoose: (choice: T) => void;
   /**
    * Puts the focus back where it was before the dialog opened.
    *
@@ -78,26 +96,26 @@ export interface OptionsDialogOptions {
   readonly restoreFocus?: () => void;
 }
 
-export interface OptionsDialog {
+export interface ChoiceDialog {
   open(): void;
   close(): void;
 }
 
-export function mountOptionsDialog(o: OptionsDialogOptions): OptionsDialog {
+export function mountChoiceDialog<T extends string>(o: ChoiceDialogOptions<T>): ChoiceDialog {
   const root = o.doc.createElement('div');
-  root.id = OPTIONS_DIALOG_ID;
+  root.id = o.id;
   // `overlay` is how the engine's `OVERLAY_SCOPE_SELECTOR` finds it; `dialog` is this port's own.
   root.className = 'overlay pinball-options';
   root.setAttribute('role', 'dialog');
-  root.setAttribute('aria-label', o.t('pinball.palette.title'));
+  root.setAttribute('aria-label', o.t(o.titleKey));
   // Closed until asked for: a menu is not what a player opened the game to see.
   root.hidden = true;
 
-  const buttons: { choice: PaletteChoice; element: HTMLElement }[] = [];
+  const buttons: { choice: T; element: HTMLElement }[] = [];
 
-  for (const choice of PALETTE_CHOICES) {
+  for (const choice of o.choices) {
     const button = o.doc.createElement('button');
-    button.textContent = o.t(PALETTE_LABEL[choice]);
+    button.textContent = o.t(o.labelOf[choice]);
     /**
      * ⚠️ `aria-pressed`, AND IT IS NOT DECORATION. This dialog exists to be read by somebody who
      * cannot tell two colours apart, so "which of these is on" answered only by how the table looks
@@ -168,7 +186,7 @@ export function mountOptionsDialog(o: OptionsDialogOptions): OptionsDialog {
   o.host.appendChild(root);
   // ⚠️ THE REGISTERED CLOSE IS THE ONE THAT HIDES IT. Registering anything else is worse than not
   // registering at all: Escape reports success and the dialog stays exactly where it was.
-  o.overlays.register(OPTIONS_DIALOG_ID, { close, inEscapeChain: true });
+  o.overlays.register(o.id, { close, inEscapeChain: true });
 
   return {
     open() {

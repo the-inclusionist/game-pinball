@@ -111,7 +111,7 @@ describe('the flippers walk it and the plunger takes an entry', () => {
       walk.push(under());
     }
 
-    expect(walk).toEqual(['Continuar', 'Cores da mesa', 'Trocar de mesa', 'Cores da mesa']);
+    expect(walk).toEqual(['Continuar', 'Cores da mesa', 'Acessibilidade visual', 'Cores da mesa']);
 
     // And back out, so the next test starts where this one found the game.
     await userEvent.keyboard('{Enter}');
@@ -134,5 +134,50 @@ describe('the flippers walk it and the plunger takes an entry', () => {
 
     expect(shown(document.getElementById('pinball-options')!), 'the palette opened').toBe(true);
     expect(debug().phase, '⚠️ and the game did NOT resume behind it').toBe('paused');
+  });
+});
+
+describe('⚠️ and the vision correction the plan promised actually reaches the screen', () => {
+  /**
+   * The plan: "o pinball herda de graça os filtros de daltonismo (`render/cvd-matrices`), o alto
+   * contraste, o CRT e o pipeline multi-tela — nada disso precisa ser escrito." It was never
+   * collected: `createGame` returns `aplicarFiltroDeVisao` and this port referenced it nowhere, so
+   * the six filters went into `<svg id="cvd-filters">` at every boot and nothing ever asked for one.
+   *
+   * ⚠️ AND THIS IS THE ONLY PLACE THAT CAN ASK. `shell/vision` is pure and its node tests check the
+   * catalogue, the CSS strings and the storage. Whether the engine then puts that string on the
+   * element the player is looking at is a fact about a real document.
+   */
+  test('choosing a correction puts a filter on the world, and none takes it off', async () => {
+    await playing();
+    await userEvent.keyboard('{Enter}');
+    await frames(4);
+    await userEvent.keyboard('{d}{d}');
+    await frames(4);
+    expect(under(), 'the cursor reached the vision entry').toBe('Acessibilidade visual');
+
+    await userEvent.keyboard('{u}');
+    await frames(4);
+    const dialog = document.getElementById('pinball-vision')!;
+    expect(shown(dialog), 'the vision dialog opened').toBe(true);
+
+    const choose = (label: string): void => {
+      const button = [...dialog.querySelectorAll('button')].find((b) => b.textContent?.includes(label));
+      expect(button, `no choice called ${label}`).toBeDefined();
+      button!.click();
+    };
+    const world = document.querySelector<HTMLElement>('#game-region canvas')!.parentElement!;
+
+    choose('deuteranopia');
+    await frames(3);
+    // ⚠️ THE ENGINE'S OWN url(), NOT A COLOUR THIS GAME COMPUTED. The filter is an SVG matrix the
+    // engine installed; this game only names it.
+    expect(world.style.filter || document.getElementById('game-region')!.style.filter)
+      .toContain('cvd-fix-deuter');
+
+    choose('Sem correção');
+    await frames(3);
+    expect(world.style.filter || document.getElementById('game-region')!.style.filter)
+      .not.toContain('cvd-fix');
   });
 });

@@ -51,7 +51,7 @@ export const PAUSE_MENU_ID = 'pinball-pause';
  * Second, after Resume: it is the setting a player is most likely to have opened this menu for, and
  * the three that follow all end the game or the table.
  */
-export const PAUSE_ENTRIES = ['resume', 'colours', 'tables', 'title', 'quit'] as const;
+export const PAUSE_ENTRIES = ['resume', 'colours', 'vision', 'tables', 'title', 'quit'] as const;
 
 export type PauseEntry = typeof PAUSE_ENTRIES[number];
 
@@ -62,6 +62,15 @@ export interface PauseMenuOptions {
   readonly onResume: () => void;
   /** Opens the palette dialog. See `PAUSE_ENTRIES` for why it lives here and not under the canvas. */
   readonly onColours: () => void;
+  /**
+   * Opens the vision dialog — the engine's colour-blindness CORRECTION over the finished picture.
+   *
+   * ⚠️ A SECOND ENTRY AND NOT A SECOND TAB OF THE FIRST, because the two answer different questions:
+   * `colours` changes which colours the table is DRAWN in, and this changes what reaches the eye and
+   * leaves the artwork alone. A player might want either, or both — and the palette cannot help with
+   * the Dev's photographs, which are not drawn from a palette at all. See `shell/vision`.
+   */
+  readonly onVision: () => void;
   readonly onTables: () => void;
   readonly onTitle: () => void;
   readonly onQuit: () => void;
@@ -78,7 +87,7 @@ export interface PauseMenu {
    */
   close(): void;
   /** Puts the focus on the colours entry — see the implementation for why that matters. */
-  focusColours(): void;
+  focusEntry(entry: PauseEntry): void;
   readonly element: HTMLElement;
 }
 
@@ -108,7 +117,8 @@ export function mountPauseMenu(o: PauseMenuOptions): PauseMenu {
   root.appendChild(heading);
 
   const handlers: Readonly<Record<PauseEntry, () => void>> = {
-    resume: o.onResume, colours: o.onColours, tables: o.onTables, title: o.onTitle, quit: o.onQuit,
+    resume: o.onResume, colours: o.onColours, vision: o.onVision,
+    tables: o.onTables, title: o.onTitle, quit: o.onQuit,
   };
 
   const buttons: HTMLElement[] = [];
@@ -215,6 +225,6 @@ export function mountPauseMenu(o: PauseMenuOptions): PauseMenu {
      * nowhere and the next Tab starts at the top of the document — which `main` already records for
      * the button this entry replaced.
      */
-    focusColours(): void { buttons[PAUSE_ENTRIES.indexOf('colours')]?.focus(); },
+    focusEntry(entry: PauseEntry): void { moveTo(PAUSE_ENTRIES.indexOf(entry)); },
   };
 }

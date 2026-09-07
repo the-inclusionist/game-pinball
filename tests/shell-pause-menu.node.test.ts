@@ -63,6 +63,7 @@ function harness() {
     t: (key) => key,
     onResume: () => done.push('resume'),
     onColours: () => done.push('colours'),
+    onVision: () => done.push('vision'),
     onTables: () => done.push('tables'),
     onTitle: () => done.push('title'),
     onQuit: () => done.push('quit'),
@@ -81,7 +82,7 @@ function harness() {
 }
 
 describe('what the menu offers', () => {
-  test('⚠️ five entries, and the Dev asked for four of them by name', () => {
+  test('⚠️ six entries, and the Dev asked for five of them by name', () => {
     // "dar quit, voltar à tela inicial e escolher outras mesas" — plus resuming, which is what a pause
     // menu is for and which no list mentions because it is the obvious one.
     //
@@ -89,7 +90,13 @@ describe('what the menu offers', () => {
     // de pausa, não num rodapé que exige rolagem da tela." It had been a `<button>` under the canvas
     // since before this menu existed, justified by a comment saying the ENGINE's pause menu has no
     // entry to add one to — true, and irrelevant from the day this port grew a menu of its own.
-    expect([...PAUSE_ENTRIES]).toEqual(['resume', 'colours', 'tables', 'title', 'quit']);
+    //
+    // ⚠️ AND `vision`, WHICH HE ASKED FOR LATER STILL: "um menu com opções de voltar, editar
+    // controle, modos de acessibilidade para visão etc." It is a SECOND entry rather than a tab of
+    // `colours`, because the two answer different questions — `colours` changes which colours the
+    // table is drawn in, `vision` changes what reaches the eye and leaves the artwork alone. See
+    // `shell/vision`, and note what is still missing from his list: editing the controls.
+    expect([...PAUSE_ENTRIES]).toEqual(['resume', 'colours', 'vision', 'tables', 'title', 'quit']);
   });
 
   test('⚠️ and nothing outside this menu opens the palette any more', () => {
@@ -121,6 +128,7 @@ describe('what the menu offers', () => {
       doc: { createElement: (tag: string) => fakeElement(tag) } as never,
       host: host as never,
       t: (key) => createTranslator('en')(key),
+      onVision: () => {},
       onResume: () => {}, onColours: () => {}, onTables: () => {}, onTitle: () => {},
       onQuit: () => {},
     });

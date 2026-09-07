@@ -150,6 +150,12 @@ const en: Record<string, string> = {
   'pinball.pause.heading': 'Paused',
   'pinball.pause.resume': 'Continue',
   'pinball.pause.colours': 'Table colours',
+  'pinball.pause.vision': 'Vision accessibility',
+  'pinball.vision.title': 'Vision accessibility',
+  'pinball.vision.normal': 'No correction',
+  'pinball.vision.fix-protan': 'Correct protanopia (red)',
+  'pinball.vision.fix-deuter': 'Correct deuteranopia (green)',
+  'pinball.vision.fix-tritan': 'Correct tritanopia (blue)',
   'pinball.pause.tables': 'Change table',
   'pinball.pause.title': 'Title screen',
   // ⚠️ "End game", not "Quit". A page cannot close its own window, so the entry says what it does:

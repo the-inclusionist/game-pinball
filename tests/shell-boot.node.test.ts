@@ -228,7 +228,7 @@ describe('the camera on a table wider than the window', () => {
     // 3. The choice is remembered, or it lasts until the page reloads and no further.
     expect(source, 'and the choice is written back').toMatch(/writePalette\(localStorage, palette\)/);
     // 4. The menu is mounted where the engine's Escape chain can reach it.
-    expect(source, 'the dialog goes in the game region').toMatch(/mountOptionsDialog\(\{[^}]*host: region/s);
+    expect(source, 'the dialog goes in the game region').toMatch(/mountChoiceDialog<PaletteChoice>\(\{[^}]*host: region/s);
     // 5. ⚠️ AND THE PICTURE IS REBUILT. `tablePicture` is composed once per change and the camera moves
     // a window over it, so a handler that changed the variable and stopped would take effect at the
     // next mission event — minutes later, looking like a bug in the mission machine.

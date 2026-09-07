@@ -12,8 +12,8 @@
 // hand-written interface would let the module drift away from the DOM it actually runs on — so the
 // fakes are cast in, and what they implement is exactly what the module is allowed to use.
 import { describe, test, expect } from 'vitest';
-import { mountOptionsDialog, OPTIONS_DIALOG_ID } from '../app/js/shell/options-dialog.js';
-import { PALETTE_CHOICES, PALETTE_LABEL, type PaletteChoice } from '../app/js/shell/options.js';
+import { mountChoiceDialog } from '../app/js/shell/choice-dialog.js';
+import { PALETTE_CHOICES, PALETTE_LABEL, OPTIONS_DIALOG_ID, type PaletteChoice } from '../app/js/shell/options.js';
 
 interface FakeElement {
   tag: string;
@@ -58,7 +58,11 @@ function harness(initial: PaletteChoice = 'normal') {
   const chosen: PaletteChoice[] = [];
 
   let restored = 0;
-  const dialog = mountOptionsDialog({
+  const dialog = mountChoiceDialog<PaletteChoice>({
+    id: OPTIONS_DIALOG_ID,
+    titleKey: 'pinball.palette.title',
+    choices: PALETTE_CHOICES,
+    labelOf: PALETTE_LABEL,
     doc: doc as never,
     host: host as never,
     overlays: { register: (id, entry) => registered.set(id, entry) },

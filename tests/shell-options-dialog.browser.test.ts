@@ -27,8 +27,8 @@
 // whole argument for this project existing, in one number against another.
 import { describe, test, expect, beforeEach, afterEach } from 'vitest';
 import { userEvent } from 'vitest/browser';
-import { mountOptionsDialog, OPTIONS_DIALOG_ID } from '../app/js/shell/options-dialog.js';
-import { PALETTE_CHOICES, type PaletteChoice } from '../app/js/shell/options.js';
+import { mountChoiceDialog } from '../app/js/shell/choice-dialog.js';
+import { PALETTE_CHOICES, PALETTE_LABEL, OPTIONS_DIALOG_ID, type PaletteChoice } from '../app/js/shell/options.js';
 
 let host: HTMLElement;
 let opener: HTMLButtonElement;
@@ -36,7 +36,11 @@ let opener: HTMLButtonElement;
 function build(initial: PaletteChoice = 'normal') {
   let current = initial;
   const chosen: PaletteChoice[] = [];
-  const dialog = mountOptionsDialog({
+  const dialog = mountChoiceDialog<PaletteChoice>({
+    id: OPTIONS_DIALOG_ID,
+    titleKey: 'pinball.palette.title',
+    choices: PALETTE_CHOICES,
+    labelOf: PALETTE_LABEL,
     doc: document,
     host,
     overlays: { register: () => {} },

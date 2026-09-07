@@ -31,9 +31,13 @@ import { openSecrets } from './table/secret.js';
 import { loadBackdrop } from './gfx/backdrop.js';
 import { bindPinballControls } from './shell/controls.js';
 import {
-  readPalette, writePalette, nextPalette, isCbSafe, PALETTE_LABEL, type PaletteChoice,
+  readPalette, writePalette, nextPalette, isCbSafe, PALETTE_LABEL, PALETTE_CHOICES,
+  OPTIONS_DIALOG_ID, type PaletteChoice,
 } from './shell/options.js';
-import { mountOptionsDialog } from './shell/options-dialog.js';
+import { mountChoiceDialog } from './shell/choice-dialog.js';
+import {
+  readVision, writeVision, visionFilter, VISION_CHOICES, VISION_LABEL, VISION_DIALOG_ID,
+} from './shell/vision.js';
 import { titleScreen } from './shell/title.js';
 import { integerScale } from './shell/present.js';
 import { createPadReader, CABINET_OF_ENGINE_ACTION } from './shell/pad.js';
@@ -1274,7 +1278,11 @@ function choosePalette(choice: PaletteChoice): void {
  * that element — the Escape chain, the z-stack, the focus restoration — so a dialog mounted anywhere
  * else registers for a chain it is not in.
  */
-const optionsDialog = mountOptionsDialog({
+const optionsDialog = mountChoiceDialog<PaletteChoice>({
+  id: OPTIONS_DIALOG_ID,
+  titleKey: 'pinball.palette.title',
+  choices: PALETTE_CHOICES,
+  labelOf: PALETTE_LABEL,
   doc: document,
   host: region,
   overlays: shell.engine.overlays,
@@ -1287,7 +1295,7 @@ const optionsDialog = mountOptionsDialog({
   // ⚠️ BACK TO THE ENTRY THAT OPENED IT. Hiding the element the focus is inside leaves the focus
   // nowhere: the next Tab starts at the top of the document. `pauseMenu` is declared below and read at
   // call time, which is the only order that works — the menu's own handler needs the dialog.
-  restoreFocus: () => pauseMenu.focusColours(),
+  restoreFocus: () => pauseMenu.focusEntry('colours'),
 });
 
 
@@ -1367,6 +1375,42 @@ const leaveGame = (): void => {
   shell.resetCamera();
 };
 
+/**
+ * ⚠️ THE PLAN PROMISED THIS AND NOTHING HAD COLLECTED IT: "o pinball herda de graça os filtros de
+ * daltonismo... nada disso precisa ser escrito." `createGame` returns `aplicarFiltroDeVisao` and this
+ * file referenced it nowhere. The filters were installed at every boot and nothing ever asked for one.
+ *
+ * ⚠️ `'mundo-e-menus'` AND NOT `'mundo'`. The engine's own `render/port` records the distinction as a
+ * product decision of the Dev's on issue #82: a filter that falls only on the canvas leaves the menus
+ * raw, "a criança daltônica recebia o jogo corrigido e as palavras não". A CORRECTION is exactly the
+ * mode that must reach the words too — this game's HUD, pause menu and alphabet are all DOM.
+ */
+let vision = readVision(localStorage);
+
+function applyVision(choice: string): void {
+  vision = choice;
+  writeVision(localStorage, choice);
+  shell.engine.aplicarFiltroDeVisao(visionFilter(choice), 'mundo-e-menus');
+}
+
+const visionDialog = mountChoiceDialog<string>({
+  id: VISION_DIALOG_ID,
+  titleKey: 'pinball.vision.title',
+  choices: VISION_CHOICES,
+  labelOf: VISION_LABEL,
+  doc: document,
+  host: region,
+  overlays: shell.engine.overlays,
+  t: shell.t,
+  current: () => vision,
+  onChoose: applyVision,
+  restoreFocus: () => pauseMenu.focusEntry('vision'),
+});
+
+// Applied at boot, not only when it is chosen: a setting that has to be re-picked every session is a
+// setting the player has to remember they need.
+applyVision(vision);
+
 const pauseMenu = mountPauseMenu({
   doc: document,
   host: region,
@@ -1380,6 +1424,7 @@ const pauseMenu = mountPauseMenu({
    * colour. The loop is told to leave the menu alone while the dialog is up.
    */
   onColours: () => { optionsDialog.open(); },
+  onVision: () => { visionDialog.open(); },
   onTables: () => { leaveGame(); screens.show('select'); title.refresh(); },
   onTitle: () => { leaveGame(); screens.show('title'); title.refresh(); },
   /**

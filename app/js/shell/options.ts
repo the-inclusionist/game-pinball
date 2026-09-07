@@ -49,6 +49,14 @@ export const PALETTE_LABEL: Readonly<Record<PaletteChoice, string>> = {
  * hour it was written, which is the gate working rather than the gate being wrong. Stored keys are
  * `pinball:`, and the two namespaces no longer look alike.
  */
+/**
+ * ⚠️ THE ID IS THE HANDLE THE ENGINE KEEPS. `register`, `closeById` and `restoreFocus` all address a
+ * dialog by it. It lives with the PALETTE rather than with the dialog shell, because the shell became
+ * generic the day a second setting wanted the same shape and each caller now brings its own id — two
+ * dialogs sharing one would collide in the engine's registry with no error anywhere.
+ */
+export const OPTIONS_DIALOG_ID = 'pinball-options';
+
 export const PALETTE_STORAGE_KEY = 'pinball:palette';
 
 /** The two methods this module uses, so a test can supply them and a hostile browser can be simulated. */
