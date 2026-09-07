@@ -50,9 +50,16 @@ function spilling(): string[] {
 
 beforeAll(async () => {
   document.body.style.margin = '0';
-  // ⚠️ THE SCREEN AT ITS OWN SIZE. The game is presented scaled, so a browser window makes everything
-  // proportionally bigger and hides exactly this class of defect. 320x180 is the size the layout has
-  // to be correct at, and the smallest it will ever be asked to be.
+  /**
+   * ⚠️ THE REGION IS WHATEVER `fitCanvas` MAKES IT, and every measurement here is relative to it. The
+   * markup below asks for 320x180 and does not get it: the Dev made 640x360 a floor — "obrigatório e
+   * não negociável" — so `main` overwrites the region's size on boot and this runs at 2x.
+   *
+   * That changes nothing about the question. Every screen is laid out in container units against the
+   * region's own box, so "does anything spill out of the game's rectangle" is the same question at
+   * any whole scale — and asking it at the smallest one the game is ever shown at is asking it where
+   * it is hardest to satisfy.
+   */
   document.body.innerHTML = `
     <main id="game-region" tabindex="-1" style="position:relative;width:320px;height:180px;overflow:hidden"></main>
     <div id="sr-status" role="status" aria-live="polite"></div>

@@ -25,8 +25,14 @@ body {
   background: #05070c;
   color: #e8ecf4;
   font-family: system-ui, sans-serif;
-  /* The game is a fixed rectangle scaled to fit. Nothing here should ever produce a scrollbar. */
-  overflow: hidden;
+  /*
+   * ⚠️ `auto` AND NOT `hidden`, BECAUSE THE GAME HAS A FLOOR NOW. This said "nothing here should ever
+   * produce a scrollbar", which was true while the scale could fall to 1x and the game therefore
+   * always fitted. The Dev made 640x360 a requirement — "obrigatório e não negociável" — so a window
+   * smaller than that gets a game bigger than itself, and `hidden` would CLIP it: the player would
+   * lose a strip of the table with nothing on screen saying so. A scrollbar is honest.
+   */
+  overflow: auto;
 }
 
 /*
@@ -39,6 +45,9 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  /* Keeps the game centred while it fits and stops the flex box shrinking it when it does not. */
+  min-width: min-content;
+  min-height: min-content;
 }
 
 /*

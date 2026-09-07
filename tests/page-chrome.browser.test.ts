@@ -57,19 +57,14 @@ describe('the page has chrome of its own', () => {
     expect(getComputedStyle(document.body).marginTop).toBe('0px');
   });
 
-  test('⚠️ and the game is a WHOLE multiple of 320x180 that fits the window', () => {
+  test('⚠️ and the game is a WHOLE multiple of 320x180, never smaller than 640x360', () => {
     /**
      * ⚠️ WHOLE MULTIPLES ARE THE POINT, not tidiness. The canvas is 320x180 of pixel art scaled by CSS
-     * with `image-rendering: pixelated`; at 2.5x every other row of pixels comes out twice as tall as
-     * its neighbour, and the ball — six pixels across — changes shape as it moves. Measured across
-     * window sizes: 640x400 gives 2x, 1280x800 gives 4x.
+     * with `image-rendering: pixelated`. At 2.5x every other row of pixels comes out twice as tall as
+     * its neighbour, and the ball is six pixels across — it changes shape as it moves.
      *
-     * ⚠️ AND WHAT THIS DOES NOT CATCH IS WRITTEN DOWN, because the first version of the comment
-     * claimed it did. It said a padding or a border on `#game-region` would break the fit and be
-     * caught here; adding `padding: 7px` leaves it green, because the assertion is about the CANVAS
-     * and a padding does not resize the canvas — and at the viewport this runs in, the region grows
-     * to 334px inside 414 and still fits. A fractional scale is what it catches, and that mutation
-     * does go red.
+     * ⚠️ AND THE FLOOR IS THE DEV'S, VERBATIM: "o tamanho mínimo é 640x360... obrigatório e não
+     * negociável." So the scale is at least two, whatever the window is.
      */
     const canvas = document.querySelector('canvas')!;
     const box = canvas.getBoundingClientRect();
@@ -77,14 +72,40 @@ describe('the page has chrome of its own', () => {
     expect(box.width % 320, `the canvas is ${box.width}px wide, not a multiple of 320`).toBe(0);
     expect(box.height % 180, `the canvas is ${box.height}px tall, not a multiple of 180`).toBe(0);
     expect(box.width / 320, 'and the two axes are scaled by the same amount').toBe(box.height / 180);
+    /**
+     * ⚠️ 640 AND 360, THE DEV'S OWN NUMBERS, NOT `MINIMUM_SCALE`. Written against the constant this
+     * assertion could not fail: mutating the floor to one makes the canvas 320 wide AND the bound 1x,
+     * so both sides move together and the comparison holds. `CLAUDE.md` names that shape — "a test
+     * that reads by the same link as the code cannot fail" — and it is the one the node tests catch,
+     * because one of those pins `MINIMUM_SCALE` to the literal 2.
+     */
+    expect(box.width, 'the game is narrower than 640').toBeGreaterThanOrEqual(640);
+    expect(box.height, 'the game is shorter than 360').toBeGreaterThanOrEqual(360);
+  });
 
-    expect(box.width, 'the game is wider than the window').toBeLessThanOrEqual(document.body.clientWidth);
-    expect(box.height, 'the game is taller than the window').toBeLessThanOrEqual(window.innerHeight);
+  test('⚠️ and it fits the VIEWPORT when the viewport can hold it, and scrolls when it cannot', () => {
+    /**
+     * ⚠️ THIS ASSERTION USED TO BE AGAINST `document.body.clientWidth` AND COULD NOT FAIL. Once the
+     * floor arrived, `body` is a scroll container with `min-width: min-content` — so it GROWS to the
+     * canvas, and "the canvas is no wider than the body" is true by construction however wrong the
+     * scaling is. Measured: viewport 414 wide, body 640, canvas 640.
+     *
+     * The window is the thing that does not move, so the window is what it is measured against — and
+     * a window too small for 640x360 is a different question, which is whether the player can reach
+     * the part they cannot see. `css/style` uses `overflow: auto` for exactly that: clipping would
+     * take a strip of the table away with nothing on screen saying so.
+     */
+    const box = document.querySelector('canvas')!.getBoundingClientRect();
+    const holdsTheFloor = window.innerWidth >= 640 && window.innerHeight >= 360;
 
-    // And the box AROUND it, which is what a padding or a border would grow.
-    const region = document.getElementById('game-region')!.getBoundingClientRect();
-    expect(region.width, 'the region is wider than the window').toBeLessThanOrEqual(document.body.clientWidth);
-    expect(region.height, 'the region is taller than the window').toBeLessThanOrEqual(window.innerHeight);
+    if (holdsTheFloor) {
+      expect(box.width, 'the game is wider than the window').toBeLessThanOrEqual(window.innerWidth);
+      expect(box.height, 'the game is taller than the window').toBeLessThanOrEqual(window.innerHeight);
+      return;
+    }
+    expect(document.documentElement.scrollWidth >= box.width
+      || document.documentElement.scrollHeight >= box.height,
+    'the game is bigger than the window and the page will not scroll to it').toBe(true);
   });
 });
 

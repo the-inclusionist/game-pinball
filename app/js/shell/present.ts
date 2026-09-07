@@ -21,15 +21,31 @@ export interface Size {
 }
 
 /**
- * The largest whole number of times `screen` fits inside `available`.
+ * The smallest the game is ever shown, as a multiple of the 320x180 buffer.
  *
- * ⚠️ ROUNDED DOWN, AND NEVER BELOW ONE. Rounding up or to the nearest would crop the table; a fraction
- * would bring back the uneven grid this exists to prevent. In a window too small to hold one screen the
- * answer is still one — the picture then overflows, which is a layout problem and a visible one, rather
- * than an invisible canvas of no size.
+ * ⚠️ THE DEV MADE THIS A REQUIREMENT: "Isso é obrigatório e não negociável, lembrando que o tamanho
+ * mínimo é 640x360." The BUFFER stays 320x180 — decision 4 of the plan, honoured to the letter — and
+ * this is about what a player sees. At one times, the ball is six screen pixels across and the HUD's
+ * text is the smallest thing a font can draw: legible on a monitor, unreadable on the class of
+ * machine this was written for.
+ */
+export const MINIMUM_SCALE = 2;
+
+/**
+ * The largest whole number of times `screen` fits inside `available`, and never fewer than
+ * `MINIMUM_SCALE`.
+ *
+ * ⚠️ ROUNDED DOWN. Rounding up or to the nearest would crop the table; a fraction would bring back the
+ * uneven grid this module exists to prevent.
+ *
+ * ⚠️ AND THE FLOOR TIGHTENS THAT RULE RATHER THAN LOOSENING IT. It is TWO, not "whatever fills the
+ * window": the answer is still a whole number, so no source pixel is ever a different size from its
+ * neighbour. In a window too small to hold 640x360 the picture overflows — which is a layout problem
+ * and a visible one, and `css/style` lets the page scroll to it rather than clipping it away.
  */
 export function integerScale(available: Size, screen: Size): number {
   const fits = (space: number, size: number): number =>
     (Number.isFinite(space) && space > 0 && size > 0 ? Math.floor(space / size) : 1);
-  return Math.max(1, Math.min(fits(available.width, screen.width), fits(available.height, screen.height)));
+  return Math.max(MINIMUM_SCALE,
+    Math.min(fits(available.width, screen.width), fits(available.height, screen.height)));
 }
