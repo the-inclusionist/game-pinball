@@ -58,7 +58,9 @@ describe('reading what was saved', () => {
     // ⚠️ MERGED, NOT REPLACED. A table saved by a version of this game with fewer actions must not
     // leave the new one with an action bound to nothing at all — which is a key that silently does
     // nothing, the defect this repository has found most often.
-    expect(back.blindMode).toEqual(DEFAULT_BINDINGS.blindMode);
+    // ⚠️ `right` RATHER THAN `blindMode`, WHICH IS NO LONGER AN ACTION. The three accessibility
+    // switches left the keyboard for the HUD; the claim is unchanged and needs an action that exists.
+    expect(back.right).toEqual(DEFAULT_BINDINGS.right);
   });
 
   test('⚠️ and rubbish in the store is the defaults, not a crash at boot', () => {
@@ -138,9 +140,15 @@ describe('warning about a key before it is taken', () => {
   });
 
   test('⚠️ including the keys that are NOT editable, which is why they are in the table', () => {
-    // B, S and C are blind mode, the sonar and the palette. A player who binds the left flipper to B
-    // has not been told they just lost blind mode unless something looks.
-    expect(conflictOf(DEFAULT_BINDINGS, 'left', 'KeyB')).toBe('blindMode');
+    /**
+     * ⚠️ THIS USED TO NAME `KeyB` AND BLIND MODE, and the Dev's move retired the example rather than
+     * the claim. Blind mode, the sonar and the palette left the keyboard for the HUD, so B, S and C
+     * belong to nobody now — but the CLAIM is about a key that is bound to something the editor cannot
+     * reach, and the launch key is exactly that: `EDITABLE_ACTIONS` does not include the plunger's
+     * neighbours, and a player who binds the left flipper to U has not been told they just lost the
+     * launch unless something looks.
+     */
+    expect(conflictOf(DEFAULT_BINDINGS, 'left', 'KeyU')).toBe('plunger');
   });
 });
 

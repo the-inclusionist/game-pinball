@@ -44,8 +44,14 @@ import { DEFAULT_BINDINGS, type PinballAction } from './controls.js';
  * written in, which is a fact about a source file and not about anybody's hands. A test pins that this
  * list and that object hold the same actions, so the two cannot drift apart.
  */
+/**
+ * ⚠️ AND THE THREE ACCESSIBILITY ENTRIES ARE GONE FROM IT, because they are no longer keys. The Dev
+ * moved blind mode, the sonar and the palette into the HUD — see `shell/a11y-bar` — so a legend that
+ * still listed `B`, `S` and `C` would be teaching three keys that do nothing. A legend that lies is
+ * worse than no legend, which is the sentence this module was written to make true.
+ */
 export const LEGEND_ORDER: readonly PinballAction[] = [
-  'left', 'right', 'plunger', 'pause', 'blindMode', 'sweep', 'palette',
+  'left', 'right', 'plunger', 'pause',
 ];
 
 export interface LegendRow {

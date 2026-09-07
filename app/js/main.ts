@@ -30,6 +30,7 @@ import { CATALOG, DEFAULT_TABLE, tableNamed } from './table/catalog.js';
 import { toLiveTable, validateTable, type TableState } from './table/authored.js';
 import { DEFAULT_CAMERA } from './shell/camera.js';
 import { DEFAULT_HUD } from './shell/hud.js';
+import { hudPlacement } from './shell/hud-view.js';
 import { createFramebuffer } from './gfx/framebuffer.js';
 import {
   drawTable, blitView, drawBall, drawFlipper, drawMover, drawLitRect, litColors, packRgb,
@@ -50,6 +51,7 @@ import { plungerLaneOf } from './table/cabinet.js';
 import { powerUpField, MULTIBALL_EXTRA, type PowerUpField, type PowerUpKind }
   from './control/power-ups.js';
 import { drawCapsule } from './gfx/capsule-view.js';
+import { mountA11yBar } from './shell/a11y-bar.js';
 import { endGame, type EndOfGameOptions } from './shell/end-of-game.js';
 import { bindPinballControls } from './shell/controls.js';
 import {
@@ -1475,6 +1477,71 @@ const pad = createPadReader({
  */
 let bindings: BindingTable = readBindings(localStorage);
 
+/**
+ * Blind mode, the sonar sweep and the table’s palette — the three switches that used to be keys.
+ *
+ * ⚠️ THE DEV MOVED THEM INTO THE HUD: "remova modo cego sonar e cores via teclado: eles devem
+ * aparecer no hud da mesma forma que aparecem no projeto game-platformer." So they are no longer part
+ * of the cabinet at all — `bindPinballControls` has nothing to dispatch to them and no longer offers
+ * the options. `shell/a11y-bar` calls these three directly, which is one hop rather than two.
+ *
+ * ⚠️ AND THEY STAYED WHOLE. Every word of the three bodies below is where it was; only the object
+ * around them changed. The reasoning in them — why the demonstration refuses, why the sonar pings on
+ * its own, why the table is redrawn rather than marked — is about the features and not about the key
+ * that used to reach them.
+ */
+const accessibility = {
+  /**
+   * ⚠️ AND NOT WHILE THE 1995 TABLE IS ON SCREEN, which is a gap being named rather than closed.
+   *
+   * The declaration the engine reads is built once at boot from the AUTHORED table, and the
+   * demonstration is an early return through the frame loop — `refreshObjective` is never called there
+   * and `sonarPlayer` is never moved. So in `?demo=original` the contract still answers with the
+   * authored table's targets and a ball position that stopped updating at boot.
+   *
+   * Blind mode and the sweep would therefore describe a table that is not on screen and point at
+   * components that are not there. A switch that gives a confident wrong answer is worse than one that
+   * says it cannot answer, so both are refused here and the reason is announced.
+   *
+   * Closing it properly means the demonstration presenting itself as a `LiveTable` so the declaration
+   * follows it — its components, its ball, its mission's remaining targets, which `control/mission` can
+   * already name. That is a piece of work, not a line.
+   */
+  toggleBlindMode: () => {
+    // ⚠️ REFUSED ONLY WHILE THERE IS NOTHING TO DESCRIBE. The demonstration answers for itself once the
+    // player's archive is loaded and `demoView` exists; before that — and if the file is never handed
+    // over — the contract still holds the authored table, and a guide describing it over a blank
+    // screen is the confident wrong answer this refusal was added for.
+    if (demoRequested && !demoView) return sayUnavailable();
+    blind = !blind;
+    // Announced through the host's own live region, which is where an EVENT belongs — the HUD blocks
+    // are readable on request and deliberately not live. See `shell/hud-dom`.
+    const status = document.getElementById('sr-status');
+    if (status) status.textContent = shell.t(blind ? 'pinball.a11y.blindOn' : 'pinball.a11y.blindOff');
+  },
+  /**
+   * ⚠️ THE SWEEP IS THE PART THAT ANSWERS TODAY, AND THE AUTOMATIC GUIDE IS OFF BY THE ENGINE'S OWN
+   * DECISION. `platform/audio-mixer` lists `guide` in `NASCEM_DESLIGADAS` — born off, "por decisão do
+   * Dev, 2026-08-26", and described there as a deliberate measure. So `updateGuide` returning without
+   * pinging is correct behaviour and not a fault in this wiring; a player turns the beacon on in the
+   * engine's audio mixer. I chased that to zero twice before reading the reason, and it is written here
+   * so nobody chases it a third time.
+   */
+  sweep: () => {
+    if (demoRequested && !demoView) return sayUnavailable();
+    shell.engine.sonar.sonar(sonarPlayer);
+  },
+  /**
+   * ⚠️ AND THE TABLE IS REDRAWN, not merely marked. `tablePicture` is composed once per change and the
+   * camera moves a window over it — so a palette that changed a variable and nothing else would take
+   * effect on the next mission event and look like a bug until then.
+   *
+   * The demonstration keeps the 1995 artwork whatever this says: those are Microsoft's pixels, and
+   * recolouring them is not something this port is entitled to do.
+   */
+  cyclePalette: () => choosePalette(nextPalette(palette)),
+};
+
 const unbindControls = bindPinballControls({
   bindings: () => bindings,
   /**
@@ -1525,55 +1592,6 @@ const unbindControls = bindPinballControls({
    * would leave the authored table with a launch key that does nothing at all.
    */
   setPlunger: cabinet.setPlunger,
-  /**
-   * ⚠️ AND NOT WHILE THE 1995 TABLE IS ON SCREEN, which is a gap being named rather than closed.
-   *
-   * The declaration the engine reads is built once at boot from the AUTHORED table, and the
-   * demonstration is an early return through the frame loop — `refreshObjective` is never called there
-   * and `sonarPlayer` is never moved. So in `?demo=original` the contract still answers with the
-   * authored table's targets and a ball position that stopped updating at boot.
-   *
-   * Blind mode and the sweep would therefore describe a table that is not on screen and point at
-   * components that are not there. A switch that gives a confident wrong answer is worse than one that
-   * says it cannot answer, so both are refused here and the reason is announced.
-   *
-   * Closing it properly means the demonstration presenting itself as a `LiveTable` so the declaration
-   * follows it — its components, its ball, its mission's remaining targets, which `control/mission` can
-   * already name. That is a piece of work, not a line.
-   */
-  toggleBlindMode: () => {
-    // ⚠️ REFUSED ONLY WHILE THERE IS NOTHING TO DESCRIBE. The demonstration answers for itself once the
-    // player's archive is loaded and `demoView` exists; before that — and if the file is never handed
-    // over — the contract still holds the authored table, and a guide describing it over a blank
-    // screen is the confident wrong answer this refusal was added for.
-    if (demoRequested && !demoView) return sayUnavailable();
-    blind = !blind;
-    // Announced through the host's own live region, which is where an EVENT belongs — the HUD blocks
-    // are readable on request and deliberately not live. See `shell/hud-dom`.
-    const status = document.getElementById('sr-status');
-    if (status) status.textContent = shell.t(blind ? 'pinball.a11y.blindOn' : 'pinball.a11y.blindOff');
-  },
-  /**
-   * ⚠️ THE SWEEP IS THE PART THAT ANSWERS TODAY, AND THE AUTOMATIC GUIDE IS OFF BY THE ENGINE'S OWN
-   * DECISION. `platform/audio-mixer` lists `guide` in `NASCEM_DESLIGADAS` — born off, "por decisão do
-   * Dev, 2026-08-26", and described there as a deliberate measure. So `updateGuide` returning without
-   * pinging is correct behaviour and not a fault in this wiring; a player turns the beacon on in the
-   * engine's audio mixer. I chased that to zero twice before reading the reason, and it is written here
-   * so nobody chases it a third time.
-   */
-  sweep: () => {
-    if (demoRequested && !demoView) return sayUnavailable();
-    shell.engine.sonar.sonar(sonarPlayer);
-  },
-  /**
-   * ⚠️ AND THE TABLE IS REDRAWN, not merely marked. `tablePicture` is composed once per change and the
-   * camera moves a window over it — so a palette that changed a variable and nothing else would take
-   * effect on the next mission event and look like a bug until then.
-   *
-   * The demonstration keeps the 1995 artwork whatever this says: those are Microsoft's pixels, and
-   * recolouring them is not something this port is entitled to do.
-   */
-  cyclePalette: () => choosePalette(nextPalette(palette)),
   /**
    * ⚠️ START, AND THE PAUSED PHASE HAS EXISTED SINCE BOOT WITH NOTHING TO ENTER IT. `bootPinball` tells
    * the engine `isNavigable: () => phase === 'paused'` — that is how the engine knows it may walk its
@@ -1822,7 +1840,7 @@ const title = mountTitle({
   bindings: () => bindings,
   onStarted: () => {
     // The HUD is about a game in progress. Until one is, it has nothing to say.
-    hud.setVisible(true);
+    showHud(true);
     /**
      * ⚠️ AND THE FOCUS GOES TO THE REGION, OR THE GAME IS UNPLAYABLE.
      *
@@ -1858,7 +1876,7 @@ const title = mountTitle({
  */
 const leaveGame = (): void => {
   phase = 'title';
-  hud.setVisible(false);
+  showHud(false);
   ball.speed = 0;
   shell.resetCamera();
   // ⚠️ AND THE COMETS GO WITH THE GAME. Left behind, they would go on falling behind the title screen
@@ -1974,7 +1992,46 @@ const hud = mountHud({
 // ⚠️ PUT AWAY UNTIL A GAME STARTS. The title and the selector cover the canvas, and "Jogador 1,
 // Bolas: 3" printed over a menu is the HUD answering a question nobody asked. The demonstration skips
 // the screens entirely, so it turns the HUD straight back on.
-hud.setVisible(screens.current === 'playing');
+/**
+ * ⚠️ THE THREE SWITCHES, AS ICONS, WHERE THE PLAYER CAN SEE THEM. The Dev: "remova modo cego sonar e
+ * cores via teclado: eles devem aparecer no hud da mesma forma que aparecem no projeto
+ * game-platformer." `shell/a11y-bar` carries the argument for why that is better than the keys this
+ * project defended for months, and the engine's own `ui/pause-icons` made the same move first.
+ *
+ * ⚠️ AND IT IS PLACED FROM THE SAME LAYOUT AS EVERYTHING ELSE IN THE HUD. `layoutHud` gained a box for
+ * it, so there is one place that knows where anything in the corner sits — a bar positioned by hand
+ * would be the sixth thing in this game to drift away from `shell/hud`.
+ */
+const a11yBar = mountA11yBar({
+  doc: document,
+  host: region,
+  t: shell.t,
+  box: hudPlacement(shell.hud, { ...DEFAULT_HUD, playfieldWidth: authored.size.width }).a11y,
+  onBlind: () => accessibility.toggleBlindMode(),
+  onSonar: () => accessibility.sweep(),
+  onPalette: () => accessibility.cyclePalette(),
+  blind: () => blind,
+  palette: () => shell.t(isCbSafe(palette) ? 'pinball.palette.cbSafe' : 'pinball.palette.normal'),
+});
+
+/**
+ * The HUD and its icons are shown and hidden together, ALWAYS.
+ *
+ * ⚠️ AND THE FIRST VERSION SET THEM APART, which is exactly the drift this wrapper exists to stop.
+ * `hud.setVisible` is called from four places — the start, the leave, the boot and the demonstration —
+ * and the bar was wired into one of them. Booting straight onto a table with `?table=` left the HUD on
+ * and the icons at `display: none`: three accessibility controls that exist and cannot be reached.
+ * Found by opening the page and reading the computed style.
+ */
+function showHud(visible: boolean): void {
+  hud.setVisible(visible);
+  a11yBar.setVisible(visible);
+}
+
+// ⚠️ PUT AWAY WITH THE HUD, for the same reason: three icons over the title screen are three controls
+// for a game nobody has started.
+showHud(screens.current === 'playing');
+showHud(screens.current === 'playing');
 
 /**
  * ⚠️ A TABLE ALREADY CHOSEN DOES NOT ASK AGAIN.
@@ -2007,7 +2064,7 @@ if (demoRequested || requested) {
    */
   if (demoRequested && screens.current !== 'playing') screens.pick(screens.numbers[0]!);
   title.refresh();
-  hud.setVisible(screens.current === 'playing');
+  showHud(screens.current === 'playing');
   region.focus();
 }
 

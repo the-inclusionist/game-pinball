@@ -183,6 +183,9 @@ const es: Record<string, string> = {
   'pinball.palette.title': 'Colores de la mesa',
   'pinball.palette.normal': 'Colores normales',
   'pinball.palette.cbSafe': 'Colores para daltonismo',
+  /** The two words the accessibility icons put their state in. See `shell/a11y-bar`. */
+  'pinball.a11y.on': 'activado',
+  'pinball.a11y.off': 'desactivado',
   'pinball.a11y.blindOn': 'Modo ciego activado. Pulsa S para barrer la mesa.',
   'pinball.a11y.unavailableInDemo': 'La guía sonora todavía no describe la mesa de 1995.',
   'pinball.a11y.blindOff': 'Modo ciego desactivado.',

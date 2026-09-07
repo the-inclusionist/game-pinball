@@ -67,9 +67,11 @@ The controls are a **cabinet**, and the keyboard is one mapping of it:
 | `Enter` / `H` | pause |
 | `W` `A` `S` `D` | move through the menus |
 | `J` / `K` | in a menu: choose · go back |
-| `B` | blind mode |
-| `S` | sweep the sonar — *in a menu it moves the cursor down instead* |
-| `C` | switch between the normal and CB-Safe palettes |
+
+**Blind mode, the sonar and the table's colours are not keys.** They are three icons in the HUD, beside
+the score — 🦯, 📡 and 🎨 — which is where `game-platformer` puts the same switches and where the
+engine's own `ui/pause-icons` moved them at ADR-0044 item 7. An icon that is on screen all the time is
+found by a player who needs it; a key nobody documents is not.
 
 **The directions do not move the flippers.** They used to, and the Dev took them off: the directions
 have a job, which is walking the menus, and a key that flips a paddle in a game and moves a cursor in a

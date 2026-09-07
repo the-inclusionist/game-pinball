@@ -68,6 +68,15 @@ export interface HudLayout {
    * to the hint, which is about twenty lines.
    */
   readonly mission: Rect;
+  /**
+   * Where the accessibility icons sit.
+   *
+   * ⚠️ THE DEV MOVED THEM OUT OF THE KEYBOARD AND INTO HERE: "remova modo cego sonar e cores via
+   * teclado: eles devem aparecer no hud da mesma forma que aparecem no projeto game-platformer." The
+   * engine's own `ui/pause-icons` records the same move — "desde o item 7 do ADR-0044 os ícones vivem
+   * no HUD" — so this is the arrangement both games share rather than one this one invented.
+   */
+  readonly a11y: Rect;
   readonly score: Rect;
   readonly hint: Rect;
   /** True when the playfield leaves no column and the blocks must sit on top of the play. */
@@ -128,6 +137,14 @@ export function layoutHud(config: HudConfig): HudLayout {
     x: leftX, y: config.padding + (config.lineHeight + 1) * 2, width: leftBox,
     height: config.lineHeight,
   };
+  /**
+   * Under the mission line, on the same rhythm, and TALLER than a line because these are targets for a
+   * finger. `lineHeight` is 7; an icon a child has to hit is not seven pixels.
+   */
+  const a11y: Rect = {
+    x: leftX, y: config.padding + (config.lineHeight + 1) * 3, width: leftBox,
+    height: config.lineHeight * 2,
+  };
   const score: Rect = {
     x: rightX, y: config.padding, width: rightBox, height: config.lineHeight,
   };
@@ -140,5 +157,5 @@ export function layoutHud(config: HudConfig): HudLayout {
     height: hintHeight,
   };
 
-  return { playfield, playerName, ballCount, mission, score, hint, overlaying };
+  return { playfield, playerName, ballCount, mission, a11y, score, hint, overlaying };
 }

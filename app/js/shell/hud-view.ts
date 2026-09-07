@@ -100,7 +100,7 @@ export interface HudBox {
   readonly bottom: string;
 }
 
-export type HudPlacement = Record<'score' | 'balls' | 'player' | 'mission' | 'hint', HudBox>;
+export type HudPlacement = Record<'score' | 'balls' | 'player' | 'mission' | 'a11y' | 'hint', HudBox>;
 
 /**
  * ⚠️ PER-CENT, NOT PIXELS. The canvas is 320x180 and is stretched to whatever width the page gives it,
@@ -120,6 +120,10 @@ export function hudPlacement(layout: HudLayout, screen: HudConfig): HudPlacement
     balls: box(layout.ballCount),
     player: box(layout.playerName),
     mission: box(layout.mission),
+    // ⚠️ NOT A TEXT BLOCK. `HUD_BLOCKS` still names the five the HUD writes words into; this is the box
+    // `shell/a11y-bar` puts its buttons in, and it is laid out here so there is ONE place that knows
+    // where anything in the HUD is.
+    a11y: box(layout.a11y),
     hint: box(layout.hint),
   };
 }

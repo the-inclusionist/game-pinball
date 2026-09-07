@@ -136,9 +136,6 @@ describe('what the keys are', () => {
       setFlipper: (side) => fired.push(side),
       launch: () => fired.push('plunger'),
       setPlunger: () => fired.push('plunger'),
-      toggleBlindMode: () => fired.push('blindMode'),
-      sweep: () => fired.push('sweep'),
-      cyclePalette: () => fired.push('palette'),
       togglePause: () => fired.push('pause'),
     });
 
@@ -237,74 +234,18 @@ describe('⚠️ both of the engine’s action vocabularies drive this cabinet',
  *
  * The toggle is a KEY because the whole point is a player who is not looking at a settings panel.
  */
-describe('the accessibility keys', () => {
-  function withBlind() {
-    const region = fakeRegion();
-    const toggled: string[] = [];
-    bindPinballControls({
-      region: region as never,
-      setFlipper: () => {},
-      launch: () => {},
-      toggleBlindMode: () => toggled.push('blind'),
-      sweep: () => toggled.push('sweep'),
-    });
-    return { region, toggled };
-  }
-
-  test('one key turns blind mode on and off', () => {
-    const h = withBlind();
-
-    h.region.send('keydown', { code: DEFAULT_BINDINGS.blindMode[0] });
-
-    expect(h.toggled).toEqual(['blind']);
-  });
-
-  test('⚠️ and one CYCLES THE PALETTE, because a settings panel is not where this player looks', () => {
-    // The same argument this file already makes for blind mode, pointed at the other half of the
-    // Dev's request. The menu is being built and the menu is what was asked for; a key beside it costs
-    // one line and is the difference between a colour-blind player finding the alternative in the
-    // first minute and finding it never.
-    const region = fakeRegion();
-    let cycles = 0;
-    bindPinballControls({
-      region: region as never,
-      setFlipper: () => {},
-      launch: () => {},
-      cyclePalette: () => { cycles++; },
-    });
-
-    region.send('keydown', { code: 'KeyC' });
-    region.send('keydown', { code: 'KeyC' });
-
-    expect(cycles).toBe(2);
-  });
-
-  test('another asks the sonar where things are', () => {
-    // The guide pings on its own every 0.8 seconds; a sweep is the player ASKING, which is what makes
-    // the table explorable rather than merely announced at.
-    const h = withBlind();
-
-    h.region.send('keydown', { code: DEFAULT_BINDINGS.sweep[0] });
-
-    expect(h.toggled).toEqual(['sweep']);
-  });
-
-  test('⚠️ and holding either does not repeat, because a toggle that repeats never settles', () => {
-    const h = withBlind();
-
-    h.region.send('keydown', { code: DEFAULT_BINDINGS.blindMode[0] });
-    h.region.send('keydown', { code: DEFAULT_BINDINGS.blindMode[0], repeat: true });
-
-    expect(h.toggled).toEqual(['blind']);
-  });
-
-  test('they are optional, because a table under construction has no engine behind it', () => {
-    const region = fakeRegion();
-    bindPinballControls({ region: region as never, setFlipper: () => {}, launch: () => {} });
-
-    expect(() => region.send('keydown', { code: DEFAULT_BINDINGS.blindMode[0] })).not.toThrow();
-  });
-});
+/**
+ * ⚠️ THE FIVE TESTS THAT WERE HERE HAVE MOVED TO `tests/shell-a11y-bar`, AND SO HAS THE FEATURE.
+ *
+ * They drove blind mode, the sonar sweep and the palette through `B`, `S` and `C`, and the Dev has
+ * taken all three off the keyboard: "remova modo cego sonar e cores via teclado: eles devem aparecer no
+ * hud da mesma forma que aparecem no projeto game-platformer." There is no key to press any more, so a
+ * test that pressed one would be asking about a route that does not exist.
+ *
+ * What those tests were REALLY about survives, and is asked of the new route instead: that the switch
+ * is reachable without a settings panel, that a toggle does not repeat itself into a blur, and that a
+ * game with no engine behind it does not fall over when one is pressed.
+ */
 
 describe('⚠️ a table with a plunger holds it, and one without still launches', () => {
   test('the launch key reports BOTH edges when a plunger is given', () => {
@@ -350,15 +291,14 @@ describe('the back door’s characters', () => {
   function typing() {
     const region = fakeRegion();
     const typed: string[] = [];
-    const blind: number[] = [];
+    const flipped: string[] = [];
     bindPinballControls({
       region: region as never,
-      setFlipper: () => {},
+      setFlipper: (side, extended) => { if (extended) flipped.push(side); },
       launch: () => {},
-      toggleBlindMode: () => blind.push(1),
       typeCharacter: (c) => typed.push(c),
     });
-    return { region, typed, blind };
+    return { region, typed, flipped };
   }
 
   test('a printable key is one character', () => {
@@ -416,16 +356,22 @@ describe('the back door’s characters', () => {
     expect(t.typed).toEqual(['j']);
   });
 
-  test('⚠️ and the accessibility key still fires — the cheat does not take the letter away', () => {
-    // `bmax` starts with the blind-mode key and `easy mode` contains the sweep key. A back door that
-    // swallowed them would trade a feature this project exists for against an easter egg, so both
-    // happen: the character reaches the buffer AND the action runs. Typing `bmax` toggles blind mode
-    // on the way past, which is the price and is worth naming.
+  test('⚠️ and a cabinet key still fires — the cheat does not take the letter away', () => {
+    /**
+     * `bmax` and `easy mode` are typed with letters that were once blind mode and the sonar, and a back
+     * door that swallowed them would have traded a feature this project exists for against an easter
+     * egg. Both happened: the character reached the buffer AND the action ran.
+     *
+     * ⚠️ THE EXAMPLE MOVED WHEN THE KEYS DID. Blind mode, the sonar and the palette are icons in the
+     * HUD now — the Dev's "remova modo cego sonar e cores via teclado" — so B and S belong to nobody
+     * and the claim needs a key that is still bound. `KeyJ` is the left flipper and a letter, which is
+     * the same collision the cheat buffer was always about.
+     */
     const t = typing();
 
-    t.region.send('keydown', { code: 'KeyB', key: 'b' });
+    t.region.send('keydown', { code: 'KeyJ', key: 'j' });
 
-    expect(t.typed).toEqual(['b']);
-    expect(t.blind, 'blind mode still answers its own key').toEqual([1]);
+    expect(t.typed).toEqual(['j']);
+    expect(t.flipped, 'the flipper still answers its own key').toEqual(['left']);
   });
 });

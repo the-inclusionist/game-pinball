@@ -30,9 +30,6 @@ const DOCUMENTED_AS: Readonly<Record<PinballAction, string>> = {
   right: '`K` / `8` / `O`',
   plunger: '`U`',
   pause: '`Enter` / `H`',
-  blindMode: '`B`',
-  sweep: '`S`',
-  palette: '`C`',
 };
 
 describe('the commands the README gives', () => {

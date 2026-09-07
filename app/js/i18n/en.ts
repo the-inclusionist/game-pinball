@@ -192,6 +192,9 @@ const en: Record<string, string> = {
   'pinball.palette.title': 'Table colours',
   'pinball.palette.normal': 'Normal colours',
   'pinball.palette.cbSafe': 'Colour-blind safe',
+  /** The two words the accessibility icons put their state in. See `shell/a11y-bar`. */
+  'pinball.a11y.on': 'on',
+  'pinball.a11y.off': 'off',
   'pinball.a11y.blindOn': 'Blind mode on. Press S to sweep the table.',
   // ⚠️ The 1995 table is drawn from the archive and the contract still describes the authored one,
   // so the guide would point at components that are not on screen. Refused rather than answered.

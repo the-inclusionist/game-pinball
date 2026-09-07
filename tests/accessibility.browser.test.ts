@@ -89,6 +89,20 @@ const frames = async (n: number): Promise<void> => {
 };
 
 /**
+ * ⚠️ THE THREE SWITCHES ARE ICONS IN THE HUD NOW, NOT KEYS. The Dev: "remova modo cego sonar e cores via
+ * teclado: eles devem aparecer no hud da mesma forma que aparecem no projeto game-platformer." So these
+ * tests click a `.pi-btn` where they used to press `b` or `s` — the same claims, asked of the route the
+ * game actually has. `shell/a11y-bar` carries the argument, and the engine's own `ui/pause-icons` made
+ * the same move first.
+ */
+const icon = async (key: string): Promise<void> => {
+  const button = document.querySelector<HTMLElement>(`#pinball-a11y [data-pi="${key}"]`);
+  if (!button) throw new Error(`no ${key} icon in the HUD`);
+  button.click();
+  await new Promise((resolve) => { requestAnimationFrame(() => resolve(undefined)); });
+};
+
+/**
  * ⚠️ CAPTURED BEFORE ANY KEY IS PRESSED, because "it starts off" is a claim about the BOOT and not
  * about whichever test happens to run first.
  *
@@ -128,8 +142,8 @@ beforeAll(async () => {
   await frames(5);
 });
 
-describe('blind mode, from the key a player would actually press', () => {
-  test('⚠️ B turns it on, and the game KNOWS it is on', async () => {
+describe('blind mode, from the icon a player would actually press', () => {
+  test('⚠️ the blind-mode icon turns it on, and the game KNOWS it is on', async () => {
     // ⚠️ AND THIS COVERS HALF OF THE DEFECT IT WAS WRITTEN FOR, which is worth saying exactly.
     //
     // The original fault was two links in a chain: the key had to reach the switch, and the switch had
@@ -145,9 +159,9 @@ describe('blind mode, from the key a player would actually press', () => {
     expect(blindAtBoot, 'nobody is opted into blind mode at boot').toBe(false);
     const before = debug().blind;
 
-    await press('b');
+    await icon('blind');
 
-    expect(debug().blind, 'the key moved it').toBe(!before);
+    expect(debug().blind, 'the icon moved it').toBe(!before);
   });
 
   test('and it SAYS so, in the live region rather than in silence', async () => {
@@ -155,7 +169,7 @@ describe('blind mode, from the key a player would actually press', () => {
     // player cannot tell they pressed.
     const before = said();
 
-    await press('b');
+    await icon('blind');
 
     expect(said(), 'the announcement changed').not.toBe(before);
     expect(said().length, 'and it is words, not an empty string').toBeGreaterThan(0);
@@ -164,19 +178,19 @@ describe('blind mode, from the key a player would actually press', () => {
   test('pressing it again turns it off, so it is a toggle and not a trap', async () => {
     const wasOn = debug().blind;
 
-    await press('b');
+    await icon('blind');
 
     expect(debug().blind).toBe(!wasOn);
   });
 });
 
 describe('the sonar, which is what makes a pinball explorable at all', () => {
-  test('⚠️ S sweeps, and the sweep REACHES the engine', async () => {
+  test('⚠️ the sonar icon sweeps, and the sweep REACHES the engine', async () => {
     // `targetsOf` is what the sonar points at, and it was filled in two commits before anything could
     // ask it a question. This asks it, through the key, in a browser, with the region focused.
     const before = debug().sonar.sonarCount;
 
-    await press('s');
+    await icon('sonar');
 
     expect(debug().sonar.sonarCount, 'the engine ran a sweep').toBeGreaterThan(before);
   });
@@ -184,8 +198,8 @@ describe('the sonar, which is what makes a pinball explorable at all', () => {
   test('and it can be asked more than once, because a table is explored and not announced at', async () => {
     const before = debug().sonar.sonarCount;
 
-    await press('s');
-    await press('s');
+    await icon('sonar');
+    await icon('sonar');
 
     expect(debug().sonar.sonarCount - before).toBe(2);
   });

@@ -26,7 +26,7 @@ export type FlipperSide = 'left' | 'right';
  * are the classic pinball pair; a player who cannot reach across a keyboard uses whichever half is
  * nearer, and a player using one hand has both sides within it.
  */
-export type PinballAction = 'left' | 'right' | 'plunger' | 'pause' | 'blindMode' | 'sweep' | 'palette';
+export type PinballAction = 'left' | 'right' | 'plunger' | 'pause';
 
 /**
  * ⚠️ THE ACCESSIBILITY KEYS ARE KEYS, and that is the point of them. `createGame` reads blind mode
@@ -106,16 +106,20 @@ export const DEFAULT_BINDINGS: Readonly<Record<PinballAction, readonly string[]>
    */
   pause: ['Enter', 'KeyH'],
   /**
-   * ⚠️ THE ACCESSIBILITY KEYS ARE NOT IN THE DEV'S LIST AND ARE KEPT ANYWAY. Blind mode, the sonar
-   * sweep and the palette are not controls of the cabinet — they are switches for how the game is
-   * PERCEIVED, and `shell/controls` has argued since it was written that they must be keys rather than
-   * menu entries: a player who needs blind mode is not the player who will find it in a settings
-   * panel. Removing them because they were absent from a list about flippers would be reading the list
-   * as saying something it does not.
+   * ⚠️ AND BLIND MODE, THE SONAR AND THE PALETTE ARE NO LONGER KEYS AT ALL. The Dev: "remova modo cego
+   * sonar e cores via teclado: eles devem aparecer no hud da mesma forma que aparecem no projeto
+   * game-platformer."
+   *
+   * This module argued the opposite for months, and the argument was right about the danger and wrong
+   * about the alternative: "a player who needs blind mode is not the player who is going to find it in
+   * a settings panel." It assumed the other option was a panel. It is not — it is an ICON, on screen,
+   * beside the score, all the time. `shell/a11y-bar` is that bar, and the engine's own
+   * `ui/pause-icons` made the same move first: "desde o item 7 do ADR-0044 os ícones vivem no HUD."
+   *
+   * ⚠️ AND IT FREED THREE KEYS THAT WERE ALREADY WANTED. `KeyS` was the sonar AND the menus' "down"
+   * since the cabinet was remapped, and the collision had to be written down as an exception. It is
+   * not an exception any more.
    */
-  blindMode: ['KeyB'],
-  sweep: ['KeyS'],
-  palette: ['KeyC'],
 };
 
 /**
@@ -161,11 +165,12 @@ export interface ControlOptions {
    * instead, and a table that does not simply leaves it out.
    */
   readonly setPlunger?: (pressed: boolean) => void;
-  /** Optional, because a table under construction has no engine behind it. */
-  readonly toggleBlindMode?: () => void;
-  readonly sweep?: () => void;
-  /** Moves to the next palette and says which one it is. Optional, like the other two. */
-  readonly cyclePalette?: () => void;
+  /**
+   * ⚠️ `toggleBlindMode`, `sweep` AND `cyclePalette` USED TO BE HERE AND ARE NOT ANY MORE. The Dev took
+   * the three off the keyboard — "remova modo cego sonar e cores via teclado" — so this module has
+   * nothing to dispatch to. They are wired straight from `shell/a11y-bar`'s buttons instead, which is
+   * one hop rather than two and leaves no option here that nothing reads.
+   */
   /** Start. Pauses a running game and resumes a paused one. */
   readonly togglePause?: () => void;
   /**
@@ -376,9 +381,6 @@ export function bindPinballControls(o: ControlOptions): () => void {
       if (o.setPlunger) o.setPlunger(true);
       else o.launch();
     }
-    else if (action === 'blindMode') o.toggleBlindMode?.();
-    else if (action === 'sweep') o.sweep?.();
-    else if (action === 'palette') o.cyclePalette?.();
     else if (action === 'pause') o.togglePause?.();
     else o.setFlipper(action, true);
   };
