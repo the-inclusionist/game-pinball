@@ -158,6 +158,25 @@ async function stopTheWorld(): Promise<void> {
  * working code, so this adds evidence instead: the next occurrence names the phase, the camera and
  * the ball, and one of those is either the cause or eliminates itself.
  */
+/**
+ * ⚠️ WHAT HAS BEEN ELIMINATED ABOUT THE FLAKE, so nobody walks it twice.
+ *
+ * `raising a FLIPPER` and `the OTHER paddle moves independently` have failed about twice in fifty
+ * shuffled runs of the whole browser suite, and pass every time on their own and every time paired
+ * with the files most likely to disturb them. Two readings of the code, both plausible, both wrong:
+ *
+ *   · ⚠️ "A PADDLE LEFT RAISED BY THE PREVIOUS TEST." It would produce exactly this: `before` is
+ *     already the raised picture, the key changes nothing, and the count of differing pixels is
+ *     nought. And `stopTheWorld` sets the phase to `title` BEFORE releasing the keys, so the 24
+ *     frames of `allKeysUp` looked like frames in which nothing could move. They are not: `main`'s
+ *     step passes `phase === 'playing' ? [ball] : []` to `advanceFrame`, so the BALL is what depends
+ *     on the phase and the flippers are stepped either way — deliberately, and its comment says so.
+ *     The paddles do fall.
+ *   · "TOO FEW FRAMES UNDER LOAD." `frames` is a count of animation callbacks and the simulation
+ *     advances by elapsed TIME, so a busy machine takes MORE game frames per callback, not fewer.
+ *
+ * What is left is genuinely unknown, which is why `running()` below exists rather than a fix.
+ */
 function running(): string {
   const d = debug();
   const ball = d.ball;
