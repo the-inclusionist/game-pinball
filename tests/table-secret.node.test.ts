@@ -31,7 +31,7 @@ import { openSecrets, type AuthoredSecret } from '../app/js/table/secret.js';
 import { validateTable, type AuthoredComponent, type AuthoredTable } from '../app/js/table/authored.js';
 import { LOW_ORBIT } from '../app/js/table/low-orbit.js';
 import {
-  buildPhysics, drainedBy, inPlungerLane, launchSpeedFor, FRAME_SECONDS,
+  buildPhysics, drainedBy, inPlungerLane, launchSpeedFor, launchDirectionFor, FRAME_SECONDS,
 } from '../app/js/table/physics-build.js';
 import { CRATER_RUN } from '../app/js/table/crater-run.js';
 
@@ -182,7 +182,10 @@ describe('⚠️ `crater-run`’s passage is a route the ball takes', () => {
 
       for (let i = 0; i < 4000; i++) {
         if (inPlungerLane(CRATER_RUN, ball) && ball.speed < 20) {
-          ball.direction = { x: 0, y: -1 };
+          // ⚠️ UP THE LANE, WHICH LEANS NINE DEGREES. A plunger fires along its own channel, and on this
+          // engine a graze does not glance off a wall — it turns the ball into that wall's normal. See
+          // `launchDirectionFor`.
+          ball.direction = launchDirectionFor(CRATER_RUN);
           ball.speed = launchSpeedFor(CRATER_RUN) * (0.55 + random() * 0.45);
         }
         if (i % flap === 0) { physics.setFlippers('left', true); physics.setFlippers('right', true); }

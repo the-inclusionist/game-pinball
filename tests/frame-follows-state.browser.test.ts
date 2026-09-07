@@ -114,9 +114,24 @@ function flipperBox(side: 'left' | 'right'): Box {
   expect(visible, `only ${visible} rows of the ${side} paddle's ${Math.round(reach * 2)} are on screen`
     + ` — the view is scrolled to ${d.cameraY}`).toBeGreaterThan(reach);
 
+  /**
+   * ⚠️ AND EACH BOX STOPS AT THE MIDDLE, WHICH IS WHAT "THE OTHER PADDLE" MEANS.
+   *
+   * The arc's bounding square reaches `reach + 4` either side of a pivot that sits 39 from the centre
+   * of the play, so the two squares OVERLAP by four columns down the middle — ever since the Dev asked
+   * for paddles a ball cannot pass between. Pressing the right key then changes three pixels inside the
+   * box called "left", and the gate that says one key must not drive both paddles reported that it
+   * does. Clipping each box at the centre line is the fix and it costs nothing: a paddle's own sweep is
+   * on its own side, and only the last four columns of a fully raised tip are given up.
+   */
+  const middle = d.playfieldX + (d.flippers[0]!.pivot.x + d.flippers[1]!.pivot.x) / 2;
   return {
-    left: Math.max(0, Math.round(d.playfieldX + f.pivot.x - reach)),
-    right: Math.min(320, Math.round(d.playfieldX + f.pivot.x + reach)),
+    left: Math.max(0, Math.round(Math.max(
+      d.playfieldX + f.pivot.x - reach, side === 'right' ? middle : 0,
+    ))),
+    right: Math.min(320, Math.round(Math.min(
+      d.playfieldX + f.pivot.x + reach, side === 'left' ? middle : 320,
+    ))),
     top: Math.max(0, Math.round(f.pivot.y - d.cameraY - reach)),
     bottom: Math.min(180, Math.round(f.pivot.y - d.cameraY + reach)),
   };

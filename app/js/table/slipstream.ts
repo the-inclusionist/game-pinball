@@ -192,6 +192,33 @@ export const SLIPSTREAM: AuthoredTable = {
       scores: [2800], control: 'RebounderControl', lamps: ['lamp.backRight'],
       collision: [{ kind: 'circle', at: { x: 134, y: 158 }, radius: 8 }] },
 
+    /**
+     * ⚠️ THE DEFLECTOR THE LEANING BEND IMPLIES, AND `table/cabinet` PREDICTED IT IN WORDS.
+     *
+     * Its record says, of the return curve: "every table is missing the furniture that a curve implies
+     * — something to turn a sweeping ball back into the play. That is a change to six layouts, not to
+     * one line, and it is the next piece of authoring." This is that piece, on the first table to need
+     * it, and what made it need it was the nine-degree lean.
+     *
+     * Traced frame by frame: a full launch comes off the bend at (139, 21) travelling (−0.85, 0.52),
+     * falls through `vane.left` — which is a one-way and lets it — and crosses the whole chamber
+     * without touching anything, reaching the left wall at y = 213 and going out of the outlane after
+     * 188 frames. The same 188 with the flippers flapping as with the player sitting still, which is
+     * `tests/table-playable`'s definition of a table you watch rather than play.
+     *
+     * ⚠️ AND IT IS A WALL RATHER THAN A REBOUNDER, standing where the diagonal crosses. The comment
+     * above `back.left` says why the obvious alternative is wrong — "a rebounder near a wall is a
+     * funnel nobody designed" — and the place this ball needs meeting is close to the left wall. A
+     * plain angled face turns it back toward the middle and pays nothing, which is honest: the player
+     * did not aim at it.
+     *
+     * The winding is the whole of it, as everywhere else here: `(dy, −dx)` on a line running down and
+     * to the RIGHT points its normal up and to the right, at the ball coming down from the bend.
+     */
+    { name: 'deflector.left', kind: 'wall', role: WALL,
+      bounds: { x: 24, y: 124, width: 22, height: 22 },
+      collision: [{ kind: 'line', from: { x: 24, y: 124 }, to: { x: 46, y: 146 } }] },
+
     /* ===================== THE WAY BACK DOWN ===================== */
     // ⚠️ OUTSIDE THE VANES, which is what stops the chamber being a trap: the flanks are open, so a
     // ball can always fall back down the sides whether or not it finds these.

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, test, expect } from 'vitest';
 import {
-  buildPhysics, responseFor, RESPONSES, FRAME_SECONDS, drainedBy, launchSpeedFor, DEFAULT_GRAVITY,
+  buildPhysics, responseFor, RESPONSES, FRAME_SECONDS, drainedBy, launchSpeedFor, launchDirectionFor, DEFAULT_GRAVITY,
 } from '../app/js/table/physics-build.js';
 import { advanceFrame } from '../app/js/physics/step.js';
 import { CATALOG, LOW_ORBIT } from '../app/js/table/catalog.js';
@@ -46,7 +46,14 @@ describe('a table becomes something a ball can be dropped into', () => {
     const ball = buildPhysics(LOW_ORBIT).spawnBall();
     const plunger = LOW_ORBIT.components.find((c) => c.kind === 'plunger')!;
 
-    expect(ball.position.x).toBeCloseTo(plunger.bounds.x + plunger.bounds.width / 2, 6);
+    /**
+     * ⚠️ INSIDE THE BOX RATHER THAN EXACTLY ITS MIDDLE, since the tables lean. `spawnBall` reads the
+     * plunger's COLLISION FACE — the edge the ball rests on, at the right height — while `bounds` is a
+     * rectangle rounded to whole pixels, so the two agree to within half a pixel and not to six
+     * decimals. What the gate means is that the ball starts on the launcher.
+     */
+    expect(ball.position.x).toBeGreaterThanOrEqual(plunger.bounds.x);
+    expect(ball.position.x).toBeLessThanOrEqual(plunger.bounds.x + plunger.bounds.width);
     expect(ball.position.y).toBeLessThan(plunger.bounds.y);
     expect(ball.speed).toBe(0);
   });
@@ -249,7 +256,9 @@ describe('⚠️ the drain is the one component that works by NOT being hit', ()
     // The end-to-end shape of it: launch, climb, fall, gone.
     const physics = buildPhysics(LOW_ORBIT);
     const ball = physics.spawnBall();
-    ball.direction = { x: 0, y: -1 };
+    // ⚠️ UP THE LANE, WHICH LEANS NINE DEGREES — see `launchDirectionFor`. Fired straight up the ball
+    // grazes the leaning wall, and a graze on this engine turns it into that wall's normal.
+    ball.direction = launchDirectionFor(LOW_ORBIT, 260);
     ball.speed = 260;
 
     /**

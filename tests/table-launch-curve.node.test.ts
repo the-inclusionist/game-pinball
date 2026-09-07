@@ -29,7 +29,7 @@
 // the thing it replaced, in the same run, and the claim cannot pass by accident. They are fixtures
 // rather than tables to play, which is the only reason they have not been converted.
 import { describe, test, expect } from 'vitest';
-import { buildPhysics, FRAME_SECONDS, launchSpeedFor } from '../app/js/table/physics-build.js';
+import { buildPhysics, FRAME_SECONDS, launchSpeedFor, launchDirectionFor } from '../app/js/table/physics-build.js';
 import { advanceFrame } from '../app/js/physics/step.js';
 import { CATALOG } from '../app/js/table/catalog.js';
 import { cabinet } from '../app/js/table/cabinet.js';
@@ -58,7 +58,10 @@ const WITH_BEND = CATALOG.filter((t) => t.components.some((c) => c.name === 'wal
 function exitDirection(table: AuthoredTable): { x: number; y: number } {
   const physics = buildPhysics(table);
   const ball = physics.spawnBall();
-  ball.direction = { x: 0, y: -1 };
+  // ⚠️ UP THE LANE, WHICH LEANS NINE DEGREES. A plunger fires along its own channel, and on this
+  // engine a graze does not glance off a wall — it turns the ball into that wall's normal. See
+  // `launchDirectionFor`.
+  ball.direction = launchDirectionFor(table);
   ball.speed = launchSpeedFor(table);
 
   for (let i = 0; i < 900; i++) {
@@ -80,14 +83,27 @@ describe('⚠️ a ball launched at full power comes off the bend travelling ACR
   });
 
   test.each(WITH_BEND.filter((t) => !curves(t)).map((t) => [t.name, t] as const))(
-    '%s still has the straight bend, and goes DOWN — the control',
+    '%s still has the straight bend, and is turned LESS — the control',
     (name, table) => {
-      // See the header. If this ever passes as a curve, either a fixture was converted (in which case
-      // it belongs in the case above) or the test above is measuring something other than the bend.
+      /**
+       * ⚠️ THE CONTROL IS COMPARATIVE NOW, AND IT USED TO SAY "goes DOWN". It asserted that a straight
+       * bend leaves the ball travelling more down than across, which was true while the plunger fired
+       * straight up the screen. Since `table/perspective` every table leans nine degrees and the
+       * plunger fires ALONG its lane, so the ball arrives at the bend already going sideways and
+       * leaves that way whatever it hits — `narrow-tower` came out at (−0.72, 0.69), which is across
+       * by a whisker and failed a gate that was asking the wrong question.
+       *
+       * What the gate is FOR is that the cabinet's arc turns the ball further than a straight slope
+       * does, and that survives the lean with room to spare. Measured across the catalogue: every one
+       * of the seven tables with the arc leaves at |x| = 0.851, and the three fixtures with the
+       * straight bend at 0.53, 0.61 and 0.72. The bar is the smallest of the curved group, so the two
+       * groups are compared rather than judged against a constant that has to be maintained.
+       */
+      const bar = Math.min(...WITH_BEND.filter(curves).map((t) => Math.abs(exitDirection(t).x)));
       const exit = exitDirection(table);
 
-      expect(Math.abs(exit.y), `${name}: exit (${exit.x.toFixed(2)}, ${exit.y.toFixed(2)})`)
-        .toBeGreaterThan(Math.abs(exit.x));
+      expect(Math.abs(exit.x), `${name}: exit (${exit.x.toFixed(2)}, ${exit.y.toFixed(2)})`
+        + ` against the arc's ${bar.toFixed(2)}`).toBeLessThan(bar);
     },
   );
 

@@ -24,19 +24,63 @@
 // have a machine answer, and pretending otherwise would be the worse mistake.
 
 import type { AuthoredTable } from './authored.js';
-import { LOW_ORBIT } from './low-orbit.js';
-import { ION_STORM } from './ion-storm.js';
-import { SLIPSTREAM } from './slipstream.js';
-import { RING_BELT } from './ring-belt.js';
-import { LONG_CLIMB } from './long-climb.js';
-import { CRATER_RUN } from './crater-run.js';
-import { WIDE_ARC } from './wide-arc.js';
-import { NARROW_TOWER } from './narrow-tower.js';
-import { FOUR_FLIPPERS } from './four-flippers.js';
-import { BARE_MINIMUM } from './bare-minimum.js';
-import { FACTORY } from './factory.js';
+import { LOW_ORBIT as FLAT_LOW_ORBIT } from './low-orbit.js';
+import { ION_STORM as FLAT_ION_STORM } from './ion-storm.js';
+import { SLIPSTREAM as FLAT_SLIPSTREAM } from './slipstream.js';
+import { RING_BELT as FLAT_RING_BELT } from './ring-belt.js';
+import { LONG_CLIMB as FLAT_LONG_CLIMB } from './long-climb.js';
+import { CRATER_RUN as FLAT_CRATER_RUN } from './crater-run.js';
+import { WIDE_ARC as FLAT_WIDE_ARC } from './wide-arc.js';
+import { NARROW_TOWER as FLAT_NARROW_TOWER } from './narrow-tower.js';
+import { FOUR_FLIPPERS as FLAT_FOUR_FLIPPERS } from './four-flippers.js';
+import { BARE_MINIMUM as FLAT_BARE_MINIMUM } from './bare-minimum.js';
+import { FACTORY as FLAT_FACTORY } from './factory.js';
+import { taper } from './perspective.js';
+
+/**
+ * ⚠️ EVERY TABLE LEANS, AND THIS IS THE ONE PLACE THAT SAYS SO. The Dev asked for nine degrees on every
+ * table — "transformando todas as mesas em trapézios com angulos internos de 81 graus na base" — and
+ * `table/perspective` argues why that is a transform over the finished table rather than an edit to
+ * four walls in `table/cabinet`.
+ *
+ * ⚠️ AND IT HAS TO BE HERE RATHER THAN IN THE CABINET, because three tables never call the cabinet.
+ * `low-orbit` is the flagship and was authored before that module existed; `narrow-tower` and
+ * `bare-minimum` are fixtures with their own hand-written shells. A shared change made in the cabinet
+ * has reached eight tables and skipped three every time it has been made, which those files record.
+ * This is the only join every table passes through.
+ *
+ * The authored files keep their upright coordinates. That is what makes them readable — an author
+ * writes "the bumper is thirty from the wall" and does not do trigonometry — and it is the same
+ * arrangement the 1995 table has, where the lean is in the geometry and not in the numbers a designer
+ * typed.
+ */
+const LOW_ORBIT = taper(FLAT_LOW_ORBIT);
+const ION_STORM = taper(FLAT_ION_STORM);
+const SLIPSTREAM = taper(FLAT_SLIPSTREAM);
+const RING_BELT = taper(FLAT_RING_BELT);
+const LONG_CLIMB = taper(FLAT_LONG_CLIMB);
+const CRATER_RUN = taper(FLAT_CRATER_RUN);
+const WIDE_ARC = taper(FLAT_WIDE_ARC);
+const NARROW_TOWER = taper(FLAT_NARROW_TOWER);
+const FOUR_FLIPPERS = taper(FLAT_FOUR_FLIPPERS);
+const BARE_MINIMUM = taper(FLAT_BARE_MINIMUM);
+const FACTORY = taper(FLAT_FACTORY);
 
 export { LOW_ORBIT, ION_STORM, SLIPSTREAM, RING_BELT, LONG_CLIMB, CRATER_RUN, FACTORY, WIDE_ARC, NARROW_TOWER, FOUR_FLIPPERS, BARE_MINIMUM };
+
+/**
+ * The tables AS THEY WERE WRITTEN, upright, before the lean.
+ *
+ * ⚠️ NOT FOR PLAYING, AND THE NAME SAYS SO. Everything the game touches — the physics, the renderer,
+ * the selector, the camera — must use `CATALOG`, whose tables are the leaning ones. This exists for the
+ * gates that ask what an AUTHOR wrote rather than what a player sees: `tests/table-catalog` compares
+ * every table's shell against `table/cabinet` to catch a table that has quietly re-authored one, and
+ * that question lives in the upright space both sides were written in.
+ */
+export const AUTHORED_TABLES: readonly AuthoredTable[] = [
+  FLAT_LOW_ORBIT, FLAT_ION_STORM, FLAT_SLIPSTREAM, FLAT_RING_BELT, FLAT_LONG_CLIMB, FLAT_CRATER_RUN,
+  FLAT_FACTORY, FLAT_WIDE_ARC, FLAT_NARROW_TOWER, FLAT_FOUR_FLIPPERS, FLAT_BARE_MINIMUM,
+];
 
 /** Every authored table. The first is the default. */
 export const CATALOG: readonly AuthoredTable[] = [

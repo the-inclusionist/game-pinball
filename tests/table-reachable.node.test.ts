@@ -24,7 +24,7 @@
 // launch varies in power and drift because a real one does; the flippers flap on a rhythm that varies
 // per ball because a player is not a metronome.
 import { describe, test, expect } from 'vitest';
-import { buildPhysics, drainedBy, inPlungerLane, launchSpeedFor, FRAME_SECONDS } from '../app/js/table/physics-build.js';
+import { buildPhysics, drainedBy, inPlungerLane, launchSpeedFor, launchDirectionFor, FRAME_SECONDS } from '../app/js/table/physics-build.js';
 import { advanceFrame } from '../app/js/physics/step.js';
 import { PLAYABLE_TABLES } from '../app/js/table/catalog.js';
 import type { AuthoredTable } from '../app/js/table/authored.js';
@@ -83,7 +83,10 @@ function visits(table: AuthoredTable, balls: number): Map<string, number> {
        * eighteen components on `ion-storm` alone — and the loss was this line missing, not the fix.
        */
       if (inPlungerLane(table, ball) && ball.speed < 20) {
-        ball.direction = { x: 0, y: -1 };
+        // ⚠️ UP THE LANE, WHICH LEANS NINE DEGREES. A plunger fires along its own channel, and on this
+        // engine a graze does not glance off a wall — it turns the ball into that wall's normal. See
+        // `launchDirectionFor`.
+        ball.direction = launchDirectionFor(table);
         ball.speed = launchSpeedFor(table) * (0.55 + random() * 0.45);
       }
       if (i % flap === 0) { physics.setFlippers('left', true); physics.setFlippers('right', true); }
@@ -208,7 +211,18 @@ const RESTS_AGAINST = /^(wall\.|plunger$)/;
  * quietly — and this ledger is the place this project keeps things it owes.
  */
 const KNOWN_RARE: Readonly<Record<string, readonly string[]>> = {
-  'ring-belt': ['outlane.left', 'scree.west3', 'scree.east2'],
+  /**
+   * ⚠️ `probe.belt` IS THE FOURTH AND IT ARRIVED WITH THE LEAN. The other three are recorded above as
+   * the day this table lost three components to a re-authoring; this one is `table/perspective`, which
+   * squeezes the playfield toward the centre as it rises — so sixty balls that used to find the belt's
+   * probe now pass inside it.
+   *
+   * ⚠️ AND IT IS THE SECOND TIME THIS TABLE HAS BEEN THE ONE THAT PAID, which is the useful part.
+   * `ring-belt` is 360 wide against a catalogue of 183s, so the same nine degrees move its outer thirds
+   * further than any other table's, and it was already the table carrying entries here. It is owed a
+   * re-authoring rather than more ledger lines, and this is the line that says so out loud.
+   */
+  'ring-belt': ['outlane.left', 'scree.west3', 'scree.east2', 'probe.belt'],
 };
 
 describe('⚠️ every component the ball is meant to meet, it meets', () => {

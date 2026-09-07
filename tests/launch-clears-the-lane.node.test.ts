@@ -37,7 +37,7 @@
 // smuggled in through `extraField` would break.
 
 import { describe, test, expect } from 'vitest';
-import { buildPhysics, FRAME_SECONDS, launchSpeedFor } from '../app/js/table/physics-build.js';
+import { buildPhysics, FRAME_SECONDS, launchSpeedFor, launchDirectionFor } from '../app/js/table/physics-build.js';
 import { advanceFrame } from '../app/js/physics/step.js';
 import { CATALOG } from '../app/js/table/catalog.js';
 import { MISSION_TIME_SCALE } from '../app/js/table/ball-assist.js';
@@ -59,21 +59,37 @@ const DIVIDER_TOP = 34;
  * `advanceFrame`, with proportionally more steps so the same amount of SIMULATED time passes. Running
  * the same frame count at a shorter step would measure a shorter launch and prove nothing about it.
  */
-function launch(table: AuthoredTable, scale: number): { needed: number; climbed: number } {
+function launch(
+  table: AuthoredTable, scale: number,
+): { needed: number; climbed: number; freeFlight: number } {
   const physics = buildPhysics(table, {});
   const ball = physics.spawnBall();
   const start = ball.position.y;
-  ball.direction = { x: 0, y: -1 };
+  // ⚠️ UP THE LANE, WHICH LEANS NINE DEGREES. A plunger fires along its own channel, and on this
+  // engine a graze does not glance off a wall — it turns the ball into that wall's normal. See
+  // `launchDirectionFor`.
+  ball.direction = launchDirectionFor(table);
   ball.speed = launchSpeedFor(table);
+
+  /**
+   * ⚠️ HALF A SIMULATED SECOND, WHICH IS THE PART TWO CLOCKS CAN BE COMPARED OVER. Every table's ball
+   * is still in free flight up the lane at that point — nothing on any of them is touched before 0.6 —
+   * so the height there is decided by the launch and by gravity and by nothing else. After the first
+   * contact the two runs diverge for a reason that is not the drill: a collision resolved a fraction
+   * of a unit apart sends the ball somewhere else, and on `low-orbit` that is six units of climb.
+   */
+  const freeFlightFrames = Math.round(0.5 / (FRAME_SECONDS * scale));
+  let freeFlight = start;
 
   let highest = start;
   for (let i = 0, n = Math.round(900 / scale); i < n; i++) {
     advanceFrame([ball], physics.context, FRAME_SECONDS * scale);
     physics.takeHits();
     highest = Math.min(highest, ball.position.y);
+    if (i === freeFlightFrames) freeFlight = ball.position.y;
     if (ball.position.y > table.size.height) break;
   }
-  return { needed: start - DIVIDER_TOP, climbed: start - highest };
+  return { needed: start - DIVIDER_TOP, climbed: start - highest, freeFlight: start - freeFlight };
 }
 
 describe.each(CATALOG.map((t) => [t.name, t] as const))('%s', (name, table) => {
@@ -90,20 +106,23 @@ describe.each(CATALOG.map((t) => [t.name, t] as const))('%s', (name, table) => {
      * on the table where the ball has a long climb and nothing to help it, so it is where anything
      * that quietly costs the ball energy shows up first and worst.
      *
-     * ⚠️ TWO UNITS, AND THE NUMBER IS DERIVED RATHER THAN OBSERVED. The two runs integrate the same
-     * forces at different step sizes, so the only thing that can separate them is the integrator's own
-     * step bias, which for a constant acceleration is about ½·g·Δh·t: at g = 120, Δh = (1 − 0.6)/60 and
-     * an apex around two seconds that is 0.8 of a unit, and the largest seen across the catalogue is
-     * 1.0 in either direction. Two is double the worst case and it is under one percent of every climb
-     * measured — thirty times tighter than the drag this file was written about, which cost between a
-     * quarter and a half of it.
+     * ⚠️ TWO UNITS, AND THE NUMBER IS DERIVED RATHER THAN OBSERVED. Over the free flight the two runs
+     * integrate the same forces at different step sizes, so the only thing that can separate them is
+     * the integrator's own step bias — about ½·g·Δh·t, which at g = 120, Δh = (1 − 0.6)/60 and half a
+     * second is 0.2 of a unit. Two is ten times the worst case and still thirty times tighter than the
+     * drag this file was written about, which cost between a quarter and a half of the whole climb.
+     *
+     * ⚠️ AND IT IS THE FREE FLIGHT THAT IS COMPARED, NOT THE APEX. The full climb ends against the
+     * return bend, and a collision resolved a fraction of a unit apart puts the ball somewhere else:
+     * measured on `low-orbit`, six units of difference that is chaos rather than drag. The claim the
+     * clock has to answer is that it takes no ENERGY out, and free flight is where that shows.
      */
     const free = launch(table, 1);
     const drilled = launch(table, MISSION_TIME_SCALE);
     const EULER_SLACK = 2;
 
-    expect(Math.abs(drilled.climbed - free.climbed), `${name}: free`
-      + ` ${free.climbed.toFixed(1)}, drilled ${drilled.climbed.toFixed(1)}`)
+    expect(Math.abs(drilled.freeFlight - free.freeFlight), `${name}: free`
+      + ` ${free.freeFlight.toFixed(1)}, drilled ${drilled.freeFlight.toFixed(1)}`)
       .toBeLessThan(EULER_SLACK);
     expect(drilled.climbed, `${name} with the drill on: needs ${drilled.needed.toFixed(0)},`
       + ` climbs ${drilled.climbed.toFixed(0)}`).toBeGreaterThan(drilled.needed);

@@ -28,7 +28,7 @@
 // an authored table has no such file". It carries the length back. The 1995 table's flippers read their
 // own multiplier from the archive and are not touched.
 import { describe, test, expect } from 'vitest';
-import { buildPhysics, launchSpeedFor, FRAME_SECONDS } from '../app/js/table/physics-build.js';
+import { buildPhysics, launchSpeedFor, launchDirectionFor, FRAME_SECONDS } from '../app/js/table/physics-build.js';
 import { advanceFrame } from '../app/js/physics/step.js';
 import { PLAYABLE_TABLES } from '../app/js/table/catalog.js';
 import type { AuthoredTable } from '../app/js/table/authored.js';
@@ -176,7 +176,10 @@ describe('⚠️ and a flipper does not turn the ball into a bullet', () => {
     for (const flapEvery of [8, 16, 24, 40]) {
       const physics = buildPhysics(table);
       const ball = physics.spawnBall();
-      ball.direction = { x: 0, y: -1 };
+      // ⚠️ UP THE LANE, WHICH LEANS NINE DEGREES. A plunger fires along its own channel, and on this
+      // engine a graze does not glance off a wall — it turns the ball into that wall's normal. See
+      // `launchDirectionFor`.
+      ball.direction = launchDirectionFor(table);
       ball.speed = launchSpeedFor(table);
       for (let i = 0; i < 2000; i++) {
         if (i % flapEvery === 0) { physics.setFlippers('left', true); physics.setFlippers('right', true); }

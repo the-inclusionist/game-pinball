@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import { leanOf } from '../app/js/table/perspective.js';
 import { describe, test, expect } from 'vitest';
 import {
   drawTable, blitView, drawBall, drawFlipper, drawMover, fillRect, fillCircle, paletteOf, packRgb,
@@ -382,8 +383,17 @@ describe('⚠️ hiding a component from the picture', () => {
      * `drawTable`), and this target's face sits on `bounds.y + bounds.height`: on the boundary, and so
      * one row outside a half-open box. The drawing is right and the box was.
      */
+    /**
+     * ⚠️ AND THE SLACK IS THE LEAN'S OWN RUN, NOT A ROUND NUMBER. Since `table/perspective` every table
+     * is a trapezium at nine degrees, so a face that used to be one column of pixels now crosses
+     * `tan(9°) × its height` of them — and `bounds` is a rectangle placed on the component's middle
+     * row, which by construction cannot cover both ends of a leaning line. Measured before this: 13
+     * pixels outside a box one wider, all of them the target's own face. The margin is derived from
+     * the table's own lean so it stays right if the angle ever changes.
+     */
     const b = target.bounds;
-    const box = { x: b.x - 1, y: b.y - 1, width: b.width + 2, height: b.height + 2 };
+    const run = Math.ceil(leanOf(LOW_ORBIT) * b.height) + 1;
+    const box = { x: b.x - run, y: b.y - 1, width: b.width + 2 * run, height: b.height + 2 };
     let outside = 0;
     for (let y = 0; y < LOW_ORBIT.size.height; y++) {
       for (let x = 0; x < LOW_ORBIT.size.width; x++) {

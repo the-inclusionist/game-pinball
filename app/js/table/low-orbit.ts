@@ -357,8 +357,20 @@ export const LOW_ORBIT: AuthoredTable = {
 
     /* ===================== THE FLAG ===================== */
     // Struck from the middle of the table, so the face is its LEFT edge, written bottom to top.
-    { name: 'flag', kind: 'flag', role: 'key', bounds: { x: 136, y: 40, width: 12, height: 20 },
+    /**
+     * ⚠️ AT x = 141 AND IT WAS 136, moved four units right when the tables leaned.
+     *
+     * `table/perspective` squeezes the playfield toward the centre as it rises: at y = 60 on this table
+     * it is at 66%, so the ten units between `bumper3`'s rim and this flag became THREE, and a ball is
+     * six across. Measured before the move — a launched ball wedged in the crook between the bumper's
+     * circle and this line at (113.9, 58.5) and stayed there for the whole twenty thousand frames of a
+     * probe, speed 2.9, going nowhere. `physics/stuck` would rescue it after five hundred idle ticks,
+     * which is eight seconds of a player watching a ball do nothing.
+     *
+     * The gap is now twelve upright and eight after the lean, which clears a ball with room to move.
+     */
+    { name: 'flag', kind: 'flag', role: 'key', bounds: { x: 141, y: 40, width: 12, height: 20 },
       scores: [750, 7500], control: 'TargetControl', lamps: ['lamp.mission'],
-      collision: [{ kind: 'line', from: { x: 136, y: 60 }, to: { x: 136, y: 40 } }] },
+      collision: [{ kind: 'line', from: { x: 141, y: 60 }, to: { x: 141, y: 40 } }] },
   ],
 };

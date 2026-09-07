@@ -23,11 +23,15 @@
 // integrated frame by frame drifts differently on a slow machine, which is a table that plays
 // differently on a school laptop.
 import { describe, test, expect } from 'vitest';
+import { taper } from '../app/js/table/perspective.js';
+import { AUTHORED_TABLES } from '../app/js/table/catalog.js';
 import { createMover, moverAt } from '../app/js/table/mover.js';
 import { buildPhysics, FRAME_SECONDS } from '../app/js/table/physics-build.js';
 import { advanceFrame } from '../app/js/physics/step.js';
 import { validateTable, type AuthoredComponent, type AuthoredTable } from '../app/js/table/authored.js';
-import { LOW_ORBIT } from '../app/js/table/catalog.js';
+
+/** The table this fixture stands on, upright — see `withDrone` for why it is not the leaning one. */
+const UPRIGHT_LOW_ORBIT = AUTHORED_TABLES.find((t) => t.name === 'low-orbit')!;
 
 const PATH = { from: { x: 20, y: 50 }, to: { x: 80, y: 50 }, seconds: 2, radius: 5 };
 
@@ -127,15 +131,34 @@ describe('the box it can ever be in', () => {
 describe('⚠️ a travelling body in a real table', () => {
   const drone = (over: Partial<AuthoredComponent> = {}): AuthoredComponent => ({
     name: 'drone', kind: 'rebounder', role: 'goal',
-    bounds: { x: 40, y: 60, width: 60, height: 12 },
+    bounds: { x: 18, y: 38, width: 62, height: 12 },
     scores: [2000], control: 'RebounderControl', lamps: [],
-    mover: { from: { x: 46, y: 66 }, to: { x: 96, y: 66 }, seconds: 1.5, radius: 6 },
+    /**
+     * ⚠️ IN THE EMPTY TOP-LEFT, AND IT USED TO BE AT y = 66 BETWEEN THE BUMPERS. `table/perspective`
+     * squeezes the playfield toward the centre as it rises — at y = 55 on this table it is at 65% — so
+     * things that were sixteen units apart are now ten: `bumper2` sits at x = 87 and the drone's
+     * mid-path at 71, clear by four before the lean and overlapping by two after it. The ball dropped
+     * onto the drone hit the bumper on the way down, and the gate read that as "the drone did not
+     * answer".
+     *
+     * The fixture asks one thing of the table — empty air on both sides and above — and `low-orbit` has
+     * exactly one region like that: the top-left corner, which `table/cabinet`'s own record calls out
+     * as empty on every table in the catalogue.
+     */
+    mover: { from: { x: 24, y: 44 }, to: { x: 74, y: 44 }, seconds: 1.5, radius: 6 },
     ...over,
   });
 
-  const withDrone = (): AuthoredTable => ({
-    ...LOW_ORBIT,
-    components: [...LOW_ORBIT.components, drone()],
+  /**
+   * ⚠️ THE DRONE IS ADDED UPRIGHT AND THE WHOLE TABLE IS THEN LEANED, which is what `table/catalog`
+   * does to every table. Bolting a body written in flat coordinates onto an already-leaning table puts
+   * it somewhere the table's own furniture has moved away from: measured, the drone at phase 0.75 sat
+   * at x = 71 with something else between it and the ball, and "a ball dropped onto it bounces" failed
+   * on a drone that was no longer under the ball. An author writes upright; the lean is applied once.
+   */
+  const withDrone = (): AuthoredTable => taper({
+    ...UPRIGHT_LOW_ORBIT,
+    components: [...UPRIGHT_LOW_ORBIT.components, drone()],
   });
 
   test('the table it is on is legal', () => {
@@ -153,7 +176,13 @@ describe('⚠️ a travelling body in a real table', () => {
       const at = found.mover.at;
 
       const ball = physics.spawnBall();
-      ball.position = { x: at.x, y: at.y - 30 };
+      /**
+       * ⚠️ TWELVE ABOVE, AND IT WAS THIRTY. The drop distance was never the claim — what is being asked
+       * is whether a body registered across its whole path answers the ball anywhere along it — and
+       * since the tables lean, thirty units of fall on `low-orbit` crosses the drop bank's band. The
+       * ball met a target on the way down and the gate read that as "the drone did not answer".
+       */
+      ball.position = { x: at.x, y: at.y - 12 };
       ball.direction = { x: 0, y: 1 };
       ball.speed = 60;
 
@@ -168,13 +197,25 @@ describe('⚠️ a travelling body in a real table', () => {
   });
 
   test('⚠️ and it PUSHES: a ball met head-on leaves faster than one the body is running from', () => {
-    // The claim that separates a mover from a wall. The drone travels +x; a ball sitting on its left
-    // face is run into, and one on its right face is run away from. Same speed in, different out.
+    /**
+     * The claim that separates a mover from a wall: same speed in, different out.
+     *
+     * ⚠️ AND THE TWO SIDES WERE THE WRONG WAY ROUND, which this file said in words for months: "a ball
+     * sitting on its left face is run into, and one on its right face is run away from". The drone
+     * travels +x at the start of its path, so the face it RUNS INTO is its right one. `physics/mover`
+     * pushes only when the body's velocity has a positive component along the contact normal, which is
+     * the correct physics and is why the left face gives nothing: measured, 20.3 in and 20.3 out.
+     *
+     * ⚠️ IT PASSED ANYWAY UNTIL THE TABLES LEANED, which is the part worth keeping. The loop stops at
+     * the first drone hit and reads the speed there, and at the old position a ball on the left met
+     * something else first and arrived carrying its rebound. The gate was reading a bumper. Moving the
+     * drone into empty air took that away and left the claim standing alone, backwards.
+     */
     const into = buildPhysics(withDrone());
     const away = buildPhysics(withDrone());
     const speeds: number[] = [];
 
-    for (const [physics, side] of [[into, -1], [away, 1]] as const) {
+    for (const [physics, side] of [[into, 1], [away, -1]] as const) {
       const found = physics.movers.find((m) => m.name === 'drone')!;
       const at = found.mover.at;
       const ball = physics.spawnBall();

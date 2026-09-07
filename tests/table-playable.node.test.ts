@@ -3,7 +3,7 @@ import { describe, test, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { buildPhysics, drainedBy, launchSpeedFor, FRAME_SECONDS } from '../app/js/table/physics-build.js';
+import { buildPhysics, drainedBy, launchSpeedFor, launchDirectionFor, FRAME_SECONDS } from '../app/js/table/physics-build.js';
 import { advanceFrame } from '../app/js/physics/step.js';
 import { CATALOG, BARE_MINIMUM } from '../app/js/table/catalog.js';
 import type { AuthoredTable } from '../app/js/table/authored.js';
@@ -36,7 +36,10 @@ function launchAndWatch(table: AuthoredTable, frames = 4000, flapEvery: number |
   const rollovers = createRolloverWatch(table);
   const ball = physics.spawnBall();
   const from = { x: ball.position.x, y: ball.position.y };
-  ball.direction = { x: 0, y: -1 };
+  // ⚠️ UP THE LANE, WHICH LEANS NINE DEGREES. A plunger fires along its own channel, and on this
+  // engine a graze does not glance off a wall — it turns the ball into that wall's normal. See
+  // `launchDirectionFor`.
+  ball.direction = launchDirectionFor(table);
   ball.speed = launchSpeedFor(table);
 
   const touched: string[] = [];
@@ -150,12 +153,25 @@ describe('the floor of the format is exempt from PLAYING, not from holding its b
   });
 
   test('bare-minimum is not expected to be playable', () => {
-    // It is in the catalogue to show what the validator actually demands. One flipper cannot cover a
-    // drain and there is nothing to score, and pretending otherwise here would be inventing a rule to
-    // make a test pass.
-    const { furthestFromLane } = launchAndWatch(BARE_MINIMUM);
+    /**
+     * It is in the catalogue to show what the validator actually demands. One flipper cannot cover a
+     * drain and there is nothing to score, and pretending otherwise here would be inventing a rule to
+     * make a test pass.
+     *
+     * ⚠️ AND THE CLAIM IS "NOTHING TO SCORE", WHICH IT USED TO MAKE BY PROXY. It asserted that the ball
+     * never got more than six radii from the lane — true while the plunger fired straight up a vertical
+     * tunnel and this fixture has no return bend, so the launch went up and came back down the same
+     * lane. Since `table/perspective` every table leans and the plunger fires ALONG its lane, so the
+     * ball leaves the tunnel at nine degrees and crosses 25 units of table before it drains. That is
+     * not the fixture becoming playable; it is the proxy expiring. The claim itself is measured now,
+     * with the same definition of "scores" the playable tables are held to eight tests above.
+     */
+    const { touched } = launchAndWatch(BARE_MINIMUM);
+    const scoring = new Set(
+      BARE_MINIMUM.components.filter((c) => c.scores?.length && c.control).map((c) => c.name),
+    );
 
-    expect(furthestFromLane).toBeLessThan(BARE_MINIMUM.ballRadius * 6);
+    expect(touched.filter((name) => scoring.has(name))).toEqual([]);
   });
 });
 
