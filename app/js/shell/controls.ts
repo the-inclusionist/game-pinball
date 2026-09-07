@@ -119,6 +119,25 @@ export const DEFAULT_BINDINGS: Readonly<Record<PinballAction, readonly string[]>
 };
 
 /**
+ * The directions, while a ball is in play.
+ *
+ * ⚠️ THE SAME KEYS AS THE MENUS AND A DIFFERENT TABLE, for the reason `MENU_BINDINGS` is a different
+ * table: one physical control, two meanings, chosen by whether a screen is up. The Dev asked for "um
+ * leve controle sobre ela com o direcional" during a comet drill, and the directional is `wasd` — which
+ * has nothing to do on a table until now.
+ *
+ * ⚠️ AND THERE IS NO DOWN. `KeyS` is the sonar sweep, an accessibility key `shell/controls` has argued
+ * since it was written must work while a ball is in play — and a downward push duplicates gravity,
+ * which is already the strongest force on the table. Trading the sonar for that would be the worst
+ * exchange available.
+ */
+export const THRUST_BINDINGS: Readonly<Record<'up' | 'left' | 'right', readonly string[]>> = {
+  up: ['KeyW'],
+  left: ['KeyA'],
+  right: ['KeyD'],
+};
+
+/**
  * The three things this module reads off a key event. A `Pick` of the real one rather than a shape of
  * its own: the handlers stay assignable to a DOM listener, so `#game-region` needs no cast, and a test
  * still only has to supply three fields.
@@ -149,6 +168,13 @@ export interface ControlOptions {
   readonly cyclePalette?: () => void;
   /** Start. Pauses a running game and resumes a paused one. */
   readonly togglePause?: () => void;
+  /**
+   * The player leaning on the ball. Reports both edges, like the flippers, because it is a HELD state.
+   *
+   * Absent on a table that does not offer it, which is every table until a comet drill is running —
+   * `main` decides whether the push is worth anything, and this only reports the key.
+   */
+  readonly setThrust?: (direction: 'up' | 'left' | 'right', pressed: boolean) => void;
   /**
    * The engine's remapper, when the pinball's scheme is registered with it. Given a key code it returns
    * the action, and `DEFAULT_BINDINGS` is consulted only when it says nothing.
@@ -308,6 +334,10 @@ export function bindPinballControls(o: ControlOptions): () => void {
     return ACTIONS.find((action) => table[action].includes(code)) ?? null;
   };
 
+  const thrustFor = (code: string): 'up' | 'left' | 'right' | null =>
+    (Object.keys(THRUST_BINDINGS) as ('up' | 'left' | 'right')[])
+      .find((name) => THRUST_BINDINGS[name].includes(code)) ?? null;
+
   const onDown = (event: KeyLikeEvent): void => {
     // ⚠️ BEFORE THE ACTION LOOKUP, AND BEFORE THE REPEAT GUARD. A character with no binding would
     // otherwise leave on the `!action` line and never reach the buffer, and a held letter IS that
@@ -315,6 +345,19 @@ export function bindPinballControls(o: ControlOptions): () => void {
     if (o.typeCharacter) {
       const character = characterOf(event.key);
       if (character !== null) o.typeCharacter(character);
+    }
+
+    /**
+     * ⚠️ BEFORE THE ACTION LOOKUP AND NOT INSTEAD OF IT. A direction is not a `PinballAction` — it is
+     * in its own table — so it would fall out of `actionFor` as "nothing" and the key would scroll the
+     * document. It is also not exclusive: nothing else is bound to W or D, but `KeyS` IS the sonar, and
+     * the day somebody puts a direction on a key that has a job the two must both happen rather than
+     * one silently winning.
+     */
+    const pushed = thrustFor(event.code);
+    if (pushed) {
+      event.preventDefault();
+      if (!event.repeat) o.setThrust?.(pushed, true);
     }
 
     const action = actionFor(event.code);
@@ -341,6 +384,12 @@ export function bindPinballControls(o: ControlOptions): () => void {
   };
 
   const onUp = (event: KeyLikeEvent): void => {
+    const released = thrustFor(event.code);
+    if (released) {
+      event.preventDefault();
+      o.setThrust?.(released, false);
+    }
+
     const action = actionFor(event.code);
     if (action === 'plunger' && o.setPlunger) {
       event.preventDefault();

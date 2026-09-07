@@ -26,6 +26,7 @@
 // kickers that push; this has gravity, pointing down the table, because that is what an authored table
 // declares today. When a ramp declares a field, it goes here and nowhere else.
 
+import { assistField, type BallAssist } from './ball-assist.js';
 import {
   createEdgeManager, placeLineInGrid, placeCircleInGrid, type Edge, type EdgeManager,
 } from '../physics/grid.js';
@@ -341,6 +342,17 @@ export interface PhysicsOptions {
    */
   readonly gravity?: number;
   /**
+   * An extra force the SHELL supplies, added to gravity every frame.
+   *
+   * ⚠️ THE PHYSICS NEVER HEARS THE WORD "MISSION", which is the point of the shape. The Dev asked for a
+   * slower ball while the comet drill is on and a little steering with the directional; both of those
+   * are FORCES, and `fieldEffects` has been the place a force goes since gravity was the only one. A
+   * function rather than a value, because it changes every frame — the player is holding a key or not.
+   *
+   * See `table/ball-assist` for what goes in it and for why slower is drag rather than a speed cap.
+   */
+  readonly extraField?: () => BallAssist;
+  /**
    * The source of chance inside the simulation, so a survey can be repeatable.
    *
    * ⚠️ THIS EXISTS BECAUSE `tests/table-reachable` CALLED ITSELF DETERMINISTIC AND WAS NOT. It seeds a
@@ -632,6 +644,20 @@ export function buildPhysics(table: AuthoredTable, o: PhysicsOptions = {}): Tabl
         // Down the table. `y` grows downward, so gravity is positive.
         destination.x = 0;
         destination.y = gravity;
+
+        /**
+         * ⚠️ AND THE SHELL'S OWN FORCE, WHICH IS THE THIRD USER OF THIS HOOK. The Dev's drill slows the
+         * ball and lets the directional nudge it; both are forces, so both arrive here rather than as
+         * a special case somewhere in the loop. `table/ball-assist` argues the arithmetic.
+         */
+        const assist = o.extraField?.();
+        if (assist) {
+          const extra = assistField(assist, {
+            x: ball.direction.x * ball.speed, y: ball.direction.y * ball.speed,
+          });
+          destination.x += extra.x;
+          destination.y += extra.y;
+        }
 
         /**
          * ⚠️ AND THE FLARE DRAGS, WHICH IS THE FIRST THING BESIDES GRAVITY EVER TO USE THIS HOOK.

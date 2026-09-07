@@ -45,6 +45,7 @@ import { loadBackdrop } from './gfx/backdrop.js';
 import { cometMission, reportOf, WINNING_POINTS, type CometMission, type CometSky, type CometStrike }
   from './control/comet-mission.js';
 import { drawComet } from './gfx/comet-view.js';
+import { MISSION_DRAG } from './table/ball-assist.js';
 import { endGame, type EndOfGameOptions } from './shell/end-of-game.js';
 import { bindPinballControls } from './shell/controls.js';
 import {
@@ -115,9 +116,29 @@ if (tableProblems.length) {
 // physics owns is handed STRAIGHT to the declaration and the renderer — the same object, not a copy —
 // which is the same "a view, never a snapshot" rule `shell/boot` follows, at one level down.
 
+/**
+ * The player leaning on the ball with the directional. Held state, so it lives here.
+ *
+ * ⚠️ AND IT IS ONLY WORTH ANYTHING WHILE A DRILL IS RUNNING — see `extraField` below. The Dev asked for
+ * it as part of the comet mission: "Com missões de cometa, a bolinha precisa ser mais lenta, e deve ser
+ * possível ter um leve controle sobre ela." Leaving the push on a table with no drill would change how
+ * every one of the six plays, which is not what was asked and is not this game's to decide.
+ */
+const thrust: { up: boolean; left: boolean; right: boolean } = {
+  up: false, left: false, right: false,
+};
+
 const physics = buildPhysics(authored, {
   // Twenty nudges having failed, the ball goes back to the plunger rather than being nudged for ever.
   relaunch: () => { phase = 'title'; },
+  /**
+   * ⚠️ A FUNCTION READ EVERY FRAME, because both halves change: the drill starts and stops, and the
+   * player is holding a key or not. `table/ball-assist` carries the arithmetic and the argument for why
+   * slower is drag rather than a speed cap.
+   */
+  extraField: () => (comets
+    ? { drag: MISSION_DRAG, thrust }
+    : { drag: 0, thrust: { up: false, left: false, right: false } }),
 });
 const ball = physics.spawnBall();
 
@@ -1397,6 +1418,9 @@ const unbindControls = bindPinballControls({
    * screen has no way out of.
    */
   togglePause: cabinet.togglePause,
+  // ⚠️ REPORTED WHETHER OR NOT A DRILL IS ON, and `extraField` is what decides it is worth anything. A
+  // key that stops being reported while nothing uses it is a key that is stuck down the moment one does.
+  setThrust: (direction, pressed) => { thrust[direction] = pressed; },
   /**
    * ⚠️ THE BACK DOOR, AND ONLY THE 1995 TABLE HAS ONE. `bmax`, `rmax`, `gmax`, `1max`, `easy mode` and
    * `hidden test` are the Space Cadet's own codes and mean nothing on an authored table, so a
