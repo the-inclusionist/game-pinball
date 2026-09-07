@@ -1,0 +1,45 @@
+The two screen photographs in this directory
+============================================
+
+    start.png        behind the title screen
+    background.png   behind the table selector and the mission screen
+
+⚠️ THEIR PROVENANCE IS NOT YET RECORDED, AND THAT IS A DECISION OWED RATHER THAN
+AN OVERSIGHT.
+
+The six playfield pictures in `app/assets/tables/` are dedicated under CC0 1.0
+on a fact the Dev supplied about them — they are machine-generated, by Google
+Gemini, prompted by him — and `docs/LICENSES.md` §4.1 records why that fact, and
+not a preference, decided the licence. A Creative Commons licence operates on a
+copyright; a copyright needs a human author (Lei 9.610/98 art. 11); so what a
+picture may be licensed as depends on who or what made it.
+
+These two arrived as `art/start.jpg` and `art/background.jpg` with no such fact
+attached. Writing CC0 on them by analogy would be asserting the same conclusion
+from an assumption instead of from evidence, in the one file whose whole purpose
+is to state obligations accurately — which is exactly what §4.1 says this
+repository does not get to do.
+
+So this note records what IS known:
+
+    derived by    reduction to 320x180, dimming to a ceiling of Y 0.1469 (the
+                  contrast the screens' text needs against them), and
+                  quantisation to 192 colours, by scripts/import-art.py
+    masters       art/start.jpg and art/background.jpg, not versioned — see
+                  .gitignore and art/README.md
+    supplied by   José Rocha, September 2026
+    made by       NOT RECORDED
+
+What to write here once that is answered
+----------------------------------------
+
+If they were generated the way the playfields were, this file becomes a copy of
+`app/assets/tables/LICENSE.txt` with the two names changed, and `art/README.md`
+and `docs/LICENSES.md` §4.1 gain a line each.
+
+If a person made them, or if they came from somewhere else, then the answer is
+whatever that person or that source licenses them under, and pillar 10 applies
+in its ordinary form: the art is not ours to licence, and it travels beside the
+code under its own terms rather than under the AGPL.
+
+The code that draws them is AGPL-3.0-or-later like the rest of the repository.

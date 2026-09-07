@@ -25,6 +25,7 @@ import { TITLE_LINES, TITLE_SUBTITLE, TITLE_BYLINE, type TitleScreen } from './t
 import { readTable, EMPTY_SCORE, type HighScoreStore } from '../control/high-score.js';
 import { controlLegend } from './control-legend.js';
 import { backdropUrl } from '../gfx/backdrop.js';
+import { screenBackground, PANEL, UI_INK, UI_DIM } from './screen-art.js';
 import type { PinballAction } from './controls.js';
 
 /** The same fallback the HUD reasons its way to: no download, no wait, no blank screen. */
@@ -32,8 +33,14 @@ const FALLBACK = 'ui-monospace, "DejaVu Sans Mono", Menlo, Consolas, monospace';
 const FACE = `"Press Start 2P", ${FALLBACK}`;
 
 const SURFACE = '#0e1017';
-const INK = '#e8ecf4';
-const DIM = '#8a93a6';
+// ⚠️ BUILT FROM `shell/screen-art`'S NUMBERS RATHER THAN WRITTEN OUT. The photograph behind these
+// screens is dimmed to a ceiling computed from INK, and the panels are sized to DIM; a second copy of
+// either colour here is a copy that can drift away from the one the gate measures against.
+const rgb = (c: { r: number; g: number; b: number }): string => `rgb(${c.r}, ${c.g}, ${c.b})`;
+const INK = rgb(UI_INK);
+const DIM = rgb(UI_DIM);
+
+
 
 export interface TitleDomOptions {
   readonly doc: Pick<Document, 'createElement'>;
@@ -83,6 +90,13 @@ export function mountTitle(o: TitleDomOptions): TitleDom {
     position: 'absolute', left: '0', top: '0', width: '100%', height: '100%',
     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
     gap: '4cqw', background: SURFACE, color: INK, fontFamily: FACE, textAlign: 'center',
+    /**
+     * ⚠️ THE PHOTOGRAPH GOES HERE AND IS SWAPPED IN `refresh`, because this one element is all three
+     * screens: the title, the selector and the mission question take turns inside it. `SURFACE` stays
+     * as the colour UNDER the picture — a build with no `app/assets/screens/` still has a background,
+     * and so does the fraction of a second before the file has decoded.
+     */
+    backgroundSize: 'cover', backgroundPosition: 'center', imageRendering: 'pixelated',
     containerType: 'inline-size',
     // ⚠️ THE SCREEN IS 320x180 AND THIS MAY NOT MAKE IT TALLER. Without this the buttons pushed
     // `#game-region` down the page and the title sat half outside the canvas it is supposed to cover.
@@ -114,7 +128,13 @@ export function mountTitle(o: TitleDomOptions): TitleDom {
 
   const subtitle = o.doc.createElement('span');
   subtitle.textContent = TITLE_SUBTITLE;
-  Object.assign(subtitle.style, { fontSize: '5cqw', color: DIM, letterSpacing: '0.25em' });
+  /**
+   * ⚠️ INK RATHER THAN DIM, AND THAT IS THE PHOTOGRAPH'S DOING. `start.png` goes behind this, and DIM
+   * on it measures 1.73:1 at the picture's brightest — unreadable. The two ways out are a panel or a
+   * brighter colour, and on the title the panel is the wrong one: it would put a grey box across the
+   * middle of the picture the Dev chose, over the one word the screen exists to say.
+   */
+  Object.assign(subtitle.style, { fontSize: '5cqw', color: INK, letterSpacing: '0.25em' });
   title.appendChild(subtitle);
 
   /**
@@ -130,8 +150,10 @@ export function mountTitle(o: TitleDomOptions): TitleDom {
   const byline = o.doc.createElement('span');
   byline.className = 'pinball-byline';
   byline.textContent = TITLE_BYLINE;
+  // ⚠️ INK, for the reason the subtitle is: it is small text straight on a photograph, and the
+  // picture's ceiling is computed from INK at 4.5:1. DIM would be 1.73:1.
   Object.assign(byline.style, {
-    fontSize: '2.6cqw', color: DIM, alignSelf: 'flex-end', marginTop: '2%',
+    fontSize: '2.6cqw', color: INK, alignSelf: 'flex-end', marginTop: '2%',
   });
   title.appendChild(byline);
   title.addEventListener('click', () => { o.screen.advance(); refresh(); });
@@ -264,7 +286,15 @@ export function mountTitle(o: TitleDomOptions): TitleDom {
    * A layout with no headroom is a layout that is correct for one font on one machine. The legend is
    * where the rows are, so the legend is where the room comes from.
    */
-  Object.assign(controls.style, { fontSize: '2.6cqw', color: DIM, lineHeight: '1.35' });
+  Object.assign(controls.style, {
+    fontSize: '2.6cqw', color: DIM, lineHeight: '1.35',
+    // See `PANEL`: DIM on the photograph is 1.73:1, and this is what makes it 5:1 again.
+    // ⚠️ THE PADDING IS 1% AND NOT 2%, AND THE SELECTOR IS WHY. Two panels at 2% put the screen at
+    // 175.8 of the 180 it has, against a gate that wants a line to spare — the same twelve pixels the
+    // thumbnails had already spent. A panel needs enough room that the text is not touching its edge;
+    // beyond that it is decoration, and this screen has none to give.
+    background: PANEL, padding: '1% 3%',
+  });
   const controlsHeading = o.doc.createElement('div');
   controlsHeading.textContent = o.t('pinball.controls.title');
   Object.assign(controlsHeading.style, { color: INK, marginBottom: '2%' });
@@ -295,14 +325,20 @@ export function mountTitle(o: TitleDomOptions): TitleDom {
   scores.className = 'pinball-high-scores';
   // The same line height as the legend above it: two blocks of small text in one column read as one
   // list when their lines are spaced differently, and the heading was landing on the row under it.
-  Object.assign(scores.style, { fontSize: '2.6cqw', color: DIM, marginTop: '2%', lineHeight: '1.35' });
+  Object.assign(scores.style, {
+    // ⚠️ NO MARGIN ABOVE IT ANY MORE. The two blocks used to need one to read as two lists; now they
+    // are two PANELS with the photograph showing in the column's gap between them, which separates
+    // them better than white space did and costs the two pixels the screen did not have.
+    fontSize: '2.6cqw', color: DIM, lineHeight: '1.35',
+    background: PANEL, padding: '1% 3%',
+  });
   readColumn.appendChild(scores);
 
   const back = o.doc.createElement('button');
   back.textContent = o.t('pinball.title.back');
   Object.assign(back.style, {
-    font: 'inherit', fontSize: '3cqw', background: 'none', border: 'none', color: DIM,
-    cursor: 'pointer', marginTop: '2%',
+    font: 'inherit', fontSize: '3cqw', background: PANEL, border: 'none', color: DIM,
+    cursor: 'pointer', marginTop: '1%', padding: '0.5% 0',
   });
   back.addEventListener('click', () => { o.screen.back(); refresh(); });
   chooseColumn.appendChild(back);
@@ -332,6 +368,7 @@ export function mountTitle(o: TitleDomOptions): TitleDom {
   missionExplain.textContent = o.t('pinball.comets.explain');
   Object.assign(missionExplain.style, {
     fontSize: '2.6cqw', color: DIM, lineHeight: '1.4', maxWidth: '84%',
+    background: PANEL, padding: '1.5% 3%',
   });
   mission.appendChild(missionExplain);
 
@@ -365,8 +402,8 @@ export function mountTitle(o: TitleDomOptions): TitleDom {
   const missionBack = o.doc.createElement('button');
   missionBack.textContent = o.t('pinball.title.back');
   Object.assign(missionBack.style, {
-    font: 'inherit', fontSize: '3cqw', background: 'none', border: 'none', color: DIM,
-    cursor: 'pointer',
+    font: 'inherit', fontSize: '3cqw', background: PANEL, border: 'none', color: DIM,
+    cursor: 'pointer', padding: '1% 3%',
   });
   missionBack.addEventListener('click', () => { o.screen.back(); refresh(); });
   mission.appendChild(missionBack);
@@ -391,6 +428,17 @@ export function mountTitle(o: TitleDomOptions): TitleDom {
 
   function refresh(): void {
     const at = o.screen.current;
+    /**
+     * ⚠️ THE DEV'S RULE, EXACTLY: "Use background.jpg como fundo de todas as telas que não tenham mesa
+     * com exceção da primeira tela. Para a tela inicial, use start.jpg como background."
+     *
+     * `playing` is left with no picture rather than given one, and that is not an omission: the whole
+     * of this element is hidden while a game is running, and painting a photograph behind a hidden
+     * element is a decode nobody will ever see.
+     */
+    root.style.backgroundImage = screenBackground(
+      at === 'title' ? 'start' : at === 'playing' ? null : 'background',
+    );
     show(title, at === 'title', 'flex');
     show(select, at === 'select', 'flex');
     show(mission, at === 'mission', 'flex');

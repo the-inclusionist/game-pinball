@@ -22,6 +22,7 @@ import { titleScreen, TITLE_BYLINE } from '../app/js/shell/title.js';
 import { emptyTable, writeTable, type HighScoreStore } from '../app/js/control/high-score.js';
 import { DEFAULT_BINDINGS } from '../app/js/shell/controls.js';
 import { keyLabel } from '../app/js/shell/control-legend.js';
+import { screenArtUrl } from '../app/js/shell/screen-art.js';
 
 let host: HTMLElement;
 
@@ -259,5 +260,71 @@ describe('the scoreboard under the selector', () => {
 
     expect(at('.pinball-high-scores').textContent).toContain('ROCHA');
     expect(at('.pinball-high-scores').textContent).toContain('4242');
+  });
+});
+
+/**
+ * ⚠️ THE DEV: "Use background.jpg como fundo de todas as telas que não tenham mesa com exceção da
+ * primeira tela. Para a tela inicial, use start.jpg como background."
+ *
+ * Two pictures and one rule, and the rule is about WHICH screen — which is exactly the kind of claim
+ * that passes review, ships, and turns out to have both screens on the same photograph. The contrast
+ * arithmetic is `tests/screen-art`, on the files; this is the wiring, in a browser, where a URL that
+ * does not resolve is visible as one that does not resolve.
+ */
+describe('⚠️ the photograph behind each screen', () => {
+  const behind = (el: HTMLElement): string => getComputedStyle(el).backgroundImage;
+
+  test('the title screen wears start, and the ones after it wear background', () => {
+    const { screen, dom, at } = build();
+    const root = at('.pinball-title');
+    const start = screenArtUrl('start')!;
+    const other = screenArtUrl('background')!;
+    expect(start, 'the build shipped no start picture').toBeTruthy();
+    expect(other, 'the build shipped no background picture').toBeTruthy();
+    // ⚠️ AND THEY ARE DIFFERENT URLS, or every assertion below passes on one picture used twice.
+    expect(start, 'both screens point at the same file').not.toBe(other);
+
+    expect(behind(root), 'the title screen is not wearing start.png').toContain(start);
+
+    screen.advance();
+    dom.refresh();
+    expect(behind(root), 'the selector is not wearing background.png').toContain(other);
+    expect(behind(root), 'the selector kept the title screen picture').not.toContain(start);
+
+    screen.choose(screen.tables[0]!);
+    dom.refresh();
+    expect(behind(root), 'the mission screen is not wearing background.png').toContain(other);
+  });
+
+  test('⚠️ and a game gets none of it, because the table is the background', () => {
+    // Not an omission: the whole element is hidden while a game runs, and painting a photograph behind
+    // a hidden element is a decode nobody will ever see.
+    const { screen, dom, at } = build();
+    screen.advance();
+    screen.choose(screen.tables[0]!);
+    screen.pick(screen.numbers[0]!);
+    dom.refresh();
+
+    expect(behind(at('.pinball-title')), 'a photograph is being decoded behind a running game')
+      .toBe('none');
+  });
+
+  test('⚠️ and the quiet text sits on a panel rather than on the picture', () => {
+    /**
+     * `UI_DIM` on the brightest pixel a screen photograph may contain measures 1.73:1 — the ceiling
+     * the importer works to is INK's, not DIM's. `tests/screen-art` does that arithmetic; what this
+     * asks is whether the panel is actually THERE, because the arithmetic is about a colour nobody
+     * would see if the block were transparent.
+     */
+    const { screen, dom, at } = build();
+    screen.advance();
+    dom.refresh();
+
+    for (const selector of ['.pinball-controls', '.pinball-high-scores']) {
+      const panel = getComputedStyle(at(selector)).backgroundColor;
+      expect(panel, `${selector} is transparent over a photograph`).not.toBe('rgba(0, 0, 0, 0)');
+      expect(panel, `${selector} is not the panel colour`).toContain('rgba(14, 16, 23');
+    }
   });
 });

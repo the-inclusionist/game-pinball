@@ -110,6 +110,36 @@ TARGET_LSTAR = 25.0
 #: obviously refused; it simply has not been asked.
 COLOURS = 192
 
+#: The two photographs behind the screens that have no table on them.
+#:
+#: ⚠️ THE DEV: "Use background.jpg como fundo de todas as telas que não tenham mesa com exceção da
+#: primeira tela. Para a tela inicial, use start.jpg como background." So `start` is the title and
+#: `background` is everything between it and a table — the selector and the mission screen.
+#:
+#: ⚠️ 320x180, WHICH IS THE GAME. Every screen in this project is laid out on that grid and scaled up
+#: with `image-rendering: pixelated`; a photograph at the page's own resolution behind pixel art at a
+#: sixth of it would be the one sharp thing on the screen. It also costs about 20 KB instead of 2 MB,
+#: on a game meant to run offline on a school machine.
+SCREENS = {
+    'start': (320, 180),
+    'background': (320, 180),
+}
+
+#: `shell/title-dom.INK`, the colour of the text on those screens = (232, 236, 244).
+INK_LUMINANCE = 0.83585
+#: WCAG 2.2, 1.4.3, normal text. Not 1.4.11's 3 — these are WORDS, and the smallest of them is the
+#: byline at about eight pixels.
+TEXT_RATIO = 4.5
+#: The brightest a screen photograph may be, so the text on it clears the ratio wherever it falls.
+SCREEN_CEILING = (INK_LUMINANCE + 0.05) / TEXT_RATIO - 0.05
+
+#: Brighter than the tables' 25, and the reason is that nothing has to be seen THROUGH these.
+#:
+#: A table's ceiling is the BALL's: a six-pixel object that can be anywhere, so the art behind it is
+#: held down everywhere. A screen has no ball — it has text, and text is at known places with a known
+#: colour. So the picture only owes the ratio to the words, and can be a picture.
+SCREEN_TARGET_LSTAR = 30.0
+
 
 def to_linear(a):
     c = a.astype(np.float64) / 255.0
@@ -144,6 +174,87 @@ def from_lstar(l):
     return f ** 3 if f ** 3 > 0.008856 else (f - 16.0 / 116.0) / 7.787
 
 
+def shape(linear, ceiling, target):
+    """Lift the median to `target` L*, then hold `ceiling` per pixel with a soft shoulder.
+
+    ⚠️ EXTRACTED SO THE SCREENS AND THE TABLES USE THE SAME CURVE. The argument for every part of it
+    is in `reduce_one` below and applies unchanged: the median rather than the mean because these
+    pictures are mostly dark with small bright things in them; the ceiling on the PIXEL rather than on
+    the picture, because scaling everything until the brightest fits charges the whole image for its
+    highlights; and a shoulder rather than a clip, because a hard cut left a fifth of some tables at
+    exactly one luminance.
+    """
+    y = luminance(linear)
+    lit = y[y > 1e-4]
+    median = float(np.median(lit)) if lit.size else 0.0
+    k = (from_lstar(target) / median) if median > 0 else 1.0
+    lifted = linear * k
+
+    knee = ceiling * 0.5
+    over = luminance(lifted)
+    hot = over > knee
+    if hot.any():
+        headroom = ceiling - knee
+        rolled = knee + headroom * (1.0 - np.exp(-(over[hot] - knee) / headroom))
+        lifted[hot] *= (rolled / over[hot])[:, None]
+    return lifted, k
+
+
+def reduce_screen(name):
+    size = SCREENS[name]
+    master = ROOT / 'art' / f'{name}.jpg'
+    if not master.exists():
+        print(f'{name}: no master at {master}')
+        return
+
+    art = Image.open(master).convert('RGB')
+    # ⚠️ CROPPED TO THE SCREEN'S SHAPE BEFORE IT IS REDUCED. `start.jpg` is 2752x1536 (16:9) and
+    # `background.jpg` 1024x572 (16:8.9), and neither is exactly 16:9 — squeezing them to 320x180
+    # would stretch a photograph by a per cent or two, which on a face or a horizon is visible and on
+    # a game's title screen is the first thing anybody sees. The centre is kept.
+    want = size[0] / size[1]
+    have = art.size[0] / art.size[1]
+    if abs(have - want) > 1e-3:
+        if have > want:
+            wide = int(round(art.size[1] * want))
+            left = (art.size[0] - wide) // 2
+            art = art.crop((left, 0, left + wide, art.size[1]))
+        else:
+            tall = int(round(art.size[0] / want))
+            top = (art.size[1] - tall) // 2
+            art = art.crop((0, top, art.size[0], top + tall))
+    art = art.resize(size, Image.BOX)
+
+    # ⚠️ THE SAME CURVE AS A TABLE'S, and two attempts at a cleverer one are recorded here because
+    # both were worse and both looked right on paper. `background.jpg` is a photograph with almost no
+    # range in it — measured at 320x180, its first percentile is L* 7.2, its median L* 9.3 and its
+    # ninety-fifth L* 26.6 — so lifting its median to L* 30 necessarily flattens it further, and the
+    # result reads as washed.
+    #
+    # A POWER CURVE (y -> y**g, which fixes zero) lifts the DARKEST values most when g < 1: it took
+    # `start`'s fifth percentile from L* 4.0 to 9.6 and `background`'s from 27.3 to 28.2, which is the
+    # opposite of keeping blacks black. SUBTRACTING THE MASTER'S OWN BLACK POINT worked arithmetically
+    # — `background`'s range went from 17 points to 26 — and the multiply it then needs is x25.8, which
+    # amplifies the JPEG's noise and its blue cast until the picture is mottled.
+    #
+    # The flatness is the master's, and a BACKGROUND is the one picture where flat and dark is not a
+    # fault. What this file owes it is the contrast ceiling, which the shared curve gives it.
+    lifted, k = shape(to_linear(np.asarray(art)), SCREEN_CEILING, SCREEN_TARGET_LSTAR)
+    picture = Image.fromarray(to_srgb(lifted), 'RGB').quantize(colors=COLOURS, method=Image.MEDIANCUT)
+
+    target = ROOT / 'app' / 'assets' / 'screens' / f'{name}.png'
+    target.parent.mkdir(parents=True, exist_ok=True)
+    picture.save(target, optimize=True)
+
+    after = luminance(to_linear(np.asarray(picture.convert('RGB'))))
+    lit = np.sort(after.reshape(-1))
+    low = lstar(lit[int(lit.size * 0.05)])
+    high = lstar(lit[int(lit.size * 0.95)])
+    print(f'{name:<12} {size[0]}x{size[1]}  ^{k:.3f}  '
+          f'median L* {lstar(np.median(after)):5.1f}  P5 {low:5.1f}  P95 {high:5.1f}  '
+          f'peak L* {lstar(after.max()):5.1f}  {target.stat().st_size // 1024} KB')
+
+
 def reduce_one(name):
     size = SIZES[name]
     master = ROOT / 'art' / f'{name}.jpg'
@@ -156,17 +267,8 @@ def reduce_one(name):
     # A resampler that interpolates instead (bicubic, Lanczos) invents edges that were never drawn and
     # rings around every highlight, which at 183 pixels wide is most of the picture.
     art = Image.open(master).convert('RGB').resize(size, Image.BOX)
-    linear = to_linear(np.asarray(art))
 
-    y = luminance(linear)
-    lit = y[y > 1e-4]
-    median = float(np.median(lit)) if lit.size else 0.0
-
-    # Scale so the median lands on target.
-    k = (from_lstar(TARGET_LSTAR) / median) if median > 0 else 1.0
-    lifted = linear * k
-
-    # Then hold the CEILING per pixel, not over the picture.
+    # The median lands on target and the ceiling is then held per pixel, not over the picture.
     #
     # ⚠️ AND PULLING THE WHOLE PICTURE DOWN IS THE SAME MISTAKE THIS WHOLE CHANGE IS ABOUT. Scaling
     # everything until the brightest pixel fits charges the entire image for its highlights: measured,
@@ -193,12 +295,7 @@ def reduce_one(name):
     # together. The alternative was measured too: anchoring a high percentile instead of the median
     # drops it to a median of L* 2.5, which is the near-black the Dev complained about in the first
     # place. This is the better half of a real trade, and it is his to re-decide.
-    over = luminance(lifted)
-    hot = over > KNEE
-    if hot.any():
-        headroom = CEILING - KNEE
-        rolled = KNEE + headroom * (1.0 - np.exp(-(over[hot] - KNEE) / headroom))
-        lifted[hot] *= (rolled / over[hot])[:, None]
+    lifted, k = shape(to_linear(np.asarray(art)), CEILING, TARGET_LSTAR)
 
     out = to_srgb(lifted)
     picture = Image.fromarray(out, 'RGB').quantize(colors=COLOURS, method=Image.MEDIANCUT)
@@ -213,9 +310,13 @@ def reduce_one(name):
 
 
 if __name__ == '__main__':
-    wanted = sys.argv[1:] or list(SIZES)
-    print(f'ceiling Y {CEILING:.4f} (L* {lstar(CEILING):.1f}), from the ball at 3:1')
-    for table in wanted:
-        if table not in SIZES:
-            raise SystemExit(f'unknown table {table}; known: {", ".join(SIZES)}')
-        reduce_one(table)
+    wanted = sys.argv[1:] or list(SIZES) + list(SCREENS)
+    print(f'table ceiling  Y {CEILING:.4f} (L* {lstar(CEILING):.1f}), from the ball at 3:1')
+    print(f'screen ceiling Y {SCREEN_CEILING:.4f} (L* {lstar(SCREEN_CEILING):.1f}), from the text at 4.5:1')
+    for name in wanted:
+        if name in SIZES:
+            reduce_one(name)
+        elif name in SCREENS:
+            reduce_screen(name)
+        else:
+            raise SystemExit(f'unknown picture {name}; known: {", ".join(list(SIZES) + list(SCREENS))}')
