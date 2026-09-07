@@ -216,8 +216,22 @@ describe('⚠️ the controls, where somebody can read them before they play', (
     at('.pinball-title button').click();
 
     const box = host.getBoundingClientRect();
-    expect(at('.pinball-select').getBoundingClientRect().height,
-      'the selector is inside the canvas').toBeLessThanOrEqual(box.height + 0.5);
+    const height = at('.pinball-select').getBoundingClientRect().height;
+
+    /**
+     * ⚠️ A LINE OF SLACK, NOT MERELY "INSIDE". This asked for `<= 180.5` and the screen measured
+     * 180.0 — it fitted with half a pixel to spare, which means it was correct for ONE FONT ON ONE
+     * MACHINE. The first thing that touched the page's typography broke it: giving `body` a
+     * `font-family` at all took it to 182.4, and the failure looked like a defect in the stylesheet
+     * rather than in a layout that had no room.
+     *
+     * A line is the right unit because a line is what a font metric change costs. The legend's rows
+     * are the densest thing here at about eleven pixels, so twelve is one of them and a little.
+     * Measured after the fix: 159.6, so twenty pixels of room.
+     */
+    const ONE_LINE = 12;
+    expect(height, `the selector is ${height.toFixed(1)} of ${box.height} and needs a line to spare`)
+      .toBeLessThanOrEqual(box.height - ONE_LINE);
   });
 });
 
