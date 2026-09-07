@@ -27,6 +27,8 @@ import { describe, test, expect, beforeAll } from 'vitest';
 
 interface PinballDebug {
   problems: readonly string[];
+  /** Puts the view back where a new game starts. See `main`, where it says why this exists. */
+  resetView(): void;
   ball: { x: number; y: number; speed: number; active: boolean };
   screen: { width: number; height: number };
   setPhase(next: string): void;
@@ -96,6 +98,22 @@ function flipperBox(side: 'left' | 'right'): Box {
    * a box too tight answers about part of one.
    */
   const reach = Math.hypot(f.tip.x - f.pivot.x, f.tip.y - f.pivot.y) + 4;
+  /**
+   * ⚠️ AND THE BOX MAY NOT BE A SLIVER, which is the shape the flake wore.
+   *
+   * The clamps below keep the box on the screen, and when the view is scrolled they keep almost
+   * nothing: the failing run measured fourteen rows of a twenty-eight-row arc, and the part still
+   * showing did not change when the paddle moved. Zero differing pixels, and every assertion built on
+   * this box then answered a question about a strip of background.
+   *
+   * `stopTheWorld` puts the view back, so this cannot happen — and this is what says so if it ever
+   * does again, loudly and in the right place, instead of as "the paddle did not come down".
+   */
+  const visible = Math.min(180, Math.round(f.pivot.y - d.cameraY + reach))
+    - Math.max(0, Math.round(f.pivot.y - d.cameraY - reach));
+  expect(visible, `only ${visible} rows of the ${side} paddle's ${Math.round(reach * 2)} are on screen`
+    + ` — the view is scrolled to ${d.cameraY}`).toBeGreaterThan(reach);
+
   return {
     left: Math.max(0, Math.round(d.playfieldX + f.pivot.x - reach)),
     right: Math.min(320, Math.round(d.playfieldX + f.pivot.x + reach)),
@@ -139,6 +157,21 @@ async function allKeysUp(): Promise<void> {
  */
 async function stopTheWorld(): Promise<void> {
   debug().setPhase('title');
+  /**
+   * ⚠️ AND THE VIEW GOES BACK TO THE TOP, WHICH IS THE FLAKE THIS SUITE HAD.
+   *
+   * `setPhase('title')` freezes the ball — the loop steps it only while playing — and leaves the
+   * CAMERA wherever the last ball dragged it, because `setPhase` is not `leaveGame`. With the view
+   * scrolled the flippers sit partly below the visible window, and `flipperBox` clamps to the screen:
+   * the failing run measured the left paddle's box as FOURTEEN ROWS of a twenty-eight-row arc, and
+   * the sliver still showing did not change when the paddle moved. Zero differing pixels, read as
+   * "the paddle did not come down".
+   *
+   * It failed about twice in fifty full runs and passed every time on its own, which is what an order
+   * dependence looks like and is exactly what this was: whichever test ran before decided where the
+   * ball — and therefore the camera — had been left. Reproduced at `--sequence.seed=24`.
+   */
+  debug().resetView();
   await allKeysUp();
 }
 

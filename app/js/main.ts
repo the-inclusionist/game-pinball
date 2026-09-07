@@ -485,7 +485,23 @@ window.addEventListener('resize', fitCanvas);
  * be arguing with it after the fact.
  */
 document.addEventListener('pointerdown', (event) => {
-  if (event.target instanceof Node && region.contains(event.target)) return;
+  /**
+   * ⚠️ THE TEST IS "IS THIS A CONTROL", NOT "IS THIS INSIDE THE GAME", AND THAT DISTINCTION IS THE
+   * FOURTH REPORT OF THIS DEFECT. It read `region.contains(target)` and left everything inside alone
+   * — and THE CANVAS IS INSIDE AND IS NOT FOCUSABLE. So clicking the game, which is the first and
+   * commonest thing a player does, matched "inside", was left alone, and left the focus on `body`
+   * with every key dead.
+   *
+   * It never showed here because Chromium had already put the focus on the region at load. A page may
+   * not rely on that, and the Dev's own browsers do not: "Pausa ainda não funciona fora daqui, testei
+   * no Brave e no Firefox."
+   *
+   * What must keep its focus is a CONTROL — the pause menu's entries, the alphabet's letters, the
+   * dialogs' choices, where the focus IS the cursor. Everything else on the page, canvas included,
+   * hands the keyboard back to the game.
+   */
+  const target = event.target instanceof Element ? event.target : null;
+  if (target?.closest('button, a, input, select, textarea, [tabindex]:not([tabindex="-1"])')) return;
   region.focus();
 });
 const context = canvas.getContext('2d')!;
@@ -1619,6 +1635,21 @@ Object.assign(window as unknown as Record<string, unknown>, {
     tables: CATALOG.map((t) => t.name),
     declaration: shell.declaration,
     setPhase(next: Phase) { phase = next; },
+    /**
+     * Puts the view back where a new game starts, which is what `leaveGame` does.
+     *
+     * ⚠️ ADDED FOR `tests/frame-follows-state`, AND IT IS THE FLAKE. Those tests stop the world with
+     * `setPhase('title')` — which freezes the ball but leaves the CAMERA wherever the last ball
+     * dragged it, because `setPhase` is not `leaveGame`. With the view scrolled, the flippers sit
+     * partly below the visible window: the failing run measured the left paddle's box as fourteen
+     * rows of a twenty-eight-row arc, clipped at the bottom edge, and the part still showing did not
+     * change when the paddle moved. Zero differing pixels, and the test read that as "the paddle did
+     * not come down".
+     *
+     * Reproduced at `--sequence.seed=24` and diagnosed from there. `leaveGame` already calls
+     * `shell.resetCamera()`; this is the same call, reachable by a test that is not leaving a game.
+     */
+    resetView() { shell.resetCamera(); },
     /** Which phase the game is in. Read by the browser gate for the pause key the Dev reported. */
     get phase() { return phase; },
     /** Exposed so the browser gate can look at the pixels rather than at a screenshot. */

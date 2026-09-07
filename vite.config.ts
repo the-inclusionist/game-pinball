@@ -96,7 +96,18 @@ export default defineConfig({
             // ⚠️ HEADLESS, because this runs in a sandbox with no display and in CI with no person. A
             // window that needs somebody to look at it is a gate that hangs rather than fails.
             headless: true,
-            instances: [{ browser: 'chromium' }],
+            /**
+             * ⚠️ TWO ENGINES, BECAUSE ONE OF THEM HID A DEFECT FOR FOUR REPORTS. The Dev: "Pausa
+             * ainda não funciona fora daqui, testei no Brave e no Firefox." The cause was a pointer
+             * rule that left the focus alone for anything inside the game — including the CANVAS,
+             * which is not focusable — so clicking the game left the keyboard dead. It never showed
+             * here because CHROMIUM had already put the focus on the region at load, which is not
+             * something a page may rely on and which Gecko does not do.
+             *
+             * A suite that runs one engine is a suite that tests one engine's defaults. This game is
+             * for school machines, where the browser is whatever is installed.
+             */
+            instances: [{ browser: 'chromium' }, { browser: 'firefox' }],
           },
         },
       },

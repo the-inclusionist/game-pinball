@@ -178,4 +178,35 @@ describe('⚠️ and the keyboard does not die when the player clicks the page',
     expect(document.activeElement, 'the game stole the focus from its own button').toBe(button);
     button.remove();
   });
+
+  test('⚠️ and clicking the GAME ITSELF hands it back too, which is the case that was missed', async () => {
+    /**
+     * ⚠️ THE DEV, FOR THE FOURTH TIME, AND THE CLUE WAS THE BROWSER: "Pausa ainda não funciona fora
+     * daqui, testei no Brave e no Firefox."
+     *
+     * The rule was "a pointer outside the region hands the keyboard back; inside is left alone",
+     * because the pause menu, the alphabet and the dialogs are real `<button>`s that must keep the
+     * focus when clicked. But THE CANVAS IS INSIDE THE REGION AND IS NOT FOCUSABLE — so clicking the
+     * game, which is what a player does first and most often, matched "inside", was left alone, and
+     * left the focus on `body` with every key dead.
+     *
+     * It did not show here because Chromium had already put the focus on the region at load. That is
+     * not something a page may rely on, and the two browsers he tried do not.
+     */
+    const button = document.createElement('button');
+    region().appendChild(button);
+    const canvas = document.querySelector<HTMLElement>('#game-region canvas')!;
+
+    button.focus();
+    canvas.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    await frames(2);
+    expect(document.activeElement, 'clicking the canvas left the focus elsewhere').toBe(region());
+
+    // And a real control inside the game still keeps it — the half that must not regress.
+    button.focus();
+    button.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    await frames(2);
+    expect(document.activeElement, 'the game stole the focus from its own button').toBe(button);
+    button.remove();
+  });
 });

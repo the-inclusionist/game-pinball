@@ -29,6 +29,21 @@ import { advanceFrame } from '../app/js/physics/step.js';
 import { PLAYABLE_TABLES } from '../app/js/table/catalog.js';
 import type { AuthoredTable } from '../app/js/table/authored.js';
 
+/**
+ * ⚠️ HOW LONG THESE ARE ALLOWED TO TAKE, BECAUSE THE DEFAULT WAS TOO SHORT AND IT LOOKED LIKE A BUG.
+ *
+ * `ring-belt > every component the ball is meant to meet` failed with "Test timed out in 5000ms",
+ * about once in ten full runs of the suite and never on its own — which reads as an order dependence
+ * and is not one. It is arithmetic: `ring-belt` is the biggest table at 360x240 and the survey runs
+ * SIXTY balls of four thousand frames each. Measured alone it takes 2516ms; the whole suite runs both
+ * projects, and under that load it goes past five seconds.
+ *
+ * ⚠️ AND THE HONEST FIX IS THE CLOCK, NOT THE SURVEY. Fewer balls would make the gate cheaper by
+ * making it weaker — `tests/gfx-surround`'s header records what a survey that runs too little
+ * simulation is worth. This work is genuinely long, so it is given room to be.
+ */
+const SURVEY_TIMEOUT = 30_000;
+
 /** Deterministic, so a finding is reproducible. */
 function rng(seed: number): () => number {
   let s = seed >>> 0;
@@ -184,7 +199,7 @@ describe('⚠️ every component the ball is meant to meet, it meets', () => {
       .map(([componentName]) => componentName);
 
     expect(unreached, `${BALLS} balls never came near these, and they all score`).toEqual([]);
-  });
+  }, SURVEY_TIMEOUT);
 
   test('⚠️ and the excused list names only components that exist', () => {
     // A ledger with a stale name in it excuses a component nobody has, which is how a ledger rots.
@@ -236,5 +251,5 @@ describe('⚠️ and the survey is DETERMINISTIC, which it said it was and was n
 
     expect([...twice.entries()].sort(), `${name}: two identical surveys disagreed`)
       .toEqual([...once.entries()].sort());
-  });
+  }, SURVEY_TIMEOUT);
 });
