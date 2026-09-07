@@ -70,12 +70,25 @@ describe('the four blocks reach the document', () => {
     expect(host.children[0]!.style.pointerEvents).toBe('none');
   });
 
-  test('each block is placed in per-cent', () => {
+  test('each block is placed in per-cent, from the edge it hangs off', () => {
+    /**
+     * ⚠️ THE HINT HANGS FROM ITS BOTTOM AND THE OTHER THREE SIT ON THEIR TOP, which is why this can
+     * no longer ask every block for a `top`. It is the fix for text leaving the canvas: the height is
+     * a floor rather than a cap, so a long hint GROWS, and a block anchored by its top grows away
+     * from the bottom-left corner the hint belongs to — measured at thirty-two pixels below the
+     * canvas in the built page.
+     *
+     * Per-cent is still the point, and still checked on both: the canvas is 320x180 stretched to
+     * whatever the page gives it, so a block placed in pixels sits in the middle of the table on
+     * every screen but one.
+     */
     const { host } = mounted();
 
     for (const block of host.children[0]!.children) {
+      const anchor = block.attributes['data-block'] === 'hint' ? block.style.bottom : block.style.top;
+
       expect(block.style.left).toMatch(/%$/);
-      expect(block.style.top).toMatch(/%$/);
+      expect(anchor, `${block.attributes['data-block']} is not placed in per-cent`).toMatch(/%$/);
     }
   });
 

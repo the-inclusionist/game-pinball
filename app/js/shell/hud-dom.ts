@@ -128,9 +128,21 @@ export function mountHud(o: HudDomOptions): MountedHud {
     const box = placement[name];
     Object.assign(block.style, {
       position: 'absolute',
-      left: box.left, top: box.top, width: box.width,
-      // The height is a floor rather than a cap: a hint that wraps to a fifth line should be readable,
-      // not clipped. `layoutHud` already keeps the blocks apart with room for four.
+      left: box.left, width: box.width,
+      /**
+       * ⚠️ THE HINT HANGS FROM ITS BOTTOM AND EVERYTHING ELSE SITS ON ITS TOP, and that is the fix
+       * for text leaving the canvas rather than a preference.
+       *
+       * The height below is a FLOOR, not a cap — a hint that wraps to a fifth line should be
+       * readable, not clipped, and clipping accessible text to protect a layout is the wrong way
+       * round. So a long hint grows; the only question is which way. Anchored by its top it grew
+       * away from the bottom-left corner it belongs to, straight off the game: measured at
+       * thirty-two pixels below the canvas in the built page.
+       *
+       * Upward it grows into the left column, which is empty from just under the ball count all the
+       * way down — about twenty-seven lines of room before it could reach anything.
+       */
+      ...(name === 'hint' ? { bottom: box.bottom } : { top: box.top }),
       minHeight: box.height,
       // The score is the one block that is read right to left, and its corner is the right one.
       textAlign: name === 'score' ? 'right' : 'left',

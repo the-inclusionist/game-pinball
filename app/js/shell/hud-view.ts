@@ -70,6 +70,18 @@ export interface HudBox {
   readonly top: string;
   readonly width: string;
   readonly height: string;
+  /**
+   * The same box measured from the BOTTOM of the screen, for a block that has to grow upward.
+   *
+   * ⚠️ THIS EXISTS BECAUSE THE HINT LEFT THE CANVAS. Every block is placed by `top` and given a
+   * `min-height` rather than a height — deliberately, so a hint that wraps to a fifth line is
+   * readable instead of clipped. But a block anchored by its top grows AWAY from that anchor, and
+   * the hint's anchor is the bottom-left corner: the fifth line and every line after it went off the
+   * bottom of the game. Measured in the built page at the smallest size it is ever shown: thirty-two
+   * pixels of text below the canvas, which is what the Dev reported as "texto no canto inferior
+   * esquerdo fora do canvas".
+   */
+  readonly bottom: string;
 }
 
 export type HudPlacement = Record<'score' | 'balls' | 'player' | 'hint', HudBox>;
@@ -84,6 +96,7 @@ export function hudPlacement(layout: HudLayout, screen: HudConfig): HudPlacement
     top: `${(r.y / screen.screenHeight) * 100}%`,
     width: `${(r.width / screen.screenWidth) * 100}%`,
     height: `${(r.height / screen.screenHeight) * 100}%`,
+    bottom: `${((screen.screenHeight - r.y - r.height) / screen.screenHeight) * 100}%`,
   });
 
   return {
