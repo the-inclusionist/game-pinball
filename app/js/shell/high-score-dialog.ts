@@ -77,6 +77,13 @@ const DIGITS = '0123456789';
  * actions. A player spelling a short name never reaches the end of the walk; a player who wants the
  * rubout goes left from the start, which is one press.
  */
+/**
+ * ⚠️ THIRTEEN, AND IT IS NAMED BECAUSE THE CABINET NOW READS IT. The grid was thirteen columns in a
+ * style string and nothing else knew; W and S move by a ROW, which is that number. Two copies of a
+ * grid's width is a cursor that jumps to the wrong letter the day the layout changes.
+ */
+export const ALPHABET_COLUMNS = 13;
+
 function keyboard(): Key[] {
   return [
     ...[...LETTERS].map((ch) => ({ ch, face: ch })),
@@ -164,7 +171,8 @@ export function mountHighScoreDialog(o: HighScoreDialogOptions): HighScoreDialog
    */
   const grid = el('div');
   Object.assign(grid.style, {
-    display: 'grid', gridTemplateColumns: 'repeat(13, 1fr)', gap: '0.8cqw', width: '100%',
+    display: 'grid', gridTemplateColumns: `repeat(${ALPHABET_COLUMNS}, 1fr)`, gap: '0.8cqw',
+    width: '100%',
   });
   root.appendChild(grid);
 
@@ -270,10 +278,25 @@ export function mountHighScoreDialog(o: HighScoreDialogOptions): HighScoreDialog
    */
   ownCabinetKeys(root as unknown as Parameters<typeof ownCabinetKeys>[0], {
     isOpen: () => root.style.display !== 'none',
+    /**
+     * ⚠️ THIS ONE IS A GRID AND NOT A LIST, so up and down are worth a row rather than a step.
+     *
+     * Thirty-nine keys in thirteen columns is three exact rows — see the comment on `grid`. Walking it
+     * one key at a time was all the cabinet could do while its only directions were the paddles; with
+     * `wasd` it can be walked the way it looks, and a player reaching for M does not have to press the
+     * same key twelve times.
+     *
+     * ⚠️ AND `cancel` DOES NOT CLOSE THIS ONE. Every other screen's K means "leave"; here the player is
+     * spelling a name, and the negation of a letter is a RUBOUT rather than throwing the whole entry
+     * away. Start still records, which is the shortcut this dialog already had.
+     */
     on: {
       left: () => moveTo(cursor - 1),
       right: () => moveTo(cursor + 1),
-      plunger: () => activate(cursor),
+      up: () => moveTo(cursor - ALPHABET_COLUMNS),
+      down: () => moveTo(cursor + ALPHABET_COLUMNS),
+      confirm: () => activate(cursor),
+      cancel: () => { name = name.slice(0, -1); showName(); },
       pause: () => record(),
     },
   });

@@ -12,6 +12,7 @@
 // hand-written interface would let the module drift away from the DOM it actually runs on — so the
 // fakes are cast in, and what they implement is exactly what the module is allowed to use.
 import { describe, test, expect } from 'vitest';
+import { MENU_BINDINGS } from '../app/js/shell/controls.js';
 import { mountChoiceDialog } from '../app/js/shell/choice-dialog.js';
 import { PALETTE_CHOICES, PALETTE_LABEL, OPTIONS_DIALOG_ID, type PaletteChoice } from '../app/js/shell/options.js';
 
@@ -270,17 +271,26 @@ describe('⚠️ and it owns the cabinet while it is up', () => {
     const h = harness();
     h.dialog.open();
 
-    const escaped = ['KeyA', 'KeyJ', 'KeyD', 'KeyK', 'KeyU', 'Enter', 'KeyH']
-      .filter((code) => !h.swallows(code));
+    // ⚠️ THE MENU'S OWN TABLE AND NOT THE GAME'S — see `shell/controls.MENU_BINDINGS`. Until the Dev's
+    // remap the two agreed by coincidence, because the paddles WERE the directions; now J walks a
+    // menu and the launch key has nothing to do here, so U must reach the game rather than be eaten.
+    const escaped = Object.values(MENU_BINDINGS).flat().filter((code) => !h.swallows(code));
 
     expect(escaped, 'these reached the game underneath').toEqual([]);
   });
 
-  test('⚠️ but blind mode, the sonar and the palette key pass through', () => {
+  test('⚠️ but blind mode and the palette key pass through, and the sonar cannot', () => {
+    /**
+     * ⚠️ THE SONAR IS AN EXCEPTION NOW, AND IT IS A COLLISION RATHER THAN A CHANGE OF MIND. `KeyS` is
+     * the sweep, and the Dev's remap makes the directions walk the menus — so S is also "down". While
+     * a dialog is up the dialog wins, because a sonar sweep describes THE TABLE and the table is not
+     * what the player is looking at. Named here so it is not discovered as a regression.
+     */
     const h = harness();
     h.dialog.open();
 
-    expect(['KeyB', 'KeyS', 'KeyC'].filter((code) => h.swallows(code))).toEqual([]);
+    expect(['KeyB', 'KeyC'].filter((code) => h.swallows(code))).toEqual([]);
+    expect(h.swallows('KeyS'), 'S must walk the dialog rather than sweep the table behind it').toBe(true);
   });
 
   test('and a dialog that is put away owns nothing', () => {

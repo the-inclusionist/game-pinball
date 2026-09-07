@@ -225,7 +225,12 @@ describe('the alphabet', () => {
 });
 
 describe('writing with the cabinet', () => {
-  test('the right flipper walks forward and the left flipper walks back', () => {
+  /**
+   * ⚠️ THE DIRECTIONS WALK IT NOW, AND THEY USED TO BE THE FLIPPERS. The Dev took the paddles off A
+   * and D — "botões esquerda e direita não devem mais mover as pás" — and gave the directions the job
+   * they were doing here all along. The keys in this file did not move; what they mean did.
+   */
+  test('the right direction walks forward and the left walks back', () => {
     const h = harness();
     h.dialog.offer(1000);
     const first = h.cursor()!.textContent;
@@ -234,12 +239,12 @@ describe('writing with the cabinet', () => {
     const second = h.cursor()!.textContent;
     h.press('KeyA');
 
-    expect(second, 'the right flipper moved the cursor').not.toBe(first);
-    expect(h.cursor()!.textContent, 'and the left flipper moved it back').toBe(first);
+    expect(second, 'the right direction moved the cursor').not.toBe(first);
+    expect(h.cursor()!.textContent, 'and the left direction moved it back').toBe(first);
   });
 
   test('⚠️ and it wraps, because a cabinet has no way to say "stop"', () => {
-    // Walking off the end of the alphabet and stopping there is a player pressing a flipper that does
+    // Walking off the end of the alphabet and stopping there is a player pressing a key that does
     // nothing, on a machine whose only feedback is that something moves.
     const h = harness();
     h.dialog.offer(1000);
@@ -252,11 +257,17 @@ describe('writing with the cabinet', () => {
     expect(h.cursor()!.textContent, 'and back again').toBe(first);
   });
 
-  test('the plunger takes the letter under the cursor', () => {
+  /**
+   * ⚠️ `confirm` RATHER THAN THE PLUNGER, which is the other half of the Dev's remap. Taking the letter
+   * under the cursor was the launch key's job because the launch key was the only spare button on a
+   * cabinet whose other three were the paddles and start. "j ... = confirmação/seleção/ação" is the
+   * button that means this, and it is the one under the thumb on a pad.
+   */
+  test('the confirm button takes the letter under the cursor', () => {
     const h = harness();
     h.dialog.offer(1000);
 
-    h.press('KeyU');
+    h.press('KeyJ');
 
     expect(h.typed(), 'the first letter of the alphabet').toBe('A');
   });
@@ -266,9 +277,9 @@ describe('writing with the cabinet', () => {
     // cannot see the screen at all needs it announced. Both are the same element.
     const h = harness();
     h.dialog.offer(1000);
-    h.press('KeyU');
+    h.press('KeyJ');
     h.press('KeyD');
-    h.press('KeyU');
+    h.press('KeyJ');
 
     const shown = h.buttons().length && h.typed();
     expect(shown, 'two letters spelled').toBe('AB');
@@ -277,9 +288,9 @@ describe('writing with the cabinet', () => {
   test('the rubout takes the last letter back', () => {
     const h = harness();
     h.dialog.offer(1000);
-    h.press('KeyU');
+    h.press('KeyJ');
     h.press('KeyD');
-    h.press('KeyU');
+    h.press('KeyJ');
 
     h.buttons().find((b) => b.attributes['data-act'] === 'rub')!.clicks[0]!();
 
@@ -298,7 +309,7 @@ describe('writing with the cabinet', () => {
   test('start records what was spelled, without touching the alphabet again', () => {
     const h = harness();
     h.dialog.offer(4242);
-    h.press('KeyU');
+    h.press('KeyJ');
 
     h.press('Enter');
 
@@ -311,7 +322,7 @@ describe('writing with the cabinet', () => {
     // pressing would spell a name and then silently lose the end of it.
     const h = harness();
     h.dialog.offer(1000);
-    for (let i = 0; i < MAX_NAME + 5; i++) h.press('KeyU');
+    for (let i = 0; i < MAX_NAME + 5; i++) h.press('KeyJ');
 
     expect(h.typed()).toHaveLength(MAX_NAME);
   });
@@ -339,7 +350,7 @@ describe('and the cabinet is not shared while this screen owns it', () => {
     h.dialog.offer(1000);
 
     h.press('KeyD');
-    h.press('KeyU');
+    h.press('KeyJ');
     h.press('Enter');
 
     expect(h.stopped(), 'three cabinet keys, three stopped').toBe(3);

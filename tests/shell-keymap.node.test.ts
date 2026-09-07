@@ -97,16 +97,16 @@ describe('binding a key', () => {
     // Two actions on one key is a key whose meaning depends on which handler runs first, and this
     // game has three separate readers of the same table. The player asked for the key to mean the new
     // thing; leaving it meaning both is answering a question they did not ask.
-    const next = rebind(DEFAULT_BINDINGS, 'plunger', 'KeyA');
+    const next = rebind(DEFAULT_BINDINGS, 'plunger', 'KeyJ');
 
-    expect(next.plunger).toEqual(['KeyA']);
-    expect(next.left, 'A was the left flipper and is not any more').not.toContain('KeyA');
+    expect(next.plunger).toEqual(['KeyJ']);
+    expect(next.left, 'J was the left flipper and is not any more').not.toContain('KeyJ');
   });
 
   test('⚠️ but an action is never left with no key at all', () => {
     // `left` ships with A and J. Taking BOTH away, one at a time, must stop rather than produce a
     // cabinet with no left flipper — a state a player cannot get out of without clearing storage.
-    let table: BindingTable = rebind(DEFAULT_BINDINGS, 'plunger', 'KeyA');
+    let table: BindingTable = rebind(DEFAULT_BINDINGS, 'plunger', 'KeyJ');
     table = rebind(table, 'pause', 'KeyJ');
 
     expect(table.left.length, 'the left flipper still has a key').toBeGreaterThan(0);
@@ -130,7 +130,7 @@ describe('warning about a key before it is taken', () => {
   });
 
   test('⚠️ a key another action holds names that action, so the menu can say so', () => {
-    expect(conflictOf(DEFAULT_BINDINGS, 'plunger', 'KeyA')).toBe('left');
+    expect(conflictOf(DEFAULT_BINDINGS, 'plunger', 'KeyJ')).toBe('left');
   });
 
   test('and a key the action already holds is not a conflict with itself', () => {

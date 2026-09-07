@@ -110,14 +110,16 @@ describe('start opens the pause menu and start closes it', () => {
   });
 });
 
-describe('the flippers walk it and the plunger takes an entry', () => {
+describe('the directions walk it and confirm takes an entry', () => {
   test('⚠️ the cursor moves, and stays where it was put', async () => {
     await playing();
     await userEvent.keyboard('{Enter}');
     await frames(4);
     const walk: string[] = [under()];
 
-    for (const key of ['{d}', '{d}', '{a}']) {
+    // Down, down, up — `wasd`, which is what walks a menu now that the paddles are off the
+    // directions. This list was `{d}{d}{a}` and meant the right flipper twice and the left once.
+    for (const key of ['{s}', '{s}', '{w}']) {
       await userEvent.keyboard(key);
       // Several frames on purpose: the loop reopens the menu on every one of them, and the defect
       // this catches is the focus being taken back between two of them.
@@ -139,11 +141,13 @@ describe('the flippers walk it and the plunger takes an entry', () => {
     await playing();
     await userEvent.keyboard('{h}');
     await frames(4);
-    await userEvent.keyboard('{d}');
+    // ⚠️ `{s}` WALKS AND `{j}` CHOOSES. The Dev took the paddles off the directions and gave them
+    // the menus; `{u}` is the plunger and has nothing to do on a menu any more.
+    await userEvent.keyboard('{s}');
     await frames(3);
     expect(under(), 'the cursor reached the palette entry').toBe('Cores da mesa');
 
-    await userEvent.keyboard('{u}');
+    await userEvent.keyboard('{j}');
     await frames(5);
 
     expect(shown(document.getElementById('pinball-options')!), 'the palette opened').toBe(true);
@@ -178,11 +182,11 @@ describe('⚠️ and the vision correction the plan promised actually reaches th
     await playing();
     await userEvent.keyboard('{Enter}');
     await frames(4);
-    await userEvent.keyboard('{d}{d}');
+    await userEvent.keyboard('{s}{s}');
     await frames(4);
     expect(under(), 'the cursor reached the vision entry').toBe('Acessibilidade visual');
 
-    await userEvent.keyboard('{u}');
+    await userEvent.keyboard('{j}');
     await frames(4);
     const dialog = document.getElementById('pinball-vision')!;
     expect(shown(dialog), 'the vision dialog opened').toBe(true);
@@ -342,7 +346,8 @@ describe('⚠️ and it shows the score and the keys, which the Dev asked for', 
     expect(Number(score), `the score reads "${score}"`).toBeGreaterThan(0);
     expect(score, 'and it is the running score, not a placeholder')
       .toBe(String(debug().score));
-    for (const key of ['A · J', 'D · K', 'U']) {
+    // ⚠️ THE DEV'S NEW CABINET: three keys a paddle, and the directions on neither of them.
+    for (const key of ['J · 7 · Y', 'K · 8 · O', 'U']) {
       expect(keys, `${key} is missing from the pause menu`).toContain(key);
     }
 

@@ -76,10 +76,12 @@ describe('capturing a key', () => {
     dialog.open();
     rows()[2]!.click();
 
-    await userEvent.keyboard('{a}');
+    // ⚠️ J RATHER THAN A. The Dev's remap took the paddles off the directions, so A is no longer
+    // anybody's key — taking it would lose nothing and this test would be measuring an empty claim.
+    await userEvent.keyboard('{j}');
 
-    expect(table().plunger).toEqual(['KeyA']);
-    expect(table().left, 'A was the left flipper').not.toContain('KeyA');
+    expect(table().plunger).toEqual(['KeyJ']);
+    expect(table().left, 'J was the left flipper').not.toContain('KeyJ');
     expect(said(), 'and it named what lost it').toContain('pinball.bindings.left');
   });
 
@@ -102,11 +104,20 @@ describe('capturing a key', () => {
     const { dialog, table } = build();
     dialog.open();
 
-    // Take A for the plunger, so `left` is down to its last key, J.
-    rows()[2]!.click();
-    await userEvent.keyboard('{a}');
-    // Then try to take J as well.
-    rows()[3]!.click();
+    /**
+     * ⚠️ THE LEFT FLIPPER HAS THREE KEYS NOW, so emptying it takes three moves rather than one. The
+     * Dev's cabinet gives each paddle a button and two rails — "j ... = pá esquerda", "7, left
+     * shoulder", "Y, left trigger" — which is more accessibility, and more work for this test.
+     *
+     * Take 7 and Y for other actions first, so `left` is down to its last key, J. Then try to take J.
+     */
+    rows()[2]!.click();                 // the plunger row
+    await userEvent.keyboard('{7}');
+    rows()[3]!.click();                 // the pause row
+    await userEvent.keyboard('{y}');
+    expect(table().left, 'the left flipper is down to its last key').toEqual(['KeyJ']);
+
+    rows()[1]!.click();                 // the right flipper's row
     await userEvent.keyboard('{j}');
 
     expect(table().left, 'the left flipper still has a key').toEqual(['KeyJ']);

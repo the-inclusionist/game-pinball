@@ -51,24 +51,33 @@ The controls are a **cabinet**, and the keyboard is one mapping of it:
 
 | control | does |
 |---|---|
-| left / right | the left and right flippers |
+| directions | move through the menus — and **nothing** on the table |
 | button 1 | launch the ball |
-| button 2 / button 3 | the left and right flippers again |
+| button 2 | left flipper · confirm |
+| button 3 | right flipper · back |
+| left shoulder / left trigger | left flipper |
+| right shoulder / right trigger | right flipper |
 | start | pause |
 
 | key | what it does |
 |---|---|
-| `A` / `J` | left flipper |
-| `D` / `K` | right flipper |
+| `J` / `7` / `Y` | left flipper |
+| `K` / `8` / `O` | right flipper |
 | `U` | launch the ball — **held**, not pressed: holding draws the plunger back and letting go launches |
 | `Enter` / `H` | pause |
+| `W` `A` `S` `D` | move through the menus |
+| `J` / `K` | in a menu: choose · go back |
 | `B` | blind mode |
-| `S` | sweep the sonar |
+| `S` | sweep the sonar — *in a menu it moves the cursor down instead* |
 | `C` | switch between the normal and CB-Safe palettes |
 
-Two keys per flipper because one hand is not everybody's: `A`/`D` are a direction pair for one hand and
-`J`/`K` a button pair for the other, so a player who cannot reach across a keyboard uses whichever is
-nearer and a player using one hand has a full set within it.
+**The directions do not move the flippers.** They used to, and the Dev took them off: the directions
+have a job, which is walking the menus, and a key that flips a paddle in a game and moves a cursor in a
+menu is a key you have to think about before pressing.
+
+Three keys per flipper because one hand is not everybody's. They are the cabinet's three positions —
+the button under the thumb and the two rails under the fingers — so a player who cannot reach across a
+keyboard uses whichever is nearer, and a player using one hand has a full set within it.
 
 The accessibility switches are KEYS rather than menu entries — a player who needs blind mode is not the
 player who will find it three screens into a settings panel. The palette also has a menu, because it
@@ -100,6 +109,10 @@ copyleft travels one way. The upstream decompilation is MIT.
 
 Art follows its own author's terms and the tree holds two kinds of it. **Press Start 2P** in
 `app/assets/fonts`, under the SIL Open Font License 1.1, copied verbatim beside the file. And six
+The two photographs behind the menus are `app/assets/screens/` — reduced from the Dev's masters to the
+game's own 320x180 grid and dimmed to the contrast the text on them needs. Their terms are **not yet
+recorded**: `app/assets/screens/LICENSE.txt` says what is known about them, what is not, and what to
+write once that is answered.
 playfield pictures in `app/assets/tables`, generated with Google Gemini and dedicated **CC0 1.0 with no
 copyright claimed** — because a Creative Commons licence operates on a copyright and a copyright needs
 a human author. `app/assets/tables/LICENSE.txt` carries the argument beside the files.

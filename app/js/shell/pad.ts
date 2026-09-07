@@ -87,8 +87,16 @@ export interface CabinetState {
  * launch" is how a game ends up remapping on one device and not the other.
  */
 export const CABINET_OF_ENGINE_ACTION: Readonly<Record<string, 'left' | 'right' | 'plunger' | 'pause'>> = {
-  left: 'left',
-  right: 'right',
+  /**
+   * ⚠️ `left` AND `right` USED TO BE HERE AND THE DEV TOOK THEM OFF: "IMPORTANTE: botões esquerda e
+   * direita não devem mais mover as pás."
+   *
+   * That line is about the CABINET and not about the keyboard. `padActions` emits `left` and `right`
+   * for the D-pad and for the analog stick, so a player on a pad was flipping with the same two
+   * directions a player on a keyboard was — and the directions now have a job, which is walking the
+   * menus. Removing the entries is the whole of it: `cabinetFromPad` asks which actions map to a
+   * control, so an action with no entry contributes nothing.
+   */
 
   // ---- The platformer's nine, which is what every transport emits TODAY ----
   // Button 2 and button 3 are the flippers again, which is what the Dev's cabinet says they are.
@@ -108,6 +116,23 @@ export const CABINET_OF_ENGINE_ACTION: Readonly<Record<string, 'left' | 'right' 
    * puts it on `Enter`, which is the key this cabinet already pauses with. The asymmetry closes.
    */
   start: 'pause',
+  /**
+   * ⚠️ THE SHOULDERS AND THE TRIGGERS ARE FLIPPERS, which is where the directions' job went.
+   *
+   * The Dev's table: "7, left shoulder = pá esquerda / Y, left trigger = pá esquerda / 8, right
+   * shoulder = pá direita / O, right trigger = pá direita." Four rails, two paddles, and it is the
+   * layout a real cabinet has — the buttons are under the hands that hold the machine.
+   *
+   * ⚠️ AND THIS IS WHAT THIS MODULE'S HEADER WARNED WOULD MOVE. It records that `padActions` reads
+   * `run: b(2) || b(5) || b(7)`, so R1 and R2 launch the ball today and will stop when they become
+   * `rightShoulder` and `rightTrigger`. They are named here now; until the engine's #103 lands, the
+   * names contribute `false` and R1/R2 go on launching. The day it lands they become the right
+   * paddle, which is what the Dev asked for, with no further change here.
+   */
+  leftShoulder: 'left',
+  leftTrigger: 'left',
+  rightShoulder: 'right',
+  rightTrigger: 'right',
   // ⚠️ `action4` IS DELIBERATELY ABSENT. The Dev's table has a fourth button (`I` / Y) and a pinball
   // has three. Binding it to something because it is there is how a cabinet grows a control nobody
   // asked for, and a test says so rather than leaving the gap to be read as an omission.

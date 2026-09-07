@@ -79,11 +79,11 @@ describe('the alphabet in a real browser', () => {
     expect(cursor().textContent, 'two back from B, wrapping past A').toBe('✓');
   });
 
-  test('the plunger spells with the key the focus is on', async () => {
+  test('confirm spells with the key the focus is on', async () => {
     const { dialog } = build();
     dialog.offer(1000);
 
-    await userEvent.keyboard('{u}{d}{u}');
+    await userEvent.keyboard('{j}{d}{j}');
 
     expect(spelled()).toBe('AB');
   });
@@ -113,10 +113,10 @@ describe('the alphabet in a real browser', () => {
     await userEvent.tab();
     await userEvent.tab();
     const afterTabs = cursor().textContent;
-    await userEvent.keyboard('{u}');
+    await userEvent.keyboard('{j}');
 
     expect(afterTabs, 'two tabs from A').toBe('C');
-    expect(spelled(), 'and the plunger took what the focus was on').toBe('C');
+    expect(spelled(), 'and confirm took what the focus was on').toBe('C');
   });
 
   test('⚠️ every key is reachable by the platform, not only by the cabinet', async () => {

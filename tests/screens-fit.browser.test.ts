@@ -114,9 +114,11 @@ describe('every screen fits the 320x180 it is drawn on', () => {
     // ⚠️ WHERE THIS WAS FOUND: seven entries, 194 pixels, in a 180-pixel screen.
     look('pause menu');
 
-    await userEvent.keyboard('{d}');
+    // ⚠️ `{s}` WALKS AND `{j}` CHOOSES. The Dev took the paddles off the directions and gave
+    // them the menus — see `shell/controls.MENU_BINDINGS`. `{u}` is the plunger and nothing else.
+    await userEvent.keyboard('{s}');
     await frames(3);
-    await userEvent.keyboard('{u}');
+    await userEvent.keyboard('{j}');
     await frames(5);
     look('palette');
     /**
@@ -128,17 +130,17 @@ describe('every screen fits the 320x180 it is drawn on', () => {
     await userEvent.keyboard('{Escape}');
     await frames(4);
 
-    await userEvent.keyboard('{d}{d}');
+    await userEvent.keyboard('{s}{s}');
     await frames(3);
-    await userEvent.keyboard('{u}');
+    await userEvent.keyboard('{j}');
     await frames(5);
     look('vision');
     await userEvent.keyboard('{Escape}');
     await frames(4);
 
-    await userEvent.keyboard('{d}{d}{d}');
+    await userEvent.keyboard('{s}{s}{s}');
     await frames(3);
-    await userEvent.keyboard('{u}');
+    await userEvent.keyboard('{j}');
     await frames(5);
     // Its rows carry a name AND its keys, so they are the widest thing in the game.
     look('control editor');
@@ -162,11 +164,11 @@ describe('every screen fits the 320x180 it is drawn on', () => {
      */
     const under = (): string => document.activeElement?.textContent?.trim() ?? '';
     for (let i = 0; i < 10 && under() !== 'Encerrar partida'; i++) {
-      await userEvent.keyboard('{d}');
+      await userEvent.keyboard('{s}');
       await frames(2);
     }
     expect(under(), 'the cursor reached the entry that ends the game').toBe('Encerrar partida');
-    await userEvent.keyboard('{u}');
+    await userEvent.keyboard('{j}');
     await frames(6);
     const board = document.getElementById('pinball-high-score')!;
     expect(getComputedStyle(board).display, 'the board was offered').not.toBe('none');

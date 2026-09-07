@@ -24,6 +24,7 @@
 // That distinction is the whole reason Quit and Title are not the same entry, and it is stated here
 // because a reader will otherwise ask.
 import { describe, test, expect } from 'vitest';
+import { MENU_BINDINGS } from '../app/js/shell/controls.js';
 import { readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -200,7 +201,13 @@ describe('⚠️ and it owns the cabinet while it is up', () => {
    * The flippers matter for the same reason and are less visible: a paddle flapping behind an open
    * menu is a table that is being played by somebody who is not looking at it.
    */
-  const cabinetKeys = ['KeyA', 'KeyJ', 'KeyD', 'KeyK', 'KeyU', 'Enter', 'KeyH'];
+  /**
+   * ⚠️ THE MENU'S OWN KEYS, WHICH ARE NO LONGER THE GAME'S. Until the Dev's remap these were the same
+   * list — a menu asked `DEFAULT_BINDINGS` what "left" was bound to and got the key it wanted by
+   * coincidence, because the paddles WERE the directions. `MENU_BINDINGS` is the table now, and the
+   * launch key is not in it: J takes an entry, so U has nothing to do here and must reach the game.
+   */
+  const cabinetKeys = Object.values(MENU_BINDINGS).flat();
 
   test('every cabinet key is taken off the game behind it', () => {
     const h = harness();
@@ -216,16 +223,24 @@ describe('⚠️ and it owns the cabinet while it is up', () => {
     expect(escaped, 'these reached the game underneath').toEqual([]);
   });
 
-  test('⚠️ but the accessibility keys pass straight through', () => {
-    // Blind mode, the sonar sweep and the palette are on B, S and C. They are switches for how the
-    // game is PERCEIVED and `shell/controls` has argued since it was written that they must work
-    // everywhere — a screen that swallowed them would be the first place they did not.
+  test('⚠️ but blind mode and the palette pass straight through, and the sonar no longer can', () => {
+    /**
+     * Blind mode and the palette are on B and C. They are switches for how the game is PERCEIVED and
+     * `shell/controls` has argued since it was written that they must work everywhere — a screen that
+     * swallowed them would be the first place they did not.
+     *
+     * ⚠️ THE SONAR IS THE EXCEPTION NOW, AND IT IS A COLLISION RATHER THAN A CHANGE OF MIND. `KeyS` is
+     * the sweep, and the Dev's remap makes the directions walk the menus — so S is also "down". While
+     * a menu is up the menu wins, and the reason it should is that a sonar sweep describes THE TABLE,
+     * which is not what the player is looking at. Named here so it is not discovered as a regression.
+     */
     const h = harness();
     h.menu.open();
 
-    const swallowed = ['KeyB', 'KeyS', 'KeyC'].filter((code) => h.swallows(code));
+    const swallowed = ['KeyB', 'KeyC'].filter((code) => h.swallows(code));
 
     expect(swallowed, 'these were eaten by the menu').toEqual([]);
+    expect(h.swallows('KeyS'), 'S must walk the menu rather than sweep the table behind it').toBe(true);
   });
 
   test('and a menu that is closed owns nothing at all', () => {

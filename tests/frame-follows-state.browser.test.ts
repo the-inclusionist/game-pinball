@@ -139,8 +139,10 @@ const inside = (p: { x: number; y: number }, box: Box): boolean =>
  * draft of this file did precisely that, which is why one of its assertions found no change at all.
  */
 async function allKeysUp(): Promise<void> {
-  key('KeyA', 'keyup');
-  key('KeyD', 'keyup');
+  // ⚠️ J AND K, NOT A AND D. The Dev took the paddles off the directions: "botões esquerda e
+  // direita não devem mais mover as pás."
+  key('KeyJ', 'keyup');
+  key('KeyK', 'keyup');
   await frames(24);
 }
 
@@ -270,7 +272,7 @@ describe('the frame follows the simulation', () => {
     // ⚠️ AND THE BALL IS NOT IN THAT BOX, or this is the ball's test wearing the paddle's name.
     expect(inside(ballOnScreen(), box), 'the ball is elsewhere on the table').toBe(false);
 
-    key('KeyA', 'keydown');
+    key('KeyJ', 'keydown');
     await frames(6);
 
     expect(differingIn(before, frame(), box),
@@ -282,7 +284,7 @@ describe('the frame follows the simulation', () => {
   test('and lowering it changes the screen back', async () => {
     await stopTheWorld();
     const box = flipperBox('left');
-    key('KeyA', 'keydown');
+    key('KeyJ', 'keydown');
     await frames(6);
     const raised = frame();
 
@@ -300,7 +302,7 @@ describe('the frame follows the simulation', () => {
     const leftBox = flipperBox('left');
     const before = frame();
 
-    key('KeyD', 'keydown');
+    key('KeyK', 'keydown');
     await frames(6);
     const rightUp = frame();
 

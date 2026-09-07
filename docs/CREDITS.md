@@ -95,3 +95,17 @@ made them and how, which is what a credits file is for.
 
 The reasoning is in [`docs/LICENSES.md` §4.1](LICENSES.md) and beside the files in
 `app/assets/tables/LICENSE.txt`.
+
+## The screens behind the menus
+
+| | |
+|---|---|
+| files | `start.png`, `background.png` (in `app/assets/screens/`) |
+| supplied by | José Rocha |
+| when | September 2026 |
+| made by | **not recorded** — see `docs/LICENSES.md` §4.2 |
+| terms | **not recorded** — see `app/assets/screens/LICENSE.txt` |
+
+⚠️ These two are the only assets in this repository whose origin is not written down. They are used
+because the Dev asked for them by name; what may be done with them by anyone else is a question this
+project cannot answer yet, and says so rather than guessing.

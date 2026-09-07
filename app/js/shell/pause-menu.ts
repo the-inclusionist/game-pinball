@@ -298,10 +298,24 @@ export function mountPauseMenu(o: PauseMenuOptions): PauseMenu {
    */
   ownCabinetKeys(root as unknown as Parameters<typeof ownCabinetKeys>[0], {
     isOpen: () => root.style.display !== 'none',
+    /**
+     * ⚠️ UP AND DOWN RATHER THAN THE FLIPPERS, WHICH IS THE DEV'S REMAP ARRIVING HERE.
+     *
+     * This menu is a COLUMN and was walked with left and right, because left and right were the only
+     * directions the cabinet had — they were the paddles. "wasd ou xbox_direcional = movimento (pelos
+     * menus)" gives it the pair it always wanted: W goes up the list and S goes down it, which is what
+     * a player pressing them expects without being told.
+     *
+     * ⚠️ AND `confirm` RATHER THAN `plunger`. Taking the entry under the cursor was the launch key's
+     * job for the same reason: it was the only spare button. "j ... = confirmação/seleção/ação" is the
+     * button that means this, and it is the one under the thumb on a pad.
+     */
     on: {
-      left: () => moveTo(cursor - 1),
-      right: () => moveTo(cursor + 1),
-      plunger: () => choose(PAUSE_ENTRIES[cursor]!),
+      up: () => moveTo(cursor - 1),
+      down: () => moveTo(cursor + 1),
+      confirm: () => choose(PAUSE_ENTRIES[cursor]!),
+      // ⚠️ AND `cancel` LEAVES, because "k ... = negação" and the negation of a pause menu is the game.
+      cancel: () => choose('resume'),
       // Start opened this menu, so start closes it. `resume` is the entry that means exactly that.
       pause: () => choose('resume'),
     },

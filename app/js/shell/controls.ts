@@ -60,12 +60,27 @@ export const DEFAULT_BINDINGS: Readonly<Record<PinballAction, readonly string[]>
    * for. The Dev's words: "E não o mapeamento atual." A binding kept "just in case" is a key that does
    * something nobody documented.
    *
-   * ⚠️ TWO KEYS PER FLIPPER SURVIVES THE CHANGE, and that is accessibility rather than nostalgia. A/D
-   * are a direction pair for one hand; J/K are a button pair for the other. A player who cannot reach
-   * across a keyboard uses whichever is nearer, and a player using one hand has a full set within it.
+   * ⚠️ AND THE DIRECTIONS CAME OFF THE PADDLES, WHICH IS THE DEV'S OWN CORRECTION.
+   *
+   * "IMPORTANTE: botões esquerda e direita não devem mais mover as pás."
+   *
+   * A and D were the flippers beside J and K, and the argument for the pair was written here: "A/D are
+   * a direction pair for one hand; J/K are a button pair for the other." That reasoning is retired,
+   * and what replaces it is better: the directions have a JOB — walking the menus, which is `wasd ou
+   * xbox_direcional = movimento (pelos menus)` — and a key that flips a paddle in a game and moves a
+   * cursor in a menu is a key a player has to think about before pressing.
+   *
+   * ⚠️ THREE KEYS PER FLIPPER, AND THEY ARE THE CABINET'S THREE POSITIONS. The Dev's table names them
+   * as a button and two rails: `j` is action 2, `7` is the left shoulder and `Y` the left trigger; `k`,
+   * `8` and `O` are the same three on the right. So a player still has more than one way to each
+   * paddle — which was the accessibility argument all along — and every one of them is a BUTTON.
+   *
+   * ⚠️ AND `KeyY` IS NOT THE PAD'S Y BUTTON. The table has both: "i ou xbox_Y = action 5 = nada
+   * atribuído por enquanto" is the pad's fourth face button and carries nothing; "Y, left trigger" is
+   * the keyboard key. Two controls, one letter, and only one of them flips anything.
    */
-  left: ['KeyA', 'KeyJ'],
-  right: ['KeyD', 'KeyK'],
+  left: ['KeyJ', 'Digit7', 'KeyY'],
+  right: ['KeyK', 'Digit8', 'KeyO'],
   plunger: ['KeyU'],
   /**
    * ⚠️ START, AND IT IS A NEW FEATURE RATHER THAN A REMAP. `Phase` has always had `'paused'` and
@@ -163,14 +178,48 @@ export interface ControlOptions {
 }
 
 /** Binds the keys. Returns the undo, because a game that cannot be unbound cannot be torn down. */
-/** The four positions a cabinet actually has. The accessibility keys are not among them. */
-export type CabinetAction = 'left' | 'right' | 'plunger' | 'pause';
+/**
+ * What a MENU understands, which is not what the table understands.
+ *
+ * ⚠️ THIS IS THE OTHER HALF OF TAKING THE DIRECTIONS OFF THE PADDLES. The Dev's table gives them a job
+ * — "wasd ou xbox_direcional = movimento (pelos menus)" — and gives the two buttons beside them a
+ * second meaning that only applies here: "j ... = pá esquerda ou confirmação/seleção/ação" and "k ... =
+ * pá direita ou negação". One physical control, two meanings, chosen by whether a screen is up.
+ *
+ * ⚠️ SO A MENU KEY IS NOT A `PinballAction`, and the two tables are deliberately separate. Putting
+ * `confirm` in `DEFAULT_BINDINGS` beside `left` would put `KeyJ` in two entries of one table, and
+ * `bindPinballControls` answers with whichever it reaches first — silently, for ever. The context is
+ * the thing that decides, and the context is `ownCabinetKeys`: while a screen owns the cabinet, J
+ * confirms; while it does not, J is a paddle.
+ */
+export type MenuAction = 'up' | 'down' | 'left' | 'right' | 'confirm' | 'cancel' | 'pause';
+
+/**
+ * ⚠️ AND `KeyS` IS THE SONAR SWEEP IN THE GAME, which this takes precedence over while a menu is up.
+ *
+ * `ownCabinetKeys`'s header records that the accessibility keys are deliberately never swallowed —
+ * "they must work everywhere. A screen that swallowed them would be the first place they did not."
+ * That rule now has one exception, and it is worth naming rather than discovering: S walks a menu
+ * downward, because the Dev's table says the directions move through menus and because a sonar sweep
+ * describes THE TABLE, which is not what the player is looking at while a menu covers it. B and C are
+ * untouched.
+ */
+export const MENU_BINDINGS: Readonly<Record<MenuAction, readonly string[]>> = {
+  up: ['KeyW'],
+  down: ['KeyS'],
+  left: ['KeyA'],
+  right: ['KeyD'],
+  confirm: ['KeyJ'],
+  cancel: ['KeyK'],
+  // Start opened the menu, so start closes it — the same key, which is what a start button means.
+  pause: ['Enter', 'KeyH'],
+};
 
 export interface CabinetOwner {
   /** Whether this screen is up. A screen that is put away owns nothing. */
   isOpen(): boolean;
   /** What each cabinet key does here. An action with no entry is still SWALLOWED — see below. */
-  readonly on?: Partial<Record<CabinetAction, () => void>>;
+  readonly on?: Partial<Record<MenuAction, () => void>>;
 }
 
 /**
@@ -211,11 +260,19 @@ export interface CabinetOwner {
  * that swallowed them would be the first place they did not.
  */
 export function ownCabinetKeys(root: KeyTarget, owner: CabinetOwner): void {
-  const ACTIONS: readonly CabinetAction[] = ['left', 'right', 'plunger', 'pause'];
+  /**
+   * ⚠️ READ OFF `MENU_BINDINGS` RATHER THAN OFF THE GAME'S TABLE, and that is the change the Dev's
+   * `IMPORTANTE` line forces. It used to walk `DEFAULT_BINDINGS` for left/right/plunger/pause, which
+   * worked only while the paddles WERE the directions: a menu asked the game's table what "left" was
+   * bound to and got the key it wanted by coincidence. Now the two tables say different things, and
+   * a menu that kept asking the game's would be walking on J and K — the paddles — while W and S did
+   * nothing.
+   */
+  const ACTIONS = Object.keys(MENU_BINDINGS) as MenuAction[];
 
   root.addEventListener('keydown', (event: KeyboardEvent) => {
     if (!owner.isOpen()) return;
-    const action = ACTIONS.find((name) => DEFAULT_BINDINGS[name].includes(event.code));
+    const action = ACTIONS.find((name) => MENU_BINDINGS[name].includes(event.code));
     if (!action) return;
 
     // Always: the key does not reach the game behind this screen.

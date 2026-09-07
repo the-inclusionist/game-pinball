@@ -195,10 +195,12 @@ export function mountKeymapDialog(o: KeymapDialogOptions): KeymapDialog {
    */
   ownCabinetKeys(root as unknown as Parameters<typeof ownCabinetKeys>[0], {
     isOpen: () => root.style.display !== 'none' && capturing === null,
+    // A column, like the pause menu: W and S walk it, J opens a row for capture, K and start leave.
     on: {
-      left: () => moveTo(cursor - 1),
-      right: () => moveTo(cursor + 1),
-      plunger: () => { const row = rows[cursor]; if (row) startCapture(row.action); },
+      up: () => moveTo(cursor - 1),
+      down: () => moveTo(cursor + 1),
+      confirm: () => { const row = rows[cursor]; if (row) startCapture(row.action); },
+      cancel: () => close(),
       pause: () => close(),
     },
   });

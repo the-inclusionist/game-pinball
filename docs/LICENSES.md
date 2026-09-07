@@ -134,6 +134,32 @@ Applied here, honestly, as of phase 8:
   answered: *"Quem desenha: trabalho seu."* So it is produced inside this work, on the Dev's
   instruction, rather than sourced from a third party.
 
+### 4.2 · The two screen photographs are shipped with their terms UNRECORDED
+
+Added 2026-09-07, and this section exists to say that a question is open rather than to answer it.
+
+The Dev asked for `background.jpg` behind the menus and `start.jpg` behind the title. Reduced to the
+game's own 320x180 grid and dimmed to the contrast their text needs, they ship as:
+
+| | |
+|---|---|
+| files | `app/assets/screens/start.png`, `app/assets/screens/background.png` |
+| supplied by | José Rocha, September 2026 |
+| made by | **NOT RECORDED** |
+| terms | **NOT RECORDED** |
+
+⚠️ **AND CC0 WAS NOT WRITTEN ON THEM BY ANALOGY.** §4.1 above reaches CC0 for the playfields on a fact
+the Dev supplied — they are machine-generated — and the whole of that argument is that the licence
+follows from **who or what made the picture**, because a Creative Commons licence operates on a
+copyright and a copyright needs a human author. Applying the conclusion to two files whose origin
+nobody has stated would be asserting it from an assumption, in the document whose only purpose is to
+state obligations accurately.
+
+`app/assets/screens/LICENSE.txt` records what is known, what is not, and what to write once the Dev
+answers: if they came from the same tool as the playfields, this section becomes a copy of §4.1; if a
+person made them, or they came from elsewhere, pillar 10 applies in its ordinary form and the art
+travels beside the code under its own terms.
+
 ### 4.1 · The table art is machine-generated, and it is dedicated under CC0 1.0
 
 Decided 2026-09-06, and the decision changed once on a fact the Dev supplied.

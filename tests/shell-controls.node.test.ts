@@ -47,8 +47,8 @@ describe('the flippers answer the keyboard', () => {
   test('pressing the left key raises the left flipper and releasing drops it', () => {
     const h = harness();
 
-    h.region.send('keydown', { code: 'KeyA' });
-    h.region.send('keyup', { code: 'KeyA' });
+    h.region.send('keydown', { code: 'KeyJ' });
+    h.region.send('keyup', { code: 'KeyJ' });
 
     expect(h.moved).toEqual(['left:up', 'left:down']);
   });
@@ -56,7 +56,7 @@ describe('the flippers answer the keyboard', () => {
   test('and the right key is a different flipper', () => {
     const h = harness();
 
-    h.region.send('keydown', { code: 'KeyD' });
+    h.region.send('keydown', { code: 'KeyK' });
 
     expect(h.moved).toEqual(['right:up']);
   });
@@ -68,9 +68,9 @@ describe('the flippers answer the keyboard', () => {
     // exists for exactly this and the browser sets it for us.
     const h = harness();
 
-    h.region.send('keydown', { code: 'KeyA' });
-    h.region.send('keydown', { code: 'KeyA', repeat: true });
-    h.region.send('keydown', { code: 'KeyA', repeat: true });
+    h.region.send('keydown', { code: 'KeyJ' });
+    h.region.send('keydown', { code: 'KeyJ', repeat: true });
+    h.region.send('keydown', { code: 'KeyJ', repeat: true });
 
     expect(h.moved).toEqual(['left:up']);
   });
@@ -221,7 +221,7 @@ describe('⚠️ both of the engine’s action vocabularies drive this cabinet',
       launch: () => fired.push('launch'),
     });
 
-    region.send('keydown', { code: 'KeyA' });
+    region.send('keydown', { code: 'KeyJ' });
 
     expect(fired, 'A is still the left flipper').toEqual(['left']);
   });
@@ -399,7 +399,7 @@ describe('the back door’s characters', () => {
   test('a named key is not a character, and never enters the buffer', () => {
     const t = typing();
 
-    t.region.send('keydown', { code: 'KeyA', key: 'ArrowLeft' });
+    t.region.send('keydown', { code: 'KeyJ', key: 'ArrowLeft' });
     t.region.send('keydown', { code: 'ShiftLeft', key: 'Shift' });
 
     expect(t.typed).toEqual([]);
@@ -411,9 +411,9 @@ describe('the back door’s characters', () => {
     // all, and a player holding a letter is typing that letter.
     const t = typing();
 
-    t.region.send('keydown', { code: 'KeyA', key: 'a', repeat: true });
+    t.region.send('keydown', { code: 'KeyJ', key: 'j', repeat: true });
 
-    expect(t.typed).toEqual(['a']);
+    expect(t.typed).toEqual(['j']);
   });
 
   test('⚠️ and the accessibility key still fires — the cheat does not take the letter away', () => {

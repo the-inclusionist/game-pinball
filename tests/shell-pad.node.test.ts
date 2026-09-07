@@ -35,9 +35,28 @@ const NOTHING = {
 };
 
 describe('translating the engine’s actions into the cabinet', () => {
-  test('the directions are the flippers, which is how the Dev specified them', () => {
-    expect(cabinetFromPad({ ...NOTHING, left: true }).left).toBe(true);
-    expect(cabinetFromPad({ ...NOTHING, right: true }).right).toBe(true);
+  test('⚠️ the directions are NOT the flippers any more, which is how the Dev respecified them', () => {
+    /**
+     * "IMPORTANTE: botões esquerda e direita não devem mais mover as pás."
+     *
+     * This test used to assert the opposite, and the reason it did was good at the time: the Dev's
+     * first cabinet WAS a direction each way plus three buttons. The directions have a job now —
+     * "wasd ou xbox_direcional = movimento (pelos menus)" — and `padActions` emits `left`/`right` for
+     * the D-pad AND the analog stick, so leaving them bound would mean a player on a pad flipping
+     * with the same two controls they walk a menu with.
+     */
+    expect(cabinetFromPad({ ...NOTHING, left: true }).left, 'the D-pad still flips').toBe(false);
+    expect(cabinetFromPad({ ...NOTHING, right: true }).right, 'the D-pad still flips').toBe(false);
+  });
+
+  test('⚠️ and the shoulders and triggers are, which is where the paddles went', () => {
+    // "7, left shoulder = pá esquerda / Y, left trigger = pá esquerda / 8, right shoulder = pá
+    // direita / O, right trigger = pá direita." Four rails, two paddles, under the hands that hold
+    // the machine.
+    expect(cabinetFromPad({ ...NOTHING, leftShoulder: true }).left).toBe(true);
+    expect(cabinetFromPad({ ...NOTHING, leftTrigger: true }).left).toBe(true);
+    expect(cabinetFromPad({ ...NOTHING, rightShoulder: true }).right).toBe(true);
+    expect(cabinetFromPad({ ...NOTHING, rightTrigger: true }).right).toBe(true);
   });
 
   test('⚠️ and the buttons are the slots the Dev\u2019s own keys sit in', () => {
