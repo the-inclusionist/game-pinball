@@ -1550,6 +1550,8 @@ const pauseMenu = mountPauseMenu({
   doc: document,
   host: region,
   t: shell.t,
+  score: () => live.score.curScore,
+  bindings: () => bindings,
   onResume: () => { enterPhase('playing'); region.focus(); },
   /**
    * ⚠️ AND THE MENU STAYS SHUT BEHIND IT. `mountPauseMenu` hides itself before calling a handler so

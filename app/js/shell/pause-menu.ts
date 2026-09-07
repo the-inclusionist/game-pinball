@@ -31,7 +31,8 @@
 // global would be a menu nothing could open. That is how the palette shipped with a button that
 // reported the wrong choice, once.
 
-import { ownCabinetKeys } from './controls.js';
+import { ownCabinetKeys, type PinballAction } from './controls.js';
+import { controlLegend } from './control-legend.js';
 
 export const PAUSE_MENU_ID = 'pinball-pause';
 
@@ -78,6 +79,23 @@ export interface PauseMenuOptions {
    * wrong while playing, and the pause menu is what a player reaches from there.
    */
   readonly onControls: () => void;
+  /**
+   * The score, so the pause menu can show it.
+   *
+   * ⚠️ THE DEV ASKED FOR IT HERE: "pontuação também deve aparecer no menu de pausa." A function
+   * rather than a value: the menu is built once and opened many times, and a number captured at
+   * mount is the score of whatever game was running when the page loaded.
+   */
+  readonly score?: () => number;
+  /**
+   * The cabinet as the player has it, so the menu can list the keys.
+   *
+   * ⚠️ ALSO THE DEV'S: "os controles devem aparecer no menu de pausa, acessado via H ou ENTER." The
+   * selector already lists them for somebody who has not started yet; this is for the player who is
+   * mid-game and cannot remember which key launches. Live, for the same reason `shell/title-dom`'s
+   * is: the keys can be edited from this very menu.
+   */
+  readonly bindings?: () => Readonly<Record<PinballAction, readonly string[]>>;
   readonly onTables: () => void;
   readonly onTitle: () => void;
   readonly onQuit: () => void;
@@ -143,6 +161,57 @@ export function mountPauseMenu(o: PauseMenuOptions): PauseMenu {
     display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2cqh', width: '100%',
   });
 
+  /**
+   * ⚠️ TWO COLUMNS, BECAUSE THE HEIGHT WAS ALREADY SPENT. Seven entries leave about twenty-four
+   * pixels of the hundred and eighty, and the Dev asked for two more things on this screen — the
+   * score and the whole control legend, which is seven rows on its own. Down the page there is no
+   * room; across it there is: the entries take the left, the score and the keys the right.
+   *
+   * The screen is 320 wide and the entries were 64% of it, so this is the width that was already
+   * being thrown away.
+   */
+  const body = o.doc.createElement('div');
+  Object.assign(body.style, {
+    display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: '4%', width: '100%',
+  });
+
+  const aside = o.doc.createElement('div');
+  Object.assign(aside.style, {
+    display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '1cqh',
+    width: '46%', textAlign: 'left', fontSize: '3.6cqh', color: '#8a93a6',
+  });
+
+  /** The score, big enough to be the thing the eye lands on in this column. */
+  const scoreLine = o.doc.createElement('div');
+  scoreLine.setAttribute('data-pause', 'score');
+  Object.assign(scoreLine.style, { fontSize: '5.4cqh', color: '#e8ecf4' });
+  aside.appendChild(scoreLine);
+
+  const keyList = o.doc.createElement('div');
+  keyList.setAttribute('data-pause', 'controls');
+  Object.assign(keyList.style, { display: 'flex', flexDirection: 'column', width: '100%' });
+  aside.appendChild(keyList);
+
+  /** Redrawn on every open: the score moves while this is shut, and so can the keys. */
+  const refreshAside = (): void => {
+    scoreLine.textContent = String(o.score?.() ?? 0);
+    keyList.textContent = '';
+    for (const row of controlLegend(o.bindings?.())) {
+      const line = o.doc.createElement('div');
+      Object.assign(line.style, { display: 'flex', justifyContent: 'space-between', gap: '6%' });
+      const what = o.doc.createElement('span');
+      what.textContent = o.t(row.labelKey);
+      const keys = o.doc.createElement('span');
+      // Every key, not the first: two per flipper is accessibility, and showing one hides the point.
+      keys.textContent = row.keys.join(' · ');
+      Object.assign(keys.style, { color: '#e8ecf4', whiteSpace: 'nowrap' });
+      line.appendChild(what);
+      line.appendChild(keys);
+      keyList.appendChild(line);
+    }
+  };
+
   const heading = o.doc.createElement('div');
   /**
    * ⚠️ `heading` AND NOT `title`, BECAUSE THE ENTRIES GENERATE THEIR OWN KEYS. One of them is called
@@ -153,7 +222,7 @@ export function mountPauseMenu(o: PauseMenuOptions): PauseMenu {
    */
   heading.textContent = o.t('pinball.pause.heading');
   Object.assign(heading.style, { fontSize: '6cqh', margin: '0' });
-  column.appendChild(heading);
+
 
   const handlers: Readonly<Record<PauseEntry, () => void>> = {
     resume: o.onResume, colours: o.onColours, vision: o.onVision, controls: o.onControls,
@@ -185,7 +254,7 @@ export function mountPauseMenu(o: PauseMenuOptions): PauseMenu {
        * and `tests/pause-menu-cabinet` asks whether it SCROLLS rather than counting pixels, so it
        * would say so if that ever stopped being true.
        */
-      font: 'inherit', fontSize: '4.4cqh', padding: '0.9cqh 6%', width: '64%',
+      font: 'inherit', fontSize: '4.4cqh', padding: '0.9cqh 6%', width: '100%',
       background: '#1a1e26', color: '#e8ecf4', border: '1px solid #8a93a6', cursor: 'pointer',
     });
     button.addEventListener('click', () => choose(entry));
@@ -238,7 +307,12 @@ export function mountPauseMenu(o: PauseMenuOptions): PauseMenu {
     },
   });
 
-  root.appendChild(column);
+  // The heading stays across the top; the entries and the aside share the width beneath it.
+  root.appendChild(heading);
+  Object.assign(column.style, { width: '50%' });
+  body.appendChild(column);
+  body.appendChild(aside);
+  root.appendChild(body);
   o.host.appendChild(root);
 
   return {
@@ -259,6 +333,7 @@ export function mountPauseMenu(o: PauseMenuOptions): PauseMenu {
      */
     open(): void {
       if (root.style.display === 'flex') return;
+      refreshAside();
       root.style.display = 'flex';
       // The first entry, so a player who opened this by accident presses the same key twice and is back.
       moveTo(0);

@@ -31,7 +31,7 @@
 import { describe, test, expect, beforeAll } from 'vitest';
 import { userEvent } from 'vitest/browser';
 
-interface PinballDebug { phase: string }
+interface PinballDebug { phase: string; score: number }
 const debug = (): PinballDebug => (window as unknown as { __pinball: PinballDebug }).__pinball;
 
 const frames = async (n: number): Promise<void> => {
@@ -312,6 +312,36 @@ describe('⚠️ and the menu appears WITHOUT waiting for an animation frame', (
     }
 
     await userEvent.keyboard(key);
+    await frames(4);
+  });
+});
+
+describe('⚠️ and it shows the score and the keys, which the Dev asked for', () => {
+  /**
+   * "pontuação também deve aparecer no menu de pausa" and "os controles devem aparecer no menu de
+   * pausa, acessado via H ou ENTER."
+   *
+   * ⚠️ AND BOTH ARE READ LIVE, WHICH IS THE HALF A TEST HAS TO ASK ABOUT. The menu is built once and
+   * opened many times: a score captured at mount is the score of whatever game was running when the
+   * page loaded, and a key list captured at mount is the cabinet as it shipped — on a screen that can
+   * edit the cabinet two entries further down.
+   */
+  test('the score is the running one, and the keys are the ones in force', async () => {
+    await playing();
+    await userEvent.keyboard('{Enter}');
+    await frames(4);
+
+    const score = menu().querySelector('[data-pause="score"]')!.textContent!.trim();
+    const keys = menu().querySelector('[data-pause="controls"]')!.textContent!;
+
+    expect(Number(score), `the score reads "${score}"`).toBeGreaterThan(0);
+    expect(score, 'and it is the running score, not a placeholder')
+      .toBe(String(debug().score));
+    for (const key of ['A · J', 'D · K', 'U']) {
+      expect(keys, `${key} is missing from the pause menu`).toContain(key);
+    }
+
+    await userEvent.keyboard('{Enter}');
     await frames(4);
   });
 });
