@@ -149,6 +149,36 @@ function fromLstar(l: number): number {
  */
 const UNLIMITED = 2;
 
+/**
+ * ⚠️ WHAT THIS COSTS, MEASURED, because a per-pixel pass added to a composition deserves the same
+ * treatment `gfx/lighting` gives its own — and because this module's first version claimed to be
+ * affordable without anybody checking. Best of three runs, Node 24:
+ *
+ *                     pixels   build once   per composition   whole composition
+ *     slipstream       44835      2.29 ms         0.115 ms            1.09 ms
+ *     low-orbit        43005      2.73 ms         0.122 ms            1.75 ms
+ *     ion-storm        45750      2.45 ms         0.127 ms            1.73 ms
+ *     crater-run       47580      2.51 ms         0.118 ms            1.68 ms
+ *     long-climb       54900      2.93 ms         0.144 ms            2.13 ms
+ *     ring-belt        86400      3.85 ms         0.193 ms            2.47 ms
+ *
+ * ⚠️ THE BUILD IS THE EXPENSIVE HALF AND IT HAPPENS ONCE. Two to four milliseconds, at table load,
+ * cached per table per palette — a player switching to the CB-Safe palette pays it a second time and
+ * never again. It is expensive because it splats a thirteen-by-thirteen ramp from every painted pixel
+ * of every role, which is the price of taking the footprint from the renderer instead of guessing at
+ * it from geometry.
+ *
+ * ⚠️ AND THE PER-COMPOSITION HALF IS UNDER A FIFTH OF A MILLISECOND. `ion-storm` is the case that
+ * matters, because its flare moves and the picture is therefore rebuilt about forty times a second:
+ * 0.127 ms of that is five thousandths of a second per second, against the 1.34 ms `gfx/lighting`
+ * measured for three lit lamps on the same table. This is not where the composition's time goes.
+ *
+ * If it ever has to come down, the lever is named: the pass visits every pixel to compare against
+ * `UNLIMITED`, and the shadow touches roughly half a table. A list of the touched runs, built
+ * alongside the ceilings, would skip the rest — and it has not been paid for, because nothing yet
+ * needs it.
+ */
+
 /** One role's painted pixels, and the brightest a backdrop may be beside them. */
 export interface SurroundLayer {
   /** Non-zero wherever a component of this role paints. Length is `width * height`. */
