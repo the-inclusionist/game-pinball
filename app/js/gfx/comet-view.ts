@@ -100,6 +100,14 @@ const HALO_CEILING = surroundCeiling(
  */
 const TAIL_REACH = 2.6;
 const TAIL_STEPS = 4;
+/**
+ * How solid the head end of the tail is.
+ *
+ * ⚠️ 0.9 AND IT WAS 0.34, and the change is the Dev's "mais viva". The steps still fade — the far end
+ * is a fifth of this — so the streak reads as something being LEFT BEHIND rather than as a bar drawn
+ * behind the comet. What changed is where the fade starts.
+ */
+const TAIL_ALPHA = 0.9;
 
 /** Below this many pixels across, the digits are left out rather than drawn as mush. */
 const READABLE_DIAMETER = DIGIT_HEIGHT + 4;
@@ -134,9 +142,15 @@ function blend(fb: Framebuffer, index: number, color: number, alpha: number): vo
   );
 }
 
-/** A disc, clipped to `clip`, with the rim as its outermost ring and the light on its face. */
+/**
+ * A disc, clipped to `clip`.
+ *
+ * `fill` replaces the whole shape with one colour — which is what the TAIL is — and leaving it out
+ * draws the comet's own face: the rim as its outermost ring and the light on the lower half.
+ */
 function disc(
   fb: Framebuffer, cx: number, cy: number, radius: number, alpha: number, clip: Rect,
+  fill?: number,
 ): void {
   const outer = radius * radius;
   const inner = (radius - 1) * (radius - 1);
@@ -153,9 +167,9 @@ function disc(
       const d2 = dx * dx + dy * dy;
       if (d2 > outer) continue;
       // The rim is the outermost ring and stays whole: it is what the shape reads by.
-      const color = radius >= 3 && d2 > inner
+      const color = fill ?? (radius >= 3 && d2 > inner
         ? RIM
-        : (dy < -radius * 0.45 ? TOP : (dy > radius * 0.55 ? BOTTOM : BODY));
+        : (dy < -radius * 0.45 ? TOP : (dy > radius * 0.55 ? BOTTOM : BODY)));
       blend(fb, row + x, color, alpha);
     }
   }
@@ -247,7 +261,19 @@ export function drawComet(
     const along = (step / TAIL_STEPS) * TAIL_REACH * radius;
     const size = radius * (1 - 0.6 * (step / TAIL_STEPS));
     if (size < 1) continue;
-    disc(screen, cx, cy - along, size, comet.alpha * 0.34 * (1 - step / (TAIL_STEPS + 1)), into);
+    /**
+     * ⚠️ FILLED BLUE, AND BRIGHT. The Dev, after looking at the first one: "A cauda dos cometas precisa
+     * ser mais viva e completamente azul: preencha os círculos que compõem a cauda de azul." The first
+     * tail was drawn in the comet's own white face at a third of an alpha — a pale smudge that read as
+     * a rendering artefact rather than as motion, which is fair: white on a dark table at 0.34 is
+     * nearly nothing.
+     *
+     * ⚠️ AND IT IS THE RIM'S BLUE RATHER THAN A THIRD COLOUR. The comet is two colours and the tail is
+     * part of the comet; a blue chosen separately would be one more thing to keep in step with the
+     * contrast the rim already carries.
+     */
+    disc(screen, cx, cy - along, size, comet.alpha * TAIL_ALPHA * (1 - step / (TAIL_STEPS + 2)),
+      into, RIM);
   }
 
   halo(screen, cx, cy, radius, into);
