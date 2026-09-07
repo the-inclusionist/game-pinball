@@ -14,21 +14,38 @@
 // Installed here rather than by `table/original`, which is told to skip these groups — building the
 // plain wall as well would put a solid line across a gate the ball is supposed to go through.
 
-// ========================= THE LAUNCH LANE IS A DEAD END, AND THAT IS THE DESIGN =========================
-// Worth writing down because it looks exactly like a defect and I chased it as one for a night.
+// ========================= ⚠️ THE LAUNCH LANE IS *NOT* A DEAD END, AND THIS FILE SAID IT WAS =========================
+// Corrected 2026-09-07. What stood here was wrong, and it is left visible rather than deleted because
+// the way it was wrong is the useful part.
 //
-// A launched ball runs the lane to y = -6.89 and comes back down. The two walls that stop it converge:
-// `group-5`'s curve moves right as it climbs (face at x = -7.19 falling to -6.48) while `group-7`'s
-// left face stays at about -6.6, so the corridor closes at roughly y = -7.7. The ball cannot get out
-// of the top.
+// It said: "A launched ball runs the lane to y = -6.89 and comes back down... the corridor closes at
+// roughly y = -7.7. The ball cannot get out of the top... So the ball is MEANT to come back down...
+// Nothing here is broken." It argued the point with a real measurement — a 61% pull and a full hundred
+// stop at exactly the same height, which is the signature of a geometric stop rather than an energy one
+// — and that measurement was correct. The CONCLUSION drawn from it was not.
 //
-// ⚠️ AND LAUNCH POWER MAKES NO DIFFERENCE, which is what settles it. A 61% pull and a full hundred both
-// stop at exactly y = -6.89. A ball short of energy stops wherever its energy ran out; a ball stopped
-// by geometry stops at the same place every time.
+// ⚠️ THE DEV SAID SO, AND THE ARCHIVE'S OWN ARTWORK SETTLES IT: "O original não para no topo, a bola faz
+// uma curva se dirigindo à esquerda." Rendered from `game_resources/PINBALL.DAT` and looked at, the top
+// right of the 1995 playfield carries a CHANNEL — two parallel curved rails sweeping from the head of
+// the plunger lane up and over to the left, with gates across it. The ball is meant to ride it. It is
+// the most prominent object in that corner and it had never been looked at.
 //
-// So the ball is MEANT to come back down. The skill shot is scored on the way down — `s_trip1`, `s_trip2`
-// and `s_trip3` are crossed descending — and the ball enters the playfield at the bottom through
-// `s_onewy4`, which is where a real Space Cadet ball enters it too. Nothing here is broken.
+// ⚠️ SO THE BALL STOPPING IS A DEFECT IN THIS PORT, in how those groups are built, and the previous
+// note diagnosed it as intent after a night of chasing it. The measurement was right, the reading of it
+// was wrong, and "it stops in the same place whatever the power" is exactly as consistent with "we
+// built a wall across the channel" as with "the design closes here".
+//
+// The lesson is the one `CLAUDE.md` already states in another form — "distrust the claim you write
+// while writing the test" — and this is its cousin: a measurement that RULES OUT one explanation does
+// not establish another. Two candidates fitted the evidence and only one was considered.
+//
+// ⚠️ AND THE TABLE IS A TRAPEZIUM, WHICH IS THE SAME FACT SEEN FROM OUTSIDE. Measured on the rendered
+// playfield, both side walls lean 9.5° from vertical — dx/dy = 0.167, one pixel in six — and the ball's
+// own climb drifts left at exactly that ratio. The lane leans because the table leans; that is why the
+// ball moves left as it rises, and it is not the curve at the top.
+//
+// What is still owed: finding which of these groups closes the channel and why. This note is here so
+// the next person starts from "it is broken" rather than from "it is by design".
 //
 import { createOneway, type Oneway } from './oneway.js';
 import type { LineEdge } from '../physics/edges.js';
