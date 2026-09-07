@@ -181,3 +181,39 @@ describe('⚠️ and the vision correction the plan promised actually reaches th
       .not.toContain('cvd-fix');
   });
 });
+
+describe('⚠️ and it FITS, because the screen is 320x180 and nothing here may scroll', () => {
+  /**
+   * ⚠️ THE DEV REFUSED SCROLLING BY NAME once already: "Cores da mesa deveria estar no menu de pausa,
+   * não num rodapé que exige rolagem da tela." A pause menu that has to be scrolled is the same
+   * complaint one screen further in — and it is what happened, because entries were added to this
+   * list three times without anybody measuring the list.
+   *
+   * Found by screenshotting the menu at the real size and looking: the seventh entry was clipped by
+   * the bottom edge. Every test in this file passed, because they all ask about behaviour and a
+   * button that is off the screen still takes the focus and still fires.
+   *
+   * ⚠️ AND `scrollHeight > clientHeight` IS THE WHOLE QUESTION, which is why this is not a pixel
+   * count fitted to seven entries: it stays true when an eighth is added, and it is what "does not
+   * scroll" means.
+   */
+  test('every entry is inside the screen', async () => {
+    await playing();
+    await userEvent.keyboard('{Enter}');
+    await frames(4);
+
+    const root = menu();
+    expect(root.scrollHeight, `the menu is ${root.scrollHeight}px in a ${root.clientHeight}px screen`)
+      .toBeLessThanOrEqual(root.clientHeight);
+
+    const bottom = root.getBoundingClientRect().bottom;
+    const spilled = [...root.querySelectorAll('button')]
+      .filter((b) => b.getBoundingClientRect().bottom > bottom + 0.5)
+      .map((b) => b.textContent?.trim());
+
+    expect(spilled, 'these entries are past the bottom edge').toEqual([]);
+
+    await userEvent.keyboard('{Enter}');
+    await frames(4);
+  });
+});

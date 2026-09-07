@@ -107,8 +107,40 @@ export function mountPauseMenu(o: PauseMenuOptions): PauseMenu {
   Object.assign(root.style, {
     position: 'absolute', left: '0', top: '0', width: '100%', height: '100%',
     display: 'none', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-    gap: '3%', background: 'rgba(14, 16, 23, 0.92)', color: '#e8ecf4', textAlign: 'center',
-    containerType: 'inline-size', boxSizing: 'border-box', padding: '4%',
+    background: 'rgba(14, 16, 23, 0.92)', color: '#e8ecf4', textAlign: 'center',
+    /**
+     * ⚠️ `size` AND NOT `inline-size`, WHICH IS WHAT LETS THIS FIT. Container queries only give `cqh`
+     * when the container's own HEIGHT is queryable, and everything here was sized in `cqw` —
+     * fractions of the WIDTH — on a screen whose constraint is its height. Seven entries came to 194
+     * pixels in 180, and the seventh was simply clipped by the bottom edge.
+     *
+     * Found by screenshotting the menu at the real size and looking. Every behavioural test passed,
+     * because a button off the bottom of the screen still takes the focus and still fires.
+     *
+     * The Dev refused scrolling by name once already: "Cores da mesa deveria estar no menu de pausa,
+     * não num rodapé que exige rolagem da tela." A pause menu that has to be scrolled is the same
+     * complaint one screen further in.
+     *
+     * ⚠️ AND THE ROOT'S OWN `padding` IS NOT IN `cqh`, WHICH IS NOT AN INCONSISTENCY. `container-type`
+     * makes an element a container for its DESCENDANTS, not for itself: measured, `gap: 1cqh` on THIS
+     * element computed to 8.96px — resolved against some outer container at 896px — while `4.4cqh` on
+     * a button computed to 6.74px, correctly against this element's own 153px content box. That is
+     * why the list lives in a wrapper.
+     */
+    containerType: 'size', boxSizing: 'border-box', padding: '2% 4%',
+  });
+
+  /**
+   * The column the entries live in.
+   *
+   * ⚠️ A WRAPPER PURELY SO THAT `cqh` MEANS WHAT IT SAYS. See the root: an element is not its own
+   * container, so a gap written there is measured against something else entirely. Inside this, one
+   * `cqh` is one per cent of the menu's own height — which is what "size the list to the screen" has
+   * to mean, on a screen whose constraint is its height and not its width.
+   */
+  const column = o.doc.createElement('div');
+  Object.assign(column.style, {
+    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2cqh', width: '100%',
   });
 
   const heading = o.doc.createElement('div');
@@ -120,8 +152,8 @@ export function mountPauseMenu(o: PauseMenuOptions): PauseMenu {
    * that translate with `t = (key) => key` compare keys and would have agreed with the collision.
    */
   heading.textContent = o.t('pinball.pause.heading');
-  Object.assign(heading.style, { fontSize: '5cqw', marginBottom: '2%' });
-  root.appendChild(heading);
+  Object.assign(heading.style, { fontSize: '6cqh', margin: '0' });
+  column.appendChild(heading);
 
   const handlers: Readonly<Record<PauseEntry, () => void>> = {
     resume: o.onResume, colours: o.onColours, vision: o.onVision, controls: o.onControls,
@@ -147,7 +179,13 @@ export function mountPauseMenu(o: PauseMenuOptions): PauseMenu {
     const button = o.doc.createElement('button');
     button.textContent = o.t(`pinball.pause.${entry}`);
     Object.assign(button.style, {
-      font: 'inherit', fontSize: '3.4cqw', padding: '1.5% 6%', width: '60%',
+      /**
+       * ⚠️ IN `cqh`, SO THE LIST SIZES ITSELF TO THE SCREEN'S HEIGHT RATHER THAN ITS WIDTH. At these
+       * numbers seven entries leave room to spare, so an eighth fits without this being tuned again —
+       * and `tests/pause-menu-cabinet` asks whether it SCROLLS rather than counting pixels, so it
+       * would say so if that ever stopped being true.
+       */
+      font: 'inherit', fontSize: '4.4cqh', padding: '0.9cqh 6%', width: '64%',
       background: '#1a1e26', color: '#e8ecf4', border: '1px solid #8a93a6', cursor: 'pointer',
     });
     button.addEventListener('click', () => choose(entry));
@@ -157,7 +195,7 @@ export function mountPauseMenu(o: PauseMenuOptions): PauseMenu {
      * kept beside the focus is two answers to one question.
      */
     button.addEventListener('focus', () => { if (cursor !== buttons.indexOf(button)) moveTo(buttons.indexOf(button)); });
-    root.appendChild(button);
+    column.appendChild(button);
     buttons.push(button);
   }
 
@@ -200,6 +238,7 @@ export function mountPauseMenu(o: PauseMenuOptions): PauseMenu {
     },
   });
 
+  root.appendChild(column);
   o.host.appendChild(root);
 
   return {
