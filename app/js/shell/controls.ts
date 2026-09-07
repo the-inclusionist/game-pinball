@@ -139,7 +139,15 @@ export interface ControlOptions {
    * the action, and `DEFAULT_BINDINGS` is consulted only when it says nothing.
    */
   readonly actionOf?: (code: string) => string | null;
-  readonly bindings?: Readonly<Record<PinballAction, readonly string[]>>;
+  /**
+   * The cabinet, as the player has it now.
+   *
+   * ⚠️ A FUNCTION, NOT A VALUE, AND FOR THE REASON `shell/choice-dialog` gives for its own: the table
+   * CHANGES while the game is running, because the pause menu can now edit it. A table captured at
+   * bind time would leave a player who just remapped the launch key pressing the new one against a
+   * cabinet that is still listening for the old — with nothing anywhere reporting a problem.
+   */
+  readonly bindings?: () => Readonly<Record<PinballAction, readonly string[]>>;
   /**
    * ⚠️ THE BACK DOOR IS TYPED, AND A KEY CODE IS NOT A CHARACTER. `control/cheats` is fed one character
    * at a time — the original reads WM_CHAR — while every binding above is read off `event.code`, which
@@ -222,7 +230,8 @@ export function ownCabinetKeys(root: KeyTarget, owner: CabinetOwner): void {
 }
 
 export function bindPinballControls(o: ControlOptions): () => void {
-  const bindings = o.bindings ?? DEFAULT_BINDINGS;
+  const bindings = (): Readonly<Record<PinballAction, readonly string[]>> =>
+    o.bindings?.() ?? DEFAULT_BINDINGS;
 
   /**
    * ⚠️ DERIVED FROM THE TABLE, NOT WRITTEN OUT AGAIN. This was a third copy of the same names — beside
@@ -233,12 +242,13 @@ export function bindPinballControls(o: ControlOptions): () => void {
    * The order is the table's, which is the order this list always had, and `find` below still takes
    * the first match.
    */
-  const ACTIONS = Object.keys(bindings) as PinballAction[];
+  const ACTIONS = Object.keys(bindings()) as PinballAction[];
 
   const actionFor = (code: string): PinballAction | null => {
     const mapped = o.actionOf?.(code);
     if (mapped && (ACTIONS as readonly string[]).includes(mapped)) return mapped as PinballAction;
-    return ACTIONS.find((action) => bindings[action].includes(code)) ?? null;
+    const table = bindings();
+    return ACTIONS.find((action) => table[action].includes(code)) ?? null;
   };
 
   const onDown = (event: KeyLikeEvent): void => {

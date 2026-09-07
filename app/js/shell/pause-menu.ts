@@ -51,7 +51,7 @@ export const PAUSE_MENU_ID = 'pinball-pause';
  * Second, after Resume: it is the setting a player is most likely to have opened this menu for, and
  * the three that follow all end the game or the table.
  */
-export const PAUSE_ENTRIES = ['resume', 'colours', 'vision', 'tables', 'title', 'quit'] as const;
+export const PAUSE_ENTRIES = ['resume', 'colours', 'vision', 'controls', 'tables', 'title', 'quit'] as const;
 
 export type PauseEntry = typeof PAUSE_ENTRIES[number];
 
@@ -71,6 +71,13 @@ export interface PauseMenuOptions {
    * the Dev's photographs, which are not drawn from a palette at all. See `shell/vision`.
    */
   readonly onVision: () => void;
+  /**
+   * Opens the key-editing dialog — the last of the three the Dev named.
+   *
+   * ⚠️ IT IS HERE AND NOT IN A SETTINGS SCREEN OF ITS OWN, because a player finds out their keys are
+   * wrong while playing, and the pause menu is what a player reaches from there.
+   */
+  readonly onControls: () => void;
   readonly onTables: () => void;
   readonly onTitle: () => void;
   readonly onQuit: () => void;
@@ -117,7 +124,7 @@ export function mountPauseMenu(o: PauseMenuOptions): PauseMenu {
   root.appendChild(heading);
 
   const handlers: Readonly<Record<PauseEntry, () => void>> = {
-    resume: o.onResume, colours: o.onColours, vision: o.onVision,
+    resume: o.onResume, colours: o.onColours, vision: o.onVision, controls: o.onControls,
     tables: o.onTables, title: o.onTitle, quit: o.onQuit,
   };
 

@@ -38,6 +38,8 @@ import { mountChoiceDialog } from './shell/choice-dialog.js';
 import {
   readVision, writeVision, visionFilter, VISION_CHOICES, VISION_LABEL, VISION_DIALOG_ID,
 } from './shell/vision.js';
+import { readBindings, writeBindings, type BindingTable } from './shell/keymap.js';
+import { mountKeymapDialog } from './shell/keymap-dialog.js';
 import { titleScreen } from './shell/title.js';
 import { integerScale } from './shell/present.js';
 import { createPadReader, CABINET_OF_ENGINE_ACTION } from './shell/pad.js';
@@ -1011,7 +1013,16 @@ const pad = createPadReader({
   on: cabinet,
 });
 
+/**
+ * ⚠️ THE CABINET AS THE PLAYER LEFT IT, READ ONCE AND KEPT LIVE. `bindPinballControls` takes
+ * `bindings` and `shell/pad` derives the cabinet from the same table, so both read this one object —
+ * the seam was already there and nothing about how a key is read had to change. See `shell/bindings`
+ * for why this game keeps its own table rather than the engine's keyboard config.
+ */
+let bindings: BindingTable = readBindings(localStorage);
+
 const unbindControls = bindPinballControls({
+  bindings: () => bindings,
   /**
    * ⚠️ THE ENGINE'S REMAPPER, WHICH THIS SEAM WAS BUILT FOR AND NOTHING HAD EVER PASSED.
    *
@@ -1393,6 +1404,20 @@ function applyVision(choice: string): void {
   shell.engine.aplicarFiltroDeVisao(visionFilter(choice), 'mundo-e-menus');
 }
 
+const keymapDialog = mountKeymapDialog({
+  doc: document,
+  host: region,
+  overlays: shell.engine.overlays,
+  t: shell.t,
+  keys: window,
+  current: () => bindings,
+  onChange: (table) => {
+    bindings = table;
+    writeBindings(localStorage, table);
+  },
+  restoreFocus: () => pauseMenu.focusEntry('controls'),
+});
+
 const visionDialog = mountChoiceDialog<string>({
   id: VISION_DIALOG_ID,
   titleKey: 'pinball.vision.title',
@@ -1425,6 +1450,7 @@ const pauseMenu = mountPauseMenu({
    */
   onColours: () => { optionsDialog.open(); },
   onVision: () => { visionDialog.open(); },
+  onControls: () => { keymapDialog.open(); },
   onTables: () => { leaveGame(); screens.show('select'); title.refresh(); },
   onTitle: () => { leaveGame(); screens.show('title'); title.refresh(); },
   /**

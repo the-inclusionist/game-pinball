@@ -64,6 +64,7 @@ function harness() {
     onResume: () => done.push('resume'),
     onColours: () => done.push('colours'),
     onVision: () => done.push('vision'),
+    onControls: () => done.push('controls'),
     onTables: () => done.push('tables'),
     onTitle: () => done.push('title'),
     onQuit: () => done.push('quit'),
@@ -82,7 +83,7 @@ function harness() {
 }
 
 describe('what the menu offers', () => {
-  test('⚠️ six entries, and the Dev asked for five of them by name', () => {
+  test('⚠️ seven entries, and the Dev asked for six of them by name', () => {
     // "dar quit, voltar à tela inicial e escolher outras mesas" — plus resuming, which is what a pause
     // menu is for and which no list mentions because it is the obvious one.
     //
@@ -95,8 +96,10 @@ describe('what the menu offers', () => {
     // controle, modos de acessibilidade para visão etc." It is a SECOND entry rather than a tab of
     // `colours`, because the two answer different questions — `colours` changes which colours the
     // table is drawn in, `vision` changes what reaches the eye and leaves the artwork alone. See
-    // `shell/vision`, and note what is still missing from his list: editing the controls.
-    expect([...PAUSE_ENTRIES]).toEqual(['resume', 'colours', 'vision', 'tables', 'title', 'quit']);
+    // `shell/vision`. And `controls`, which is the last of that list — see `shell/bindings` for why
+    // the cabinet keeps a table of its own rather than using the engine's keyboard config.
+    expect([...PAUSE_ENTRIES])
+      .toEqual(['resume', 'colours', 'vision', 'controls', 'tables', 'title', 'quit']);
   });
 
   test('⚠️ and nothing outside this menu opens the palette any more', () => {
@@ -129,6 +132,7 @@ describe('what the menu offers', () => {
       host: host as never,
       t: (key) => createTranslator('en')(key),
       onVision: () => {},
+      onControls: () => {},
       onResume: () => {}, onColours: () => {}, onTables: () => {}, onTitle: () => {},
       onQuit: () => {},
     });
