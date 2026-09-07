@@ -151,7 +151,18 @@ consequences:
     - "Two contrast mechanisms coexist: ADR-0007's ceiling for lights, this record's surround for
        components. A reader has to know which one a number belongs to."
     - "⚠️ AND THE FLARE IS NOW CAPPED NEAR COMPONENTS, which ADR-0007 had exempted. Its peak is
-       darkened inside the six-pixel ring around anything standing on the table. The mechanic stays
-       visible across the other ninety per cent of its width, and the contrast holds where ADR-0007
-       knowingly gave it up — but that exception has been narrowed without being re-argued with the
-       Dev, and it is his to reverse."
+       darkened inside the six-pixel ring around anything standing on the table, and the contrast
+       therefore holds where ADR-0007 knowingly gave it up — but that exception has been narrowed
+       without being re-argued with the Dev, and it is his to reverse.
+
+       ERRATUM 2026-09-06, the same day: this consequence first said 'the mechanic stays visible
+       across the other NINETY PER CENT of its width'. That figure was an estimate written as though
+       it were a measurement, and it is wrong. Measured on `ion-storm` — the core row of the band, at
+       five positions down the table, counting the width still at half the flare's peak luminance or
+       better: 73% at y=40, 49% at y=80, 49% at y=120, 64% at y=160 and 37% at y=200. So the cost
+       runs from a quarter of the band's width to nearly two thirds of it, depending on how much
+       geometry the band is crossing, and the worst case is the bottom of the table where the
+       components are densest. The band is still legible as a band at 37% — it is a sweep with gaps in
+       it rather than a solid bar — but a third surviving is a different fact from nine tenths, and
+       the Dev is deciding on the real number rather than on mine. Corrected in place under ADR-0057
+       (engine), which allows an erratum and nothing else."
