@@ -24,6 +24,7 @@ import fontUrl from '../../assets/fonts/press-start-2p.woff2';
 import { TITLE_LINES, TITLE_SUBTITLE, TITLE_BYLINE, type TitleScreen } from './title.js';
 import { readTable, EMPTY_SCORE, type HighScoreStore } from '../control/high-score.js';
 import { controlLegend } from './control-legend.js';
+import { backdropUrl } from '../gfx/backdrop.js';
 import type { PinballAction } from './controls.js';
 
 /** The same fallback the HUD reasons its way to: no download, no wait, no blank screen. */
@@ -81,7 +82,7 @@ export function mountTitle(o: TitleDomOptions): TitleDom {
   Object.assign(root.style, {
     position: 'absolute', left: '0', top: '0', width: '100%', height: '100%',
     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-    gap: '4%', background: SURFACE, color: INK, fontFamily: FACE, textAlign: 'center',
+    gap: '4cqw', background: SURFACE, color: INK, fontFamily: FACE, textAlign: 'center',
     containerType: 'inline-size',
     // ⚠️ THE SCREEN IS 320x180 AND THIS MAY NOT MAKE IT TALLER. Without this the buttons pushed
     // `#game-region` down the page and the title sat half outside the canvas it is supposed to cover.
@@ -151,13 +152,29 @@ export function mountTitle(o: TitleDomOptions): TitleDom {
     justifyContent: 'center', width: '96%',
   });
 
+  /**
+   * ⚠️ THE GAPS ARE LENGTHS AND NOT PER-CENT, AND THAT IS A BUG FIX RATHER THAN A TIDY-UP.
+   *
+   * A percentage ROW gap resolves against the container's own height — and this container's height
+   * comes from its content, which is a cycle. CSS breaks it by treating the gap as ZERO while it works
+   * out how tall the content is, and only then resolving the per-cent against the answer. So the six
+   * gaps were free: they cost nothing in the sizing pass and 9.5 pixels each afterwards.
+   *
+   * Measured, the moment the thumbnails made it matter: the column asked for 279 pixels, laid out
+   * 329, and the "Voltar" link finished 10 pixels below the bottom of the game. `tests/screens-fit`
+   * is what caught it — the layout had been living on the discrepancy since the two columns were
+   * written, with just enough slack that nothing showed.
+   *
+   * `cqw` is a length against the game's own width, so it counts in the sizing pass and still scales
+   * with the screen, which is the property the per-cent was there for.
+   */
   const chooseColumn = o.doc.createElement('div');
   Object.assign(chooseColumn.style, {
-    display: 'flex', flexDirection: 'column', gap: '3%', alignItems: 'stretch', flex: '1 1 0',
+    display: 'flex', flexDirection: 'column', gap: '1.5cqw', alignItems: 'stretch', flex: '1 1 0',
   });
   const readColumn = o.doc.createElement('div');
   Object.assign(readColumn.style, {
-    display: 'flex', flexDirection: 'column', gap: '3%', alignItems: 'stretch', flex: '1 1 0',
+    display: 'flex', flexDirection: 'column', gap: '1.5cqw', alignItems: 'stretch', flex: '1 1 0',
     textAlign: 'left',
   });
   // `appendChild` and not `append`: the node fakes implement the one the rest of this file uses, and a
@@ -167,12 +184,55 @@ export function mountTitle(o: TitleDomOptions): TitleDom {
 
   for (const table of o.screen.tables) {
     const button = o.doc.createElement('button');
-    button.textContent = table;
     button.setAttribute('data-table', table);
+    /**
+     * ⚠️ A ROW OF PICTURE-THEN-NAME, asked for by the Dev: "eu gostaria de um thumbnail para cada
+     * mesa, e não somente os nomes." — "e não somente", so the name stays and the picture joins it.
+     * Six dark rectangles with nothing written under them is not something a player can choose from.
+     *
+     * ⚠️ AND THE VERTICAL PADDING SHRANK TO PAY FOR IT. The picture is now what sets the row's height,
+     * so the 1.5% that used to give the text some air is 0.6%: six rows that each grew by the whole
+     * height of a thumbnail would have pushed the back link off the bottom of a 180-pixel screen.
+     * `tests/screens-fit` is what says whether that arithmetic came out.
+     */
     Object.assign(button.style, {
-      font: 'inherit', fontSize: '3cqw', padding: '1.5% 3%', width: '100%',
+      font: 'inherit', fontSize: '3cqw', padding: '0.6% 3%', width: '100%',
       background: '#1a1e26', color: INK, border: `1px solid ${DIM}`, cursor: 'pointer',
+      display: 'flex', alignItems: 'center', gap: '4%', textAlign: 'left',
     });
+
+    const url = backdropUrl(table);
+    if (url !== undefined) {
+      const thumb = o.doc.createElement('img');
+      thumb.src = url;
+      /**
+       * ⚠️ EMPTY `alt`, WHICH IS A DECISION AND NOT AN OMISSION. The button's accessible name is the
+       * table's name, which is in the span beside this and is the thing a listener needs. An `alt`
+       * here would put a second name on the same control and read it twice; describing the picture
+       * instead ("a dark playfield with three wells") is prose no one wrote and no one maintains.
+       * The picture is what a SIGHTED player uses to tell the rows apart, and the row is already
+       * labelled for everyone else.
+       */
+      thumb.alt = '';
+      /**
+       * ⚠️ A SQUARE BOX WITH `contain`, NOT A FIXED HEIGHT WITH A FREE WIDTH. Five of the six
+       * playfields are portrait and `ring-belt` is 360x240 landscape; letting each picture take its
+       * natural width would give the column six different indents and the names would not line up.
+       * Boxed, the art letterboxes inside and every name starts in the same place.
+       *
+       * ⚠️ AND `pixelated`, for the reason the canvas is: this is pixel art being shown smaller than
+       * it was drawn, and smoothing it is the one thing that turns it into a smudge.
+       */
+      Object.assign(thumb.style, {
+        width: '5cqw', height: '5cqw', objectFit: 'contain', imageRendering: 'pixelated',
+        flex: '0 0 auto',
+      });
+      button.appendChild(thumb);
+    }
+
+    const label = o.doc.createElement('span');
+    label.textContent = table;
+    button.appendChild(label);
     button.addEventListener('click', () => {
       o.screen.choose(table);
       refresh();

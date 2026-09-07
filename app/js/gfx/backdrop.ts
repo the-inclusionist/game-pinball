@@ -35,6 +35,23 @@ const URLS: Readonly<Record<string, string>> = Object.fromEntries(
   ).map(([path, url]) => [path.replace(/^.*\/(.+)\.png$/, '$1'), url as string]),
 );
 
+/**
+ * Where a table's own picture lives, or `undefined` when it has none.
+ *
+ * ⚠️ EXPORTED SO THE SELECTOR SHOWS THE SAME FILE THE GAME WILL COMPOSE. The Dev asked for a
+ * thumbnail per table, and the honest thumbnail of a table is the picture the player is about to be
+ * looking at. Drawing a separate icon, or rendering the geometry into one, would be a second
+ * depiction of the same thing to keep in step with the first — and the day the two disagreed, the
+ * selector would be promising a table the game does not open.
+ *
+ * ⚠️ AND THE MAP IS NOT EXPORTED, only this lookup. A table with no art answers `undefined` here
+ * exactly as it does inside `loadBackdrop`, so the caller has the one branch it already needed and
+ * nothing can iterate the pictures as if they were the catalogue — `table/catalog` is the catalogue.
+ */
+export function backdropUrl(tableName: string): string | undefined {
+  return URLS[tableName];
+}
+
 export interface BackdropSize {
   readonly width: number;
   readonly height: number;
