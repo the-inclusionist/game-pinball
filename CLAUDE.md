@@ -23,7 +23,9 @@ session got bigger. The rule now lives here so the next file does not have to re
 
 The engine of *3D Pinball for Windows — Space Cadet*, ported from the
 [k4zmu2a decompilation](https://github.com/k4zmu2a/SpaceCadetPinball) (MIT) to TypeScript, running as a
-consumer of the Inclusionist accessibility engine (`SP-the-inclusionist-tracer`, AGPL-3.0-or-later).
+consumer of the Inclusionist accessibility engine
+([`@the-inclusionist/engine`](https://www.npmjs.com/package/@the-inclusionist/engine),
+AGPL-3.0-or-later), installed **from the registry** — not from the path it is developed at.
 
 Code is **AGPL-3.0-or-later**. No Microsoft asset is ever committed: `game_resources/` is gitignored and
 populated locally by `npm run data:extract`.
