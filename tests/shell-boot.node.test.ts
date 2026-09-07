@@ -185,13 +185,21 @@ describe('the camera on a table wider than the window', () => {
     expect(source, 'a finished game reaches the board').toMatch(/if \(gameOver\) highScores\.offer\(/);
     // ⚠️ AND ON THE GAME, NOT ON EVERY BALL. A board that recorded each lost ball would hold three
     // entries per game and mean nothing.
-    // ⚠️ THREE NOW, AND ALL THREE ARE THE END OF A GAME. The drain offers when the last ball is lost;
-    // the pause menu's QUIT offers because ending a game deliberately is still ending it — that is the
-    // whole distinction between Quit and "back to the title", which abandons the game instead; and
-    // WINNING the comet drill offers, because "O jogador ganha o jogo ao completar 20 pontos de missão"
-    // is the game ending in the one way that is not a failure. What this gate refuses is an offer per
-    // BALL, which would put three entries on the board per game.
-    expect(source.match(/highScores\.offer\(/g) ?? [], 'offered at the three ends of a game').toHaveLength(3);
+    /**
+     * ⚠️ TWICE, AND THE SECOND ONE IS A WIRE RATHER THAN A SITE. A game ends three ways — the last ball
+     * drains, the player chooses "Encerrar partida", or the comet drill reaches twenty points — and the
+     * last two now go through `shell/end-of-game`, which is a function a test can call and watch.
+     * `tests/shell-end-of-game` is that test; this was the only thing looking at those lines before.
+     *
+     * So `highScores.offer(` appears at the DRAIN, which stays on the table with "Fim de jogo" in the
+     * corner, and once inside the `endOfGame` wiring. What this still refuses is an offer per BALL,
+     * which would put three entries on the board per game.
+     */
+    expect(source.match(/highScores\.offer\(/g) ?? [], 'offered at the drain and through the wire')
+      .toHaveLength(2);
+    expect(source.match(/endGame\(endOfGame/g) ?? [],
+      'the deliberate ends of a game — Quit and the won drill — both go through one function')
+      .toHaveLength(2);
   });
 
   test('⚠️ a lit lamp reaches the PICTURE, not only the control layer', () => {

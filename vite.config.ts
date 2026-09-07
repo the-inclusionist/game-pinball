@@ -76,11 +76,35 @@ export default defineConfig({
      * is what makes an intermittent failure a reproducible one.
      */
     sequence: { shuffle: { files: true, tests: true } },
+    /**
+     * ⚠️ THE TWO PROJECTS RUN ONE AFTER THE OTHER, AND THAT IS A FLAKE FIX RATHER THAN HOUSEKEEPING.
+     *
+     * By default Vitest starts every project at once. The node project spawns a worker per core and
+     * the browser project drives two real engines, so the machine is asked for about twice what it
+     * has — and the half that suffers is the browser, because a `userEvent` click is a round trip to a
+     * driver that is being starved. Reproduced on purpose by running a second `vitest run --project
+     * node` beside the suite: `shell-high-score-dialog` failed after 20.8 SECONDS on a locator whose
+     * budget is five, with the element resolved and visible the whole time.
+     *
+     * Five tests were seen failing that way across a day — `perf-frame-budget`, `table-secret`,
+     * `audio-midi-end-to-end`, `licence-note` and `shell-keymap-dialog` — and every one of them passed
+     * alone and passed at the same seed when only its own project ran. Not one was an order
+     * dependence, which is what the shuffle above is for and which stays exactly as it was.
+     *
+     * ⚠️ AND THE ALTERNATIVE WAS WORSE. Raising the timeouts would have turned "the machine was busy"
+     * into "the machine was busy for longer", and it would have raised them on the assertions where
+     * time IS the subject — `perf-frame-budget` measures a frame against sixteen milliseconds, and a
+     * budget that grows to fit whatever the machine is doing is not a budget.
+     *
+     * `groupOrder` is Vitest's own answer: projects sharing a number run together, and a lower number
+     * runs first. Node first because it is the larger half and needs no display.
+     */
     projects: [
       {
         test: {
           name: 'node',
           environment: 'node',
+          sequence: { groupOrder: 0 },
           include: ['../tests/**/*.node.test.ts'], // relative to `root` (app/): tinyglobby's glob wants forward slashes, and join() returns backslashes on Windows
         },
       },
@@ -89,6 +113,23 @@ export default defineConfig({
         resolve: { alias: PIPER_STUB },
         test: {
           name: 'browser',
+          // ⚠️ AFTER THE NODE PROJECT — see `groupOrder` above. Two real engines cannot share a machine
+          // with a worker per core and still answer a click inside five seconds.
+          sequence: { groupOrder: 1 },
+          /**
+           * ⚠️ AND FEWER PAGES AT ONCE, WHICH IS THE OTHER HALF OF THE SAME PROBLEM. Running after the
+           * node project stops the two halves fighting; this stops the browser project fighting
+           * ITSELF. By default Vitest opens about a worker per core, and every one of them here is a
+           * real browser page — TWICE, because the matrix is Chromium and Firefox. A `userEvent` click
+           * is a round trip to a driver, and a starved driver answers it late or not at all: measured
+           * at 20.8 seconds against a five-second budget, with the element resolved and visible the
+           * whole time.
+           *
+           * The number is not tuning for this machine. It is "as many pages as there are engines",
+           * which is the least that keeps both engines busy and the most that cannot oversubscribe by
+           * construction.
+           */
+          maxWorkers: 2,
           include: ['../tests/**/*.browser.test.ts'],
           browser: {
             enabled: true,

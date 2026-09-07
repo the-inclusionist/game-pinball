@@ -28,7 +28,7 @@
 import { describe, test, expect } from 'vitest';
 import {
   cometMission, MAX_COMETS, COMET_LIFETIME, COMET_FADE, COMET_BURST, COMET_RADIUS,
-  FALL_SPEED, WINNING_POINTS, MISSION_NUMBERS, type CometSky,
+  FALL_SPEED, WINNING_POINTS, MISSION_NUMBERS, reportOf, type CometSky,
 } from '../app/js/control/comet-mission.js';
 
 const SKY: CometSky = { left: 10, right: 173, top: 0, bottom: 235 };
@@ -248,5 +248,72 @@ describe('the same seed is the same run', () => {
       return mission.comets.map((c) => `${c.value}@${c.x.toFixed(2)},${c.y.toFixed(2)}`).join('|');
     };
     expect(shape()).toBe(shape());
+  });
+});
+
+/**
+ * ⚠️ WHAT A STRIKE CAUSES, WHICH USED TO BE FOUR LINES INSIDE `main.ts` AND SO BEYOND EVERY GATE HERE.
+ *
+ * `main.ts` reaches for a document on its first line, so a node test cannot import it — which meant
+ * "which sentence, with which numbers, and does this end the game" was checked by nothing at all. The
+ * decision moved here; what is left in `main.ts` is an adapter that says the words out loud.
+ */
+describe('what a strike is reported as', () => {
+  const strikeOn = (want: boolean, number: number) => {
+    const mission = cometMission({ number, random: dice([0.5, 0.1, 0.9, 0.3]) });
+    for (let i = 0; i < 60 * 20; i++) {
+      mission.advance(1 / 60, SKY);
+      const found = mission.comets.find((c) => c.state === 'falling' && c.multiple === want);
+      if (found) return { mission, hit: mission.strike(found.x, found.y, 3)! };
+    }
+    throw new Error('no comet of that kind appeared');
+  };
+
+  test('a right answer names the multiplication and the running total', () => {
+    const { hit } = strikeOn(true, 6);
+
+    const report = reportOf(hit, 6);
+
+    expect(report.key).toBe('pinball.comets.hit');
+    expect(report.params['times'], 'the mission number is not in the sentence').toBe(6);
+    expect(report.params['value'], 'the comet number is not in the sentence').toBe(hit.comet.value);
+    expect(report.params['value']! % 6, 'a right answer named a number that is not a multiple').toBe(0);
+    expect(report.params['have']).toBe(1);
+    expect(report.params['need']).toBe(WINNING_POINTS);
+    expect(report.ended, 'one point ended the game').toBe(false);
+  });
+
+  test('a wrong answer says so, with the number that was wrong', () => {
+    const { hit } = strikeOn(false, 4);
+
+    const report = reportOf(hit, 4);
+
+    expect(report.key).toBe('pinball.comets.miss');
+    expect(report.params['value']! % 4, 'a wrong answer named a multiple').not.toBe(0);
+    expect(report.ended).toBe(false);
+  });
+
+  test('⚠️ and the twentieth point ends the game, which is the line nothing could reach', () => {
+    // The TRIGGER half of the win. The REACTION half — offer the board, stop the game, show the title
+    // — is `tests/shell-end-of-game`. Between them the path is covered; neither covers it alone.
+    const mission = cometMission({ number: 2, random: dice([0.5, 0.2, 0.8]) });
+    const ended: boolean[] = [];
+    for (let point = 0; point < WINNING_POINTS; point++) {
+      for (let f = 0; f < 60 * 20; f++) {
+        mission.advance(1 / 60, SKY);
+        const good = mission.comets.find((c) => c.state === 'falling' && c.multiple);
+        if (!good) continue;
+        const hit = mission.strike(good.x, good.y, 3);
+        if (hit?.scored) {
+          ended.push(reportOf(hit, 2).ended);
+          break;
+        }
+      }
+    }
+
+    expect(ended, 'twenty points could not be paid').toHaveLength(WINNING_POINTS);
+    expect(ended.slice(0, -1).some(Boolean),
+      `the game ended after ${ended.indexOf(true) + 1} points instead of ${WINNING_POINTS}`).toBe(false);
+    expect(ended[ended.length - 1], 'twenty points and the game did not end').toBe(true);
   });
 });

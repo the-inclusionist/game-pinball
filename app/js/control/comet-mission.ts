@@ -103,6 +103,43 @@ export interface CometStrike {
   readonly points: number;
 }
 
+/**
+ * What one strike should cause: the sentence owed to a player who cannot see it, and whether that was
+ * the twentieth point.
+ *
+ * ⚠️ A DECISION, SO IT LIVES WHERE DECISIONS CAN BE CHECKED. This used to be four lines inside
+ * `main.ts` — pick a key, fill it in, and then end the game if the total had arrived. `main.ts` cannot
+ * be imported by a node test (it reaches for a document and a canvas on its first line), so those four
+ * lines were beyond every gate in the repository. The rule this module's header already states applies
+ * to them: everything worth arguing about is a rule, and a rule inside a frame loop is a rule nothing
+ * can check.
+ */
+export interface CometReport {
+  /** The dictionary key for what to say. */
+  readonly key: string;
+  /** Its parameters, already filled in. */
+  readonly params: Readonly<Record<string, number>>;
+  /** True when this strike was the winning one, so the game is over. */
+  readonly ended: boolean;
+}
+
+/**
+ * ⚠️ IT NAMES THE ARITHMETIC RATHER THAN THE OUTCOME. "24 is a multiple of 6" teaches the thing the
+ * drill is for; "right!" only says what happened. The running total goes with it, because the point of
+ * a total is knowing where you are without having to ask.
+ */
+export function reportOf(strike: CometStrike, times: number): CometReport {
+  return {
+    key: strike.scored ? 'pinball.comets.hit' : 'pinball.comets.miss',
+    params: {
+      value: strike.comet.value, times, have: strike.points, need: WINNING_POINTS,
+    },
+    // ⚠️ ">=" AND NOT "===". A power-up that paid two points at once would step over an equality and
+    // leave the game running past its own ending, with the corner reading 21 of 20.
+    ended: strike.points >= WINNING_POINTS,
+  };
+}
+
 export interface CometMission {
   readonly number: number;
   readonly points: number;

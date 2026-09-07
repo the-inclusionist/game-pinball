@@ -42,9 +42,10 @@ import { advanceFrame } from './physics/step.js';
 import { createLaneProgress } from './table/lane-progress.js';
 import { openSecrets } from './table/secret.js';
 import { loadBackdrop } from './gfx/backdrop.js';
-import { cometMission, WINNING_POINTS, type CometMission, type CometSky, type CometStrike }
+import { cometMission, reportOf, WINNING_POINTS, type CometMission, type CometSky, type CometStrike }
   from './control/comet-mission.js';
 import { drawComet } from './gfx/comet-view.js';
+import { endGame, type EndOfGameOptions } from './shell/end-of-game.js';
 import { bindPinballControls } from './shell/controls.js';
 import {
   readPalette, writePalette, nextPalette, isCbSafe, PALETTE_LABEL, PALETTE_CHOICES,
@@ -355,6 +356,33 @@ function cometSky(): CometSky {
 }
 
 /**
+ * The four things every deliberate end of a game does, wired once.
+ *
+ * ⚠️ ONE OBJECT AND NOT THREE COPIES, and the reason is that the third copy was untested. A game ends
+ * three ways — the last ball drains, the player chooses "Encerrar partida", or the comet drill reaches
+ * twenty — and the third was written out here where nothing could drive it. `shell/end-of-game` carries
+ * the sequence and `tests/shell-end-of-game` calls it; what is left at each site is one line naming it.
+ *
+ * The drained last ball is NOT one of these. It offers the board and stays on the table: the game is
+ * over and the player is still looking at it, with "Fim de jogo" in the corner. That is a different
+ * ending and forcing it through here would mean sending them to the title screen mid-drain.
+ */
+const endOfGame: EndOfGameOptions = {
+  offer: (score) => highScores.offer(score),
+  leave: () => leaveGame(),
+  toTitle: () => { screens.show('title'); title.refresh(); },
+  /**
+   * ⚠️ `#sr-alert` AND NOT `#sr-status`. The end of a game is the one thing on this screen that
+   * interrupts: `aria-live="assertive"` is what says so, and a polite announcement would queue behind
+   * whatever the last comet or the last bumper had to say.
+   */
+  announce: (words) => {
+    const alert = document.getElementById('sr-alert');
+    if (alert) alert.textContent = words;
+  },
+};
+
+/**
  * What a comet strike says, and to whom.
  *
  * ⚠️ THE LIVE REGION AND NOT THE HINT BLOCK, which is the split `shell/hud-dom` already argues. A
@@ -362,40 +390,23 @@ function cometSky(): CometSky {
  * in words would be the screen repeating itself. A player who cannot see either needs the sentence, and
  * needs it as an EVENT, which is what `#sr-status` is.
  *
- * ⚠️ AND IT NAMES THE ARITHMETIC RATHER THAN THE OUTCOME. "24 é múltiplo de 6" teaches the thing the
- * drill is for; "certo!" only says what happened. The running total goes with it because the point of
- * a total is knowing where you are without asking.
+ * ⚠️ AND THE DECISION IS NOT HERE. Which sentence, with which numbers, and whether this was the
+ * twentieth point are `control/comet-mission`'s `reportOf` — because `main.ts` cannot be imported by a
+ * node test and four lines of judgement written here would be four lines nothing checks. This function
+ * is the adapter: it says the words out loud and ends the game when it is told to.
  */
 function reportComet(struck: CometStrike): void {
   const drill = comets;
   if (!drill) return;
+  const report = reportOf(struck, drill.number);
   const status = document.getElementById('sr-status');
-  if (status) {
-    status.textContent = shell.t(struck.scored ? 'pinball.comets.hit' : 'pinball.comets.miss', {
-      value: struck.comet.value, times: drill.number, have: struck.points, need: WINNING_POINTS,
-    });
-  }
-  if (drill.won) winTheDrill(drill.number);
-}
+  if (status) status.textContent = shell.t(report.key, report.params);
+  if (!report.ended) return;
 
-/**
- * ⚠️ "O jogador ganha o jogo ao completar 20 pontos de missão." — so the GAME ends, not just the drill.
- *
- * It ends the way Quit does and for the same reason: the score is final, so the board is offered if it
- * places, and the player is handed back to the title rather than left on a table that has nothing more
- * to ask of them. Abandoning it silently — leaving the comets falling over a game already won — would
- * be the win the Dev specified having no consequence at all.
- *
- * ⚠️ THROUGH `#sr-alert` AND NOT `#sr-status`. Winning is the one thing on this screen that interrupts:
- * `aria-live="assertive"` is what says so, and a polite announcement would queue behind the last comet.
- */
-function winTheDrill(times: number): void {
-  const alert = document.getElementById('sr-alert');
-  if (alert) alert.textContent = shell.t('pinball.comets.won', { need: WINNING_POINTS, times });
-  highScores.offer(live.score.curScore);
-  leaveGame();
-  screens.show('title');
-  title.refresh();
+  // ⚠️ "O jogador ganha o jogo ao completar 20 pontos de missão." — so the GAME ends, not just the
+  // drill. It ends the way Quit does, because the score is final and the board is owed it.
+  endGame(endOfGame, live.score.curScore,
+    shell.t('pinball.comets.won', { need: WINNING_POINTS, times: drill.number }));
 }
 
 const authoredTable = toLiveTable(authored, () => state);
@@ -1741,12 +1752,7 @@ const pauseMenu = mountPauseMenu({
    * not one entry: a page cannot close its own window, so Quit means "I am done" — the score is final
    * and the board is offered if it places. Leaving by the other two abandons the game instead.
    */
-  onQuit: () => {
-    highScores.offer(live.score.curScore);
-    leaveGame();
-    screens.show('title');
-    title.refresh();
-  },
+  onQuit: () => endGame(endOfGame, live.score.curScore),
 });
 
 

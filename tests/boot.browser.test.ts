@@ -219,6 +219,20 @@ describe('⚠️ the running mission is on screen, not only in the declaration',
     debug().setPhase('title');
 
     await userEvent.keyboard('u');
+    /**
+     * ⚠️ AND THEN FRAMES ARE WAITED FOR, BECAUSE THE HINT REACHES THE DOM FROM THE FRAME LOOP.
+     *
+     * `launch` sets the hint in a variable; `hud.update` is what puts it in the element, and that runs
+     * once per animation frame. Pressing the key and reading the element in the same turn is a race
+     * that `userEvent` happened to win on Chromium and lost on Firefox — found by the shuffle, at
+     * `--sequence.seed=1788783516370`, where this test ran FIRST and so had no earlier test's frames
+     * to inherit. Reproduced in isolation in 238ms, so it is an ordering fault and not the machine
+     * being busy.
+     *
+     * The wait is the correction rather than the assertion, because what the test claims is true: the
+     * hint does arrive. It arrives on a frame.
+     */
+    for (let i = 0; i < 6; i++) await new Promise((r) => requestAnimationFrame(() => r(null)));
 
     // `low-orbit`'s first mission is the bumper nest. What matters is that SOMETHING describing it is
     // there — asserting the sentence would be asserting the i18n file, which has its own gate.
