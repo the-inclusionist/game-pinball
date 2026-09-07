@@ -252,8 +252,16 @@ describe('⚠️ the drain is the one component that works by NOT being hit', ()
     ball.direction = { x: 0, y: -1 };
     ball.speed = 260;
 
+    /**
+     * ⚠️ THREE THOUSAND FRAMES, AND IT WAS NINE HUNDRED — a budget fitted to the geometry this table
+     * had before the Dev lengthened the paddles. "uma bolinha não consiga passar por elas caso elas
+     * estejam perfeitamente alinhadas na horizontal" closes the middle, so a ball that used to fall
+     * out of the play in fifteen seconds now rattles above the paddles for longer before it finds an
+     * outlane. That is the change working, not a ball simulated forever — which is the claim here, and
+     * fifty seconds is still a bound rather than a wait.
+     */
     let drained: string | null = null;
-    for (let i = 0; i < 900 && !drained; i++) {
+    for (let i = 0; i < 3000 && !drained; i++) {
       advanceFrame([ball], physics.context, FRAME_SECONDS);
       drained = drainedBy(LOW_ORBIT, ball);
     }

@@ -87,16 +87,18 @@ export const NARROW_TOWER: AuthoredTable = {
       bounds: { x: 90, y: 340, width: 26, height: 50 },
       collision: [{ kind: 'line', from: { x: 90, y: 390 }, to: { x: 116, y: 340 } }] },
 
+    // ⚠️ LENGTHENED WITH THE REST OF THE CATALOGUE — see `wide-arc` for the arithmetic. Pivots
+    // unmoved at 20 and 90, a reach of 33 of the 35 to the middle, leaving 4 between the raised tips.
     { name: 'flipper.left', kind: 'flipper', role: 'structure',
-      bounds: { x: 20, y: 390, width: 24, height: 7 },
+      bounds: { x: 60.6, y: 390, width: 29.4, height: 14.99 },
       flipper: {
-        pivot: { x: 20, y: 390 }, tipAtRest: { x: 44, y: 397 }, sweepDegrees: -55,
+        pivot: { x: 20, y: 390 }, tipAtRest: { x: 49.4, y: 404.99 }, sweepDegrees: -55,
         baseRadius: 3, tipRadius: 2, extendTime: 0.08, retractTime: 0.16,
       } },
     { name: 'flipper.right', kind: 'flipper', role: 'structure',
-      bounds: { x: 66, y: 390, width: 24, height: 7 },
+      bounds: { x: 58.32, y: 390, width: 31.68, height: 9.24 },
       flipper: {
-        pivot: { x: 90, y: 390 }, tipAtRest: { x: 66, y: 397 }, sweepDegrees: 55,
+        pivot: { x: 90, y: 390 }, tipAtRest: { x: 60.6, y: 404.99 }, sweepDegrees: 55,
         baseRadius: 3, tipRadius: 2, extendTime: 0.08, retractTime: 0.16,
       } },
 

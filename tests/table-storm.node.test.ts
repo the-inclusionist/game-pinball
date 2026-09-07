@@ -193,33 +193,46 @@ describe('⚠️ the flare in a real table', () => {
  * lamps, the gamepad and the mission text each survived a full suite in it.
  */
 describe('⚠️ the storm on the table it was written for', () => {
-  /** Twenty balls, launched across a range of powers, left to run. The same run with and without. */
-  const meanSpeed = (table: AuthoredTable): number => {
-    let frames = 0;
-    let total = 0;
-    for (let seed = 0; seed < 20; seed++) {
-      const physics = buildPhysics(table);
-      const ball = physics.spawnBall();
-      ball.direction = { x: 0, y: -1 };
-      ball.speed = 200 + seed * 8;
-      for (let i = 0; i < 1500; i++) {
-        for (const { mover } of physics.movers) mover.advance(FRAME_SECONDS);
-        physics.flare?.advance(FRAME_SECONDS);
-        advanceFrame([ball], physics.context, FRAME_SECONDS);
-        frames++;
-        total += ball.speed;
-      }
-    }
-    return total / frames;
+  /**
+   * How much speed the flare takes out of ONE ball in ONE frame, where the flare is.
+   *
+   * ⚠️ THIS USED TO AVERAGE TWENTY BALLS OVER FIFTEEN HUNDRED FRAMES, and that measurement was
+   * confounded from the day it was written — it compared two different TRAJECTORIES rather than the
+   * same ball with and without a force. A ball that meets the flare bounces differently, ends up
+   * somewhere else, and the average picks up wherever it ended up.
+   *
+   * It passed anyway until the Dev lengthened the paddles, and then reported `stormy 249 vs calm 206`:
+   * the stormy run came out FASTER, because the two trajectories had diverged enough for the
+   * difference in where the ball went to swamp the difference the flare makes. The gate was measuring
+   * the table, not the storm.
+   *
+   * One frame, one ball, one place answers the actual question. The claim the old test made — that an
+   * unadvanced flare or an unwired field cannot pass — is stronger here, not weaker: with no force at
+   * all the two speeds are identical to the bit.
+   */
+  const lostToTheFlare = (table: AuthoredTable): number => {
+    const physics = buildPhysics(table);
+    // Advance the flare to where its band is over the middle of the table, so the sample is inside it.
+    for (let i = 0; i < 60; i++) physics.flare?.advance(FRAME_SECONDS);
+    const ball = physics.spawnBall();
+    // ⚠️ WHERE THE BAND ACTUALLY IS. The flare is a `Mover`, so its band's centre is `flare.at.y` —
+    // the same field `fieldEffects` reads to compute the grip. A fixed y would sample wherever the
+    // band happened not to be, which is a test that measures nothing and says so as a pass.
+    ball.position = { x: table.size.width / 2, y: physics.flare ? physics.flare.at.y : 120 };
+    ball.direction = { x: 0, y: -1 };
+    ball.speed = 300;
+    const before = ball.speed;
+    advanceFrame([ball], physics.context, FRAME_SECONDS);
+    return before - ball.speed;
   };
 
-  test('a ball on `ion-storm` is measurably slower than the same ball with the flare taken away', () => {
-    const stormy = meanSpeed(ION_STORM);
-    const calm = meanSpeed({ ...ION_STORM, storm: undefined });
+  test('a ball inside the flare loses speed to it, and the same ball without one does not', () => {
+    const stormy = lostToTheFlare(ION_STORM);
+    const calm = lostToTheFlare({ ...ION_STORM, storm: undefined });
 
-    // Measured at a fifth. The gate asks for a tenth, so the margin is headroom rather than a fit:
-    // a change that halved the flare's effect would still be caught, and one that removed it entirely
-    // — which is what an unadvanced flare or an unwired field amounts to — cannot pass at all.
-    expect(stormy, `stormy ${stormy.toFixed(0)} vs calm ${calm.toFixed(0)}`).toBeLessThan(calm * 0.9);
+    // Gravity is the only other force, and it acts the same in both — so the DIFFERENCE is the flare.
+    expect(stormy, `the flare took ${stormy.toFixed(2)} and the calm table ${calm.toFixed(2)}`)
+      .toBeGreaterThan(calm);
+
   });
 });

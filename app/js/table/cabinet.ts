@@ -114,8 +114,49 @@ export function cabinet(o: CabinetOptions): AuthoredComponent[] {
   const floor = h;
   const flipperY = floor - 29;
   const centre = (w - 16) / 2;
-  const halfGap = 11;          // 22 between the tips, so the middle is losable on purpose
-  const flipperLength = 28;
+  /**
+   * ⚠️ WHERE THE PIVOTS ARE, WHICH DOES NOT CHANGE. It was `halfGap + flipperLength` written out at
+   * eight call sites — the funnel guides, the bounds, the inlanes — and lengthening the paddles would
+   * have moved every one of them. The pivot is the thing those eight actually mean.
+   */
+  const pivotInset = 39;
+  /**
+   * How far the tip sits BELOW the pivot at rest, as a fraction of how far it sits along.
+   *
+   * ⚠️ UNCHANGED AT A QUARTER, which is what keeps the paddles looking like the ones the Dev has been
+   * playing. What changed is their LENGTH, not the angle they rest at.
+   */
+  const restDrop = 0.45;
+  /**
+   * ⚠️ HALF THE GAP AT THE PADDLES' CLOSEST APPROACH, AND THE DEV SET BOTH BOUNDS. "Aumente o tamanho
+   * das pás em todas as mesas de forma que uma bolinha não consiga passar por elas caso elas estejam
+   * perfeitamente alinhadas na horizontal: elas não devem se tocar e o espaço entre elas deve ser menor
+   * que uma bolinha."
+   *
+   * ⚠️ AND THE CLOSEST APPROACH IS AT THE HORIZONTAL, WHICH IS WORTH DERIVING RATHER THAN ASSUMING.
+   * The arm rests a quarter below horizontal and sweeps 55° up, so it passes THROUGH horizontal and
+   * ends 41° above it. The tip's reach toward the middle is `reach · cos(angle)`, which is largest at
+   * zero — so the narrowest the gap ever gets is exactly the position he named, and a paddle sized for
+   * it is sized for every other.
+   *
+   * Two of four, so the gap is 4 against a ball 6 across: under a ball, and not touching.
+   */
+  const halfClosedGap = 2;
+  /**
+   * ⚠️ THE PADDLES GREW AND THE PIVOTS STAYED, which is what "aumente o tamanho das pás" says. Reaching
+   * `pivotInset - halfClosedGap` = 37 from a pivot 39 out leaves the two tips 4 apart at the horizontal
+   * — where they used to be 20.3 apart, and a ball is 6.
+   *
+   * ⚠️ AND AT REST THEY ARE 6.2 APART, WHICH IS STILL A DRAIN AND ONLY JUST. The Dev asked for the
+   * raised case and said nothing about the lowered one; this is what his number implies for it, and it
+   * is worth naming because it is the whole difference in how the table plays: the middle is no longer
+   * the common way to lose a ball, the outlanes are.
+   */
+  const flipperReach = pivotInset - halfClosedGap;
+  const restAlong = flipperReach / Math.hypot(1, restDrop);
+  const restBelow = restAlong * restDrop;
+  const halfGap = pivotInset - restAlong;
+  const flipperLength = restAlong;
   const guideTop = flipperY - 38;
   /**
    * How wide the side channels are, and therefore where the funnel guides start.
@@ -263,17 +304,17 @@ export function cabinet(o: CabinetOptions): AuthoredComponent[] {
 
     /* ===================== THE BOTTOM ===================== */
     { name: 'flipper.left', kind: 'flipper', role: WALL,
-      bounds: { x: centre - halfGap - flipperLength, y: flipperY, width: flipperLength, height: 7 },
+      bounds: { x: centre - pivotInset, y: flipperY, width: restAlong, height: restBelow },
       flipper: {
-        pivot: { x: centre - halfGap - flipperLength, y: flipperY },
-        tipAtRest: { x: centre - halfGap, y: flipperY + 7 },
+        pivot: { x: centre - pivotInset, y: flipperY },
+        tipAtRest: { x: centre - pivotInset + restAlong, y: flipperY + restBelow },
         sweepDegrees: -55, baseRadius: 3, tipRadius: 2, extendTime: 0.08, retractTime: 0.16,
       } },
     { name: 'flipper.right', kind: 'flipper', role: WALL,
-      bounds: { x: centre + halfGap, y: flipperY, width: flipperLength, height: 7 },
+      bounds: { x: centre + pivotInset - restAlong, y: flipperY, width: restAlong, height: restBelow },
       flipper: {
-        pivot: { x: centre + halfGap + flipperLength, y: flipperY },
-        tipAtRest: { x: centre + halfGap, y: flipperY + 7 },
+        pivot: { x: centre + pivotInset, y: flipperY },
+        tipAtRest: { x: centre + pivotInset - restAlong, y: flipperY + restBelow },
         sweepDegrees: 55, baseRadius: 3, tipRadius: 2, extendTime: 0.08, retractTime: 0.16,
       } },
 

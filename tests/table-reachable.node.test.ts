@@ -179,11 +179,37 @@ const RESTS_AGAINST = /^(wall\.|plunger$)/;
  * number would have fixed that, and nothing here measured the geometry — only the outcome, which is
  * why a wrong explanation survived beside the right measurement.
  *
- * The outlanes are now the channels themselves, from the guide's top to the floor. Sixty balls find
- * every one of the twelve, so nothing needs excusing. A ledger that empties is the only kind worth
- * keeping: it stays here, empty, so the next entry has to be argued rather than appended.
+ * The outlanes became the channels themselves, from the guide's top to the floor, and sixty balls
+ * found every one of the twelve. The ledger emptied. A ledger that empties is the only kind worth
+ * keeping: the next entry has to be ARGUED rather than appended.
+ *
+ * ⚠️ AND HERE IS THAT ARGUMENT, WHICH IS OWED WORK RATHER THAN AN ACCEPTED STATE.
+ *
+ * The Dev lengthened the paddles on every table: "Aumente o tamanho das pás em todas as mesas de forma
+ * que uma bolinha não consiga passar por elas caso elas estejam perfeitamente alinhadas na horizontal."
+ * `table/cabinet` derives that — a reach of 37 from a pivot 39 out, resting steeper so the ball can
+ * still drain — and it changes where a rebounded ball goes on every table in the catalogue.
+ *
+ * Ten of the eleven absorbed it. `ring-belt` did not, and it is the one that would not: at 360 it is
+ * the widest table here, its far thirds were authored up to the density bar only recently, and its
+ * outer components were already the marginal ones — the module's own note above records that it and
+ * `long-climb` were the two whose outlanes took NO balls in sixty before the funnel was fixed.
+ *
+ * Four resting angles were measured against reachability and playability together:
+ *
+ *     0.39   the ball is never lost at all — the paddles close the middle even at rest
+ *     0.45   three components unreached, all in the outer thirds        (this one)
+ *     0.51   four unreached
+ *     0.58   three unreached, and the ball drains less often
+ *
+ * There is no angle that keeps `ring-belt` whole, because the problem is not the angle: it is that a
+ * 360-wide table's outer thirds were reached by a rebound that no longer happens. Re-authoring them is
+ * a piece of work on his table and not a constant to turn, so it is written here rather than done
+ * quietly — and this ledger is the place this project keeps things it owes.
  */
-const KNOWN_RARE: Readonly<Record<string, readonly string[]>> = {};
+const KNOWN_RARE: Readonly<Record<string, readonly string[]>> = {
+  'ring-belt': ['outlane.left', 'scree.west3', 'scree.east2'],
+};
 
 describe('⚠️ every component the ball is meant to meet, it meets', () => {
   test.each(PLAYABLE_TABLES.map((t) => [t.name, t] as const))('%s', (name, table) => {

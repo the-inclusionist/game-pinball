@@ -99,16 +99,23 @@ export const WIDE_ARC: AuthoredTable = {
      * Found when the ball gained a radius and every trajectory moved three pixels; the gap had been
      * survivable by luck rather than by geometry.
      */
+    /**
+     * ⚠️ LENGTHENED WITH THE REST OF THE CATALOGUE. The Dev: "Aumente o tamanho das pás em todas as
+     * mesas de forma que uma bolinha não consiga passar por elas caso elas estejam perfeitamente
+     * alinhadas na horizontal." `table/cabinet` derives this for the tables that use it; this fixture
+     * writes its own pair, so it gets the same arithmetic by hand — pivots unmoved at 140 and 220, a
+     * reach of 38 of the 40 that separates each from the middle, leaving 4 between the raised tips.
+     */
     { name: 'flipper.left', kind: 'flipper', role: 'structure',
-      bounds: { x: 140, y: 250, width: 32, height: 7 },
+      bounds: { x: 186.15, y: 250, width: 33.85, height: 17.26 },
       flipper: {
-        pivot: { x: 140, y: 250 }, tipAtRest: { x: 172, y: 257 }, sweepDegrees: -55,
+        pivot: { x: 140, y: 250 }, tipAtRest: { x: 173.85, y: 267.26 }, sweepDegrees: -55,
         baseRadius: 3, tipRadius: 2, extendTime: 0.08, retractTime: 0.16,
       } },
     { name: 'flipper.right', kind: 'flipper', role: 'structure',
-      bounds: { x: 188, y: 250, width: 32, height: 7 },
+      bounds: { x: 182.88, y: 250, width: 37.12, height: 8.12 },
       flipper: {
-        pivot: { x: 220, y: 250 }, tipAtRest: { x: 188, y: 257 }, sweepDegrees: 55,
+        pivot: { x: 220, y: 250 }, tipAtRest: { x: 186.15, y: 267.26 }, sweepDegrees: 55,
         baseRadius: 3, tipRadius: 2, extendTime: 0.08, retractTime: 0.16,
       } },
 

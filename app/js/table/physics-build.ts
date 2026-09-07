@@ -104,7 +104,7 @@ export function flipperGeometryOf(component: AuthoredComponent, ballRadius: numb
  * launch, which is what a pinball feels like, and it falls out of the geometry rather than being
  * dialled in.
  */
-export const FLIPPER_COLLISION_MULT = 1;
+export const FLIPPER_COLLISION_MULT = 0.78;
 
 /**
  * How much of its own speed a travelling body hands the ball.
