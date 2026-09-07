@@ -95,7 +95,7 @@ export const HUD_SURFACE_COLOR = '#1a1e26';
  */
 export const HUD_LINE_HEIGHT = 7;
 
-const BLOCKS = ['score', 'balls', 'player', 'hint'] as const;
+const BLOCKS = ['score', 'balls', 'player', 'mission', 'hint'] as const;
 
 export function mountHud(o: HudDomOptions): MountedHud {
   const placement = hudPlacement(o.layout, o.screen);

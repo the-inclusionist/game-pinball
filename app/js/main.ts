@@ -42,6 +42,9 @@ import { advanceFrame } from './physics/step.js';
 import { createLaneProgress } from './table/lane-progress.js';
 import { openSecrets } from './table/secret.js';
 import { loadBackdrop } from './gfx/backdrop.js';
+import { cometMission, WINNING_POINTS, type CometMission, type CometSky, type CometStrike }
+  from './control/comet-mission.js';
+import { drawComet } from './gfx/comet-view.js';
 import { bindPinballControls } from './shell/controls.js';
 import {
   readPalette, writePalette, nextPalette, isCbSafe, PALETTE_LABEL, PALETTE_CHOICES,
@@ -87,6 +90,15 @@ let palette: PaletteChoice = readPalette(localStorage);
 // `?table=wide-arc` opens another one of the five. There is no menu yet, and a query parameter is
 // enough to look at all of them without one.
 const requested = new URLSearchParams(location.search).get('table');
+/**
+ * The times table, carried in the address beside the table for the same reason the table is.
+ *
+ * ⚠️ BECAUSE CHOOSING A DIFFERENT TABLE RELOADS THE PAGE. `onStart` reloads with `?table=` when the
+ * player picks a table other than the booted one — the honest way to rebuild a world this entry point
+ * resolves at module scope — and a mission number left behind by that reload would put the player back
+ * on the number screen for a drill they had just chosen.
+ */
+const requestedTimes = Number(new URLSearchParams(location.search).get('times'));
 const authored = (requested && tableNamed(requested)) || DEFAULT_TABLE;
 
 // A table that does not validate must not open. The rules are in `table/authored` and every one of
@@ -324,6 +336,68 @@ function announceMission(): void {
   hint = shell.t(stage.id);
 }
 
+/**
+ * The part of the table a comet may be in: what the player can actually see.
+ *
+ * ⚠️ THE VIEW AND NOT THE WHOLE TABLE, and that is a playability decision rather than an optimisation.
+ * A comet spawned at the top of a 300-pixel table falls ninety pixels in its ten seconds and expires
+ * while the ball is still two hundred below it — the player would watch numbers they can never reach.
+ * Entering at the top of the CAMERA'S window means every comet falls through the ball's own stretch of
+ * the table, which is what "caindo do céu" means from where the player is sitting.
+ */
+function cometSky(): CometSky {
+  return {
+    left: 0,
+    right: authored.size.width,
+    top: shell.camera.offset,
+    bottom: shell.camera.offset + shell.hud.playfield.height,
+  };
+}
+
+/**
+ * What a comet strike says, and to whom.
+ *
+ * ⚠️ THE LIVE REGION AND NOT THE HINT BLOCK, which is the split `shell/hud-dom` already argues. A
+ * sighted player has just watched a comet burst and the counter in the corner change — saying it again
+ * in words would be the screen repeating itself. A player who cannot see either needs the sentence, and
+ * needs it as an EVENT, which is what `#sr-status` is.
+ *
+ * ⚠️ AND IT NAMES THE ARITHMETIC RATHER THAN THE OUTCOME. "24 é múltiplo de 6" teaches the thing the
+ * drill is for; "certo!" only says what happened. The running total goes with it because the point of
+ * a total is knowing where you are without asking.
+ */
+function reportComet(struck: CometStrike): void {
+  const drill = comets;
+  if (!drill) return;
+  const status = document.getElementById('sr-status');
+  if (status) {
+    status.textContent = shell.t(struck.scored ? 'pinball.comets.hit' : 'pinball.comets.miss', {
+      value: struck.comet.value, times: drill.number, have: struck.points, need: WINNING_POINTS,
+    });
+  }
+  if (drill.won) winTheDrill(drill.number);
+}
+
+/**
+ * ⚠️ "O jogador ganha o jogo ao completar 20 pontos de missão." — so the GAME ends, not just the drill.
+ *
+ * It ends the way Quit does and for the same reason: the score is final, so the board is offered if it
+ * places, and the player is handed back to the title rather than left on a table that has nothing more
+ * to ask of them. Abandoning it silently — leaving the comets falling over a game already won — would
+ * be the win the Dev specified having no consequence at all.
+ *
+ * ⚠️ THROUGH `#sr-alert` AND NOT `#sr-status`. Winning is the one thing on this screen that interrupts:
+ * `aria-live="assertive"` is what says so, and a polite announcement would queue behind the last comet.
+ */
+function winTheDrill(times: number): void {
+  const alert = document.getElementById('sr-alert');
+  if (alert) alert.textContent = shell.t('pinball.comets.won', { need: WINNING_POINTS, times });
+  highScores.offer(live.score.curScore);
+  leaveGame();
+  screens.show('title');
+  title.refresh();
+}
+
 const authoredTable = toLiveTable(authored, () => state);
 
 /**
@@ -353,6 +427,17 @@ const table: LiveTable = {
 };
 
 let phase: Phase = 'title';
+
+/**
+ * The comet drill, once the player has picked a number. `null` until then, and in the demonstration.
+ *
+ * ⚠️ THE DEV'S FOURTH ITEM, and the biggest: "Após escolher a tela, a próxima tela é a da missão
+ * principal. o jogador deve escolher um número de 2 a 9. Uma vez escolhido o número, aparecerá na fase
+ * cometas caindo do céu com um número dentro." The rules are `control/comet-mission`, the drawing is
+ * `gfx/comet-view`, and what is left here is the wiring: seconds in, the ball's position in, points and
+ * a picture out.
+ */
+let comets: CometMission | null = null;
 
 /**
  * What pausing interrupted, so that resuming can put it back.
@@ -793,6 +878,25 @@ function step(frames: number): void {
         }
       }
     }
+    /**
+     * ⚠️ THE COMET DRILL, STEPPED AND STRUCK IN THE SAME BREATH, and only while a ball is in play.
+     *
+     * Between balls the sky would go on filling and emptying with nothing able to reach it, so a
+     * player watching their last ball drain would lose ten seconds of comets they never had a shot at.
+     * The flippers and the movers deliberately keep going without a ball — they are the table being
+     * alive — but a comet is a TARGET, and a target nobody can hit is a countdown against the player.
+     *
+     * ⚠️ AND THE STRIKE IS POLLED, not reported. Nothing collides with a comet: `control/comet-mission`
+     * records the decision — making one a physics body would put mass into the core this port exists to
+     * keep faithful, and would change how every table plays the moment a mission is on. So the question
+     * "is the ball inside one" is asked here, the way `table/rollovers` asks about lanes.
+     */
+    if (comets && phase === 'playing') {
+      comets.advance(frames * FRAME_SECONDS, cometSky());
+      const struck = comets.strike(ball.position.x, ball.position.y, authored.ballRadius);
+      if (struck) reportComet(struck);
+    }
+
     live.advance(frames * FRAME_SECONDS);
     refreshObjective();
 
@@ -895,6 +999,9 @@ function step(frames: number): void {
     ballCount: live.flags.ballCount,
     playerNumber: 1,
     hint,
+    // ⚠️ SEPARATE FROM THE SCORE, IN THE DEV'S OWN WORDS: "pontos de missão são separados do ponto de
+    // jogo." Absent when there is no drill, which is what keeps the demonstration from reporting one.
+    mission: comets ? { have: comets.points, need: WINNING_POINTS } : undefined,
   });
 
   blitView(screen, tablePicture, shell.hud.playfield, shell.cameraX.offset, shell.camera.offset);
@@ -945,6 +1052,20 @@ function step(frames: number): void {
       packRgb(paletteOf(authored, isCbSafe(palette)).roles[component.role]),
       shell.hud.playfield, shell.cameraX.offset, shell.camera.offset,
     );
+  }
+
+  /**
+   * ⚠️ THE COMETS, THEN THE BALL. The ball goes on top: it is the thing the player is steering, and a
+   * comet drawn over it would hide the one object whose position they are reading every frame.
+   *
+   * ⚠️ AND `drawComet` DARKENS THE ART AROUND EACH ONE — see `gfx/comet-view`, which explains why no
+   * single colour can clear 3:1 against art running from black to the ball's own ceiling. Drawn after
+   * the ball, that darkening would fall on the ball as well.
+   */
+  if (comets) {
+    for (const comet of comets.comets) {
+      drawComet(screen, comet, shell.hud.playfield, shell.cameraX.offset, shell.camera.offset);
+    }
   }
 
   for (const ball of state.balls) {
@@ -1464,12 +1585,25 @@ const optionsDialog = mountChoiceDialog<PaletteChoice>({
  * screen.
  */
 const screens = titleScreen({
-  onStart: (table) => {
+  onStart: (table, times) => {
     if (table !== authored.name) {
       const url = new URL(location.href);
       url.searchParams.set('table', table);
+      // ⚠️ AND THE NUMBER GOES WITH IT, or the reload lands back on the screen it was just chosen on.
+      url.searchParams.set('times', String(times));
       location.assign(url.toString());
+      return;
     }
+    /**
+     * ⚠️ A NEW MISSION EVERY TIME, not a number set on an existing one. Mission points are per GAME —
+     * "O jogador ganha o jogo ao completar 20 pontos de missão" — so a player who leaves for the
+     * selector and comes back has started again, and carrying nineteen points across that would be a
+     * win they did not play for.
+     *
+     * ⚠️ AND NOT IN THE DEMONSTRATION. That is the 1995 table, being validated against the player's
+     * own archive; comets falling through it would be this project's mission on Microsoft's playfield.
+     */
+    comets = demoRequested ? null : cometMission({ number: times });
   },
 });
 
@@ -1526,6 +1660,9 @@ const leaveGame = (): void => {
   hud.setVisible(false);
   ball.speed = 0;
   shell.resetCamera();
+  // ⚠️ AND THE COMETS GO WITH THE GAME. Left behind, they would go on falling behind the title screen
+  // and the player's points would still be there when somebody else sat down.
+  comets = null;
 };
 
 /**
@@ -1653,8 +1790,24 @@ hud.setVisible(screens.current === 'playing');
 if (demoRequested || requested) {
   screens.advance();
   screens.choose(authored.name);
+  /**
+   * ⚠️ AND THE NUMBER, WHEN THE ADDRESS CARRIES ONE. `choose` now stops on the mission screen, so a
+   * reload from changing tables would otherwise ask for the number a second time — the player picks
+   * `slipstream` and the drill of 7, the page comes back, and it wants the 7 again.
+   *
+   * ⚠️ `pick` REFUSES A NUMBER NOBODY OFFERED, which is what makes a typed `?times=99` land on the
+   * mission screen rather than booting a drill on it. `NaN` from an absent parameter takes the same
+   * path, and that is the ordinary case: `?table=` typed by hand, with the number still to choose.
+   */
+  screens.pick(requestedTimes);
+  /**
+   * ⚠️ THE DEMONSTRATION HAS NO DRILL AND MAY NOT STOP ON ITS SCREEN. `?demo=original` is the
+   * validation configuration — a file picker is what somebody came to that URL for — so it goes
+   * straight past the question, and `onStart` leaves `comets` null for it.
+   */
+  if (demoRequested && screens.current !== 'playing') screens.pick(screens.numbers[0]!);
   title.refresh();
-  hud.setVisible(true);
+  hud.setVisible(screens.current === 'playing');
   region.focus();
 }
 
@@ -1705,6 +1858,16 @@ Object.assign(window as unknown as Record<string, unknown>, {
     /** What the ball has touched, and what the control layer made of it. */
     get hits() { return hits; },
     get score() { return live.score.curScore; },
+    /**
+     * The comet drill as it stands, for the browser gate.
+     *
+     * ⚠️ A VIEW AND NOT THE MISSION. The gate may look at what is falling and what the total is; it may
+     * not pay itself a point. `control/comet-mission` is where the rules are proved, with a seeded
+     * generator and no browser in sight — a gate that could reach in and set the score would be
+     * checking that it can set a number.
+     */
+    get comets() { return comets?.comets ?? []; },
+    get missionPoints() { return comets?.points ?? null; },
     get lamps() { return live.litLamps(); },
     /** How far the plunger is drawn back, so a check can see the charge rather than infer it. */
     get plungerPull() { return plunger.pull; },

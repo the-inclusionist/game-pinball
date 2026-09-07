@@ -47,6 +47,11 @@ async function play(): Promise<void> {
   await frames(3);
   document.querySelector<HTMLElement>('[data-table]')?.click();
   await frames(5);
+  // ⚠️ AND THE NUMBER. The Dev put a screen between the table and the game — "Após escolher a tela, a
+  // próxima tela é a da missão principal" — so a click on a table now lands on the mission screen and
+  // a test that stops there is a test looking at a menu.
+  document.querySelector<HTMLElement>('[data-times]')?.click();
+  await frames(5);
   await userEvent.keyboard('{u}');
   await frames(6);
 }

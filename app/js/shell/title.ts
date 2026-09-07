@@ -5,8 +5,11 @@
 // "Crie uma tela inicial, com o nome SPACE\nSTUDENT escrito com a fonte Press Start 2P e a palavra
 // PINBALL embaixo. Ao clicar nesta tela, uma tela com o seletor de mesas."
 //
-// Three screens and two doors between them, and that is the whole of this module: `title` → `select` →
-// `playing`. It carries no DOM, for the reason `shell/options` carries none — this repository's tests
+// Four screens and three doors between them, and that is the whole of this module: `title` → `select`
+// → `mission` → `playing`. The third is the Dev's: "Após escolher a tela, a próxima tela é a da missão
+// principal. o jogador deve escolher um número de 2 a 9."
+//
+// It carries no DOM, for the reason `shell/options` carries none — this repository's tests
 // run in node, and a decision inside a click handler is a decision nothing can check. The markup is
 // `shell/title-dom`, which is thin because everything worth asking about is here.
 //
@@ -19,6 +22,7 @@
 // neither. The Dev's name for the game is the Dev's.
 
 import { PLAYABLE_TABLES } from '../table/catalog.js';
+import { MISSION_NUMBERS } from '../control/comet-mission.js';
 
 /** Two lines, because the screen is 320 wide and the font is fixed-width: the break is a layout fact. */
 export const TITLE_LINES: readonly string[] = ['SPACE', 'STUDENT'];
@@ -45,22 +49,39 @@ export const TITLE_BYLINE = 'by Prof. José Rocha';
  * `playing` is a screen here even though nothing in this module draws it: it is what the shell has to
  * stop showing the title for, and leaving it out would mean tracking "is a game running" twice.
  */
-export type Screen = 'title' | 'select' | 'playing';
+export type Screen = 'title' | 'select' | 'mission' | 'playing';
 
 export interface TitleOptions {
-  /** Called with the table the player picked. The caller boots it; this only reports the choice. */
-  readonly onStart?: (table: string) => void;
+  /**
+   * Called with the table AND the times table the player picked. The caller boots them; this only
+   * reports the choice.
+   *
+   * ⚠️ BOTH AT ONCE, AND NOT TWO CALLBACKS. A table with no drill is a game with no mission and a
+   * drill with no table is a mission with nowhere to fall; the caller needs them together or it has
+   * to hold half a choice and wait for the other half.
+   */
+  readonly onStart?: (table: string, times: number) => void;
 }
 
 export interface TitleScreen {
   readonly current: Screen;
   /** The tables the selector offers, which is the catalogue and never a subset of it. */
   readonly tables: readonly string[];
+  /** The times tables the mission screen offers: two to nine, and nothing else. */
+  readonly numbers: readonly number[];
   /** The title's only action: go to the selector. */
   advance(): void;
-  /** Pick a table. An unknown name does nothing at all — see below. */
+  /**
+   * Pick a table. An unknown name does nothing at all — see below.
+   *
+   * ⚠️ THIS NO LONGER STARTS A GAME. The Dev put a screen between the two: "Após escolher a tela, a
+   * próxima tela é a da missão principal. o jogador deve escolher um número de 2 a 9." Choosing a
+   * table now asks that question; `pick` is what starts the game.
+   */
   choose(table: string): void;
-  /** The way out of the selector. On the title it is a no-op rather than an error. */
+  /** Pick the times table and start. A number nobody offered does nothing — see below. */
+  pick(times: number): void;
+  /** The way back one screen: the mission screen returns to the selector, the selector to the title. */
   back(): void;
   /**
    * Shows a screen outright, which is how a game is LEFT.
@@ -74,11 +95,20 @@ export interface TitleScreen {
    * table, and a second way in that skipped the choosing would be a game with no table decided. The
    * type refuses it, and a test says the refusal is deliberate.
    */
-  show(screen: Exclude<Screen, 'playing'>): void;
+  show(screen: Exclude<Screen, 'playing' | 'mission'>): void;
 }
 
 export function titleScreen(o: TitleOptions = {}): TitleScreen {
   let current: Screen = 'title';
+  /**
+   * The table chosen on the way to the mission screen.
+   *
+   * ⚠️ HELD HERE RATHER THAN PASSED BACK IN. `pick` is called by a button that knows a number and
+   * nothing else, and asking the DOM to carry the table between two screens would be the same choice
+   * recorded in two places — which is how the selector and the pause menu each ended up with their own
+   * idea of which table was running.
+   */
+  let chosen: string | null = null;
   // ⚠️ THE PLAYABLE ONES, NOT THE WHOLE CATALOGUE. Four of the ten are fixtures that exist to give a
   // gate a case to walk — see `PLAYABLE_TABLES`. A selector that offers `bare-minimum` beside
   // `low-orbit` is telling the player they are the same kind of thing.
@@ -87,6 +117,7 @@ export function titleScreen(o: TitleOptions = {}): TitleScreen {
   return {
     get current() { return current; },
     get tables() { return tables; },
+    get numbers() { return MISSION_NUMBERS; },
 
     advance() {
       if (current === 'title') current = 'select';
@@ -102,12 +133,33 @@ export function titleScreen(o: TitleOptions = {}): TitleScreen {
      */
     choose(table: string) {
       if (!tables.includes(table)) return;
+      chosen = table;
+      current = 'mission';
+    },
+
+    /**
+     * ⚠️ A NUMBER NOBODY OFFERED STARTS NOTHING, and stays on the mission screen.
+     *
+     * The same guard `choose` carries and for the same reason: it cannot happen through the buttons,
+     * which are built from this list, and it can happen through a `?times=` somebody typed. A mission
+     * booted on a number the player did not choose is a drill they are not doing, with nothing on
+     * screen to say so — and `control/comet-mission` throws on one, which as a page that fails to boot
+     * is the worst of the three outcomes.
+     */
+    pick(times: number) {
+      // ⚠️ AND A NUMBER WITH NO TABLE STARTS NOTHING EITHER. `?times=` alone in the address would
+      // otherwise put the player into a game they never chose a table for.
+      if (chosen === null || current !== 'mission') return;
+      if (!MISSION_NUMBERS.includes(times)) return;
       current = 'playing';
-      o.onStart?.(table);
+      o.onStart?.(chosen, times);
     },
 
     back() {
-      if (current === 'select') current = 'title';
+      // One screen back, not all the way: a player changing their mind about the NUMBER has not
+      // changed their mind about the table.
+      if (current === 'mission') current = 'select';
+      else if (current === 'select') current = 'title';
     },
 
     show(screen) {

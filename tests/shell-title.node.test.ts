@@ -61,14 +61,21 @@ describe('moving between the screens', () => {
     expect(screen.current).toBe('select');
   });
 
-  test('and choosing a table starts it, reporting which', () => {
+  test('and choosing a table carries it through to the start', () => {
+    /**
+     * ⚠️ THIS USED TO SAY "choosing a table STARTS it", and the Dev's mission screen ended that:
+     * "Após escolher a tela, a próxima tela é a da missão principal." What the assertion is really
+     * for is that the table the player touched is the table that boots, so it now follows the choice
+     * all the way through the number.
+     */
     const started: string[] = [];
-    const screen = titleScreen({ onStart: (name) => started.push(name) });
+    const screen = titleScreen({ onStart: (name, times) => started.push(`${name}x${times}`) });
     screen.advance();
 
     screen.choose(CATALOG[1]!.name);
+    screen.pick(6);
 
-    expect(started).toEqual([CATALOG[1]!.name]);
+    expect(started).toEqual([`${CATALOG[1]!.name}x6`]);
     expect(screen.current).toBe('playing');
   });
 
@@ -146,6 +153,9 @@ describe('⚠️ leaving a game', () => {
     const screen = titleScreen();
     screen.advance();
     screen.choose(screen.tables[0]!);
+    // ⚠️ AND THE NUMBER, or this helper stops on the mission screen and these three tests check that
+    // a game can be left from a screen that is not a game.
+    screen.pick(screen.numbers[0]!);
     return screen;
   };
 
@@ -174,5 +184,86 @@ describe('⚠️ leaving a game', () => {
     screen.show('playing');
 
     expect(screen.current, 'and nothing happened').toBe('title');
+  });
+});
+
+/**
+ * ⚠️ THE MISSION SCREEN, WHICH THE DEV PUT BETWEEN THE TABLE AND THE GAME.
+ *
+ * "Após escolher a tela, a próxima tela é a da missão principal. o jogador deve escolher um número de
+ * 2 a 9."
+ *
+ * So `choose` no longer starts a game — it asks the question. The game starts when the NUMBER is
+ * picked, and `onStart` is told both, because the caller needs the table and the drill together: one
+ * without the other is a game that boots with no mission or a mission with no table.
+ */
+describe('⚠️ choosing the times table', () => {
+  const atTheMission = () => {
+    const screen = titleScreen();
+    screen.advance();
+    screen.choose(screen.tables[0]!);
+    return screen;
+  };
+
+  test('choosing a table asks for the number instead of starting', () => {
+    const started: string[] = [];
+    const screen = titleScreen({ onStart: (table, times) => started.push(`${table}x${times}`) });
+    screen.advance();
+
+    screen.choose(screen.tables[0]!);
+
+    expect(screen.current, 'the game started without asking for a number').toBe('mission');
+    expect(started, 'and it told the caller to boot one').toEqual([]);
+  });
+
+  test('the numbers offered are two to nine', () => {
+    expect(atTheMission().numbers).toEqual([2, 3, 4, 5, 6, 7, 8, 9]);
+  });
+
+  test('⚠️ picking one starts the game, with the table and the number together', () => {
+    const started: string[] = [];
+    const screen = titleScreen({ onStart: (table, times) => started.push(`${table}x${times}`) });
+    screen.advance();
+    const table = screen.tables[0]!;
+    screen.choose(table);
+
+    screen.pick(7);
+
+    expect(screen.current).toBe('playing');
+    expect(started, 'the caller was not told what to boot').toEqual([`${table}x7`]);
+  });
+
+  test('⚠️ a number that is not on offer starts nothing, and stays on the screen', () => {
+    // It cannot happen through the buttons, which are built from this same list. It can happen through
+    // a `?times=` that somebody typed — and booting a mission on a number nobody chose is a drill the
+    // player is not doing, with nothing on screen to say so.
+    const started: string[] = [];
+    const screen = titleScreen({ onStart: (table, times) => started.push(`${table}x${times}`) });
+    screen.advance();
+    screen.choose(screen.tables[0]!);
+
+    for (const bad of [0, 1, 10, 2.5, -3, Number.NaN]) screen.pick(bad);
+
+    expect(screen.current, `${started.length} games started on a number nobody offered`).toBe('mission');
+    expect(started).toEqual([]);
+  });
+
+  test('and the way back from it is the selector, not the title', () => {
+    const screen = atTheMission();
+
+    screen.back();
+
+    expect(screen.current, 'the player who changed their mind about the table lost the table too')
+      .toBe('select');
+  });
+
+  test('⚠️ and picking a number with no table chosen starts nothing', () => {
+    const started: string[] = [];
+    const screen = titleScreen({ onStart: (table, times) => started.push(`${table}x${times}`) });
+
+    screen.pick(4);
+
+    expect(screen.current, 'a number picked from the title screen started a game').toBe('title');
+    expect(started).toEqual([]);
   });
 });

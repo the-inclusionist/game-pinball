@@ -84,6 +84,9 @@ describe('⚠️ one screen at a time, measured', () => {
     at('.pinball-title button').click();
 
     at('[data-table]').click();
+    // ⚠️ AND THE NUMBER. What this test is about is the whole screen going away when a game STARTS,
+    // and choosing a table no longer starts one — it asks the Dev's mission question first.
+    at('[data-times]').click();
 
     expect(screen.current).toBe('playing');
     expect(shows(at('.pinball-title')), 'nothing of it is left on the canvas').toBe(false);
@@ -123,6 +126,7 @@ describe('⚠️ the byline', () => {
     const { at, shows, screen } = build();
     at('.pinball-title button').click();
     at('[data-table]').click();
+    at('[data-times]').click();
 
     expect(screen.current).toBe('playing');
     expect(shows(at('.pinball-byline'))).toBe(false);

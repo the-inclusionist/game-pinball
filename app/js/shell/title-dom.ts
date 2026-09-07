@@ -309,6 +309,70 @@ export function mountTitle(o: TitleDomOptions): TitleDom {
   root.appendChild(select);
 
   /**
+   * ⚠️ THE MISSION SCREEN, WHICH THE DEV PUT BETWEEN THE TABLE AND THE GAME: "Após escolher a tela, a
+   * próxima tela é a da missão principal. o jogador deve escolher um número de 2 a 9."
+   *
+   * ⚠️ AND IT SAYS WHAT THE NUMBER IS FOR. Eight bare digits is a screen a child has to guess at. The
+   * rule is one sentence — hit the comets carrying multiples, a wrong one costs a point — and this is
+   * the only place it is ever written down, because a player is not reading the README and the comets
+   * themselves carry nothing but numbers.
+   */
+  const mission = o.doc.createElement('div');
+  mission.className = 'pinball-mission';
+  Object.assign(mission.style, {
+    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2.5cqw', width: '92%',
+  });
+
+  const missionHeading = o.doc.createElement('div');
+  missionHeading.textContent = o.t('pinball.comets.choose');
+  Object.assign(missionHeading.style, { fontSize: '5cqw', color: INK, letterSpacing: '0.06em' });
+  mission.appendChild(missionHeading);
+
+  const missionExplain = o.doc.createElement('div');
+  missionExplain.textContent = o.t('pinball.comets.explain');
+  Object.assign(missionExplain.style, {
+    fontSize: '2.6cqw', color: DIM, lineHeight: '1.4', maxWidth: '84%',
+  });
+  mission.appendChild(missionExplain);
+
+  /**
+   * ⚠️ FOUR ACROSS AND TWO DOWN, not eight in a row. Eight buttons across 320 pixels leaves 34 each
+   * before the gaps, and a single digit in a fixed-width face at a size worth pressing needs more than
+   * that — the first attempt fitted only by shrinking the numbers to where they were the smallest text
+   * on a screen whose whole subject they are.
+   */
+  const numbers = o.doc.createElement('div');
+  Object.assign(numbers.style, {
+    display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '2cqw', width: '100%',
+  });
+  for (const times of o.screen.numbers) {
+    const button = o.doc.createElement('button');
+    button.textContent = String(times);
+    button.setAttribute('data-times', String(times));
+    Object.assign(button.style, {
+      font: 'inherit', fontSize: '5cqw', padding: '1.4cqw 0', width: '18%',
+      background: '#1a1e26', color: INK, border: `1px solid ${DIM}`, cursor: 'pointer',
+    });
+    button.addEventListener('click', () => {
+      o.screen.pick(times);
+      refresh();
+      o.onStarted?.();
+    });
+    numbers.appendChild(button);
+  }
+  mission.appendChild(numbers);
+
+  const missionBack = o.doc.createElement('button');
+  missionBack.textContent = o.t('pinball.title.back');
+  Object.assign(missionBack.style, {
+    font: 'inherit', fontSize: '3cqw', background: 'none', border: 'none', color: DIM,
+    cursor: 'pointer',
+  });
+  missionBack.addEventListener('click', () => { o.screen.back(); refresh(); });
+  mission.appendChild(missionBack);
+  root.appendChild(mission);
+
+  /**
    * ⚠️ `display`, NOT `hidden`, AND THE DIFFERENCE PUT BOTH SCREENS ON AT ONCE.
    *
    * `hidden` works by a rule in the user-agent stylesheet — `[hidden] { display: none }` — and every
@@ -329,6 +393,7 @@ export function mountTitle(o: TitleDomOptions): TitleDom {
     const at = o.screen.current;
     show(title, at === 'title', 'flex');
     show(select, at === 'select', 'flex');
+    show(mission, at === 'mission', 'flex');
     // The whole screen steps aside once a game is running: the table is behind it.
     show(root, at !== 'playing', 'flex');
 

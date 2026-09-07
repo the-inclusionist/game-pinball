@@ -227,6 +227,24 @@ const pt: Record<string, string> = {
   'pinball.hud.shootAgain': 'Jogue de novo',
   // ⚠️ AND IT SAYS THE KEY IS HELD. The caption on the selection screen has width for one word a line,
   // and the moment the player needs to know that the plunger STRETCHES is this one: a ball in the lane.
+  /**
+   * ⚠️ THE COMET MISSION. The Dev: "o jogador deve escolher um número de 2 a 9... aparecerá na fase
+   * cometas caindo do céu com um número dentro." These are the only words the drill has, so they carry
+   * the rule as well as the label — a player who never reads a README has to learn it from here.
+   *
+   * ⚠️ `pinball.comets.` AND NOT `pinball.mission.`, WHICH IS NOT TIDINESS. `pinball.mission.` is a
+   * prefix `tests/i18n` holds to the HUD's 63-pixel column — it belongs to the 1995 mission machine,
+   * whose lines go in that corner. These are a full-width SCREEN and a live-region announcement, and
+   * putting them under that prefix would have meant writing worse sentences to satisfy a rule about a
+   * different part of the screen. The one line that IS in the corner is `pinball.hud.mission`, which
+   * sits under the HUD's own prefix and is measured with the rest of it.
+   */
+  'pinball.comets.choose': 'Escolha a tabuada',
+  'pinball.comets.explain': 'Acerte os cometas com múltiplos do seu número. Erre um e perde um ponto.',
+  'pinball.hud.mission': 'Missão: {have}/{need}',
+  'pinball.comets.hit': '{value} é múltiplo de {times}. {have} de {need}.',
+  'pinball.comets.miss': '{value} não é múltiplo de {times}. {have} de {need}.',
+  'pinball.comets.won': 'Missão cumprida: {need} pontos na tabuada do {times}.',
   'pinball.hud.waiting': 'Segure para esticar o lançador.',
 };
 

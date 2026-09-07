@@ -198,6 +198,10 @@ describe('⚠️ and the game is CONTROLLABLE once it starts, not merely visible
 
     title.click();
     document.querySelector<HTMLElement>('[data-table]')!.click();
+    // ⚠️ AND THE NUMBER: choosing a table now asks for the times table before it starts anything.
+    // No wait between the two — `title-dom` redraws inside the click handler, so the number buttons
+    // are in the document by the time the first click returns.
+    document.querySelector<HTMLElement>('[data-times]')!.click();
 
     expect(region.contains(document.activeElement), 'the focus is inside the game region').toBe(true);
   });

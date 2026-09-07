@@ -59,14 +59,23 @@ export interface HudLayout {
   readonly playfield: Rect;
   readonly playerName: Rect;
   readonly ballCount: Rect;
+  /**
+   * The comet drill's running total, under the ball count.
+   *
+   * ⚠️ THE FIFTH BLOCK, AND THE LEFT COLUMN HAD THE ROOM. Mission points are the Dev's — "pontos de
+   * missão são separados do ponto de jogo" — so they cannot share the score's corner without saying
+   * something false about which number is which. The column below the ball count is empty from there
+   * to the hint, which is about twenty lines.
+   */
+  readonly mission: Rect;
   readonly score: Rect;
   readonly hint: Rect;
   /** True when the playfield leaves no column and the blocks must sit on top of the play. */
   readonly overlaying: boolean;
 }
 
-/** The four things the dead side panel used to carry. */
-export const HUD_BLOCKS = ['playerName', 'ballCount', 'score', 'hint'] as const;
+/** What the dead side panel used to carry, plus the comet drill's total. */
+export const HUD_BLOCKS = ['playerName', 'ballCount', 'mission', 'score', 'hint'] as const;
 
 export const DEFAULT_HUD: HudConfig = {
   screenWidth: 320,
@@ -114,6 +123,11 @@ export function layoutHud(config: HudConfig): HudLayout {
   const ballCount: Rect = {
     x: leftX, y: config.padding + config.lineHeight + 1, width: leftBox, height: config.lineHeight,
   };
+  // Straight under the ball count, on the same rhythm: one line plus the same one-pixel gap.
+  const mission: Rect = {
+    x: leftX, y: config.padding + (config.lineHeight + 1) * 2, width: leftBox,
+    height: config.lineHeight,
+  };
   const score: Rect = {
     x: rightX, y: config.padding, width: rightBox, height: config.lineHeight,
   };
@@ -126,5 +140,5 @@ export function layoutHud(config: HudConfig): HudLayout {
     height: hintHeight,
   };
 
-  return { playfield, playerName, ballCount, score, hint, overlaying };
+  return { playfield, playerName, ballCount, mission, score, hint, overlaying };
 }

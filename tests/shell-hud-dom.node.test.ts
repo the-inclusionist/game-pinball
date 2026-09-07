@@ -3,7 +3,7 @@ import { describe, test, expect } from 'vitest';
 import { mountHud, HUD_TEXT_COLOR, HUD_SURFACE_COLOR } from '../app/js/shell/hud-dom.js';
 import { PLAYFIELD_COLOR } from '../app/js/gfx/table-view.js';
 import { pack } from '../app/js/gfx/framebuffer.js';
-import { layoutHud, DEFAULT_HUD } from '../app/js/shell/hud.js';
+import { layoutHud, DEFAULT_HUD, HUD_BLOCKS } from '../app/js/shell/hud.js';
 import { createTranslator } from '../app/js/i18n/index.js';
 
 /** A document with just enough in it. The module reaches for nothing else, and a test proves that. */
@@ -53,12 +53,14 @@ function mounted() {
   return { hud, host };
 }
 
-describe('the four blocks reach the document', () => {
-  test('one container, four blocks, and nothing else', () => {
+describe('the blocks reach the document', () => {
+  test('one container, one block per name in HUD_BLOCKS, and nothing else', () => {
     const { host } = mounted();
 
     expect(host.children).toHaveLength(1);
-    expect(host.children[0]!.children).toHaveLength(4);
+    // ⚠️ COUNTED FROM `HUD_BLOCKS` RATHER THAN TYPED. This said "four" and the comet drill's total made
+    // it five; a number written here is a second place the block list lives, and the two would part.
+    expect(host.children[0]!.children).toHaveLength(HUD_BLOCKS.length);
   });
 
   test('⚠️ the container does not eat the clicks or the keys underneath it', () => {

@@ -75,6 +75,9 @@ describe('pause reaches the menu whenever there is a table to pause', () => {
 
     // ---- the table, ball parked: the state switching tables lands in ----
     document.querySelector<HTMLElement>('[data-table]')?.click();
+    await frames(5);
+    // ⚠️ AND THE NUMBER, which is the screen the Dev put between the table and the game.
+    document.querySelector<HTMLElement>('[data-times]')?.click();
     await frames(6);
     expect(debug().phase, 'the ball should still be waiting on the plunger').toBe('title');
 

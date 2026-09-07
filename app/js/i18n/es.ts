@@ -205,6 +205,24 @@ const es: Record<string, string> = {
   'pinball.hud.balls': 'Bolas: {n}',
   'pinball.hud.gameOver': 'Fin del juego',
   'pinball.hud.shootAgain': 'Juega de nuevo',
+  /**
+   * ⚠️ THE COMET MISSION. The Dev: "o jogador deve escolher um número de 2 a 9... aparecerá na fase
+   * cometas caindo do céu com um número dentro." These are the only words the drill has, so they carry
+   * the rule as well as the label — a player who never reads a README has to learn it from here.
+   *
+   * ⚠️ `pinball.comets.` AND NOT `pinball.mission.`, WHICH IS NOT TIDINESS. `pinball.mission.` is a
+   * prefix `tests/i18n` holds to the HUD's 63-pixel column — it belongs to the 1995 mission machine,
+   * whose lines go in that corner. These are a full-width SCREEN and a live-region announcement, and
+   * putting them under that prefix would have meant writing worse sentences to satisfy a rule about a
+   * different part of the screen. The one line that IS in the corner is `pinball.hud.mission`, which
+   * sits under the HUD's own prefix and is measured with the rest of it.
+   */
+  'pinball.comets.choose': 'Elige la tabla de multiplicar',
+  'pinball.comets.explain': 'Golpea los cometas con múltiplos de tu número. Si fallas, pierdes un punto.',
+  'pinball.hud.mission': 'Misión: {have}/{need}',
+  'pinball.comets.hit': '{value} es múltiplo de {times}. {have} de {need}.',
+  'pinball.comets.miss': '{value} no es múltiplo de {times}. {have} de {need}.',
+  'pinball.comets.won': 'Misión cumplida: {need} puntos en la tabla del {times}.',
   'pinball.hud.waiting': 'Mantén para estirar el émbolo.',
 };
 

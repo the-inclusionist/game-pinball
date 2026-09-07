@@ -185,11 +185,13 @@ describe('the camera on a table wider than the window', () => {
     expect(source, 'a finished game reaches the board').toMatch(/if \(gameOver\) highScores\.offer\(/);
     // ⚠️ AND ON THE GAME, NOT ON EVERY BALL. A board that recorded each lost ball would hold three
     // entries per game and mean nothing.
-    // ⚠️ TWICE NOW, AND BOTH ARE THE END OF A GAME. The drain offers when the last ball is lost; the
-    // pause menu's QUIT offers because ending a game deliberately is still ending it — that is the
-    // whole distinction between Quit and "back to the title", which abandons the game instead. What
-    // this gate refuses is an offer per BALL, which would put three entries on the board per game.
-    expect(source.match(/highScores\.offer\(/g) ?? [], 'offered at the two ends of a game').toHaveLength(2);
+    // ⚠️ THREE NOW, AND ALL THREE ARE THE END OF A GAME. The drain offers when the last ball is lost;
+    // the pause menu's QUIT offers because ending a game deliberately is still ending it — that is the
+    // whole distinction between Quit and "back to the title", which abandons the game instead; and
+    // WINNING the comet drill offers, because "O jogador ganha o jogo ao completar 20 pontos de missão"
+    // is the game ending in the one way that is not a failure. What this gate refuses is an offer per
+    // BALL, which would put three entries on the board per game.
+    expect(source.match(/highScores\.offer\(/g) ?? [], 'offered at the three ends of a game').toHaveLength(3);
   });
 
   test('⚠️ a lit lamp reaches the PICTURE, not only the control layer', () => {

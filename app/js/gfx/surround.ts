@@ -270,21 +270,34 @@ export function buildSurround(
  * machine while a packed word's layout depends on the endianness probe in `gfx/framebuffer`.
  */
 export function applySurround(fb: Framebuffer, surround: Float32Array): void {
-  for (let i = 0; i < surround.length; i++) {
-    const limit = surround[i]!;
-    if (limit >= 1) continue;
+  for (let i = 0; i < surround.length; i++) dimPixel(fb, i, surround[i]!);
+}
 
-    const at = i * 4;
-    const r = LINEAR[fb.bytes[at]!]!;
-    const g = LINEAR[fb.bytes[at + 1]!]!;
-    const b = LINEAR[fb.bytes[at + 2]!]!;
-    const y = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-    if (y <= limit || y === 0) continue;
+/**
+ * One pixel, brought under `limit` if it is over it. The primitive the walk above is made of.
+ *
+ * ⚠️ EXPORTED BECAUSE THE COMETS CANNOT USE A PRECOMPUTED MAP. Every other thing that needs a surround
+ * is at a fixed place on a table, so its shadow is computed once per palette and cached — see
+ * `surroundOf`. A comet is somewhere new every frame, so its shadow has to be laid down as it is
+ * drawn, over the pixels that happen to be under it.
+ *
+ * The alternative was a second copy of this arithmetic in `gfx/comet-view`, and the arithmetic is the
+ * part that has already been wrong twice: rounding to nearest put every table at 2.97:1, and scaling
+ * the bytes instead of the light walked warm grey toward blue. One copy, one place to be right.
+ */
+export function dimPixel(fb: Framebuffer, index: number, limit: number): void {
+  if (limit >= 1) return;
 
-    // Down, like the table itself: the product of two roundings up is what put the tables at 2.99:1.
-    const k = limit / y;
-    fb.bytes[at] = ENCODE[Math.floor(r * k * ENCODE_STEPS)]!;
-    fb.bytes[at + 1] = ENCODE[Math.floor(g * k * ENCODE_STEPS)]!;
-    fb.bytes[at + 2] = ENCODE[Math.floor(b * k * ENCODE_STEPS)]!;
-  }
+  const at = index * 4;
+  const r = LINEAR[fb.bytes[at]!]!;
+  const g = LINEAR[fb.bytes[at + 1]!]!;
+  const b = LINEAR[fb.bytes[at + 2]!]!;
+  const y = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  if (y <= limit || y === 0) return;
+
+  // Down, like the table itself: the product of two roundings up is what put the tables at 2.99:1.
+  const k = limit / y;
+  fb.bytes[at] = ENCODE[Math.floor(r * k * ENCODE_STEPS)]!;
+  fb.bytes[at + 1] = ENCODE[Math.floor(g * k * ENCODE_STEPS)]!;
+  fb.bytes[at + 2] = ENCODE[Math.floor(b * k * ENCODE_STEPS)]!;
 }

@@ -26,6 +26,14 @@ export interface HudState {
   readonly playerNumber: number;
   /** The mission or info line. Empty means there is nothing to say. */
   readonly hint: string;
+  /**
+   * The comet drill: how many mission points, out of how many wins.
+   *
+   * ⚠️ OPTIONAL, BECAUSE NOT EVERY GAME HAS ONE. The 1995 demonstration runs no comet mission at all,
+   * and a "Missão: 0/20" over a table with no comets on it would be the HUD reporting a thing that is
+   * not happening — the same fault as the ball count that sat at three while the player could not lose.
+   */
+  readonly mission?: { readonly have: number; readonly need: number };
 }
 
 /** One block: what is shown, and what is heard. They differ, and that difference is the point. */
@@ -39,6 +47,7 @@ export interface HudTextView {
   readonly score: HudBlockView;
   readonly balls: HudBlockView;
   readonly player: HudBlockView;
+  readonly mission: HudBlockView;
   readonly hint: HudBlockView;
 }
 
@@ -59,6 +68,13 @@ export function hudView(state: HudState, t: Translate): HudTextView {
     score: { text: groupDigits(state.score), label: t('pinball.hud.score', { n: state.score }) },
     balls: { text: t('pinball.hud.balls', { n: state.ballCount }), label: '' },
     player: { text: t('pinball.hud.player', { n: state.playerNumber }), label: '' },
+    // Absent stays empty, for the reason `HudState.mission` gives: no comet mission, nothing to report.
+    mission: {
+      text: state.mission
+        ? t('pinball.hud.mission', { have: state.mission.have, need: state.mission.need })
+        : '',
+      label: '',
+    },
     // Empty stays empty. A dash in the corner is furniture that means nothing and still takes the room.
     hint: { text: state.hint, label: '' },
   };
@@ -84,7 +100,7 @@ export interface HudBox {
   readonly bottom: string;
 }
 
-export type HudPlacement = Record<'score' | 'balls' | 'player' | 'hint', HudBox>;
+export type HudPlacement = Record<'score' | 'balls' | 'player' | 'mission' | 'hint', HudBox>;
 
 /**
  * ⚠️ PER-CENT, NOT PIXELS. The canvas is 320x180 and is stretched to whatever width the page gives it,
@@ -103,6 +119,7 @@ export function hudPlacement(layout: HudLayout, screen: HudConfig): HudPlacement
     score: box(layout.score),
     balls: box(layout.ballCount),
     player: box(layout.playerName),
+    mission: box(layout.mission),
     hint: box(layout.hint),
   };
 }

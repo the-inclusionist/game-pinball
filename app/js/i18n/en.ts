@@ -223,6 +223,24 @@ const en: Record<string, string> = {
   'pinball.hud.shootAgain': 'Shoot again',
   // ⚠️ And it says to HOLD. The selector's legend has room for one word per line, and the moment a
   // player needs to know the plunger draws back is this one: a ball in the lane, waiting.
+  /**
+   * ⚠️ THE COMET MISSION. The Dev: "o jogador deve escolher um número de 2 a 9... aparecerá na fase
+   * cometas caindo do céu com um número dentro." These are the only words the drill has, so they carry
+   * the rule as well as the label — a player who never reads a README has to learn it from here.
+   *
+   * ⚠️ `pinball.comets.` AND NOT `pinball.mission.`, WHICH IS NOT TIDINESS. `pinball.mission.` is a
+   * prefix `tests/i18n` holds to the HUD's 63-pixel column — it belongs to the 1995 mission machine,
+   * whose lines go in that corner. These are a full-width SCREEN and a live-region announcement, and
+   * putting them under that prefix would have meant writing worse sentences to satisfy a rule about a
+   * different part of the screen. The one line that IS in the corner is `pinball.hud.mission`, which
+   * sits under the HUD's own prefix and is measured with the rest of it.
+   */
+  'pinball.comets.choose': 'Choose a times table',
+  'pinball.comets.explain': 'Hit the comets carrying multiples of your number. Hit a wrong one and you lose a point.',
+  'pinball.hud.mission': 'Mission: {have}/{need}',
+  'pinball.comets.hit': '{value} is a multiple of {times}. {have} of {need}.',
+  'pinball.comets.miss': '{value} is not a multiple of {times}. {have} of {need}.',
+  'pinball.comets.won': 'Mission complete: {need} points on the {times} times table.',
   'pinball.hud.waiting': 'Hold to draw the plunger back.',
 };
 

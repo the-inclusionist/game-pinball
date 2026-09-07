@@ -97,6 +97,13 @@ describe('every screen fits the 320x180 it is drawn on', () => {
 
     document.querySelector<HTMLElement>('[data-table]')?.click();
     await frames(5);
+    // ⚠️ THE NEW SCREEN GETS LOOKED AT, not walked past. Eight number buttons, a heading and a
+    // sentence of explanation is the second most crowded screen in this game after the alphabet, and
+    // it arrived in the same session as the thumbnails that pushed "Voltar" off the selector.
+    look('mission screen');
+
+    document.querySelector<HTMLElement>('[data-times]')?.click();
+    await frames(5);
     look('table with the HUD');
 
     await userEvent.keyboard('{u}');
