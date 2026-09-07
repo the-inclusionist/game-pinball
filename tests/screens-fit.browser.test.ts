@@ -1,0 +1,128 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// NOTHING THIS GAME SHOWS MAY BE BIGGER THAN THE SCREEN IT SHOWS IT ON.
+//
+// ⚠️ DECISION 4 OF THE PLAN, HONOURED TO THE LETTER: "Tela 320x180 — Pilar 5 cumprido ao pé da letra,
+// nenhum ADR de exceção é devido." Every menu, dialog and screen in this game is laid out inside that,
+// and until this file nothing checked that any of them fitted.
+//
+// ⚠️ AND THE COST CAME DUE. The pause menu grew from four entries to seven over one session — the
+// palette, then the vision correction, then the controls — and came out 194 pixels tall in a
+// 180-pixel screen, with "Encerrar partida" clipped by the bottom edge. It was found by taking a
+// screenshot and looking, which is how the last four layout defects in this repository were found.
+//
+// ⚠️ AND EVERY BEHAVIOURAL TEST PASSED THROUGHOUT, which is why this file has to exist separately.
+// `tests/pause-menu-cabinet` walks that menu with the cabinet and reads its labels; a button off the
+// bottom of the screen still takes the focus, still fires and still reports its text. Nothing about
+// how a menu BEHAVES can see where it is.
+//
+// ⚠️ AND THE DEV HAS REFUSED SCROLLING BY NAME: "Cores da mesa deveria estar no menu de pausa, não
+// num rodapé que exige rolagem da tela." So the question is not "how tall is it" — a number fitted to
+// today's entries — but "does anything have to be scrolled to be reached", which stays the right
+// question when an eighth entry is added.
+import { describe, test, expect, beforeAll } from 'vitest';
+import { userEvent } from 'vitest/browser';
+
+interface PinballDebug { backdropLoaded: boolean; phase: string }
+const debug = (): PinballDebug => (window as unknown as { __pinball: PinballDebug }).__pinball;
+
+const frames = async (n: number): Promise<void> => {
+  for (let i = 0; i < n; i++) await new Promise((r) => requestAnimationFrame(() => r(null)));
+};
+const region = (): HTMLElement => document.getElementById('game-region')!;
+
+/**
+ * Anything laid out past the screen's own edges.
+ *
+ * ⚠️ MEASURED ON THE BOXES, NOT ON `overflow`. The region clips visually, so a clipped element is
+ * invisible and perfectly happy: `getBoundingClientRect` still reports where it was PUT, which is the
+ * only way to see something that has been cut off rather than something that chose to be hidden.
+ */
+function spilling(): string[] {
+  const box = region().getBoundingClientRect();
+  return [...region().querySelectorAll<HTMLElement>('*')]
+    .filter((el) => el.offsetParent !== null)
+    .filter((el) => {
+      const r = el.getBoundingClientRect();
+      return r.height > 0 && r.width > 0 && (r.bottom > box.bottom + 0.5 || r.right > box.right + 0.5);
+    })
+    .map((el) => `${el.tagName}.${el.className.split(' ')[0]} "${el.textContent?.trim().slice(0, 18)}"`);
+}
+
+beforeAll(async () => {
+  document.body.style.margin = '0';
+  // ⚠️ THE SCREEN AT ITS OWN SIZE. The game is presented scaled, so a browser window makes everything
+  // proportionally bigger and hides exactly this class of defect. 320x180 is the size the layout has
+  // to be correct at, and the smallest it will ever be asked to be.
+  document.body.innerHTML = `
+    <main id="game-region" tabindex="-1" style="position:relative;width:320px;height:180px;overflow:hidden"></main>
+    <div id="sr-status" role="status" aria-live="polite"></div>
+    <div id="sr-alert" role="alert" aria-live="assertive"></div>
+    <svg id="cvd-filters" width="0" height="0" aria-hidden="true" focusable="false"></svg>
+  `;
+  await import('../app/js/main.js');
+  for (let i = 0; i < 600 && !debug().backdropLoaded; i++) await frames(1);
+  await frames(5);
+});
+
+describe('every screen fits the 320x180 it is drawn on', () => {
+  /**
+   * ⚠️ ONE TEST, BECAUSE THE WALK IS ONE WALK. Written as seven, this file passed — and under the
+   * suite's own shuffle (`vite.config.ts` turns it on for tests as well as files) the seven ran in
+   * whatever order and checked the title screen while the pause menu was up. `CLAUDE.md` records the
+   * rule this breaks: "a test that passes in the order it was written has not been tested."
+   *
+   * Navigating to each screen independently was the alternative and is worse: it would mean seven
+   * boots, or seven paths back to a known state, to ask one question that is the same at every step.
+   * The assertion names the screen, so a failure is as specific as seven tests would have been.
+   */
+  test('⚠️ the title, the selector, the table, the pause menu and its three dialogs', async () => {
+    const spilled: string[] = [];
+    const look = (screen: string): void => {
+      for (const what of spilling()) spilled.push(`${screen}: ${what}`);
+    };
+
+    look('title');
+
+    document.querySelector<HTMLElement>('.pinball-title button')?.click();
+    await frames(4);
+    // The one most likely to break next: the catalogue grows, and a table added is a row added.
+    look('selector');
+
+    document.querySelector<HTMLElement>('[data-table]')?.click();
+    await frames(5);
+    look('table with the HUD');
+
+    await userEvent.keyboard('{u}');
+    await frames(6);
+    await userEvent.keyboard('{Enter}');
+    await frames(5);
+    expect(debug().phase, 'the game paused').toBe('paused');
+    // ⚠️ WHERE THIS WAS FOUND: seven entries, 194 pixels, in a 180-pixel screen.
+    look('pause menu');
+
+    await userEvent.keyboard('{d}');
+    await frames(3);
+    await userEvent.keyboard('{u}');
+    await frames(5);
+    look('palette');
+    document.getElementById('pinball-options')!.hidden = true;
+    await frames(3);
+
+    await userEvent.keyboard('{d}{d}');
+    await frames(3);
+    await userEvent.keyboard('{u}');
+    await frames(5);
+    look('vision');
+    (document.getElementById('pinball-vision') as HTMLElement).style.display = 'none';
+    await frames(3);
+
+    await userEvent.keyboard('{d}{d}{d}');
+    await frames(3);
+    await userEvent.keyboard('{u}');
+    await frames(5);
+    // Its rows carry a name AND its keys, so they are the widest thing in the game.
+    look('control editor');
+
+    expect(spilled, 'these are laid out past the edge of the screen').toEqual([]);
+  });
+});

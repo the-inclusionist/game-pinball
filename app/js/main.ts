@@ -801,9 +801,21 @@ function step(frames: number): void {
    * ⚠️ THE MENU FOLLOWS THE PHASE RATHER THAN THE KEY, so every way of pausing opens it — the keyboard,
    * the pad's start button, and anything that pauses in future. A menu opened by a key handler is a
    * menu the gamepad does not have.
+   *
+   * ⚠️ EXCEPT WHILE ONE OF ITS OWN DIALOGS IS UP, AND THAT GUARD WAS MISSING. The phase is still
+   * `paused` when the palette, the vision correction or the control editor is open — they are all
+   * reached FROM this menu, over a stopped game — so the menu reopened on the very next frame, on top
+   * of the dialog it had just opened. Found by screenshotting the vision dialog and seeing the pause
+   * menu over it, with the dialog's edges showing either side.
+   *
+   * `onColours` below has carried a comment since it was written saying "the loop is told to leave
+   * the menu alone while the dialog is up". Nothing told it. That comment described a fix that was
+   * never made, and the palette was invisible for an unrelated reason — it laid out below the screen
+   * — so nobody could see the one covering the other.
    */
-  if (phase === 'paused') pauseMenu.open();
-  else pauseMenu.close();
+  const overMenu = optionsDialog.isOpen() || visionDialog.isOpen() || keymapDialog.isOpen();
+  if (phase !== 'paused') pauseMenu.close();
+  else if (!overMenu) pauseMenu.open();
 
   hud.update({
     score: live.score.curScore,

@@ -97,6 +97,14 @@ export interface ChoiceDialogOptions<T extends string> {
 }
 
 export interface ChoiceDialog {
+  /**
+   * Whether it is on screen.
+   *
+   * ⚠️ ASKED BY `main`'s FRAME LOOP, which reopens the pause menu while the phase is `paused` — and
+   * the phase is still `paused` while a dialog opened FROM that menu is up. Without this the menu
+   * came back on the very next frame, on top of the dialog it had just opened.
+   */
+  isOpen(): boolean;
   open(): void;
   close(): void;
 }
@@ -110,6 +118,52 @@ export function mountChoiceDialog<T extends string>(o: ChoiceDialogOptions<T>): 
   root.setAttribute('aria-label', o.t(o.titleKey));
   // Closed until asked for: a menu is not what a player opened the game to see.
   root.hidden = true;
+
+  /**
+   * ⚠️ STYLED HERE, BECAUSE `.overlay` IS A CLASS NOTHING IN THIS GAME DEFINES.
+   *
+   * The class is real and load-bearing — it is how the engine's `OVERLAY_SCOPE_SELECTOR` finds this
+   * dialog — but it carries no LAYOUT here: `app/index.html` links no stylesheet at all, this game's
+   * own or the engine's. Measured in the running game, this dialog's box was `320x63 at top 180`,
+   * `position: static`, `display: block` — laid out AFTER the canvas, entirely below the screen.
+   *
+   * ⚠️ SO IT WAS THE DEV'S OWN COMPLAINT, STILL HALF UNFIXED. "Cores da mesa deveria estar no menu de
+   * pausa, não num rodapé que exige rolagem da tela." The BUTTON that opened it was moved into the
+   * pause menu; the dialog it opens was still a footer under the game, and every test passed because
+   * they all ask whether it is `display: none` — and a block below the fold is not.
+   *
+   * Every other screen in this game already sizes itself inline for the same reason: the pause menu,
+   * the high-score alphabet and the control editor all do. This one was the exception because it was
+   * written first, against a class that looked like it meant something.
+   */
+  Object.assign(root.style, {
+    position: 'absolute', left: '0', top: '0', width: '100%', height: '100%',
+    /**
+     * ⚠️ `none` HERE AND `flex` ONLY WHEN OPEN, BECAUSE AN INLINE `display` BEATS `[hidden]`.
+     * `hidden` is how this dialog has always opened and closed, and the browser's own rule for it is
+     * `display: none` from the user-agent stylesheet — which an inline `display: flex` overrides
+     * outright. Written the obvious way, the dialog was permanently visible.
+     * `tests/shell-options-dialog.browser` caught it in one run: "a closed dialog is really gone, not
+     * merely marked". So the two are kept in step in `open` and `close`, and `hidden` stays because
+     * the engine's Escape chain reads it.
+     */
+    display: 'none', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+    background: 'rgba(14, 16, 23, 0.92)', color: '#e8ecf4', textAlign: 'center',
+    // See `shell/pause-menu`: an element is a container for its DESCENDANTS, not for itself, so the
+    // padding here is a percentage and the list below carries the `cqh` gap.
+    containerType: 'size', boxSizing: 'border-box', padding: '2% 4%',
+  });
+
+  const heading = o.doc.createElement('div');
+  heading.textContent = o.t(o.titleKey);
+  Object.assign(heading.style, { fontSize: '6cqh', margin: '0' });
+
+  /** The column, so one `cqh` is one per cent of the dialog's own height. See `shell/pause-menu`. */
+  const column = o.doc.createElement('div');
+  Object.assign(column.style, {
+    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2cqh', width: '100%',
+  });
+  column.appendChild(heading);
 
   const buttons: { choice: T; element: HTMLElement }[] = [];
 
@@ -127,7 +181,11 @@ export function mountChoiceDialog<T extends string>(o: ChoiceDialogOptions<T>): 
       o.onChoose(choice);
       refresh();
     });
-    root.appendChild(button);
+    Object.assign(button.style, {
+      font: 'inherit', fontSize: '4.4cqh', padding: '0.9cqh 6%', width: '76%',
+      background: '#1a1e26', color: '#e8ecf4', border: '1px solid #8a93a6', cursor: 'pointer',
+    });
+    column.appendChild(button);
     buttons.push({ choice, element: button });
   }
 
@@ -146,10 +204,16 @@ export function mountChoiceDialog<T extends string>(o: ChoiceDialogOptions<T>): 
   const closeButton = o.doc.createElement('button');
   closeButton.textContent = o.t('pinball.palette.close');
   closeButton.addEventListener('click', () => close());
-  root.appendChild(closeButton);
+  Object.assign(closeButton.style, {
+    font: 'inherit', fontSize: '4.4cqh', padding: '0.9cqh 6%', width: '76%',
+    background: '#1a1e26', color: '#e8ecf4', border: '1px solid #8a93a6', cursor: 'pointer',
+  });
+  column.appendChild(closeButton);
+  root.appendChild(column);
 
   function close(): void {
     root.hidden = true;
+    root.style.display = 'none';
     o.restoreFocus?.();
   }
 
@@ -189,10 +253,12 @@ export function mountChoiceDialog<T extends string>(o: ChoiceDialogOptions<T>): 
   o.overlays.register(o.id, { close, inEscapeChain: true });
 
   return {
+    isOpen: () => !root.hidden,
     open() {
       // Read afresh, every time. See `current` above for what a snapshot would say.
       refresh();
       root.hidden = false;
+      root.style.display = 'flex';
       // ⚠️ THE FOCUS MOVES IN, or the keydown above never fires and the arrows go on working the
       // flippers behind the dialog. The first choice rather than the dialog itself, so a screen reader
       // reads an option instead of an empty container.

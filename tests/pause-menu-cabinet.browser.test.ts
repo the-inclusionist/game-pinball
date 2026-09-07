@@ -58,7 +58,16 @@ async function play(): Promise<void> {
  * shuffling on for exactly this, and this file was the next thing it caught.
  */
 async function playing(): Promise<void> {
+  /**
+   * ⚠️ ESCAPE FIRST, BECAUSE A DIALOG LEFT OPEN SWALLOWS THE START KEY. Once `main`'s loop stopped
+   * reopening the pause menu over its own dialogs, a test that ended with the palette or the vision
+   * correction up left the NEXT one pressing Enter into that dialog for ever — "could not get the
+   * game back into play". Escape is the way out of every one of them, and it is the one key this
+   * game will never let a player rebind.
+   */
   for (let i = 0; i < 3 && debug().phase !== 'playing'; i++) {
+    await userEvent.keyboard('{Escape}');
+    await frames(3);
     await userEvent.keyboard('{Enter}');
     await frames(4);
   }
@@ -134,6 +143,18 @@ describe('the flippers walk it and the plunger takes an entry', () => {
 
     expect(shown(document.getElementById('pinball-options')!), 'the palette opened').toBe(true);
     expect(debug().phase, '⚠️ and the game did NOT resume behind it').toBe('paused');
+    /**
+     * ⚠️ AND THE MENU IS OUT OF THE WAY, WHICH IT WAS NOT. `main`'s frame loop runs
+     * `phase === 'paused' ? open() : close()` every frame, and the phase is still `paused` while a
+     * dialog opened FROM the menu is up — so the menu reopened on the very next frame, on top of the
+     * dialog it had just opened. Found by screenshotting the vision dialog and seeing the pause menu
+     * over it, with the dialog's edges showing either side.
+     *
+     * `onColours` in `main` has carried a comment since it was written saying "the loop is told to
+     * leave the menu alone while the dialog is up". Nothing told it. The comment described a fix that
+     * was never there, and the palette was invisible for an unrelated reason, so nobody could see it.
+     */
+    expect(shown(menu()), 'the pause menu is covering the dialog it opened').toBe(false);
   });
 });
 

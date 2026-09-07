@@ -49,6 +49,8 @@ export interface KeymapDialogOptions {
 export interface KeymapDialog {
   open(): void;
   close(): void;
+  /** Whether it is on screen. See `ChoiceDialog.isOpen` for who asks and why. */
+  isOpen(): boolean;
   readonly element: HTMLElement;
 }
 
@@ -213,6 +215,7 @@ export function mountKeymapDialog(o: KeymapDialogOptions): KeymapDialog {
   return {
     element: root,
     close,
+    isOpen: () => root.style.display !== 'none',
     open(): void {
       if (root.style.display === 'flex') return;
       draw();

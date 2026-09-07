@@ -26,12 +26,15 @@ interface FakeElement {
   clicks: (() => void)[];
   keys: ((e: { key: string; preventDefault(): void }) => void)[];
   focused: number;
+  /** ⚠️ ADDED WHEN THE DIALOG STARTED SIZING ITSELF. See `shell/choice-dialog`: `.overlay` is a class
+   *  nothing in this game defines, so the dialog was laying out BELOW the screen as a plain block. */
+  style: Record<string, string>;
 }
 
 function fakeElement(tag: string): FakeElement {
   const el: FakeElement = {
     tag, id: '', className: '', hidden: false, textContent: '',
-    attributes: {}, children: [], clicks: [], keys: [], focused: 0,
+    attributes: {}, children: [], clicks: [], keys: [], focused: 0, style: {},
   };
   return Object.assign(el, {
     setAttribute(name: string, value: string) { el.attributes[name] = value; },
