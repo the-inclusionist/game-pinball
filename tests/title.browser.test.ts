@@ -30,9 +30,11 @@ const memoryStore = (): HighScoreStore & { held: Record<string, string> } => {
   return { held, getItem: (k) => held[k] ?? null, setItem: (k, v) => { held[k] = v; } };
 };
 
-function build(store: HighScoreStore = memoryStore()) {
+function build(store: HighScoreStore = memoryStore(), bindings?: () => typeof DEFAULT_BINDINGS) {
   const screen = titleScreen();
-  const dom = mountTitle({ doc: document, host, screen, t: (k) => k, store });
+  const dom = mountTitle({
+    doc: document, host, screen, t: (k) => k, store, ...(bindings ? { bindings } : {}),
+  });
   const at = (selector: string) => host.querySelector<HTMLElement>(selector)!;
   const shows = (el: HTMLElement) => el.getBoundingClientRect().height > 0;
   return { screen, dom, at, shows };
@@ -165,6 +167,27 @@ describe('⚠️ the controls, where somebody can read them before they play', (
         expect(shown, `${code} is on the screen`).toContain(keyLabel(code));
       }
     }
+  });
+
+  test('⚠️ and they are the keys the PLAYER has, not the ones the game shipped with', () => {
+    /**
+     * ⚠️ THE LEGEND WAS THE DEFAULTS, ALWAYS. `shell/control-legend` takes a binding table and falls
+     * back to `DEFAULT_BINDINGS`; `shell/title-dom` called it with no argument, so this list was a
+     * constant — correct for as long as the keys were a constant, which they stopped being the day
+     * the pause menu learned to edit them.
+     *
+     * ⚠️ AND A LEGEND THAT LIES IS WORSE THAN NO LEGEND. The player who has just moved the launch key
+     * is exactly the player who comes here to read it, and it would have shown them the key they
+     * replaced. The comment above this describes the silence that made the legend necessary; this is
+     * the same silence with a wrong answer in it.
+     */
+    const { at } = build(memoryStore(), () => ({ ...DEFAULT_BINDINGS, plunger: ['Space'] }));
+
+    at('.pinball-title button').click();
+
+    const shown = at('.pinball-controls').textContent!;
+    expect(shown, 'the chosen key is missing').toContain('Space');
+    expect(shown, 'the key it replaced is still listed').not.toMatch(/(^|[^A-Za-z])U([^A-Za-z]|$)/);
   });
 
   test('⚠️ and it is not there while the title is up', () => {

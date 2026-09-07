@@ -24,6 +24,7 @@ import fontUrl from '../../assets/fonts/press-start-2p.woff2';
 import { TITLE_LINES, TITLE_SUBTITLE, TITLE_BYLINE, type TitleScreen } from './title.js';
 import { readTable, EMPTY_SCORE, type HighScoreStore } from '../control/high-score.js';
 import { controlLegend } from './control-legend.js';
+import type { PinballAction } from './controls.js';
 
 /** The same fallback the HUD reasons its way to: no download, no wait, no blank screen. */
 const FALLBACK = 'ui-monospace, "DejaVu Sans Mono", Menlo, Consolas, monospace';
@@ -42,6 +43,16 @@ export interface TitleDomOptions {
   readonly store: HighScoreStore;
   /** Called after the player picks, so the caller can hide this and start the game. */
   readonly onStarted?: () => void;
+  /**
+   * The cabinet as the player has it now, for the legend on the selector.
+   *
+   * ⚠️ A FUNCTION AND NOT A VALUE, and absent means the defaults. `controlLegend` has always accepted
+   * a table and this module called it with none, so the list was `DEFAULT_BINDINGS` for ever —
+   * correct for exactly as long as the keys were a constant, which they stopped being the day the
+   * pause menu learned to edit them. A legend that lies is worse than no legend: the player who just
+   * moved the launch key is the one who comes here to read it.
+   */
+  readonly bindings?: () => Readonly<Record<PinballAction, readonly string[]>>;
 }
 
 export interface TitleDom {
@@ -184,12 +195,21 @@ export function mountTitle(o: TitleDomOptions): TitleDom {
    */
   const controls = o.doc.createElement('div');
   controls.className = 'pinball-controls';
-  Object.assign(controls.style, { fontSize: '2.6cqw', color: DIM, lineHeight: '1.5' });
+  /**
+   * ⚠️ 1.35 AND NOT 1.5, AND THE CHANGE IS HEADROOM RATHER THAN TASTE. This screen measured 180.0
+   * pixels of the 180.5 it has — seven legend rows, a scoreboard, five table buttons and a back link
+   * — so it fitted with nothing to spare, and the first thing that touched the page's typography
+   * broke it: giving `body` a `font-family` at all pushed it to 182.4.
+   *
+   * A layout with no headroom is a layout that is correct for one font on one machine. The legend is
+   * where the rows are, so the legend is where the room comes from.
+   */
+  Object.assign(controls.style, { fontSize: '2.6cqw', color: DIM, lineHeight: '1.35' });
   const controlsHeading = o.doc.createElement('div');
   controlsHeading.textContent = o.t('pinball.controls.title');
   Object.assign(controlsHeading.style, { color: INK, marginBottom: '2%' });
   controls.appendChild(controlsHeading);
-  for (const row of controlLegend()) {
+  for (const row of controlLegend(o.bindings?.())) {
     const line = o.doc.createElement('div');
     Object.assign(line.style, { display: 'flex', justifyContent: 'space-between', gap: '4%' });
     const what = o.doc.createElement('span');
@@ -215,7 +235,7 @@ export function mountTitle(o: TitleDomOptions): TitleDom {
   scores.className = 'pinball-high-scores';
   // The same line height as the legend above it: two blocks of small text in one column read as one
   // list when their lines are spaced differently, and the heading was landing on the row under it.
-  Object.assign(scores.style, { fontSize: '2.6cqw', color: DIM, marginTop: '2%', lineHeight: '1.5' });
+  Object.assign(scores.style, { fontSize: '2.6cqw', color: DIM, marginTop: '2%', lineHeight: '1.35' });
   readColumn.appendChild(scores);
 
   const back = o.doc.createElement('button');

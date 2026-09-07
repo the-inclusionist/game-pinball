@@ -1396,6 +1396,12 @@ const title = mountTitle({
   screen: screens,
   t: shell.t,
   store: localStorage,
+  /**
+   * ⚠️ THE LIVE TABLE, so the legend on the selector is the cabinet the player HAS. It read
+   * `DEFAULT_BINDINGS` for ever — correct until the pause menu learned to edit the keys, and a lie
+   * from that moment on, to the one player most likely to be reading it.
+   */
+  bindings: () => bindings,
   onStarted: () => {
     // The HUD is about a game in progress. Until one is, it has nothing to say.
     hud.setVisible(true);
