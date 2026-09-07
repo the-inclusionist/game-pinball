@@ -5,6 +5,10 @@ application of **ADR-0068** in the engine repository (`SP-the-inclusionist-trace
 game, because a game is the unit that gets adopted, refused, licensed and blamed. A record about how
 *this* game plays belongs where the game lives, not in the engine's ledger.
 
+**ADR-0009** is the other half of that. The index says the pinball is its own repository; that record
+says how it reaches the engine from there — as a published package rather than a path — and what the
+path had been hiding.
+
 Numbers here do **not** correspond to numbers there. When a record in this folder depends on one of the
 engine's, it names it in full — `ADR-0068 (engine)` — so a reader can tell the two ledgers apart.
 
@@ -22,3 +26,4 @@ question, the drivers, the options that were weighed, the decision, and its cons
 | [ADR-0006](ADR-0006-the-1995-playfield-is-the-density-bar-and-shortfalls-are-named.yaml) | The 1995 playfield is the density bar, and a table below it is named with what it measures |
 | [ADR-0007](ADR-0007-the-ground-may-be-lit-to-a-ceiling-and-the-flare-is-the-one-exception.yaml) | The ground may be lit, up to a measured ceiling, and the flare is the one place the rule is broken on purpose |
 | [ADR-0008](ADR-0008-contrast-is-measured-at-the-boundary-not-over-the-picture.yaml) | Contrast is a property of a boundary, so the shadow goes around each component and the pictures come back up |
+| [ADR-0009](ADR-0009-the-engine-is-consumed-from-the-registry.yaml) | The engine is consumed from the registry, and the path link was hiding a defect in it |

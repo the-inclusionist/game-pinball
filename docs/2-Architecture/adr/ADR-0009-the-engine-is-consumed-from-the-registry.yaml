@@ -1,0 +1,119 @@
+---
+metadata:
+  status: "accepted"
+  date: 2026-09-06
+  decision-makers: [Dev]
+  consulted:
+    - "The Dev, verbatim: 'A engine agora está em https://www.npmjs.com/package/@the-inclusionist/engine'"
+    - "ADR-0068 (engine) — one repository per game. This record is the other half of that: the index
+       of this folder says the pinball is its OWN repository, and this says how it reaches the engine
+       from there."
+    - "The plan's fifth risk, verbatim: 'A engine é alvo móvel. Está em modularização ativa
+       (Estágio 4). Um consumidor externo vai encostar em APIs que ainda mudam.'"
+    - "The plan's music risk, verbatim: 'o fork do alula embute um SoundFont GM de 3 MB dentro do
+       wasm, e 3 MB brigam com o orçamento de precache do PWA em aparelho de escola.'"
+  informed: []
+
+title: The engine is consumed from the registry, and the path link was hiding a defect in it
+
+context-and-problem-statement: |
+  This repository consumed the engine as `"@the-inclusionist/engine": "file:../SP-the-inclusionist-tracer"`
+  for eight phases, and for most of that there was no alternative: the package was not published. The
+  Dev published it, and the question is whether to move.
+
+  ⚠️ IT IS NOT A COSMETIC CHOICE, AND THE FIRST BUILD AGAINST THE REGISTRY PROVED IT BY FAILING.
+  `Rolldown failed to resolve import "@mintplex-labs/piper-tts-web" from
+  node_modules/@the-inclusionist/engine/dist-pkg/platform/tts.js`.
+
+  The engine's `platform/tts` reaches for that package with a dynamic `import(...)`, and the published
+  manifest declares only `pixi.js`, as a peer. Through the symlink it resolved anyway — out of the
+  ENGINE's own `node_modules`, by accident of directory layout — so nothing here had ever compiled
+  against the package as a consumer actually receives it. The defect was present the whole time and
+  invisible precisely because the link made it so.
+
+  ⚠️ AND A `file:` LINK IS NOT A WEAKER VERSION OF A DEPENDENCY. It is a different thing, in three
+  ways that all cost this project something on the day it was removed:
+
+    · IT HIDES MISSING DEPENDENCIES, as above.
+    · IT HAS NO VERSION AND NO INTEGRITY HASH. `package-lock.json` records `"link": true` and nothing
+      else, so nothing pins WHICH engine this game was tested against, and a clone on another machine
+      gets whatever that path happens to contain — or fails, if it contains nothing.
+    · IT MAKES ANOTHER REPOSITORY'S WORKING TREE A BUILD INPUT. Two sessions share that tree. A commit
+      there landed in this game's build with no version change and no way to say afterwards which one.
+
+  Every one of those is a way for a green test run to have proved nothing.
+
+decision-drivers:
+  - "A published package is the only artefact a consumer can be tested against. The tree that
+     publishes it has all its devDependencies installed and therefore cannot detect what it failed to
+     declare."
+  - "The plan's own risk: the engine is a moving target under active modularisation, and this is the
+     external consumer that finds out."
+  - "The precache budget. The plan opens on a game for school machines and the music risk is written
+     in megabytes; anything added to the bundle is measured against that."
+  - "This repository does not write to the engine's, so a defect found there is reported and worked
+     around here, never patched across the boundary."
+
+considered-options:
+  - "Stay on the `file:` link. Refused: it is what hid the defect, and the package now exists."
+  - "Move to the registry and install `@mintplex-labs/piper-tts-web` here to satisfy the import.
+     Refused — see below; it is megabytes for the fallback of a fallback."
+  - "Move to the registry and mark the import external. Refused: `external` leaves a bare specifier in
+     the output and the browser throws `Failed to resolve module specifier` into the console on every
+     start, on a page whose whole point is that it comes up clean."
+  - "⚠️ CHOSEN: move to the registry, and alias the undeclared import to a local module that throws
+     where the engine already catches."
+
+decision-outcome: |
+  ⚠️ CHOSEN: `"@the-inclusionist/engine": "^6.36.1"`, resolved to a registry tarball with an integrity
+  hash, and `shims/piper-tts-web.ts` standing in for the one import the package does not declare.
+
+  **The shim throws, and that is the engine's own path rather than a degradation of it.** Its
+  `import(...)` carries a `.catch` that sets `ttsFailed`, announces `sr.tts.loadFailed` and carries on
+  in the browser's own speech synthesis, which speaks the right language. A module that throws is
+  exactly what that catch was written for.
+
+  ⚠️ **AND NOT INSTALLING THE REAL PACKAGE IS A DECISION MADE HERE, WHICH THE DEV MAY REVERSE.** It
+  puts a WASM synthesiser and a voice model into a game whose plan opens with a precache budget for
+  school machines — the same argument that has the music unresolved. A neural voice is an offline
+  fallback behind a cloud voice that is the primary; spending megabytes on the fallback of a fallback,
+  in the build that most needs to stay small, is the wrong trade to make silently. It is written down
+  here instead. If it is reversed, `shims/` and the alias are deleted and nothing else changes.
+
+  **The fix belongs in the engine and was reported, not patched.** One line of `peerDependenciesMeta`
+  marking the import optional, which is what it already IS in behaviour. This repository does not
+  write to that one.
+
+  ⚠️ **AND THE ALIAS IS DECLARED TWICE ON PURPOSE.** A Vitest project is a whole Vite config and does
+  NOT inherit `resolve` from the one around it. Set only at the top level it builds `dist` correctly
+  and leaves the browser tests importing a module the dev server cannot serve — reported not as a
+  missing package but as `Failed to fetch dynamically imported module: /js/main.ts`, four suites at
+  once, naming a file that is perfectly fine.
+
+  **`tests/engine-dependency` holds the decision.** It reads the manifest AND the lockfile, because
+  those can disagree: editing `package.json` and running `npm install` left the symlink in place and
+  `"link": true` in the lock — npm saw a satisfying tree and did nothing. It took `npm uninstall`
+  first. A gate reading only the manifest would have passed that state, which is the state this
+  session was actually in for two commands.
+
+consequences:
+  good:
+    - "The game is built against the artefact a player receives, and the first thing that proved was a
+       defect eight phases old."
+    - "The lockfile pins a version and an integrity hash, so a clone on another machine gets the
+       engine this game was tested against."
+    - "Another repository's uncommitted working tree is no longer a build input here."
+    - "Upgrading is now a deliberate act with a version number attached, which is what the plan's
+       'moving target' risk needs in order to be managed rather than absorbed."
+  bad:
+    - "⚠️ The neural voice is absent from this game until the engine declares its import or the Dev
+       reverses the refusal above. A player relying on the Piper voice gets the browser's own, which
+       speaks the right language and is worse."
+    - "A defect found in the engine can only be reported from here, so the loop through the Dev is
+       part of the fix and the workaround lives in this repository in the meantime."
+    - "Engine changes no longer arrive instantly. That is the point, and it is still a cost: a fix
+       made in the engine is not testable here until it is published."
+    - "⚠️ AND THE PACKAGE IS ONLY PROVABLE FROM OUTSIDE. This record's whole occasion is a defect the
+       publishing tree could not see. Nothing here can stop the next one — it can only be the place
+       that finds it, which means a failing build in this repository is now evidence about the engine
+       and should be read that way before it is read as a defect here."
