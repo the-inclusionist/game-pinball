@@ -16,7 +16,8 @@ import { describe, test, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
 import { readPng } from './helpers/png.js';
 import {
-  SCREEN_ARTS, SCREEN_CEILING, TEXT_RATIO, PANEL_ALPHA, PANEL_UNDER, UI_INK, UI_DIM,
+  SCREEN_ARTS, SCREEN_DIMMED, SCREEN_CEILING, TEXT_RATIO, PANEL_ALPHA, PANEL_UNDER,
+  UI_INK, UI_DIM, CHERRY, NEON,
 } from '../app/js/shell/screen-art.js';
 
 const pathOf = (name: string): string => `app/assets/screens/${name}.png`;
@@ -50,6 +51,57 @@ describe.each(SCREEN_ARTS)('%s.png', (name) => {
     expect([width, height], 'the picture is not 320x180').toEqual([320, 180]);
   });
 
+  test('it is a photograph and not a dark rectangle', () => {
+    /**
+     * ⚠️ THE FAILURE THIS CATCHES HAS HAPPENED HERE BEFORE. "No pixel brighter than the ceiling"
+     * applied to a whole picture put the table art at a median of Y 0.0079 — seven per cent lightness
+     * — and the Dev's report was "as cores das mesas ficaram escuras demais". A ceiling is satisfied
+     * perfectly by black.
+     */
+    const { rgb } = pixelsOf(name);
+    const lit = rgb.map(([r, g, b]) => luminance(r!, g!, b!)).sort((a, b) => a - b);
+    const median = lit[Math.floor(lit.length / 2)]!;
+    const lstar = (y: number): number => 116 * (y > 0.008856 ? Math.cbrt(y) : 7.787 * y + 16 / 116) - 16;
+
+    /**
+     * ⚠️ THE MEDIAN BAR IS ONLY OWED BY A PICTURE THAT WAS AIMED AT ONE. `scripts/import-art.py` puts a
+     * DIMMED picture's median on L* 30 deliberately, so a median far below that means the curve went
+     * wrong — which is the failure that put the table art at seven per cent lightness. An UNDIMMED one
+     * has whatever median the photograph has: `start.png` sits at L* 12.8 because most of it is space,
+     * and that is the picture the Dev asked to be left alone rather than a fault.
+     */
+    if (SCREEN_DIMMED[name]) {
+      expect(lstar(median), `the median is L* ${lstar(median).toFixed(1)}, which is a black rectangle`)
+        .toBeGreaterThan(18);
+    }
+    /**
+     * And it has SOME range: a flat field of one colour would pass a median check and be no picture.
+     *
+     * ⚠️ EIGHT POINTS, AND THE FIRST VERSION OF THIS LINE ASKED FOR TWENTY — a number I made up, which
+     * `background.png` failed at 17.2. Two rounds of increasingly clever tone curves went into
+     * satisfying it before the obvious question got asked: what is range FOR, on a picture whose whole
+     * job is to sit behind menus? Nothing. Flat and dark is what a background should be. The master
+     * itself has almost none — its first percentile is L* 7.2 and its ninety-fifth L* 26.6 — and the
+     * two attempts to invent some produced a shadow-lifted picture and a noisy one.
+     *
+     * What this line is actually for is a picture that failed to import: a solid fill, or the ceiling
+     * applied to something already black. Eight points is well under both photographs and well over
+     * anything that is not a photograph at all.
+     */
+    expect(lstar(lit[Math.floor(lit.length * 0.95)]!) - lstar(lit[Math.floor(lit.length * 0.05)]!),
+      'the picture is a flat field rather than a photograph').toBeGreaterThan(8);
+  });
+});
+
+/**
+ * ⚠️ THE CEILING IS ONLY OWED BY THE PICTURES THAT ARE DIMMED, which since the Dev's second look is
+ * `background` alone: "Pirmeira tela: não use filtro para escurecer, deixe a imagem original."
+ *
+ * Splitting this out rather than skipping it inside the walk is the difference between a gate that
+ * says "this one does not owe the ratio, and here is why" and a gate that quietly does not run. The
+ * title owes a different thing, and the block after this one is where it is asked for.
+ */
+describe.each(SCREEN_ARTS.filter((n) => SCREEN_DIMMED[n]))('%s.png is held under the ceiling', (name) => {
   test('⚠️ no pixel is bright enough to swallow the text on it', () => {
     /**
      * The claim the whole import is built on: every word on these screens is `UI_INK`, and 4.5:1
@@ -106,36 +158,51 @@ describe.each(SCREEN_ARTS)('%s.png', (name) => {
       .toBeGreaterThanOrEqual(TEXT_RATIO);
   });
 
-  test('it is a photograph and not a dark rectangle', () => {
-    /**
-     * ⚠️ THE FAILURE THIS CATCHES HAS HAPPENED HERE BEFORE. "No pixel brighter than the ceiling"
-     * applied to a whole picture put the table art at a median of Y 0.0079 — seven per cent lightness
-     * — and the Dev's report was "as cores das mesas ficaram escuras demais". A ceiling is satisfied
-     * perfectly by black.
-     */
-    const { rgb } = pixelsOf(name);
-    const lit = rgb.map(([r, g, b]) => luminance(r!, g!, b!)).sort((a, b) => a - b);
-    const median = lit[Math.floor(lit.length / 2)]!;
-    const lstar = (y: number): number => 116 * (y > 0.008856 ? Math.cbrt(y) : 7.787 * y + 16 / 116) - 16;
+});
 
-    expect(lstar(median), `the median is L* ${lstar(median).toFixed(1)}, which is a black rectangle`)
-      .toBeGreaterThan(18);
+/**
+ * ⚠️ AND THE TITLE OWES THE SAME 4.5:1 THROUGH ITS OUTLINE INSTEAD.
+ *
+ * The photograph is untouched, so there is no bound on what is behind a letter: somewhere in a sunrise
+ * there is a pixel that matches any fill you choose. What holds is the OUTLINE — white inside cherry,
+ * cherry inside a neon halo — because the eye reads the edge between the two, and neither of them is
+ * the photograph.
+ *
+ * So what a gate can check here is the pair, and it is the pair that has to clear the ratio. The rest
+ * — that the outline is actually applied to the elements — is `tests/title.browser`, because a
+ * `-webkit-text-stroke` that a browser ignores is a border nobody has.
+ */
+describe('the title carries its own contrast', () => {
+  const parse = (css: string): { r: number; g: number; b: number } => {
+    const [r, g, b] = css.match(/\d+/g)!.map(Number);
+    return { r: r!, g: g!, b: b! };
+  };
+
+  test('⚠️ white on the cherry border clears 4.5:1 — the border IS the contrast', () => {
+    const ink = luminance(UI_INK.r, UI_INK.g, UI_INK.b);
+    const cherry = parse(CHERRY);
+    const measured = ratio(ink, luminance(cherry.r, cherry.g, cherry.b));
+
+    expect(measured, `SPACE STUDENT is white inside cherry, and that pair measures ${measured.toFixed(2)}:1`)
+      .toBeGreaterThanOrEqual(TEXT_RATIO);
+  });
+
+  test('⚠️ and the neon is brighter than the cherry it surrounds, or it is a shadow', () => {
     /**
-     * And it has SOME range: a flat field of one colour would pass a median check and be no picture.
-     *
-     * ⚠️ EIGHT POINTS, AND THE FIRST VERSION OF THIS LINE ASKED FOR TWENTY — a number I made up, which
-     * `background.png` failed at 17.2. Two rounds of increasingly clever tone curves went into
-     * satisfying it before the obvious question got asked: what is range FOR, on a picture whose whole
-     * job is to sit behind menus? Nothing. Flat and dark is what a background should be. The master
-     * itself has almost none — its first percentile is L* 7.2 and its ninety-fifth L* 26.6 — and the
-     * two attempts to invent some produced a shadow-lifted picture and a noisy one.
-     *
-     * What this line is actually for is a picture that failed to import: a solid fill, or the ceiling
-     * applied to something already black. Eight points is well under both photographs and well over
-     * anything that is not a photograph at all.
+     * PINBALL is cherry with no outline — the Dev asked for exactly that — so the only thing standing
+     * between it and the photograph is the glow. A halo DARKER than its letter is a drop shadow: it
+     * would read as depth rather than as light, and on the dark half of the picture it would vanish
+     * into the ground it is supposed to separate the letter from.
      */
-    expect(lstar(lit[Math.floor(lit.length * 0.95)]!) - lstar(lit[Math.floor(lit.length * 0.05)]!),
-      'the picture is a flat field rather than a photograph').toBeGreaterThan(8);
+    const cherry = parse(CHERRY);
+    const neon = parse(NEON);
+    const inside = luminance(cherry.r, cherry.g, cherry.b);
+    const halo = luminance(neon.r, neon.g, neon.b);
+
+    expect(halo, `the halo is Y ${halo.toFixed(4)} and the letter Y ${inside.toFixed(4)}`)
+      .toBeGreaterThan(inside);
+    expect(ratio(halo, inside), 'the halo is too close to the letter to be seen as a halo')
+      .toBeGreaterThan(1.5);
   });
 });
 

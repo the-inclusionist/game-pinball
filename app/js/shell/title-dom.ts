@@ -25,7 +25,7 @@ import { TITLE_LINES, TITLE_SUBTITLE, TITLE_BYLINE, type TitleScreen } from './t
 import { readTable, EMPTY_SCORE, type HighScoreStore } from '../control/high-score.js';
 import { controlLegend } from './control-legend.js';
 import { backdropUrl } from '../gfx/backdrop.js';
-import { screenBackground, PANEL, UI_INK, UI_DIM } from './screen-art.js';
+import { screenBackground, PANEL, CHERRY, NEON, UI_INK, UI_DIM } from './screen-art.js';
 import type { PinballAction } from './controls.js';
 
 /** The same fallback the HUD reasons its way to: no download, no wait, no blank screen. */
@@ -122,19 +122,44 @@ export function mountTitle(o: TitleDomOptions): TitleDom {
     // ⚠️ SEVEN GLYPHS OF A FIXED-WIDTH FACE, and Press Start 2P is a full em wide each. At 13cqw
     // "STUDENT" needs 91% of the width before letter-spacing and lost its first letter off the left
     // edge. Nine leaves room for the spacing and for a longer word than either of these.
-    Object.assign(el.style, { fontSize: '9cqw', lineHeight: '1.25', letterSpacing: '0.04em' });
+    /**
+     * ⚠️ A CHERRY BORDER, AND IT IS DOING TWO JOBS. The Dev asked for it — "Crie uma borda em volta de
+     * SPACE STUDENT na cor cereja" — in the same message that took the dimming off the photograph
+     * behind it, and the two go together: nothing holds the ground down any more, so the letters hold
+     * themselves up. A white face inside a cherry outline reads on a sunrise and on black space alike,
+     * because what the eye finds is the EDGE rather than the fill.
+     *
+     * ⚠️ `paint-order: stroke fill` OR THE BORDER EATS THE LETTER. `-webkit-text-stroke` is centred on
+     * the glyph's own outline by default, so half of a 0.4cqw stroke lands INSIDE the letter and a
+     * fixed-width face at this size loses most of its counters. Painting the stroke first and the fill
+     * over it puts the whole width outside, which is what a border means.
+     */
+    Object.assign(el.style, {
+      fontSize: '9cqw', lineHeight: '1.25', letterSpacing: '0.04em',
+      WebkitTextStrokeWidth: '0.42cqw', WebkitTextStrokeColor: CHERRY, paintOrder: 'stroke fill',
+    });
     title.appendChild(el);
   }
 
   const subtitle = o.doc.createElement('span');
   subtitle.textContent = TITLE_SUBTITLE;
   /**
-   * ⚠️ INK RATHER THAN DIM, AND THAT IS THE PHOTOGRAPH'S DOING. `start.png` goes behind this, and DIM
-   * on it measures 1.73:1 at the picture's brightest — unreadable. The two ways out are a panel or a
-   * brighter colour, and on the title the panel is the wrong one: it would put a grey box across the
-   * middle of the picture the Dev chose, over the one word the screen exists to say.
+   * ⚠️ CHERRY, WITH NO OUTLINE AND A NEON GLOW, asked for in those words: "pinte pinball na cor
+   * cereja, sem contorno. Adicione efeito neon em pinball."
+   *
+   * ⚠️ AND THE GLOW IS WHAT MAKES IT LEGIBLE, WHICH IS WHY IT IS NOT DECORATION. Cherry sits low in
+   * the middle of the lightness range — Y 0.1398 — so on an undimmed photograph there is always some
+   * patch it very nearly matches, and a fill that matches its ground is invisible however saturated it
+   * is. The halo is a ring of light around every stroke: what the eye finds is the glow against the
+   * ground and the letter against the glow, and neither of those is a coincidence of what the
+   * photograph is doing there.
+   *
+   * Three layers, tight to wide. One layer is a blur; three is a tube.
    */
-  Object.assign(subtitle.style, { fontSize: '5cqw', color: INK, letterSpacing: '0.25em' });
+  Object.assign(subtitle.style, {
+    fontSize: '5cqw', color: CHERRY, letterSpacing: '0.25em',
+    textShadow: `0 0 0.5cqw ${NEON}, 0 0 1.4cqw ${NEON}, 0 0 3cqw ${NEON}`,
+  });
   title.appendChild(subtitle);
 
   /**
@@ -150,10 +175,19 @@ export function mountTitle(o: TitleDomOptions): TitleDom {
   const byline = o.doc.createElement('span');
   byline.className = 'pinball-byline';
   byline.textContent = TITLE_BYLINE;
-  // ⚠️ INK, for the reason the subtitle is: it is small text straight on a photograph, and the
-  // picture's ceiling is computed from INK at 4.5:1. DIM would be 1.73:1.
+  /**
+   * ⚠️ THE ONE BLOCK ON THIS SCREEN THE DEV DID NOT SPECIFY, AND IT IS THE SMALLEST. SPACE STUDENT has
+   * its border and PINBALL its glow; the credit under them is eight pixels of unoutlined text, and the
+   * photograph behind it is no longer held down. A stroke at this size would close the counters of a
+   * fixed-width face — measured, it turns `Prof.` into a smear — so it takes the other classic
+   * treatment instead: a tight dark shadow, which is a ring of dark rather than a ring of colour and
+   * costs the letterforms nothing.
+   *
+   * It is the minimum that keeps a name readable over a sunrise, and it is mine rather than his.
+   */
   Object.assign(byline.style, {
     fontSize: '2.6cqw', color: INK, alignSelf: 'flex-end', marginTop: '2%',
+    textShadow: '0 0 0.25cqw #000, 0 0 0.6cqw #000',
   });
   title.appendChild(byline);
   title.addEventListener('click', () => { o.screen.advance(); refresh(); });

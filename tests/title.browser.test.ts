@@ -328,3 +328,57 @@ describe('⚠️ the photograph behind each screen', () => {
     }
   });
 });
+
+/**
+ * ⚠️ THE OUTLINE IS THE CONTRAST NOW, SO A BROWSER HAS TO SAY IT IS THERE.
+ *
+ * The Dev took the dimming off the title photograph — "não use filtro para escurecer, deixe a imagem
+ * original" — and asked for a cherry border on SPACE STUDENT and a neon glow on PINBALL in the same
+ * message. `tests/screen-art` checks that white-inside-cherry clears 4.5:1; what it cannot check is
+ * whether the border reaches the letters. `-webkit-text-stroke` is a prefixed property, and a
+ * property a browser ignores is a border nobody has — on a screen with nothing else holding the text
+ * up.
+ */
+describe('⚠️ the title holds itself up on an undimmed photograph', () => {
+  test('SPACE and STUDENT are white inside a cherry border', () => {
+    const { at } = build();
+    const lines = [...host.querySelectorAll<HTMLElement>('.pinball-title button > span')];
+    // The two title lines are the first two spans; the subtitle and the byline follow.
+    for (const line of lines.slice(0, 2)) {
+      const css = getComputedStyle(line);
+      expect(css.webkitTextStrokeColor, `${line.textContent} has no cherry border`)
+        .toBe('rgb(210, 4, 45)');
+      expect(parseFloat(css.webkitTextStrokeWidth), `${line.textContent}'s border has no width`)
+        .toBeGreaterThan(0);
+      // ⚠️ AND THE STROKE IS PAINTED FIRST, or half of it lands inside the glyph and a fixed-width
+      // face at this size loses its counters.
+      expect(css.paintOrder, 'the border is painted over the letter instead of behind it')
+        .toContain('stroke');
+      expect(css.color, 'the face is not white').toBe('rgb(232, 236, 244)');
+    }
+    void at;
+  });
+
+  test('⚠️ PINBALL is cherry, has no border, and glows', () => {
+    const { at } = build();
+    const css = getComputedStyle(at('.pinball-title button > span:nth-of-type(3)'));
+
+    expect(css.color, 'PINBALL is not cherry').toBe('rgb(210, 4, 45)');
+    // "sem contorno", in his words.
+    expect(parseFloat(css.webkitTextStrokeWidth) || 0, 'PINBALL has a border it was asked not to have')
+      .toBe(0);
+    // Three layers, tight to wide: one is a blur, three is a tube.
+    expect(css.textShadow, 'PINBALL has no neon').toContain('rgb(255, 74, 122)');
+    expect(css.textShadow.split('rgb(255, 74, 122)').length - 1, 'one layer is a blur, not a neon tube')
+      .toBeGreaterThanOrEqual(3);
+  });
+
+  test('and the credit under it carries the one thing nobody specified', () => {
+    // Eight pixels of unoutlined text over a sunrise. A stroke at this size closes the counters of a
+    // fixed-width face, so it takes a tight dark shadow instead — the minimum that keeps a name
+    // readable, and mine rather than his.
+    const { at } = build();
+    expect(getComputedStyle(at('.pinball-byline')).textShadow, 'the byline is bare on the photograph')
+      .toContain('rgb(0, 0, 0)');
+  });
+});

@@ -39,6 +39,24 @@ export type ScreenArt = 'start' | 'background';
 export const SCREEN_ARTS: readonly ScreenArt[] = ['start', 'background'];
 
 /**
+ * Which of them is held under the contrast ceiling, and the title is not.
+ *
+ * ⚠️ THE DEV, AFTER SEEING IT DIMMED: "Pirmeira tela: não use filtro para escurecer, deixe a imagem
+ * original." So the title keeps the photograph as it was taken and the TEXT carries the contrast
+ * instead — a cherry border around SPACE STUDENT, a neon glow under PINBALL, a tight dark shadow under
+ * the credit. That is a real technique and not a concession: what the eye finds on a busy ground is an
+ * EDGE, and an outline is an edge that does not depend on what the ground is doing there.
+ *
+ * ⚠️ AND IT IS ONLY THE TITLE. The selector and the mission screen carry paragraphs of small text in
+ * two weights, and no outline in the world makes a seven-pixel legend readable over an undimmed
+ * photograph. `scripts/import-art.py` holds the same table.
+ */
+export const SCREEN_DIMMED: Readonly<Record<ScreenArt, boolean>> = {
+  start: false,
+  background: true,
+};
+
+/**
  * The two text colours the screens are written in, as numbers.
  *
  * ⚠️ HERE RATHER THAN IN `title-dom`, WHICH IS WHERE THEY WERE. A node test cannot import that module
@@ -74,6 +92,20 @@ export const SCREEN_CEILING = (INK_LUMINANCE + 0.05) / TEXT_RATIO - 0.05;
  * So those blocks get a panel and keep their colour. The alpha is not a taste — `tests/screen-art`
  * composites every pixel of both shipped pictures under it and asserts what is left clears 4.5:1.
  */
+/**
+ * Cherry, and the neon it glows in.
+ *
+ * ⚠️ THE DEV NAMED THE COLOUR AND NOT THE HEX: "uma borda em volta de SPACE STUDENT na cor cereja" and
+ * "pinte pinball na cor cereja". This is cherry red at (210, 4, 45), Y 0.1398 — dark enough that white
+ * clears 4.5:1 against it as a border, saturated enough to read as the colour he asked for.
+ *
+ * ⚠️ AND THE NEON IS BRIGHTER THAN THE LETTER, which is what makes it a tube rather than a shadow. A
+ * real neon sign is a bright core in a coloured halo; the Dev asked for the letters themselves to be
+ * cherry, so the brightness goes into the halo instead and the reading is the same.
+ */
+export const CHERRY = 'rgb(210, 4, 45)';
+export const NEON = 'rgb(255, 74, 122)';
+
 export const PANEL_ALPHA = 0.85;
 export const PANEL_UNDER = { r: 14, g: 16, b: 23 } as const;
 export const PANEL = `rgba(${PANEL_UNDER.r}, ${PANEL_UNDER.g}, ${PANEL_UNDER.b}, ${PANEL_ALPHA})`;

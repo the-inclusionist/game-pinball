@@ -125,6 +125,22 @@ SCREENS = {
     'background': (320, 180),
 }
 
+#: Which of them is dimmed, and `start` is not.
+#:
+#: ⚠️ THE DEV, AFTER SEEING IT: "Pirmeira tela: não use filtro para escurecer, deixe a imagem
+#: original." So the title keeps the photograph as it was taken, and the contrast the text needs comes
+#: from the TEXT instead — a cherry border around SPACE STUDENT and a neon glow under PINBALL, both of
+#: which he specified in the same breath. An outline is a legitimate way to hold 1.4.3 on a busy
+#: ground, and it is the way a title screen has always done it.
+#:
+#: ⚠️ AND IT IS ONLY THE TITLE. `background.png` still carries the ceiling: the selector and the mission
+#: screen have paragraphs of small text on them, in two weights, and no outline in the world makes a
+#: seven-pixel legend readable over an undimmed photograph.
+SCREEN_DIMMED = {
+    'start': False,
+    'background': True,
+}
+
 #: `shell/title-dom.INK`, the colour of the text on those screens = (232, 236, 244).
 INK_LUMINANCE = 0.83585
 #: WCAG 2.2, 1.4.3, normal text. Not 1.4.11's 3 — these are WORDS, and the smallest of them is the
@@ -239,7 +255,14 @@ def reduce_screen(name):
     #
     # The flatness is the master's, and a BACKGROUND is the one picture where flat and dark is not a
     # fault. What this file owes it is the contrast ceiling, which the shared curve gives it.
-    lifted, k = shape(to_linear(np.asarray(art)), SCREEN_CEILING, SCREEN_TARGET_LSTAR)
+    linear = to_linear(np.asarray(art))
+    if SCREEN_DIMMED[name]:
+        lifted, k = shape(linear, SCREEN_CEILING, SCREEN_TARGET_LSTAR)
+    else:
+        # ⚠️ UNTOUCHED, WHICH IS THE DEV'S INSTRUCTION AND HAS A COST HE IS OWED IN NUMBERS. Nothing
+        # holds the ground down any more, so the text on it holds itself up: see `SCREEN_DIMMED`, and
+        # `tests/screen-art` measures what the outline actually buys against this very file.
+        lifted, k = linear, 1.0
     picture = Image.fromarray(to_srgb(lifted), 'RGB').quantize(colors=COLOURS, method=Image.MEDIANCUT)
 
     target = ROOT / 'app' / 'assets' / 'screens' / f'{name}.png'
