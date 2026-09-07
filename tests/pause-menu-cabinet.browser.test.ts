@@ -251,3 +251,67 @@ describe('⚠️ and it FITS, because the screen is 320x180 and nothing here may
     await frames(4);
   });
 });
+
+describe('⚠️ and the menu appears WITHOUT waiting for an animation frame', () => {
+  /**
+   * ⚠️ THE DEV, FOR THE THIRD TIME: "botão H e Enter devem pausar o jogo, fazendo aparecer o menu de
+   * pausa... Perdi a conta de quantas vezes pedi para implementar o pause e ainda não funciona."
+   *
+   * The key worked every time it was measured: press it and `phase` becomes `paused`. What did not
+   * happen was the MENU. Opening it was the frame loop's job — `phase === 'paused' ? open() : close()`
+   * once per frame — so the menu existed only for as long as animation frames kept arriving.
+   * Measured in a browser tab that is not compositing: `H -> phase=paused menu=none`. The game pauses
+   * and shows nothing, which from the outside is a pause key that does not work.
+   *
+   * ⚠️ AND EVERY TEST IN THIS FILE WAS GREEN THROUGHOUT, because every one of them presses the key AND
+   * drives the frames — `await frames(4)` right after the keystroke, in all of them. The dependency
+   * was invisible precisely to the tests written to check the thing that depended on it.
+   *
+   * So this one presses the key and asks IMMEDIATELY, with no frame in between. It is the only test
+   * here that must not await anything after the keystroke, and that is the whole point of it.
+   */
+  test.each(['{Enter}', '{h}'])('%s shows it on the spot', async (key) => {
+    await playing();
+
+    /**
+     * ⚠️ THE FRAMES ARE HELD, WHICH IS THE ONLY WAY TO SEE THIS. Simply not awaiting a frame is not
+     * enough: `userEvent.keyboard` awaits internally and the browser paints in between, so the loop
+     * opens the menu anyway and the gate passes against the broken code — measured, on the mutation
+     * that puts the menu back in the loop.
+     *
+     * A tab that is not compositing is where this bites, so the test makes one: `requestAnimationFrame`
+     * queues and never fires while the key is pressed. Restored in `finally`, or every test after this
+     * would run in a game that cannot draw.
+     */
+    const realRaf = window.requestAnimationFrame.bind(window);
+    const held: FrameRequestCallback[] = [];
+    window.requestAnimationFrame = ((cb: FrameRequestCallback) => {
+      held.push(cb);
+      return held.length;
+    }) as typeof window.requestAnimationFrame;
+
+    try {
+      /**
+       * ⚠️ AND THE FRAME ALREADY IN FLIGHT HAS TO DRAIN FIRST. The game's loop calls
+       * `requestAnimationFrame(frame)` at the end of every frame, so when the stub goes in there is
+       * one callback already registered with the REAL one. It fires, the loop runs once more, and
+       * that single frame is enough to open the menu — measured: the mutation stayed green until this
+       * wait was added. After it, the loop's next request is held by the stub and no frame can run.
+       */
+      await new Promise((r) => setTimeout(r, 60));
+      expect(held.length, 'the loop did not come back for another frame').toBeGreaterThan(0);
+
+      await userEvent.keyboard(key);
+
+      expect(debug().phase, `${key} did not pause`).toBe('paused');
+      expect(shown(menu()), 'the phase changed and the menu did not appear').toBe(true);
+    } finally {
+      window.requestAnimationFrame = realRaf;
+      // Hand the loop back the callback it is waiting on, or the game never draws again.
+      for (const cb of held.splice(0)) realRaf(cb);
+    }
+
+    await userEvent.keyboard(key);
+    await frames(4);
+  });
+});

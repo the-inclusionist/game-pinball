@@ -854,9 +854,14 @@ function step(frames: number): void {
    * never made, and the palette was invisible for an unrelated reason — it laid out below the screen
    * — so nobody could see the one covering the other.
    */
-  const overMenu = optionsDialog.isOpen() || visionDialog.isOpen() || keymapDialog.isOpen();
-  if (phase !== 'paused') pauseMenu.close();
-  else if (!overMenu) pauseMenu.open();
+  /**
+   * ⚠️ STILL HERE AS WELL, AND THAT IS NOT A DUPLICATE. `enterPhase` opens it the instant the phase
+   * changes, which is what makes the key work without waiting for a frame. This keeps it in step with
+   * everything the loop itself can change while the phase does not — a dialog closing over a paused
+   * game is the case that matters, and `showPauseMenu` is idempotent by construction because
+   * `open` and `close` both are.
+   */
+  showPauseMenu();
 
   hud.update({
     score: live.score.curScore,
@@ -1051,6 +1056,36 @@ function enterPhase(next: Phase): void {
   hint = next === 'paused' ? shell.t('pinball.hud.paused') : shell.t('pinball.hud.waiting');
   const status = document.getElementById('sr-status');
   if (status) status.textContent = hint;
+  showPauseMenu();
+}
+
+/**
+ * The pause menu follows the phase — HERE, at the moment the phase changes.
+ *
+ * ⚠️ IT USED TO FOLLOW IT FROM THE FRAME LOOP, and that is the defect the Dev has now reported three
+ * times: "botão H e Enter devem pausar o jogo, fazendo aparecer o menu de pausa... Perdi a conta de
+ * quantas vezes pedi para implementar o pause e ainda não funciona."
+ *
+ * The key worked every time it was measured: press it and `phase` becomes `paused`. What did not
+ * happen is the MENU, because opening it was the frame loop's job and the menu therefore existed only
+ * as long as animation frames kept arriving. Measured in a browser whose tab is not compositing:
+ * `H -> phase=paused menu=none`. The game pauses and shows nothing, which from the outside is a pause
+ * key that does not work — and no test saw it, because every test that presses the key also drives
+ * the frames.
+ *
+ * ⚠️ AND THE PROPERTY THE LOOP WAS THERE FOR IS KEPT, WHICH IS WHY IT MOVED HERE RATHER THAN INTO THE
+ * KEY HANDLER. The old comment: "the menu follows the phase rather than the key, so every way of
+ * pausing opens it — the keyboard, the pad's start button, and anything that pauses in future." This
+ * function is the ONE place the phase changes; anything that pauses goes through it.
+ *
+ * ⚠️ AND NOT WHILE ONE OF ITS OWN DIALOGS IS UP. The phase is still `paused` when the palette, the
+ * vision correction or the control editor is open — they are all reached from this menu, over a
+ * stopped game — and reopening it would put it on top of the dialog it just opened.
+ */
+function showPauseMenu(): void {
+  const overMenu = optionsDialog.isOpen() || visionDialog.isOpen() || keymapDialog.isOpen();
+  if (phase !== 'paused') pauseMenu.close();
+  else if (!overMenu) pauseMenu.open();
 }
 
 /**
