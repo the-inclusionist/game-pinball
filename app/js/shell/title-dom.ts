@@ -134,8 +134,37 @@ export function mountTitle(o: TitleDomOptions): TitleDom {
      * fixed-width face at this size loses most of its counters. Painting the stroke first and the fill
      * over it puts the whole width outside, which is what a border means.
      */
+    /**
+     * ⚠️ BRUSHED METAL WITH SEAMS AND BOLTS, asked for after the white: "Troque o preenchimento de
+     * space student de branco para cinza metálico com enfeites (parafusos, linhas)."
+     *
+     * Three background layers painted THROUGH the glyphs — bolts, seams, then the metal itself — with
+     * `background-clip: text`. Nothing is drawn beside the letters; the letters are the window.
+     *
+     * ⚠️ AND THE LIGHTEST PART OF THE METAL CARRIES THE CONTRAST. The cherry border is Y 0.1398 and a
+     * plain mid-grey against it is 2.1:1 — under what a shape needs. Real metal is not one grey: the
+     * highlight along the top is Y 0.90, which clears 4.5:1, and the darker band and the seams are
+     * decoration INSIDE a letter whose edge is already carried. `tests/screen-art` measures the pair
+     * that has to hold.
+     *
+     * ⚠️ AND IT DEGRADES TO A SOLID LIGHT FILL. `color` is still set, so an engine that ignores
+     * `-webkit-text-fill-color` shows near-white letters inside a cherry border rather than nothing at
+     * all — which is what `background-clip: text` alone would leave.
+     */
     Object.assign(el.style, {
       fontSize: '9cqw', lineHeight: '1.25', letterSpacing: '0.04em',
+      backgroundImage: [
+        // The bolts: a small bright dot with a dark shoulder, on a grid coarse enough to read at 29px.
+        'radial-gradient(circle at 3px 3px, rgba(255,255,255,0.85) 0 1px, rgba(70,76,86,0.9) 1px 2px,'
+          + ' rgba(0,0,0,0) 2px)',
+        // The seams: fine horizontal lines, the way a rolled plate is scored.
+        'repeating-linear-gradient(0deg, rgba(120,127,138,0.55) 0 1px, rgba(0,0,0,0) 1px 5px)',
+        // The metal: a highlight along the top, a shadow through the middle, a lift at the foot.
+        'linear-gradient(180deg, #f2f4f8 0%, #dfe3ea 26%, #c6ccd6 58%, #eceff5 100%)',
+      ].join(', '),
+      backgroundSize: '12px 12px, auto, auto',
+      WebkitBackgroundClip: 'text', backgroundClip: 'text',
+      WebkitTextFillColor: 'transparent',
       // ⚠️ 0.84 AND IT WAS 0.42, ASKED FOR AFTER LOOKING: "Deixe a borda de space student duas vezes
       // mais grossa." Twice the width, which `paint-order: stroke fill` puts entirely OUTSIDE the
       // glyph — so the letters keep their counters at double the border, which they would not if the
@@ -147,6 +176,9 @@ export function mountTitle(o: TitleDomOptions): TitleDom {
 
   const subtitle = o.doc.createElement('span');
   subtitle.textContent = TITLE_SUBTITLE;
+  // ⚠️ THE CLASS IS THE HOOK FOR THE FLICKER, which lives in `css/style` because `@keyframes` cannot be
+  // an inline style. The Dev: "Faça a palavra pimball ficar acendendo e apagando."
+  subtitle.className = 'pinball-subtitle';
   /**
    * ⚠️ CHERRY, WITH NO OUTLINE AND A NEON GLOW, asked for in those words: "pinte pinball na cor
    * cereja, sem contorno. Adicione efeito neon em pinball."

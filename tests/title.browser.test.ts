@@ -16,6 +16,13 @@
 // ⚠️ AND `getBoundingClientRect` IS THE POINT. Asserting `style.display === 'none'` would pass on the
 // broken version the moment somebody wrote `hidden` back, because the attribute would be set. Only
 // layout knows whether a thing occupies the screen.
+/**
+ * ⚠️ THE STYLESHEET IS IMPORTED HERE BECAUSE THIS FILE DOES NOT BOOT THE GAME. It mounts `mountTitle`
+ * into a host of its own, which is what makes it fast and precise — and `app/css/style.css` reaches the
+ * page only through `main.ts`. PINBALL's flicker is a `@keyframes` rule, which cannot be an inline
+ * style, so without this the test reads `animation-name: none` and would be measuring its own harness.
+ */
+import '../app/css/style.css';
 import { describe, test, expect, beforeEach, afterEach } from 'vitest';
 import { mountTitle } from '../app/js/shell/title-dom.js';
 import { titleScreen, TITLE_BYLINE } from '../app/js/shell/title.js';
@@ -142,8 +149,17 @@ describe('the title fits the screen it is drawn on', () => {
     const { at } = build();
     const box = host.getBoundingClientRect();
 
-    for (const line of host.querySelectorAll<HTMLElement>('.pinball-title span')) {
+    /**
+     * ⚠️ THE TITLE'S OWN LINES, AND THIS USED TO WALK EVERY SPAN UNDER `.pinball-title`. That includes
+     * the table buttons' labels, which live in the selector — hidden, so their rectangle is 0,0 — and
+     * `0 >= box.left` was true only while the host happened to sit at the page's origin. Loading the
+     * real stylesheet centres the body, the host moved to x 46.5, and a hidden span "started outside".
+     *
+     * The claim is about the two title LINES; `> span` is what says so.
+     */
+    for (const line of host.querySelectorAll<HTMLElement>('.pinball-title button > span')) {
       const r = line.getBoundingClientRect();
+      if (r.width === 0 && r.height === 0) continue;
       expect(r.left, `"${line.textContent}" starts inside`).toBeGreaterThanOrEqual(box.left - 0.5);
       expect(r.right, `"${line.textContent}" ends inside`).toBeLessThanOrEqual(box.right + 0.5);
     }
@@ -340,7 +356,7 @@ describe('⚠️ the photograph behind each screen', () => {
  * up.
  */
 describe('⚠️ the title holds itself up on an undimmed photograph', () => {
-  test('SPACE and STUDENT are white inside a cherry border', () => {
+  test('SPACE and STUDENT are brushed metal inside a cherry border', () => {
     const { at } = build();
     const lines = [...host.querySelectorAll<HTMLElement>('.pinball-title button > span')];
     // The two title lines are the first two spans; the subtitle and the byline follow.
@@ -354,14 +370,26 @@ describe('⚠️ the title holds itself up on an undimmed photograph', () => {
       // face at this size loses its counters.
       expect(css.paintOrder, 'the border is painted over the letter instead of behind it')
         .toContain('stroke');
-      expect(css.color, 'the face is not white').toBe('rgb(232, 236, 244)');
+      /**
+       * ⚠️ THE FACE IS BRUSHED METAL NOW, NOT WHITE. "Troque o preenchimento de space student de branco
+       * para cinza metálico com enfeites (parafusos, linhas)." It is painted as three backgrounds
+       * clipped to the glyphs, so what says it is there is `background-clip` and the layers — `color`
+       * survives only as the fallback for an engine that ignores `-webkit-text-fill-color`.
+       */
+      // ⚠️ ONE VALUE PER BACKGROUND LAYER, which is why this looks for the word rather than equality:
+      // three layers report `text, text, text`, and an engine that shortened it to one would still be
+      // clipping. What must not appear is `border-box`, which is a metal rectangle beside the letters.
+      expect(css.webkitBackgroundClip || css.backgroundClip, 'the metal is not clipped to the letters')
+        .toContain('text');
+      expect(css.backgroundImage, 'there are no bolts').toContain('radial-gradient');
+      expect(css.backgroundImage, 'there are no seams').toContain('repeating-linear-gradient');
     }
     void at;
   });
 
-  test('⚠️ PINBALL is cherry, has no border, and glows', () => {
+  test('⚠️ PINBALL is cherry, has no border, glows, and flickers', () => {
     const { at } = build();
-    const css = getComputedStyle(at('.pinball-title button > span:nth-of-type(3)'));
+    const css = getComputedStyle(at('.pinball-subtitle'));
 
     expect(css.color, 'PINBALL is not cherry').toBe('rgb(210, 4, 45)');
     // "sem contorno", in his words.
@@ -371,6 +399,15 @@ describe('⚠️ the title holds itself up on an undimmed photograph', () => {
     expect(css.textShadow, 'PINBALL has no neon').toContain('rgb(255, 74, 122)');
     expect(css.textShadow.split('rgb(255, 74, 122)').length - 1, 'one layer is a blur, not a neon tube')
       .toBeGreaterThanOrEqual(3);
+    /**
+     * ⚠️ "Faça a palavra pimball ficar acendendo e apagando", and the RATE is the accessibility half.
+     * WCAG 2.3.1 refuses anything flashing more than three times a second — the band that provokes
+     * photosensitive seizures — so this checks the cycle is slow as well as present. A blink fast
+     * enough to be exciting is a blink that can hurt a child.
+     */
+    expect(css.animationName, 'PINBALL does not flicker').toBe('pinball-neon');
+    expect(parseFloat(css.animationDuration), 'the flicker is fast enough to be a strobe')
+      .toBeGreaterThan(0.34);
   });
 
   test('and the credit under it carries the one thing nobody specified', () => {

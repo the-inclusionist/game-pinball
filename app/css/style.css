@@ -95,3 +95,35 @@ canvas {
   /* The picture is 320x180 scaled by whole numbers. Anything but nearest-neighbour is a blur. */
   image-rendering: pixelated;
 }
+
+/*
+ * PINBALL flickers like the tube it is drawn as.
+ *
+ * ⚠️ THE DEV: "Faça a palavra pimball ficar acendendo e apagando."
+ *
+ * ⚠️ AND IT IS SLOW ON PURPOSE. WCAG 2.3.1 refuses anything that flashes more than three times a
+ * second, because that is the band that provokes photosensitive seizures; this is one cycle every 2.4
+ * seconds, which is forty times under the limit and reads as a neon tube warming rather than as a
+ * strobe. A blink fast enough to be exciting is a blink that can hurt a child, and this game is for a
+ * classroom.
+ *
+ * ⚠️ AND IT STOPS ENTIRELY FOR A READER WHO ASKED. `prefers-reduced-motion` is the platform's own way
+ * of saying "movement makes me ill", and a decorative animation is exactly what it is for. The word
+ * stays lit — the state a reader keeps is the ON one, not the off.
+ *
+ * ⚠️ IT IS HERE AND NOT INLINE BECAUSE `@keyframes` CANNOT BE AN INLINE STYLE. Everything else on that
+ * screen is set from `shell/title-dom`; this is the one rule that has nowhere else to live.
+ */
+@keyframes pinball-neon {
+  0%, 44% { opacity: 1; }
+  56%, 64% { opacity: 0.22; }
+  76%, 100% { opacity: 1; }
+}
+
+.pinball-subtitle {
+  animation: pinball-neon 2.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pinball-subtitle { animation: none; }
+}
