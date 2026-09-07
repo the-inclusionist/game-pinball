@@ -44,6 +44,23 @@ the playfield is the canvas the art has to fit, at these exact sizes:
 | `long-climb` | 183 × 300 | 183 × 180 | 120 px vertical |
 | `ring-belt` | 360 × 240 | 320 × 180 | 40 px horizontal + 60 vertical |
 
+## How a picture becomes an asset
+
+```bash
+python scripts/import-art.py            # every table
+python scripts/import-art.py low-orbit  # just one
+```
+
+It reads `art/<table>.jpg`, area-averages it down to the playfield, places the picture's **median**
+lightness at CIE L\* 25, holds every pixel under the ceiling the **ball** sets (3:1 against
+(238, 242, 248) allows L\* 58.2), quantises to 192 colours and writes `app/assets/tables/<table>.png`.
+
+⚠️ **That script exists because the one that made the first six did not.** It lived in a scratch
+directory and is gone, and nobody could say afterwards what dim it had applied — measured after the
+fact, it was seven per cent lightness, which is what "as cores das mesas ficaram escuras demais" was
+about. The reasoning for both numbers is in the script's own header and in
+[`ADR-0008`](../docs/2-Architecture/adr/ADR-0008-contrast-is-measured-at-the-boundary-not-over-the-picture.yaml).
+
 ⚠️ **Source art is downscaled, so its size should be an exact multiple of the target.** A 4:1 reduction
 is a clean box filter — every output pixel is exactly sixteen input pixels — and preserves the pixel
 grid. A ratio like 4.37:1 destroys it. The 4× sizes are 732 × 940, 732 × 1000, 732 × 1040, 732 × 980,

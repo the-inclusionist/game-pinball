@@ -1,0 +1,157 @@
+---
+metadata:
+  status: "accepted"
+  date: 2026-09-06
+  decision-makers: [Dev]
+  consulted:
+    - "The Dev, verbatim, on seeing the six tables wearing his art: 'As cores das mesas ficaram
+       escuras demais, o contraste ficou altíssimo, mas o necessário e suficiente é 3:1.'"
+    - "The Dev, verbatim, on how the art and the geometry should meet: 'Escureça as imagens e ilumine
+       somente a região onde quer um item.'"
+    - "WCAG 2.2, Success Criterion 1.4.11 Non-text Contrast — 3:1 against ADJACENT colours."
+    - "ADR-0007 (this repository), which predicted this: 'this decision has a shelf life... the
+       arrival of that art re-opens this ADR — and the answer then is likely to be the second option
+       here, outlines.'"
+    - "ADR-0004 (this repository) — the worlds are told apart by lightness, ground darkest, ball
+       lightest. This does not revoke that; it stops that ordering being used as a contrast rule."
+  informed: []
+
+title: Contrast is a property of a boundary, so the shadow goes around each component and the pictures come back up
+
+context-and-problem-statement: |
+  ADR-0007 capped anything that brightens the GROUND at CIE L* 32, argued from ADR-0004's ordering:
+  the ground is the darkest thing on the table, so nothing may lift it past the darkest role. When
+  the Dev's bitmap art arrived, the same rule was applied to it — each picture multiplied down until
+  its brightest pixel fitted under the ceiling.
+
+  ⚠️ THE DEV LOOKED AT THE RESULT AND SAID IT WAS TOO DARK AND TOO CONTRASTY AT ONCE, and named the
+  requirement: "o necessário e suficiente é 3:1". Both halves of that are measurements, and both
+  came out in his favour.
+
+  **The pictures were at seven per cent lightness.** Across the six tables: median luminance Y 0.0079
+  (L* 7.1), 95th percentile Y 0.0393, brightest Y 0.0685.
+
+  **And the contrast was wildly uneven.** Each role against that median: `goal` 12.42:1, `key`
+  9.52:1, `water` 6.89:1, `structure` 5.76:1, `climb` 5.70:1, `gate` 5.24:1, `hazard` 3.99:1 — and
+  `free` at 2.41:1. Four times the requirement at one end and under it at the other.
+
+  ⚠️ AND THE ROLE THE DARKENING EXISTED FOR IS THE ONE IT NEVER DELIVERED. `free` was (74, 82, 96), a
+  relative luminance of Y 0.0833. A colour reaches 3:1 against PURE BLACK only at Y 0.10. So `free`'s
+  best possible contrast against anything at all was 2.67:1, and no dim, however severe, could have
+  raised it. Six pictures were blacked out on behalf of a role that failed regardless.
+
+  ⚠️ AND THE AREA BEING CHARGED IS AN ORDER OF MAGNITUDE TOO BIG. Measured by drawing every table
+  twice — once on a black backdrop, once on a white one — and counting the pixels that came out
+  identical: components cover 8.6% of `ring-belt`, 10.1% of `crater-run`, 11.4% of `long-climb`,
+  11.5% of `slipstream` and 12.5% of `low-orbit` and `ion-storm`. Nine pixels in ten are scenery that
+  nothing ever stands on.
+
+  The error is one substitution, made in ADR-0004 and inherited without being re-examined: an
+  ORDERING ("the ground is darker than every role") was used where a RATIO was meant. They are not
+  the same claim, and it is possible to satisfy the first everywhere while failing the second
+  everywhere — which is exactly what happened.
+
+decision-drivers:
+  - "3:1 is the requirement, and 'sufficient' is half of what the Dev said. Darkening past it is a
+     cost with nothing bought."
+  - "Contrast is read at a boundary. WCAG says 'adjacent colours'; at 320x180, with two-pixel edges
+     and a ball of radius three, adjacent means one or two pixels."
+  - "The art is the Dev's and it is meant to be seen. He asked for it darkened, not deleted."
+  - "The palette's separability gates (CIE76 >= 20, in normal vision and under the three Machado 2009
+     simulations) are not negotiable and cannot be spent to buy contrast."
+  - "The composition is made once per change and the camera slides a window over it. Per-pixel work
+     is affordable only if it does not depend on the frame."
+
+considered-options:
+  - "Keep the global dim and lift it until the pictures look right. Refused: it cannot deliver 3:1 for
+     `free` at any setting, and every setting bright enough to satisfy the Dev makes four more roles
+     fail."
+  - "Lift every role until it clears 3:1 against a bright picture. Refused by arithmetic: a backdrop
+     at L* 40 requires every role above L* 72, which leaves eight roles, the ball and five grounds to
+     be told apart inside twenty-three units of lightness. The separability gates fall first."
+  - "Give every component a rim that carries the contrast. This is ADR-0007's own prediction and is
+     half the answer, but a rim is a colour on a table where colours mean things — `gfx/table-view`
+     already has one, and it measured 1.96:1 against its own body."
+  - "⚠️ CHOSEN: darken the backdrop AROUND each component, to that component's own role's ceiling,
+     and leave the rest of the picture alone."
+
+decision-outcome: |
+  ⚠️ CHOSEN: the shadow goes where the contrast is read, and the pictures come back up.
+
+  **`gfx/surround` computes, per pixel, the brightest the backdrop may be there**, as the minimum over
+  every role painting within reach of `(role luminance + 0.05) / 3 - 0.05`. The framebuffer is then
+  scaled down wherever it exceeds that — in LINEAR light, so all three channels keep their ratios and
+  the hue is exactly preserved.
+
+  **The ceiling is per role, and that is the whole point.** `goal` at Y 0.6366 clears 3:1 against a
+  backdrop as bright as Y 0.1789 (L* 49) and barely needs a shadow at all; `free` needs one that is
+  very nearly black. One number for both is what produced the problem this record is about. What
+  falls out is a rule nobody set out to write: the dark roles sit in deep shadow and the bright ones
+  float.
+
+  **Two distances, and they are different claims.** `SURROUND_ADJACENT` = 2 px is where the ratio is
+  required, because that is what adjacent means at this scale. `SURROUND_MARGIN` = 6 px is a cosmetic
+  fade so the shadow has no hard rectangle around it, and nothing is proved out there. Conflating
+  them is not academic: the first version had one number and a fade in L* from the ceiling to 100
+  across six pixels, which is already at L* 33 by the second pixel — brighter than anything in these
+  pictures. It cost a pass over half the table and darkened nothing.
+
+  **The footprint is asked of the renderer, not restated.** `gfx/table-view.drawComponents` paints
+  onto a scratch frame and the pixels it touched are the footprint. Restating the drawing rules
+  (a lane is rails, a component with no collision is its bounds, a mover is not drawn here) was tried
+  and shadowed 76.2% of `low-orbit` — six times what its components cover — because a lane's bounding
+  box is long and diagonal and its interior is never painted.
+
+  **The pictures are re-imported and land at a median of L* 20.6 to 25.2**, against 7.1 before, by
+  `scripts/import-art.py` — which exists because the script that made the old ones did not, and
+  nobody could say afterwards what it had done. Two numbers govern it:
+
+    · ⚠️ **The ceiling is the BALL's.** The ball is the one thing on a table that can be anywhere, so
+      it is the one thing that cannot have a precomputed shadow under it. At (238, 242, 248) it is
+      Y 0.8846, and 3:1 against that allows a backdrop up to Y 0.2615 (L* 58.2). No pixel of any
+      picture may pass it. Derived, not chosen.
+    · **The floor is the Dev's instruction.** "Escureça as imagens e ilumine somente a região onde
+      quer um item" — so each picture's MEDIAN is placed at L* 25 and the ceiling is enforced
+      PER PIXEL. Scaling the whole picture down until its brightest pixel fits is the same mistake
+      this record is about, one level down: it put `slipstream` at a median of L* 1.9 while asking
+      for 25, because it has one small very bright thing in it.
+
+  **`free` and `structure` moved, and the CB-Safe palette paid for it.** `free` rises to Y 0.1056 —
+  as little as clears 3:1 against black — and `structure` rises with it by the least that keeps the
+  two neutrals apart, since they differ by lightness alone. Normal vision goes 23.7 -> 22.3. The
+  CB-Safe palette's closest pair was exactly 22.0 (`structure` / `water`, protanopia) and is now 21.6
+  (`structure` / `free`, protanopia): a search over lightness and over the blue-yellow axis — the one
+  protanopia keeps — found nothing that holds 22 while `free` clears the floor. The gate is 20 and
+  the two units were self-imposed headroom. A third of one of them bought the ratio, and a palette
+  that meets 3:1 at 21.6 apart is worth more than one that misses it at 22.
+
+  ⚠️ **AND ADR-0007's CEILING IS NOT REVOKED, IT IS DEMOTED.** `GLOW_CEILING` still caps what a light
+  may do to the ground, and that is still worth having: a light is decoration and a floodlight that
+  washed out a lane would be a lamp switching on and making the table harder to read. What is revoked
+  is the use of that ceiling as the CONTRAST mechanism, and its application to the art. The surround
+  runs after the lights for the same reason — the requirement wins wherever the two meet, in a ring
+  six pixels wide and nowhere else.
+
+consequences:
+  good:
+    - "3:1 holds at every component boundary on every table, in both palettes, measured off the
+       composed picture rather than off the array that produced it."
+    - "The art is visible. Median lightness goes from L* 7.1 to between 20.6 and 25.2, and the
+       pictures got smaller as well: 30-116 KB down to 18-60 KB."
+    - "A dark surround under a lit thing is what a shadow looks like, so the components stop floating
+       on the picture and start standing on the table. That was not designed; it fell out."
+    - "The art pipeline exists as a file that says what it does, and a seventh table is now possible
+       without archaeology."
+  bad:
+    - "⚠️ The CB-Safe palette's headroom drops from 22.0 to 21.6. The gate is 20, so it holds — but
+       the margin that was there to make a future change fail loudly is smaller now."
+    - "A per-pixel pass over the composed backdrop, cached per table per palette. It depends on
+       geometry and colours and on nothing that changes per frame, which is the only reason it is
+       affordable."
+    - "Two contrast mechanisms coexist: ADR-0007's ceiling for lights, this record's surround for
+       components. A reader has to know which one a number belongs to."
+    - "⚠️ AND THE FLARE IS NOW CAPPED NEAR COMPONENTS, which ADR-0007 had exempted. Its peak is
+       darkened inside the six-pixel ring around anything standing on the table. The mechanic stays
+       visible across the other ninety per cent of its width, and the contrast holds where ADR-0007
+       knowingly gave it up — but that exception has been narrowed without being re-argued with the
+       Dev, and it is his to reverse."

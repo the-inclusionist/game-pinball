@@ -21,3 +21,4 @@ question, the drivers, the options that were weighed, the decision, and its cons
 | [ADR-0005](ADR-0005-an-authored-table-declares-its-own-missions.yaml) | An authored table declares its own missions, and the 1995 machine is not bent into serving them |
 | [ADR-0006](ADR-0006-the-1995-playfield-is-the-density-bar-and-shortfalls-are-named.yaml) | The 1995 playfield is the density bar, and a table below it is named with what it measures |
 | [ADR-0007](ADR-0007-the-ground-may-be-lit-to-a-ceiling-and-the-flare-is-the-one-exception.yaml) | The ground may be lit, up to a measured ceiling, and the flare is the one place the rule is broken on purpose |
+| [ADR-0008](ADR-0008-contrast-is-measured-at-the-boundary-not-over-the-picture.yaml) | Contrast is a property of a boundary, so the shadow goes around each component and the pictures come back up |
