@@ -105,16 +105,22 @@ describe('every screen fits the 320x180 it is drawn on', () => {
     await userEvent.keyboard('{u}');
     await frames(5);
     look('palette');
-    document.getElementById('pinball-options')!.hidden = true;
-    await frames(3);
+    /**
+     * ⚠️ CLOSED BY ESCAPE, NOT BY POKING THE ELEMENT. This test first set `hidden = true` directly and
+     * left `style.display` at `flex` — the dialog stayed on screen while reporting itself closed, and
+     * the walk below then focused an ancestor instead of a menu entry. `close()` keeps the two in
+     * step because an inline `display` beats `[hidden]`; nothing else may set one without the other.
+     */
+    await userEvent.keyboard('{Escape}');
+    await frames(4);
 
     await userEvent.keyboard('{d}{d}');
     await frames(3);
     await userEvent.keyboard('{u}');
     await frames(5);
     look('vision');
-    (document.getElementById('pinball-vision') as HTMLElement).style.display = 'none';
-    await frames(3);
+    await userEvent.keyboard('{Escape}');
+    await frames(4);
 
     await userEvent.keyboard('{d}{d}{d}');
     await frames(3);
@@ -122,6 +128,35 @@ describe('every screen fits the 320x180 it is drawn on', () => {
     await frames(5);
     // Its rows carry a name AND its keys, so they are the widest thing in the game.
     look('control editor');
+    await userEvent.keyboard('{Escape}');
+    await frames(4);
+
+    /**
+     * ⚠️ AND THE ALPHABET, WHICH IS THIRTY-NINE BUTTONS — by far the most of any screen here, and the
+     * one whose layout was already measured once: ten columns came to exactly 180 pixels in a
+     * 180-pixel screen, which is a layout that overflows the moment a reader's own type setting is
+     * larger than the default. Thirteen columns is three rows. This is what keeps that true.
+     *
+     * Reached the way a player reaches it: the last entry of the pause menu ends the game, and a
+     * score that places is offered the board.
+     */
+    /**
+     * ⚠️ WALKED BY WHAT IS UNDER THE CURSOR, NOT BY COUNTING PRESSES. Counting failed: closing a
+     * dialog calls `restoreFocus`, which puts the cursor on the entry that opened it, and the frame
+     * loop then reopens the menu and sends the cursor home — so where six presses land depends on
+     * which of those two won the frame. Asking is deterministic and says what it wants.
+     */
+    const under = (): string => document.activeElement?.textContent?.trim() ?? '';
+    for (let i = 0; i < 10 && under() !== 'Encerrar partida'; i++) {
+      await userEvent.keyboard('{d}');
+      await frames(2);
+    }
+    expect(under(), 'the cursor reached the entry that ends the game').toBe('Encerrar partida');
+    await userEvent.keyboard('{u}');
+    await frames(6);
+    const board = document.getElementById('pinball-high-score')!;
+    expect(getComputedStyle(board).display, 'the board was offered').not.toBe('none');
+    look('high score alphabet');
 
     expect(spilled, 'these are laid out past the edge of the screen').toEqual([]);
   });
