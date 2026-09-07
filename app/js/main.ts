@@ -46,6 +46,9 @@ import { cometMission, reportOf, WINNING_POINTS, type CometMission, type CometSk
   from './control/comet-mission.js';
 import { drawComet } from './gfx/comet-view.js';
 import { MISSION_DRAG } from './table/ball-assist.js';
+import { powerUpField, MULTIBALL_EXTRA, type PowerUpField, type PowerUpKind }
+  from './control/power-ups.js';
+import { drawCapsule } from './gfx/capsule-view.js';
 import { endGame, type EndOfGameOptions } from './shell/end-of-game.js';
 import { bindPinballControls } from './shell/controls.js';
 import {
@@ -136,9 +139,20 @@ const physics = buildPhysics(authored, {
    * player is holding a key or not. `table/ball-assist` carries the arithmetic and the argument for why
    * slower is drag rather than a speed cap.
    */
-  extraField: () => (comets
-    ? { drag: MISSION_DRAG, thrust }
-    : { drag: 0, thrust: { up: false, left: false, right: false } }),
+  extraField: () => {
+    if (!comets) return { drag: 0, thrust: { up: false, left: false, right: false } };
+    /**
+     * ⚠️ THE TWO CAPSULES ARE THE SAME KNOB TURNED EITHER WAY, which is why they cancel in
+     * `control/power-ups` and why neither adds a force of its own here. `slow` triples the drill's own
+     * drag; `fast` lifts it entirely, so the ball keeps the speed the table gave it. A NEGATIVE drag
+     * would have been the obvious way to make "faster" and it is an exponential: a force proportional
+     * to speed, pointing the way the ball is already going, has no bound at all.
+     */
+    const drag = powerUps?.isActive('slow') === true ? MISSION_DRAG * 3
+      : powerUps?.isActive('fast') === true ? 0
+        : MISSION_DRAG;
+    return { drag, thrust };
+  },
 });
 const ball = physics.spawnBall();
 
@@ -151,8 +165,18 @@ const ball = physics.spawnBall();
  * `table/objective`, and note that inventing a mission to fill the field would have been worse than the
  * silence it replaced.
  */
+/**
+ * Every ball on the table: the primary, and whatever `multiball` has added.
+ *
+ * ⚠️ ONE ARRAY OBJECT FOR THE LIFE OF THE PAGE, mutated rather than replaced. `state.balls` is read by
+ * the renderer and by the engine's declaration, and both took this reference at boot — handing them a
+ * new array each frame would leave the declaration answering about the ball that was in play when the
+ * game started.
+ */
+const allBalls: typeof ball[] = [ball];
+
 let state: TableState = {
-  balls: [ball],
+  balls: allBalls,
   // ⚠️ AN i18n KEY, NOT A 1995 RESOURCE ID. `keyOf` maps the STRINGnnn identifiers the original's data
   // uses and returns anything else unchanged, so an authored table's id IS its key. Getting this wrong
   // is not a crash: the translator returns the key it was given, and `STRING151` was once on screen for
@@ -416,6 +440,49 @@ const endOfGame: EndOfGameOptions = {
  * node test and four lines of judgement written here would be four lines nothing checks. This function
  * is the adapter: it says the words out loud and ends the game when it is told to.
  */
+/**
+ * What catching a capsule does.
+ *
+ * ⚠️ THE TIMED ONES DO NOTHING HERE, and that is not an omission. `slow`, `fast` and `clear` are STATES:
+ * `control/power-ups` is already counting them down, and the two places that care ask it — the physics
+ * through `extraField`, and the comet strike through `wrongHidden`. Reaching in to change something now
+ * would be a second copy of a fact that already has an owner.
+ *
+ * `multiball` is the one that is an EVENT, so it is the only one with a body.
+ */
+function takePowerUp(kind: PowerUpKind, at: typeof ball): void {
+  const status = document.getElementById('sr-status');
+  if (status) status.textContent = shell.t(`pinball.powerUp.${kind}`);
+  if (kind !== 'multiball') return;
+
+  /**
+   * ⚠️ THEY ARE BORN WHERE THE CAPSULE WAS CAUGHT AND FANNED OUT, rather than at the plunger. A ball
+   * that appears at the bottom of the table is a ball the player did not earn and cannot use; two that
+   * appear beside the one they just caught it with are the shot they took, three times over.
+   */
+  for (let i = 0; i < MULTIBALL_EXTRA; i++) {
+    const extra = physics.spawnBall();
+    extra.position = { x: at.position.x, y: at.position.y };
+    const spread = (i === 0 ? -0.5 : 0.5);
+    const length = Math.hypot(at.direction.x + spread, at.direction.y);
+    extra.direction = {
+      x: (at.direction.x + spread) / (length || 1),
+      y: at.direction.y / (length || 1),
+    };
+    /**
+     * ⚠️ NOT A NUMBER TYPED HERE, and `tests/table-playable` is what says so: "the entry point never
+     * hard-codes a launch speed." A ball caught at rest — the capsule taken while the primary is
+     * trickling — would otherwise spawn two balls that sit where they were born, so there is a floor,
+     * and the floor is a fraction of the table's OWN launch speed rather than a constant that happens
+     * to suit `low-orbit`.
+     */
+    extra.speed = Math.max(at.speed, launchSpeedFor(authored) * 0.25);
+    extra.active = true;
+    extraBalls.push(extra);
+    allBalls.push(extra);
+  }
+}
+
 function reportComet(struck: CometStrike): void {
   const drill = comets;
   if (!drill) return;
@@ -470,6 +537,31 @@ let phase: Phase = 'title';
  * a picture out.
  */
 let comets: CometMission | null = null;
+
+/**
+ * The capsules, which exist only while a drill does.
+ *
+ * ⚠️ THE DEV: "O jogo deve ter itens comuns no arkanoid: triplicar a quantidade de bolinhas (só perde
+ * quando a última bolinha cair), bolinha mais lenta, bolinha mais rápida... sumir com os cometas
+ * errados por 5s." They fall out of burst comets, so they belong to the drill and go with it — a
+ * capsule on a table with no comets is a bonus for a game nobody is playing.
+ */
+let powerUps: PowerUpField | null = null;
+
+/**
+ * The extra balls a `multiball` capsule puts on the table.
+ *
+ * ⚠️ SEPARATE FROM `ball`, AND THAT IS DELIBERATE RATHER THAN LAZY. Every part of this file is written
+ * around ONE ball — the camera follows it, the sonar reports it, the stuck watch checks it, the drain
+ * ends the ball on it. Making the primary one of a list would mean answering "which one" at each of
+ * those, four times, for a bonus that is on screen for a few seconds at a time.
+ *
+ * So the primary stays the primary and these ride alongside. When the primary drains while one of
+ * these is still up, the primary ADOPTS it — takes its position and speed and carries on — which is
+ * the Dev's rule ("só perde quando a última bolinha cair") with no second answer to "which ball is the
+ * one the camera is for".
+ */
+const extraBalls: typeof ball[] = [];
 
 /**
  * What pausing interrupted, so that resuming can put it back.
@@ -868,7 +960,12 @@ function step(frames: number): void {
   {
     // ⚠️ The physics wants TIME, not a frame count — see `FRAME_SECONDS`. The camera wants frames.
     // They are two different units in the same loop and mixing them is silent in both directions.
-    advanceFrame(phase === 'playing' ? [ball] : [], physics.context, frames * FRAME_SECONDS);
+    /**
+     * ⚠️ EVERY BALL, WHICH UNTIL `multiball` WAS ALWAYS EXACTLY ONE. `advanceFrame` has taken a list
+     * since the physics was ported — the 1995 table has multiball too — so this is the list finally
+     * having more than one thing in it rather than a new capability.
+     */
+    advanceFrame(phase === 'playing' ? allBalls : [], physics.context, frames * FRAME_SECONDS);
     for (const hit of physics.takeHits()) {
       hits.push(hit.name);
       live.hit(hit.name);
@@ -924,9 +1021,23 @@ function step(frames: number): void {
      * "is the ball inside one" is asked here, the way `table/rollovers` asks about lanes.
      */
     if (comets && phase === 'playing') {
-      comets.advance(frames * FRAME_SECONDS, cometSky());
-      const struck = comets.strike(ball.position.x, ball.position.y, authored.ballRadius);
-      if (struck) reportComet(struck);
+      const sky = cometSky();
+      const seconds = frames * FRAME_SECONDS;
+      comets.advance(seconds, sky);
+      powerUps?.advance(seconds, sky);
+
+      /**
+       * ⚠️ EVERY BALL STRIKES, NOT JUST THE PRIMARY. A multiball whose extra balls pass through the
+       * comets would be three balls on the table and one of them playing the game.
+       */
+      const hidden = powerUps?.isActive('clear') === true;
+      for (const one of allBalls) {
+        const struck = comets.strike(one.position.x, one.position.y, authored.ballRadius,
+          { wrongHidden: hidden });
+        if (struck) reportComet(struck);
+        const caught = powerUps?.take(one.position.x, one.position.y, authored.ballRadius);
+        if (caught) takePowerUp(caught, one);
+      }
     }
 
     live.advance(frames * FRAME_SECONDS);
@@ -948,8 +1059,32 @@ function step(frames: number): void {
   if (phase === 'playing') {
     // The drain is a POSITION, not a collision — see `drainedBy`. Without this the ball leaves the
     // table and is simulated forever, which is what the first run did.
+    /**
+     * ⚠️ AN EXTRA BALL DRAINING COSTS NOTHING, which is the Dev's rule: "só perde quando a última
+     * bolinha cair." They go quietly, and only the primary can end a ball.
+     */
+    for (let i = extraBalls.length - 1; i >= 0; i--) {
+      const extra = extraBalls[i]!;
+      if (!drainedBy(authored, extra)) continue;
+      extraBalls.splice(i, 1);
+      allBalls.splice(allBalls.indexOf(extra), 1);
+    }
+
     const drained = drainedBy(authored, ball);
-    if (drained) {
+    /**
+     * ⚠️ AND WHEN THE PRIMARY DRAINS WITH AN EXTRA STILL UP, IT ADOPTS ONE. The primary is the ball
+     * the camera follows, the sonar reports and the stuck watch checks; promoting an extra to primary
+     * would mean answering "which one" at each of those. Taking over its position and speed is the
+     * same thing from the player's side — the ball they were watching carries on — with no second
+     * answer anywhere.
+     */
+    if (drained && extraBalls.length > 0) {
+      const heir = extraBalls.pop()!;
+      allBalls.splice(allBalls.indexOf(heir), 1);
+      ball.position = { x: heir.position.x, y: heir.position.y };
+      ball.direction = { x: heir.direction.x, y: heir.direction.y };
+      ball.speed = heir.speed;
+    } else if (drained) {
       hits.push(`drained:${drained}`);
       ballsLost++;
       // The next ball gets a fresh lane. Lights left over from the last one would be a table telling
@@ -1095,8 +1230,18 @@ function step(frames: number): void {
    * the ball, that darkening would fall on the ball as well.
    */
   if (comets) {
+    // ⚠️ A HIDDEN COMET IS NOT DRAWN, and `strike` refuses it in the same breath — see the note on
+    // `CometMission.strike`. Drawn but unhittable, or hittable but invisible, are both worse than
+    // either half alone.
+    const hidden = powerUps?.isActive('clear') === true;
     for (const comet of comets.comets) {
+      if (hidden && !comet.multiple && comet.state === 'falling') continue;
       drawComet(screen, comet, shell.hud.playfield, shell.cameraX.offset, shell.camera.offset);
+    }
+  }
+  if (powerUps) {
+    for (const capsule of powerUps.capsules) {
+      drawCapsule(screen, capsule, shell.hud.playfield, shell.cameraX.offset, shell.camera.offset);
     }
   }
 
@@ -1639,6 +1784,7 @@ const screens = titleScreen({
      * own archive; comets falling through it would be this project's mission on Microsoft's playfield.
      */
     comets = demoRequested ? null : cometMission({ number: times });
+    powerUps = comets ? powerUpField() : null;
   },
 });
 
@@ -1698,6 +1844,10 @@ const leaveGame = (): void => {
   // ⚠️ AND THE COMETS GO WITH THE GAME. Left behind, they would go on falling behind the title screen
   // and the player's points would still be there when somebody else sat down.
   comets = null;
+  powerUps = null;
+  // The extra balls go too, or the next game starts with somebody else's multiball still running.
+  extraBalls.length = 0;
+  allBalls.length = 1;
 };
 
 /**

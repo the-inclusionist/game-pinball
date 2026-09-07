@@ -1,8 +1,9 @@
-The six playfield pictures in this directory
-============================================
+The seven playfield pictures in this directory
+=============================================
 
     low-orbit.png   ion-storm.png   crater-run.png
     slipstream.png  long-climb.png  ring-belt.png
+    factory.png
 
 are dedicated to the public domain under
 
@@ -17,6 +18,9 @@ Provenance
     tool          Google Gemini ("Nano Banana")
     prompted by   José Rocha
     when          September 2026
+    factory.png   added 2026-09-07, from art/factory.jpg, which arrived in the
+                  same batch as the six above and on the same terms. If that is
+                  wrong, this is the line to correct.
     derived by    reduction to the playfield's own size, dimming, and
                   quantisation to 128 colours. The masters are not versioned;
                   see .gitignore and art/README.md.

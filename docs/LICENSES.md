@@ -188,7 +188,7 @@ only the second one decides what licence can be applied.
 
 | | |
 |---|---|
-| files | `low-orbit.png`, `ion-storm.png`, `crater-run.png`, `slipstream.png`, `long-climb.png`, `ring-belt.png` in `app/assets/tables/`, beside their `LICENSE.txt` |
+| files | `low-orbit.png`, `ion-storm.png`, `crater-run.png`, `slipstream.png`, `long-climb.png`, `ring-belt.png`, `factory.png` in `app/assets/tables/`, beside their `LICENSE.txt` |
 | tool | Google Gemini ("Nano Banana") |
 | prompted by | José Rocha |
 | when | September 2026 |

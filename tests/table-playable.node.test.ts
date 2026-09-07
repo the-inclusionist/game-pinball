@@ -179,7 +179,15 @@ describe('⚠️ and the GAME has to launch the way the test launches', () => {
     for (const value of assignments) {
       // `0` is how a drained ball is stopped, and is not a launch. `speed` is the plunger's, and the
       // plunger is built from the table — asserted below, because a name proves nothing on its own.
-      expect(value === '0' || value === 'speed' || value.startsWith('launchSpeedFor(')).toBe(true);
+      /**
+       * ⚠️ AND `heir.speed` IS THE THIRD ALLOWED FORM, WHICH IS NOT A LOOPHOLE. `multiball` puts extra
+       * balls on the table, and when the primary drains with one still up it ADOPTS it — takes its
+       * position and speed and carries on, so the ball the camera is following is the ball still in
+       * play. That speed came from the table by the same road every other one did; what this gate
+       * refuses is a NUMBER typed into the entry point, and a ball's own speed is not one.
+       */
+      expect(value === '0' || value === 'speed' || value === 'heir.speed'
+        || value.startsWith('launchSpeedFor(')).toBe(true);
     }
 
     /**

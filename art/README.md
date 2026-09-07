@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: CC0-1.0 -->
 # The table art
 
-**Six playfield pictures, one per playable table.** They are dedicated under
+**Seven playfield pictures, one per playable table.** They are dedicated under
 [CC0 1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/) and **no copyright is
 claimed over them**.
 

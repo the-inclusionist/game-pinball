@@ -154,8 +154,17 @@ export interface CometMission {
   readonly comets: readonly Comet[];
   /** One step of the world: age, fall, expire, and let a new comet in when there is room. */
   advance(dt: number, sky: CometSky): void;
-  /** The ball is at (x, y) with this radius. Answers what it touched, or `null`. */
-  strike(x: number, y: number, radius: number): CometStrike | null;
+  /**
+   * The ball is at (x, y) with this radius. Answers what it touched, or `null`.
+   *
+   * ⚠️ `wrongHidden` IS THE POWER-UP ARRIVING, and it has to reach here rather than only the drawing.
+   * The Dev's capsule makes the wrong comets "sumir" for five seconds; a comet that has vanished from
+   * the screen and can still cost a point is the worst of both — the player loses to something they
+   * were told was not there.
+   */
+  strike(
+    x: number, y: number, radius: number, options?: { readonly wrongHidden?: boolean },
+  ): CometStrike | null;
 }
 
 export interface CometMissionOptions {
@@ -318,7 +327,9 @@ export function cometMission(o: CometMissionOptions): CometMission {
       }
     },
 
-    strike(x: number, y: number, radius: number): CometStrike | null {
+    strike(
+      x: number, y: number, radius: number, options?: { readonly wrongHidden?: boolean },
+    ): CometStrike | null {
       /**
        * ⚠️ ONLY A FALLING COMET IS THERE TO BE HIT. One that is shrinking away has been given its ten
        * seconds and is leaving; charging a player a point for brushing something on its way out would
@@ -332,6 +343,8 @@ export function cometMission(o: CometMissionOptions): CometMission {
       let bestDistance = Infinity;
       for (const c of live) {
         if (c.state !== 'falling') continue;
+        // Hidden means gone: not drawn, and not there to be hit. See the declaration.
+        if (options?.wrongHidden === true && !c.multiple) continue;
         const dx = c.x - x;
         const dy = c.y - y;
         const distance = Math.hypot(dx, dy);

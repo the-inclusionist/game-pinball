@@ -136,7 +136,11 @@ export function mountTitle(o: TitleDomOptions): TitleDom {
      */
     Object.assign(el.style, {
       fontSize: '9cqw', lineHeight: '1.25', letterSpacing: '0.04em',
-      WebkitTextStrokeWidth: '0.42cqw', WebkitTextStrokeColor: CHERRY, paintOrder: 'stroke fill',
+      // ⚠️ 0.84 AND IT WAS 0.42, ASKED FOR AFTER LOOKING: "Deixe a borda de space student duas vezes
+      // mais grossa." Twice the width, which `paint-order: stroke fill` puts entirely OUTSIDE the
+      // glyph — so the letters keep their counters at double the border, which they would not if the
+      // stroke were still centred on the outline.
+      WebkitTextStrokeWidth: '0.84cqw', WebkitTextStrokeColor: CHERRY, paintOrder: 'stroke fill',
     });
     title.appendChild(el);
   }

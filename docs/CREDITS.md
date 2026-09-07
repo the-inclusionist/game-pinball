@@ -85,7 +85,7 @@ first.
 ## The table art — public domain, no copyright claimed
 
 `app/assets/tables/low-orbit.png`, `ion-storm.png`, `crater-run.png`, `slipstream.png`,
-`long-climb.png` and `ring-belt.png` are the six playfields, generated with **Google Gemini
+`long-climb.png`, `ring-belt.png` and `factory.png` are the seven playfields, generated with **Google Gemini
 ("Nano Banana")**, prompted by **José Rocha**, September 2026.
 
 They are dedicated under **CC0 1.0 Universal** and **no copyright is claimed** over them — because a

@@ -234,6 +234,16 @@ const pt: Record<string, string> = {
   'pinball.mission.factory.lanes': 'Cruze as tres pistas.',
   'pinball.mission.factory.lanes2': 'Agora os tres pocos.',
   /**
+   * ⚠️ THE ARKANOID CAPSULES, asked for by name: "O jogo deve ter itens comuns no arkanoid: triplicar a
+   * quantidade de bolinhas... bolinha mais lenta, bolinha mais rapida... sumir com os cometas errados
+   * por 5s." Said through the live region rather than drawn as words: a sighted player has just watched
+   * the capsule vanish and the table change, and a player who cannot see either needs the sentence.
+   */
+  'pinball.powerUp.multiball': 'Tres bolinhas!',
+  'pinball.powerUp.slow': 'Bolinha mais lenta.',
+  'pinball.powerUp.fast': 'Bolinha mais rapida.',
+  'pinball.powerUp.clear': 'Os cometas errados sumiram por 5 segundos.',
+  /**
    * ⚠️ THE COMET MISSION. The Dev: "o jogador deve escolher um número de 2 a 9... aparecerá na fase
    * cometas caindo do céu com um número dentro." These are the only words the drill has, so they carry
    * the rule as well as the label — a player who never reads a README has to learn it from here.
