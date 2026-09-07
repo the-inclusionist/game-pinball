@@ -11,6 +11,19 @@
 // `gfx/*`, which are exercised in node; what is left here is wiring, and wiring is the part a browser
 // has to prove.
 
+/**
+ * ⚠️ THE PAGE'S OWN STYLESHEET, AND THERE WAS NONE. Measured in the running game:
+ * `document.styleSheets.length === 0` — so `html` and `body` were the user agent's white, its 8px
+ * margin was a band above the game, and `#sr-status` rendered as ordinary text under it, reading the
+ * screen reader's announcements to everybody. The Dev's words: "Ao entrar no jogo temos laterais
+ * brancas horríveis."
+ *
+ * Imported HERE rather than linked from `index.html` so the bundler carries it: a `<link>` to a file
+ * outside the module graph is a file that ships in dev and vanishes from `dist`, which is exactly the
+ * kind of difference this port has already paid for once with the art.
+ */
+import '../css/style.css';
+
 import { createGame } from '@the-inclusionist/engine';
 import { bootPinball, type LiveTable, type Phase } from './shell/boot.js';
 import { CATALOG, DEFAULT_TABLE, tableNamed } from './table/catalog.js';
@@ -447,6 +460,34 @@ function fitCanvas(): void {
 region.appendChild(canvas);
 fitCanvas();
 window.addEventListener('resize', fitCanvas);
+
+/**
+ * ⚠️ THE KEYBOARD DIES WHEN THE PLAYER CLICKS THE PAGE, AND THIS IS WHAT STOPS IT.
+ *
+ * The Dev: "o START não funciona para pausar e abrir o menu AINDA." Measured in the running game:
+ * press START with the region focused and the phase changes; click anywhere on the page first — the
+ * area around the game — and `document.activeElement` is `BODY`, and START does nothing at all. No
+ * error, no warning. Every key stops working and stays stopped until the player happens to click the
+ * canvas again.
+ *
+ * `bindPinballControls` binds to `#game-region` and never to `window`. That is the engine's own rule
+ * and the right one — a game that listens on the whole document steals keys from the page around it —
+ * and `CLAUDE.md` records the first time this bit, when nothing focused the region at all: "every key
+ * did nothing until the player happened to click the canvas". Focusing it when a table starts fixed
+ * that day's version and nothing kept the focus there afterwards.
+ *
+ * ⚠️ AND A POINTER INSIDE THE GAME IS LEFT ALONE, which is the whole difficulty. The pause menu, the
+ * score alphabet and the three dialogs are real `<button>`s that take the focus when clicked, and a
+ * rule that dragged it back to the region would break every one of them — the alphabet most of all,
+ * where the focus IS the cursor.
+ *
+ * `pointerdown` rather than `click`, because the focus moves on the down and a `click` handler would
+ * be arguing with it after the fact.
+ */
+document.addEventListener('pointerdown', (event) => {
+  if (event.target instanceof Node && region.contains(event.target)) return;
+  region.focus();
+});
 const context = canvas.getContext('2d')!;
 const image = context.createImageData(screen.width, screen.height);
 

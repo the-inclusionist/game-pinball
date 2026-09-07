@@ -1,0 +1,88 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+
+/*
+ * css/style — the page around the game, which for eight phases was the browser's defaults.
+ *
+ * ⚠️ THE DEV, ON OPENING IT: "Ao entrar no jogo temos laterais brancas horríveis." Measured in the
+ * running page: `document.styleSheets.length === 0`. Not a missing rule — NO STYLESHEET, this game's
+ * own or the engine's. `app/index.html` linked none and nothing imported one.
+ *
+ * ⚠️ AND THE ENGINE'S OWN IS NOT WHAT THIS WANTS, WHICH IS WHY THIS FILE EXISTS. The package ships
+ * `@the-inclusionist/engine/style.css`, and it is the TRACER's: its panels, its menus, its layout,
+ * for a game built out of the engine's own UI. This port builds every screen itself and styles each
+ * one inline — the pause menu, the alphabet, the dialogs — so what is missing is not a component
+ * library. It is the four rules that stop the page being a white sheet with a small picture on it.
+ *
+ * Everything here is about the PAGE. Nothing about a screen of the game belongs in a file the modules
+ * that draw those screens cannot see; `shell/choice-dialog` records what it cost to depend on a class
+ * that nothing defined.
+ */
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  background: #05070c;
+  color: #e8ecf4;
+  font-family: system-ui, sans-serif;
+  /* The game is a fixed rectangle scaled to fit. Nothing here should ever produce a scrollbar. */
+  overflow: hidden;
+}
+
+/*
+ * ⚠️ CENTRED ON BOTH AXES. `main.ts`'s `fitCanvas` sets `margin: 0 auto`, which centres it across and
+ * says nothing about down — so the game sat against the top of the window with the whole page below
+ * it white. The scale is an INTEGER multiple of 320x180 (see `shell/present.integerScale`), so there
+ * is always some remainder, and this is where it goes.
+ */
+body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/*
+ * ⚠️ THE LIVE REGIONS ARE FOR A SCREEN READER AND WERE ON DISPLAY. `#sr-status` rendered as ordinary
+ * text under the game, reading "Segure para esticar o lançador." to everybody — measured at 398
+ * pixels wide on a 320-pixel game.
+ *
+ * ⚠️ AND `display: none` WOULD BE WORSE THAN LEAVING THEM. It removes an element from the
+ * accessibility tree, so every announcement this game makes would go to nobody — silently, which is
+ * the defect shape this repository has found more often than any other, here wearing an
+ * accessibility hat. The clip technique is the one that hides it from the page and keeps it for the
+ * reader.
+ */
+#sr-status,
+#sr-alert {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/*
+ * The game's own rectangle. `fitCanvas` sets its size; this is what makes the edge of the playfield
+ * visible against the page instead of the two dark colours meeting invisibly.
+ */
+#game-region {
+  position: relative;
+  box-shadow: 0 0 0 1px #1b2130, 0 0.5rem 2rem rgb(0 0 0 / 60%);
+}
+
+#game-region:focus-visible {
+  /* The keyboard is bound HERE, never to `window`, so which element has the focus is playable
+     information: this is the game saying it is listening. */
+  outline: 2px solid #6f7d96;
+  outline-offset: 2px;
+}
+
+canvas {
+  display: block;
+  /* The picture is 320x180 scaled by whole numbers. Anything but nearest-neighbour is a blur. */
+  image-rendering: pixelated;
+}
