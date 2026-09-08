@@ -52,8 +52,16 @@ body {
  */
 body {
   display: flex;
+  /*
+   * ⚠️ A COLUMN SINCE THE ACCESSIBILITY STRIP ARRIVED. It was a row with one item in it — the game —
+   * and the strip has to sit ABOVE that item rather than on top of it: tried as `position: fixed`, the
+   * icons landed over the HUD's own corner and put a white stick through "Jogador 1". A header that
+   * overlays the game is the same defect the selector had one screen earlier, moved.
+   */
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 0.5rem;
   /* Keeps the game centred while it fits and stops the flex box shrinking it when it does not. */
   min-width: min-content;
   min-height: min-content;
@@ -135,4 +143,44 @@ canvas {
 
 @media (prefers-reduced-motion: reduce) {
   .pinball-subtitle { animation: none; }
+}
+
+/*
+ * The accessibility strip above the game.
+ *
+ * ⚠️ THE DEV ASKED FOR THESE THREE "no topo desde a primeira tela", and for the menus to carry
+ * `game-platformer`'s identity. That project puts the same kind of controls in a `<header class=
+ * "topbar">` above its stage; this is that header, and putting it in the PAGE rather than inside the
+ * 320x180 is what makes it free — the selector had already spent every pixel of its height.
+ *
+ * ⚠️ AND IT IS LEFT-ALIGNED WITH THE CANVAS RATHER THAN CENTRED UNDER IT. `body` is a centred flex
+ * column, so a bar that simply flowed would sit in the middle of the window with the game beneath it —
+ * two centred things that are not the same width read as a mistake. `align-self: center` with the same
+ * `max-width` the canvas gets would need to know the scale; a fixed strip that hugs the top-left of
+ * the page is what the platformer does and it does not need to know anything.
+ */
+.pinball-topbar {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  /*
+   * ⚠️ ALIGNED WITH THE GAME'S LEFT EDGE AND NOT CENTRED UNDER IT. `body` centres its column, so a bar
+   * of three buttons would float in the middle of a canvas eight times its width — which reads as an
+   * ornament rather than as a toolbar. `align-self` cannot reach the canvas's width from here, so the
+   * strip takes the full row and pushes its own contents left: the canvas is centred, the strip spans
+   * the same box, and the buttons start where the picture does on any window wide enough to matter.
+   */
+  align-self: stretch;
+  justify-content: flex-start;
+  padding-inline: 0.5rem;
+}
+
+/*
+ * ⚠️ THE FOCUS RING IS NOT DECORATION. These are the controls a player who cannot see the screen
+ * reaches with a keyboard, and the browser's default ring is drawn against a dark page in a colour
+ * that does not always clear 3:1. This one is drawn in the game's own ink.
+ */
+.pinball-topbar .pi-btn:focus-visible {
+  outline: 3px solid #e8ecf4;
+  outline-offset: 2px;
 }

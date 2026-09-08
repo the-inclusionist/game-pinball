@@ -30,7 +30,6 @@ import { CATALOG, DEFAULT_TABLE, tableNamed } from './table/catalog.js';
 import { toLiveTable, validateTable, type TableState } from './table/authored.js';
 import { DEFAULT_CAMERA } from './shell/camera.js';
 import { DEFAULT_HUD } from './shell/hud.js';
-import { hudPlacement } from './shell/hud-view.js';
 import { createFramebuffer } from './gfx/framebuffer.js';
 import {
   drawTable, blitView, drawBall, drawFlipper, drawMover, drawLitRect, litColors, packRgb,
@@ -1997,11 +1996,28 @@ const hud = mountHud({
  * it, so there is one place that knows where anything in the corner sits — a bar positioned by hand
  * would be the sixth thing in this game to drift away from `shell/hud`.
  */
+/**
+ * The strip the accessibility icons live in, ABOVE the canvas.
+ *
+ * ⚠️ THE DEV: "incluindo os botões para acessibilidade no topo desde a primeira tela." They were in the
+ * HUD's own corner, which works while a table is on screen and lands straight through the first two
+ * rows of the TABLE LIST — seen in the browser: `low-orbit` with a white stick across its name and the
+ * palette icon on `ion-storm`. Paying for a strip inside the 320x180 was measured and refused; the
+ * selector came to 182 pixels of 180, and `tests/screens-fit` exists because it once came to 194.
+ *
+ * ⚠️ AND A PAGE HEADER IS WHAT `game-platformer` HAS, which is the identity he asked this game to
+ * share: its `<header class="topbar">` sits above the stage and carries the same kind of buttons. Here
+ * it costs the game no pixels at all and is the same three controls on every screen, including the
+ * first one.
+ */
+const topbar = document.createElement('header');
+topbar.className = 'pinball-topbar';
+region.parentElement?.insertBefore(topbar, region);
+
 const a11yBar = mountA11yBar({
   doc: document,
-  host: region,
+  host: topbar,
   t: shell.t,
-  box: hudPlacement(shell.hud, { ...DEFAULT_HUD, playfieldWidth: authored.size.width }).a11y,
   onBlind: () => accessibility.toggleBlindMode(),
   onSonar: () => accessibility.sweep(),
   onPalette: () => accessibility.cyclePalette(),

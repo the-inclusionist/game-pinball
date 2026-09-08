@@ -66,8 +66,21 @@ export interface A11yBarOptions {
   readonly doc: Pick<Document, 'createElement'>;
   readonly host: Pick<HTMLElement, 'appendChild'>;
   readonly t: (key: string, params?: Record<string, string | number>) => string;
-  /** Where the bar sits, in the same per-cent boxes the HUD's blocks use. */
-  readonly box: { readonly left: string; readonly top: string; readonly width: string };
+  /**
+   * Where the bar sits, in the same per-cent boxes the HUD's blocks use — or ABSENT, which puts it in
+   * the normal flow of whatever it is mounted in.
+   *
+   * ⚠️ ABSENT IS WHAT THE GAME USES NOW, and the corner is kept for a reason it may be needed again.
+   * The Dev asked for these icons "no topo desde a primeira tela", and in the HUD's corner they landed
+   * straight through the first two rows of the table list — seen in the browser, `low-orbit` with a
+   * white stick across its name. Paying for a strip inside the screen was measured and refused: the
+   * selector came to 182 pixels of 180, and `tests/screens-fit` exists because it once came to 194.
+   *
+   * So the bar is page chrome now, above the canvas, which is where `game-platformer` puts the same
+   * three controls — and that is the identity the Dev asked this game to share. It costs the game no
+   * pixels at all.
+   */
+  readonly box?: { readonly left: string; readonly top: string; readonly width: string };
   readonly onBlind: () => void;
   readonly onSonar: () => void;
   readonly onPalette: () => void;
@@ -91,8 +104,10 @@ export function mountA11yBar(o: A11yBarOptions): A11yBar {
   root.id = A11Y_BAR_ID;
   root.className = 'pinball-a11y';
   Object.assign(root.style, {
-    position: 'absolute', left: o.box.left, top: o.box.top, width: o.box.width,
-    display: 'flex', flexDirection: 'row', gap: '4%', alignItems: 'center',
+    ...(o.box
+      ? { position: 'absolute', left: o.box.left, top: o.box.top, width: o.box.width }
+      : {}),
+    display: 'flex', flexDirection: 'row', gap: '0.4rem', alignItems: 'center',
     // ⚠️ THE POINTER GOES THROUGH THE BAR AND NOT THROUGH THE BUTTONS. The HUD's own container does the
     // same: an overlay that swallowed clicks would make the table unclickable, and clicking the table is
     // how a player puts the focus back on `#game-region`.
@@ -110,7 +125,17 @@ export function mountA11yBar(o: A11yBarOptions): A11yBar {
       background: 'rgba(14, 16, 23, 0.72)', color: '#e8ecf4',
       // Sized against the game rather than the page: the HUD is 320 wide whatever the canvas is scaled
       // to, and an icon in the corner has to sit on the same grid as the score beside it.
-      fontSize: '3.4cqw', lineHeight: '1', width: '5cqw', height: '5cqw', borderRadius: '20%',
+      ...(o.box
+        // Sized against the GAME: the HUD is 320 wide whatever the canvas is scaled to, and an icon in
+        // the corner has to sit on the same grid as the score beside it.
+        ? { fontSize: '3.4cqw', width: '5cqw', height: '5cqw' }
+        /**
+         * ⚠️ SIZED AGAINST THE PAGE, AND 44 PIXELS IS NOT A ROUND NUMBER. WCAG 2.2's 2.5.8 asks for a
+         * target of at least 24 by 24 and 2.5.5 for 44 by 44; these are the three controls a player who
+         * cannot see the screen has to hit, so they take the larger figure and not the minimum.
+         */
+        : { fontSize: '1.25rem', width: '44px', height: '44px' }),
+      lineHeight: '1', borderRadius: '20%',
     });
     button.addEventListener('click', () => {
       if (toggle.key === 'blind') o.onBlind();
