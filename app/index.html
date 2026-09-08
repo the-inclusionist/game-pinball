@@ -4,6 +4,18 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Space Cadet Pinball</title>
+  <!--
+    ⚠️ THE MENUS' FACE. The Dev: "Menus devem usar a mesma identidade visual que o game-platformer."
+    Atkinson Hyperlegible is what that project calls "PADRÃO (UI/leitura)". It does NOT replace the
+    wordmark's Press Start 2P, which is bundled and loaded by `shell/title-dom` and which he asked for
+    by name: the logo keeps the pixel face and everything a player reads is set in this one.
+
+    PRELOADED because it is on the first screen the player sees. `font-display: swap` means the title
+    paints in the fallback and reflows when the face arrives, which on the title screen is the one place
+    a reflow is most visible; the preload makes that window as short as the network allows.
+  -->
+  <link rel="preload" href="/vendor/fonts/atkinson-400.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/vendor/fonts.css">
 </head>
 <body>
   <!-- #game-region: the engine binds the keyboard HERE, never to `window`. The id is not decorative. -->

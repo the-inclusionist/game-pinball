@@ -82,6 +82,32 @@ The font is bundled unmodified. "Press Start 2P" is a Reserved Font Name under t
 modified copy may not be shipped under that name — so if it is ever subset or patched, it is renamed
 first.
 
+## Atkinson Hyperlegible — the reading face
+
+`app/public/vendor/fonts/atkinson-400.woff2`, `atkinson-400-ext.woff2`, `atkinson-700.woff2` and
+`atkinson-700-ext.woff2` are **Atkinson Hyperlegible**, © 2020 **Braille Institute of America, Inc.**,
+under the **SIL Open Font License 1.1**. `OFL.txt` sits beside them.
+
+They came from `game-platformer`, which calls them "Fontes oficiais do EdSP", on the Dev's *"Menus devem
+usar a mesma identidade visual que o game-platformer."* The Braille Institute drew the face to separate
+the characters low vision confuses — I l 1, O 0, b d.
+
+⚠️ The FILE NAMES are written out because `tests/licence-note` reads this document for each one. See the
+note under Press Start 2P for why that gate stopped taking one entry as evidence for everything.
+
+⚠️ And the licence text beside them is a LINK and not yet a copy, which the OFL requires. It is recorded
+as owed in [`docs/LICENSES.md` §4.3](LICENSES.md).
+
+## The four fixture playfields — terms not yet recorded
+
+`app/assets/tables/wide-arc.png`, `four-flippers.png`, `narrow-tower.png` and `bare-minimum.png` were
+painted by **José Rocha**, September 2026, and **how** is not recorded.
+
+They are not credited as machine-generated and they are not dedicated under CC0, because neither is
+known. [`docs/LICENSES.md` §4.4](LICENSES.md) says what is owed and why the seven playfields' dedication
+is not simply extended over them: that dedication rests on a fact about how those seven were made, and
+nobody has stated one about these four.
+
 ## The table art — public domain, no copyright claimed
 
 `app/assets/tables/low-orbit.png`, `ion-storm.png`, `crater-run.png`, `slipstream.png`,

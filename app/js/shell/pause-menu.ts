@@ -31,6 +31,7 @@
 // global would be a menu nothing could open. That is how the palette shipped with a button that
 // reported the wrong choice, once.
 
+import { SCREEN_FACE } from './title-dom.js';
 import { ownCabinetKeys, type PinballAction } from './controls.js';
 import { controlLegend } from './control-legend.js';
 
@@ -126,6 +127,16 @@ export function mountPauseMenu(o: PauseMenuOptions): PauseMenu {
     position: 'absolute', left: '0', top: '0', width: '100%', height: '100%',
     display: 'none', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
     background: 'rgba(14, 16, 23, 0.92)', color: '#e8ecf4', textAlign: 'center',
+    /**
+     * ⚠️ THE SELECTOR'S FACE, BY INSTRUCTION: "O menu de pause deve usar as mesmas fontes que o menu de
+     * escolha de mesa. A identidade do jogo deve ser mantida entre os menus."
+     *
+     * Everything here was `font: 'inherit'`, which means whatever the engine's overlay was set in — so
+     * the two screens a player moves between most often were written in two different faces, and the
+     * one that changed was the one that arrives when the game is interrupted. `SCREEN_FACE` is the one
+     * `shell/title-dom` sets on the title and the selector, exported for exactly this.
+     */
+    fontFamily: SCREEN_FACE,
     /**
      * ⚠️ `size` AND NOT `inline-size`, WHICH IS WHAT LETS THIS FIT. Container queries only give `cqh`
      * when the container's own HEIGHT is queryable, and everything here was sized in `cqw` —

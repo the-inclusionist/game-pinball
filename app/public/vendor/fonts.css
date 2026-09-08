@@ -1,0 +1,61 @@
+/* SPDX-License-Identifier: OFL-1.1
+ *
+ * Atkinson Hyperlegible, self-hosted. The Braille Institute's face, under the SIL Open Font License
+ * 1.1 -- see docs/LICENSES.md.
+ *
+ * ⚠️ IT IS THE SAME FILE THE PLATFORMER SHIPS, AND THAT IS THE POINT. The Dev: "Menus devem usar a mesma
+ * identidade visual que o game-platformer." Its `vendor/fonts.css` calls Atkinson "PADRÃO (UI/leitura)"
+ * and every EdSP game reads in it; a second game in the same catalogue picking its own face is a child
+ * meeting a different alphabet in the next room.
+ *
+ * ⚠️ AND IT DOES NOT REPLACE THE WORDMARK'S FACE. `shell/title-dom` bundles Press Start 2P and loads it
+ * through the `FontFace` API, which is what the Dev asked for by name -- "SPACE STUDENT escrito com a
+ * fonte Press Start 2P". A logo and a paragraph are different jobs: the logo keeps the pixel face and
+ * everything a player has to READ is set in this one.
+ *
+ * Only the four Atkinson faces travel. The platformer vendors nineteen families because it lets a reader
+ * choose one; this game has no such menu, and a megabyte of fonts nobody can select is a megabyte in the
+ * precache budget of a school laptop.
+ *
+ * latin covers pt-BR; latin-ext downloads only if a glyph needs it.
+ */
+
+@font-face {
+  font-family: 'Atkinson Hyperlegible';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('fonts/atkinson-400.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F,
+    U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Atkinson Hyperlegible';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('fonts/atkinson-400-ext.woff2') format('woff2');
+  unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113,
+    U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: 'Atkinson Hyperlegible';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/atkinson-700.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F,
+    U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Atkinson Hyperlegible';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/atkinson-700-ext.woff2') format('woff2');
+  unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113,
+    U+2C60-2C7F, U+A720-A7FF;
+}

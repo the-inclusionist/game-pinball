@@ -2020,12 +2020,25 @@ const a11yBar = mountA11yBar({
  */
 function showHud(visible: boolean): void {
   hud.setVisible(visible);
-  a11yBar.setVisible(visible);
 }
 
-// ⚠️ PUT AWAY WITH THE HUD, for the same reason: three icons over the title screen are three controls
-// for a game nobody has started.
-showHud(screens.current === 'playing');
+/**
+ * ⚠️ AND THE ICONS STAY UP, ON EVERY SCREEN, FROM THE FIRST ONE.
+ *
+ * The Dev: "Menus devem usar a mesma identidade visual que o game-platformer, incluindo os botões para
+ * acessibilidade no topo desde a primeira tela."
+ *
+ * ⚠️ WHICH OVERRULES WHAT STOOD HERE, and the sentence it overrules was wrong in a way worth keeping:
+ * "three icons over the title screen are three controls for a game nobody has started." That reads as
+ * restraint and it is the opposite. A player who needs blind mode needs it to READ THE TITLE SCREEN —
+ * to find the table list, to choose a table, to hear what the game is — and hiding the control until
+ * they have started the game asks them to cross the part they cannot see in order to reach the thing
+ * that would let them see it.
+ *
+ * It is the same mistake `shell/a11y-bar` records one level down: an argument about where a control
+ * belongs, made without asking who is looking for it.
+ */
+a11yBar.setVisible(true);
 showHud(screens.current === 'playing');
 
 /**

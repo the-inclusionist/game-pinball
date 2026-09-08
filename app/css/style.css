@@ -24,7 +24,16 @@ body {
   margin: 0;
   background: #05070c;
   color: #e8ecf4;
-  font-family: system-ui, sans-serif;
+  /*
+   * ⚠️ ATKINSON HYPERLEGIBLE, WHICH IS THE PLATFORMER'S AND THEREFORE THE CATALOGUE'S. The Dev:
+   * "Menus devem usar a mesma identidade visual que o game-platformer." Its `vendor/fonts.css` names
+   * this face "PADRÃO (UI/leitura)"; `app/public/vendor/fonts.css` here is the same four files.
+   *
+   * ⚠️ AND IT IS AN ACCESSIBILITY FACE BEFORE IT IS A HOUSE STYLE. The Braille Institute drew it to
+   * separate the characters that low vision confuses — I l 1, O 0, b d — which is the same argument
+   * this game makes for every other choice on its screens.
+   */
+  font-family: 'Atkinson Hyperlegible', system-ui, sans-serif;
   /*
    * ⚠️ `auto` AND NOT `hidden`, BECAUSE THE GAME HAS A FLOOR NOW. This said "nothing here should ever
    * produce a scrollbar", which was true while the scale could fall to 1x and the game therefore

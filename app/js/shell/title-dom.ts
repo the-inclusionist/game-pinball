@@ -29,8 +29,40 @@ import { screenBackground, PANEL, CHERRY, NEON, UI_INK, UI_DIM } from './screen-
 import type { PinballAction } from './controls.js';
 
 /** The same fallback the HUD reasons its way to: no download, no wait, no blank screen. */
-const FALLBACK = 'ui-monospace, "DejaVu Sans Mono", Menlo, Consolas, monospace';
-const FACE = `"Press Start 2P", ${FALLBACK}`;
+const FALLBACK = 'system-ui, sans-serif';
+
+/**
+ * The wordmark's face, which is the Dev's and is bundled — see this module's header.
+ *
+ * ⚠️ AND A COMMENT HERE CLAIMED FOR ONE COMMIT THAT NOTHING EVER LOADED IT, which was FALSE and is
+ * worth leaving visible. `loadFont` below builds a `FontFace` from a bundled `woff2` and adds it to
+ * `document.fonts`; the header two screens up says so in a paragraph titled "THE FONT IS BUNDLED, NOT
+ * FETCHED". I looked for an `@font-face` rule and a `<link>`, found neither, and concluded from two
+ * absent mechanisms that the third did not exist either. The file I was editing named the file I said
+ * was missing, eleven lines above.
+ */
+const DISPLAY_FACE = `"Press Start 2P", ui-monospace, "DejaVu Sans Mono", Menlo, monospace`;
+
+/**
+ * The face every screen in this game READS in, as against the one the logo is drawn in.
+ *
+ * ⚠️ THE DEV ASKED FOR BOTH, IN TWO INSTRUCTIONS THAT ONLY LOOK OPPOSED. "Crie uma tela inicial, com o
+ * nome SPACE STUDENT escrito com a fonte Press Start 2P" is about the WORDMARK; "Menus devem usar a
+ * mesma identidade visual que o game-platformer" and "O menu de pause deve usar as mesmas fontes que o
+ * menu de escolha de mesa" are about the TEXT. A logo and a paragraph are not the same job, and every
+ * game in the world sets them in different faces for that reason.
+ *
+ * So the logo keeps Press Start 2P and everything a player has to READ — the table names, the entries,
+ * the score, the keys — is Atkinson Hyperlegible, which the platformer's own `vendor/fonts.css` calls
+ * "PADRÃO (UI/leitura)" and which the Braille Institute drew to separate the characters low vision
+ * confuses. A pixel face is a poor one to read a list in and a good one to put a name in.
+ *
+ * ⚠️ EXPORTED, BECAUSE THE PAUSE MENU ASKED FOR IT BY NAME. It was `font: 'inherit'` — whatever the
+ * engine's overlay was set in — so the two screens a player moves between most often were written in
+ * two different faces, and the one that changed was the one that arrives when the game is interrupted.
+ */
+export const SCREEN_FACE = `"Atkinson Hyperlegible", ${FALLBACK}`;
+const FACE = SCREEN_FACE;
 
 const SURFACE = '#0e1017';
 // ⚠️ BUILT FROM `shell/screen-art`'S NUMBERS RATHER THAN WRITTEN OUT. The photograph behind these
@@ -143,6 +175,8 @@ export function mountTitle(o: TitleDomOptions): TitleDom {
      * internal contrast, so what the shadow has to supply is only its EDGE.
      */
     Object.assign(el.style, {
+      // ⚠️ THE LOGO'S FACE, NAMED HERE BECAUSE THE SCREEN'S IS NOT IT ANY MORE. See `DISPLAY_FACE`.
+      fontFamily: DISPLAY_FACE,
       fontSize: '9cqw', lineHeight: '1.25', letterSpacing: '0.04em',
       backgroundImage: [
         // The bolts: a small bright dot with a dark shoulder, on a grid coarse enough to read at 29px.

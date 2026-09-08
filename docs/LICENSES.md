@@ -166,6 +166,59 @@ recorded" for a day and now says CC0 is a section that shows the rule working: t
 the licence followed it. Deleting the intervening state would leave a document that looks as though it
 had always known.
 
+### 4.3 · Atkinson Hyperlegible, and one obligation this repository owes
+
+Added 2026-09-07, on the Dev's *"Menus devem usar a mesma identidade visual que o game-platformer."*
+
+| | |
+|---|---|
+| files | `atkinson-400.woff2`, `atkinson-400-ext.woff2`, `atkinson-700.woff2`, `atkinson-700-ext.woff2` in `app/public/vendor/fonts/`, beside their `OFL.txt` |
+| family | Atkinson Hyperlegible |
+| copyright | Braille Institute of America, Inc., 2020 |
+| licence | **SIL Open Font License 1.1** |
+| source | `~/Claude/game-platformer/app/public/vendor/fonts/` — the same files that project calls "Fontes oficiais do EdSP" |
+
+⚠️ **AND THE LICENCE TEXT IS NOT YET BESIDE THEM, WHICH IS AN OBLIGATION AND NOT A DETAIL.** The OFL
+requires the licence to travel with the font; `OFL.txt` beside them names it and links it, and a link is
+not a copy. The verbatim text goes there before this game is published anywhere. It is written down here
+rather than remembered because a licence obligation that lives in somebody's memory is the one that
+ships unmet.
+
+⚠️ **THEY DO NOT REPLACE PRESS START 2P.** §4 records that font as the first asset this repository ever
+shipped, and it is still what the title's wordmark is set in — the Dev asked for it by name. Atkinson is
+the READING face: the table list, the pause menu, the score, the keys. A logo and a paragraph are
+different jobs, and a pixel face is a poor one to read a list in.
+
+### 4.4 · The four fixture playfields, whose terms are NOT YET RECORDED
+
+Opened 2026-09-07, and this section is deliberately the same shape §4.2 had for a day.
+
+The Dev painted `wide-arc.jpg`, `four-flippers.jpg`, `narrow-tower.jpg` and `bare-minimum.jpg` after
+being sent their maps, and they ship reduced as `app/assets/tables/wide-arc.png`,
+`four-flippers.png`, `narrow-tower.png` and `bare-minimum.png`.
+
+| | |
+|---|---|
+| files | `wide-arc.png`, `four-flippers.png`, `narrow-tower.png`, `bare-minimum.png` in `app/assets/tables/` |
+| painted by | José Rocha, September 2026 |
+| tool | **not stated** |
+| licence | **not yet recorded** |
+
+⚠️ **AND CC0 IS NOT WRITTEN ON THEM BY ANALOGY, WHICH IS THE WHOLE OF §4.2's LESSON.** The seven
+playfields are CC0 because of a fact about *them* — that they are machine-generated, so no copyright
+attaches for a licence to act on. The Dev's sentence that settled the screens was *"todas as imagens em
+art/ foram feitas pelo gemini (nanobanana)"*, said on 2026-09-07 about a directory that then held nine
+pictures. These four arrived in the same directory later that day. A statement about what a folder
+contained is not a statement about what would be put in it next, and reading it as one is exactly the
+step §4.2 exists to refuse.
+
+**What is owed:** one sentence from the Dev saying how these four were made. If the answer is Gemini
+again, they join §4.1 unchanged and this section says so; if he drew them himself, the answer is his to
+choose and the argument in §4.1 does not apply at all.
+
+Until then they are shipped and **the record says it does not know**, which is the honest state — the
+alternative is a licence file that asserts something nobody checked.
+
 ### 4.1 · The table art is machine-generated, and it is dedicated under CC0 1.0
 
 Decided 2026-09-06, and the decision changed once on a fact the Dev supplied.

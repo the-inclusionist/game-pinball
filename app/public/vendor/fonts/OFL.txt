@@ -1,0 +1,52 @@
+Atkinson Hyperlegible, in this directory
+=======================================
+
+    atkinson-400.woff2       atkinson-400-ext.woff2
+    atkinson-700.woff2       atkinson-700-ext.woff2
+
+Copyright 2020 Braille Institute of America, Inc.
+
+Licensed under the SIL Open Font License, Version 1.1.
+
+    https://openfontlicense.org
+    https://github.com/googlefonts/atkinson-hyperlegible
+
+⚠️ THE FULL LICENCE TEXT IS NOT COPIED HERE, AND THAT IS A CHOICE THIS FILE HAS
+TO DEFEND. The OFL requires that the licence travel with the font, and a link is
+not a copy. What is shipped in `dist` is the four `.woff2` files and this note;
+what a redistributor needs is the text.
+
+So: THIS IS OWED. `docs/LICENSES.md` records it as owed rather than pretending
+otherwise, and the text goes here — verbatim, from openfontlicense.org — before
+this game is published anywhere. The note is written now because a licence
+obligation that lives only in somebody's memory is the one that gets shipped
+without being met.
+
+Where they came from
+--------------------
+
+    source        ~/Claude/game-platformer/app/public/vendor/fonts/
+    why           the Dev: "Menus devem usar a mesma identidade visual que o
+                  game-platformer." That project's own `vendor/fonts.css` calls
+                  Atkinson "PADRAO (UI/leitura)" and calls the set "Fontes
+                  oficiais do EdSP". A second game in the same catalogue picking
+                  its own face is a child meeting a different alphabet in the
+                  next room.
+    what travels  four faces of one family. The platformer vendors nineteen
+                  families because it lets a reader CHOOSE one; this game has no
+                  such menu, and a megabyte of fonts nobody can select is a
+                  megabyte in the precache budget of a school laptop.
+
+Why this face and not a decorative one
+--------------------------------------
+
+The Braille Institute drew Atkinson Hyperlegible to separate the characters low
+vision confuses -- I l 1, O 0, b d, and the ones that mirror. This game's screens
+argue for every other choice on those grounds; the letters they are written in
+are not the place to stop.
+
+⚠️ AND IT REPLACES NOTHING. Press Start 2P is bundled at
+`app/assets/fonts/press-start-2p.woff2`, loaded through the FontFace API, and it
+is still what the wordmark is set in -- the Dev asked for it by name. This face
+is for the text: the table list, the pause menu, the score, the keys. A logo and
+a paragraph are different jobs.
