@@ -51,6 +51,7 @@
 // The 36.5% that differs is not slack — it is the components, their surrounds and the lights, and the
 // pixel-level truth about those lives in `tests/gfx-surround` where it can be stated precisely.
 import { describe, test, expect, beforeAll } from 'vitest';
+import { leanPicture } from '../app/js/gfx/backdrop.js';
 
 interface PinballDebug {
   problems: readonly string[];
@@ -146,11 +147,29 @@ describe('the picture the repository ships is the picture the player gets', () =
     expect([art.width, art.height], 'the art is the playfield size')
       .toEqual([picture.width, picture.height]);
 
+    /**
+     * ⚠️ THROUGH THE SAME DOOR THE GAME'S COPY GOES THROUGH, and it used to be compared raw. Since
+     * `table/perspective` the tables lean nine degrees, and `gfx/backdrop` leans the picture with them
+     * — the Dev caught the frame where it did not: "Você deformou os artefatos que compõe a mesa mas
+     * não deformou a arte?" Compared against the flat file this fell from 63.5% to 27.7%, which is the
+     * lean showing up as a failure in a gate about the FILE.
+     *
+     * ⚠️ AND THAT DOES NOT MAKE THIS TEST READ BY ITS OWN LINK, because the shape is not what it
+     * checks. This asks whether the picture the repository ships is the one the player gets; whether
+     * the LEAN is right is `tests/gfx-backdrop-lean`, which round-trips it against `taperMap` — a
+     * different source of truth, and the one the geometry itself is drawn from. Two gates, two claims,
+     * and neither is the other's evidence.
+     */
+    const leaned = leanPicture(
+      new Uint32Array(art.data.buffer.slice(0)), { width: art.width, height: art.height },
+    );
+    const reference = new Uint8ClampedArray(leaned.buffer);
+
     let exact = 0;
     for (let i = 0; i < picture.width * picture.height; i++) {
       const at = i * 4;
-      if (art.data[at] === picture.bytes[at] && art.data[at + 1] === picture.bytes[at + 1]
-        && art.data[at + 2] === picture.bytes[at + 2]) exact++;
+      if (reference[at] === picture.bytes[at] && reference[at + 1] === picture.bytes[at + 1]
+        && reference[at + 2] === picture.bytes[at + 2]) exact++;
     }
     const share = exact / (picture.width * picture.height);
 

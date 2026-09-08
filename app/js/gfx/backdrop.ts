@@ -29,6 +29,9 @@
  * simply has no entry and the lookup answers `undefined` — which is the same path as a failed decode
  * and needs no second branch.
  */
+import { leanOf } from '../table/perspective.js';
+import { plungerLaneOf } from '../table/cabinet.js';
+
 const URLS: Readonly<Record<string, string>> = Object.fromEntries(
   Object.entries(
     import.meta.glob('../../assets/tables/*.png', { eager: true, query: '?url', import: 'default' }),
@@ -96,8 +99,59 @@ export async function loadBackdrop(
      * wants one word per pixel; the framebuffer's own layout IS those bytes, so this is a view rather
      * than a conversion and there is no endianness question to get wrong.
      */
-    return new Uint32Array(data.buffer.slice(0));
+    return leanPicture(new Uint32Array(data.buffer.slice(0)), size);
   } catch {
     return null;
   }
+}
+
+/**
+ * The picture put through the same lean the table's geometry is.
+ *
+ * ⚠️ THE DEV, LOOKING AT A TABLE IN PLAY: "Você deformou os artefatos que compõe a mesa mas não
+ * deformou a arte?" He is right, and it is the worst kind of wrong this module has a rule about. Its
+ * own header refuses a picture of the wrong SIZE — "a stretched playfield puts the art a few pixels
+ * from the geometry everywhere, which is worse than having none: the player aims at what they see and
+ * the ball meets what they do not" — and then let one through that was the right size and the wrong
+ * SHAPE. `table/perspective` leans every component nine degrees and the bitmap was blitted upright, so
+ * the walls converged over a picture that did not, by up to 47 units at the top of `factory`.
+ *
+ * ⚠️ AND IT IS THE INVERSE MAP, PIXEL BY PIXEL, BECAUSE A FORWARD ONE LEAVES HOLES. For each column of
+ * the leaning table this asks which column of the painted rectangle belongs there; walking the source
+ * instead would write some destination pixels twice and skip others, which at 183 across is a picture
+ * with gaps in it.
+ *
+ * ⚠️ NEAREST, NOT INTERPOLATED, and `gfx/scale` already argues this exact choice for this exact art:
+ * "nearest keeps the hard pixel-art edge and loses the one-pixel highlights on the ramps." A smoothed
+ * warp would blur every edge in a picture drawn at 183 pixels wide.
+ *
+ * ⚠️ AND WHAT FALLS OUTSIDE THE TRAPEZIUM IS LEFT BLACK. The corners above the leaning walls are not
+ * part of the table any more — nothing can be there and no ball can reach it — so stretching the art
+ * into them would be painting playfield where there is none. `gfx/backdrop`'s caller composes over
+ * this, and the surround dims what is left.
+ */
+export function leanPicture(source: Uint32Array, size: BackdropSize): Uint32Array {
+  const { width: w, height: h } = size;
+  const lean = leanOf({ size, ballRadius: 3 });
+  const { divider } = plungerLaneOf(size);
+  const out = new Uint32Array(source.length);
+
+  for (let y = 0; y < h; y++) {
+    const inset = lean * (h - y);
+    const play = divider - 2 * inset;
+    const row = y * w;
+    for (let x = 0; x < w; x++) {
+      /**
+       * The two pieces of `taperMap`, inverted. The join is at `divider - inset`, which is where the
+       * lane starts on THIS row: right of it the picture has only slid, left of it it was squeezed
+       * into what the leaning walls left.
+       */
+      const from = x >= divider - inset
+        ? x + inset
+        : play <= 0 ? -1 : ((x - inset) * divider) / play;
+      if (from < 0 || from >= w) continue;
+      out[row + x] = source[row + Math.round(from)]!;
+    }
+  }
+  return out;
 }

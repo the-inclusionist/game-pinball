@@ -146,6 +146,21 @@ when I offered one instead of the other: **"Eu quero os dois!"** — the geometr
 that a launch curves left instead of bouncing off the ceiling, AND the picture leaning so the game looks
 like a table seen from where a player stands.
 
+### B0.1 · The horizontal half landed early, because the mismatch was visible
+
+⚠️ **THE DEV SAW IT BEFORE ANY OF THIS WAS BUILT: "Você deformou os artefatos que compõe a mesa mas não
+deformou a arte?"** The geometry had leaned nine degrees a commit earlier and the backdrop was still
+being blitted upright — the walls converging over a picture that did not, by 47 units at the top of
+`factory`.
+
+So `gfx/backdrop.leanPicture` puts the bitmap through the INVERSE of `taperMap` as it is decoded: one
+resample per table, nearest, at load. It is not the homography this part is about and it does not
+replace it — what it does is stop the two halves of the same table disagreeing while the rest is built.
+
+What is left for B2–B5 is everything the horizontal lean cannot do on its own: the VERTICAL
+foreshortening a camera tilt implies, the ball shrinking with it, and the live layer that lets both
+reach the six things drawn per frame.
+
 ### B1 · Why it is not one line today
 
 `main`'s frame loop composes the table ONCE PER CHANGE into `tablePicture`, then blits a window of it:
