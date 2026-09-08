@@ -142,20 +142,34 @@ because that is the face a ball is MEANT to wait on.
      is the same protection without an arbitrary number inside it: a table that cannot exist is a
      table that must not open, and one that is merely tight is the author's business.
 
-### A5 · The twelve gates
+### A5 · The twelve gates, and what they actually turned out to be
 
-Each is red for a stated reason and each must go green for a stated reason. None of them may go green by
-weakening its claim.
+⚠️ **THE LIST WAS WRITTEN AGAINST THE LEANING CATALOGUE AND THE LEAN CAME OFF.** On straight tables the
+same friction change cost THREE gates instead of twelve, which is the most useful number in this section:
+most of what looked like the cost of letting the ball roll was the cost of the nine-degree trapezium.
 
-| gate | why it is red | what it becomes |
+| gate | what it was | what it needed |
 |---|---|---|
-| `table-playable` — eventually lost ×3 | the ball rests on the plunger and waits | the survey re-launches, like a player |
-| `table-playable` — flapping changes the life ×4 | both runs end with the ball parked in the same place | same fix; a parked ball is the same in both runs by definition |
-| `table-reachable` — ring-belt | a component the ball no longer reaches | measure after the pockets close; ledger only if it survives |
-| `table-secret` — crater-run's passage | the route changed | re-measure; the passage is geometry, not luck |
-| `table-physics-build` — eventually drained | one launch, no player | re-launch, as above |
-| `table-catalog` — bare-minimum's contents | it has two more walls | the list is updated with A4.5's reason |
-| `table-view-honesty` — painted area | the walls paint pixels | golden updated, one line per table |
+| `table-playable` — flapping, crater-run | the ball slid down the left wall into the outlane's open top, thirty units wide of the pivot | `lead.west`, a face above the outlane — at y = 172 and not 160, because at 160 it moved `table-secret` from sixteen crossings of sixty to fourteen |
+| `table-playable` — flapping, wide-arc | the art's short guides could not be made playable: three arrangements, each with a hole somewhere else | the funnel runs from the walls again, and the picture's outlanes stay paint |
+| `table-reachable` — factory | the crane swept above the traffic | a heat map of where the balls are put it on the gauges' band, eight across instead of five |
+| `table-view-honesty` | tilted faces and new furniture paint pixels | golden updated, one line per table |
+
+⚠️ **AND TWO THINGS ON THE ORIGINAL LIST TURNED OUT NOT TO NEED DOING.** `bare-minimum`'s side walls were
+added and then measured: with the launcher firing straight again the ball never travels far enough
+sideways to leave, so the fixture stays the floor of the format and the walls came back out. And the
+mid-air rests that A4.1 said to stop on were false positives of the survey's first definition — see
+above.
+
+### A6 · What the survey exercises, and the silence it had
+
+`tests/table-playable`'s survey now PRESSES THE PLUNGER AGAIN when the ball comes back down and stops on
+it, which is what a player does and what half of every launch at these powers needs. Without it a
+returning ball sat still for the rest of a four-thousand-frame budget and every claim in that file was
+about the first thirty seconds of one launch that happened to clear the bend.
+
+It was harmless until the ball could rest: with the old friction a returning ball crept off the plunger
+by itself. The fix made the silence a defect, which is the shape of most of this part.
 
 ---
 

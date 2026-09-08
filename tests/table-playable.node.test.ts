@@ -3,7 +3,9 @@ import { describe, test, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { buildPhysics, drainedBy, launchSpeedFor, FRAME_SECONDS } from '../app/js/table/physics-build.js';
+import {
+  buildPhysics, drainedBy, inPlungerLane, launchSpeedFor, FRAME_SECONDS,
+} from '../app/js/table/physics-build.js';
 import { advanceFrame } from '../app/js/physics/step.js';
 import { CATALOG, BARE_MINIMUM } from '../app/js/table/catalog.js';
 import type { AuthoredTable } from '../app/js/table/authored.js';
@@ -58,6 +60,7 @@ function launchAndWatch(table: AuthoredTable, frames = 4000, flapEvery: number |
   let drained: string | null = null;
   let furthestFromLane = 0;
   let frameCount = 0;
+  let relaunches = 0;
 
   for (let i = 0; i < frames && !drained; i++) {
     if (flapEvery !== null) {
@@ -65,6 +68,28 @@ function launchAndWatch(table: AuthoredTable, frames = 4000, flapEvery: number |
       if (i % flapEvery === Math.floor(flapEvery / 2)) {
         physics.setFlippers('left', false); physics.setFlippers('right', false);
       }
+    }
+    /**
+     * ⚠️ AND THE PLUNGER IS PRESSED AGAIN, BECAUSE A PLAYER PRESSES IT AGAIN.
+     *
+     * A draw that does not clear the return bend comes back down the lane and lands on the rod — which
+     * is what `table/cabinet` gave the plunger a face FOR, and what half of every table's launches do
+     * at the powers `tests/table-rests` surveys with. This loop had no way to fire it, so a ball that
+     * came back spent the rest of a four-thousand-frame budget sitting still, and every claim in this
+     * file was about the first thirty seconds of one launch that happened to clear.
+     *
+     * ⚠️ IT WAS HARMLESS UNTIL THE BALL COULD REST. With a wall taking nine tenths of the along-wall
+     * speed on every touch nothing settled anywhere, so a returning ball crept off the plunger by
+     * itself and the survey never noticed the gap. `physics/collision` charges friction against the
+     * impact now and the ball STAYS, which is correct and makes this loop's silence a defect.
+     *
+     * At full power, because `launchSpeedFor` is what the gate above measures the first launch with and
+     * a survey that fired weaker second balls would be answering a different question each time.
+     */
+    if (inPlungerLane(table, ball) && ball.speed < 1) {
+      ball.direction = { x: 0, y: -1 };
+      ball.speed = launchSpeedFor(table);
+      relaunches++;
     }
     advanceFrame([ball], physics.context, FRAME_SECONDS);
     /**
@@ -85,7 +110,7 @@ function launchAndWatch(table: AuthoredTable, frames = 4000, flapEvery: number |
     frameCount = i + 1;
   }
 
-  return { touched, drained, furthestFromLane, ball, frames: frameCount };
+  return { touched, drained, furthestFromLane, ball, frames: frameCount, relaunches };
 }
 
 const PLAYABLE = CATALOG.filter((t) => t !== BARE_MINIMUM);
