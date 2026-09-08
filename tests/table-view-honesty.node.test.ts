@@ -295,7 +295,10 @@ const PAINTED = {
   // return bend crossed the whole chamber untouched and out of the outlane, the same 188 frames
   // whether the player flapped or not. Its own comment carries the trace.
   'slipstream': 6039,
-  'wide-arc': 4796,
+  // ⚠️ +3381, the largest move any table has made, when it was laid out on the Dev's picture. Three
+  // domes of radius 20 against three of radius 9, three rollover strips it never had, two outlanes it
+  // never had, a chute drawn where the art draws it, and paddles 66 long against 38.
+  'wide-arc': 8177,
   // ⚠️ 3553 UNTIL THE BALL GAINED A RADIUS. `table/physics-build` now offsets every wall by it, the way
   // the original does and `physics/wall` already did for the 1995 table, and two of this fixture's
   // gates went red: the ball scored nothing and flapping changed nothing. Both were passing on luck.
@@ -305,8 +308,11 @@ const PAINTED = {
   // drawing: this number is a golden, so it moves only when somebody says why.
   // ⚠️ +222 when it was widened from 120 to 180 so it could take nine degrees at all. A wider table
   // paints a wider ceiling, a longer bottom landing and two guides that reach further.
-  'narrow-tower': 3935,
-  'four-flippers': 3018,
+  // ⚠️ +567 when the layout moved onto the picture: a wider summit gate, a star bumper twenty-eight
+  // across instead of eighteen, and paddles 62 long against 33.
+  'narrow-tower': 4502,
+  // ⚠️ +715 when the two nine-unit bumpers became the art's four twenty-eight-unit rocket engines.
+  'four-flippers': 3733,
   // ⚠️ -8 when its lean went from 8.64 degrees to the full nine: the floor that held it back is gone.
   'bare-minimum': 268,
 };

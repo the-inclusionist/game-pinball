@@ -17,6 +17,18 @@
 // It is also the table where the camera has the least to do: 210 tall against a 180 view is 30 pixels
 // of travel, the smallest a table can have and still be required to have a camera at all.
 
+//
+// ========================= AND SINCE 2026-09-07 IT IS LAID OUT ON A PICTURE =========================
+// ⚠️ THE DEV PAINTED ONE AND SAID WHAT TO DO WITH IT: "artes feitas, lembrando: elas não são fiéis e
+// é preciso refazer os mapas em cima de cada arte." The geometry moved to the art, not the other way
+// round — `gfx/backdrop`'s rule that the player aims at what they see. Coordinates were read off
+// `shots/grid-four-flippers.png`, the imported picture at four times with this table's units on it.
+//
+// What the art asked for here was the ROCKET CLUSTER: four engines in a diamond at the head of the
+// table, twenty-eight across, where this fixture had two nine-unit bumpers and a target between them.
+// The rest of it — two drains, two pairs of paddles, the funnel — was already where the picture puts
+// it, which is the useful half of the answer: the layout that was reasoned about and the layout that
+// was painted agree about the SHAPE of the table and disagreed only about what stands on it.
 import type { AuthoredTable } from './authored.js';
 
 export const FOUR_FLIPPERS: AuthoredTable = {
@@ -85,9 +97,9 @@ export const FOUR_FLIPPERS: AuthoredTable = {
     { name: 'drain.lower', kind: 'drain', role: 'hazard', bounds: { x: 86, y: 200, width: 28, height: 8 },
       control: 'DrainControl' },
 
-    { name: 'bumper.left', kind: 'bumper', role: 'structure', bounds: { x: 40, y: 40, width: 18, height: 18 },
+    { name: 'bumper.left', kind: 'bumper', role: 'structure', bounds: { x: 43, y: 48, width: 28, height: 28 },
       scores: [500, 1000, 1500, 2000], control: 'BumperControl', lamps: ['lamp.left'],
-      collision: [{ kind: 'circle', at: { x: 49, y: 49 }, radius: 9 }] },
+      collision: [{ kind: 'circle', at: { x: 57, y: 62 }, radius: 14 }] },
     // ⚠️ IT WAS AT x = 142 AND THE BALL PASSED FOURTEEN PIXELS TO ITS RIGHT, EVERY TIME.
     // The launch is deterministic, so "every time" is literal: the ball came off the return bend and
     // fell in a straight diagonal from (184, 32) to the lower right flipper, meeting nothing worth
@@ -98,9 +110,9 @@ export const FOUR_FLIPPERS: AuthoredTable = {
     // Moved to sit where the ball actually is at y = 49. The asymmetry against `bumper.left` is not a
     // mistake: a plunger lane is on one side, so what comes off it arrives on one side, and every real
     // table is lopsided for the same reason.
-    { name: 'bumper.right', kind: 'bumper', role: 'structure', bounds: { x: 163, y: 40, width: 18, height: 18 },
+    { name: 'bumper.right', kind: 'bumper', role: 'structure', bounds: { x: 101, y: 48, width: 28, height: 28 },
       scores: [500, 1000, 1500, 2000], control: 'BumperControl', lamps: ['lamp.right'],
-      collision: [{ kind: 'circle', at: { x: 172, y: 49 }, radius: 9 }] },
+      collision: [{ kind: 'circle', at: { x: 115, y: 62 }, radius: 14 }] },
 
     // Between the two bumpers, struck from below: bottom edge, right to left.
     { name: 'target.centre', kind: 'target', role: 'goal', bounds: { x: 92, y: 40, width: 16, height: 14 },

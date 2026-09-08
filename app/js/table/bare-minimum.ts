@@ -17,6 +17,19 @@
 // means the validator checks that a table can RUN, not that it is worth running. Those are different
 // questions and only the first one can be answered by a machine.
 
+//
+// ========================= AND SINCE 2026-09-07 IT IS LAID OUT ON A PICTURE =========================
+// ⚠️ THE DEV PAINTED ONE AND SAID WHAT TO DO WITH IT: "artes feitas, lembrando: elas não são fiéis e
+// é preciso refazer os mapas em cima de cada arte." The geometry moved to the art, not the other way
+// round — `gfx/backdrop`'s rule that the player aims at what they see. Coordinates were read off
+// `shots/grid-bare-minimum.png`, the imported picture at four times with this table's units on it.
+//
+// ⚠️ AND THE ART PAINTS MORE THAN THIS TABLE MAY CONTAIN, WHICH IS THE ONE PLACE THAT RULE BENDS. The
+// picture has a satellite cluster of three lit engines across the middle; putting them in would make
+// this a seventh table, and what it is FOR is being the floor of the format — `tests/table-catalog`
+// asks that it have exactly what the validator demands and nothing else. So the walls, the paddle, the
+// launcher, the drain and the one target moved onto what the picture draws, and the engines stay paint.
+// It is a fixture no player is offered; on a table in `PLAYABLE_TABLES` this would be a defect.
 import type { AuthoredTable } from './authored.js';
 
 export const BARE_MINIMUM: AuthoredTable = {
@@ -55,7 +68,8 @@ export const BARE_MINIMUM: AuthoredTable = {
     // it — the contract's fifth field would be empty and blind mode silent. That is part of the FLOOR,
     // so the table that documents the floor has to carry it, exactly as its flipper had to grow a
     // collision. It does not make this table playable: one flipper still cannot cover a drain.
-    { name: 'target', kind: 'target', role: 'goal', bounds: { x: 44, y: 20, width: 12, height: 10 },
+    // The lit "MISSION INIT" panel the art draws across the head of the table.
+    { name: 'target', kind: 'target', role: 'goal', bounds: { x: 38, y: 36, width: 24, height: 10 },
       scores: [1000], control: 'TargetControl', lamps: ['lamp.target'],
       collision: [{ kind: 'line', from: { x: 56, y: 30 }, to: { x: 44, y: 30 } }] },
   ],

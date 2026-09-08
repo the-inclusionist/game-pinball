@@ -62,6 +62,15 @@ SIZES = {
     # ⚠️ THE MASTER IS 1600x2656, AN ASPECT OF 0.6024, AND 183/0.6024 IS 303.8. Rounding to 304 keeps
     # the picture unstretched to within a fifth of a pixel; the importer's crop would take the rest.
     'factory': (183, 304),
+    # ⚠️ THE FOUR FIXTURES, PAINTED 2026-09-07 AFTER THE DEV WAS SENT THEIR MAPS. They were the four
+    # tables that had never had art at all — "você nunca me passou as mesas wide-arc, four-flippers,
+    # narrow-tower e bare-minimum para que eu pudesse criar os backgrounds" — and he painted each one
+    # to the size the map was drawn at, so none of these needs a size chosen from its aspect the way
+    # `factory` did. `narrow-tower` is 180 wide because nine degrees over 420 cannot be had at 120.
+    'wide-arc': (360, 280),
+    'four-flippers': (200, 210),
+    'narrow-tower': (180, 420),
+    'bare-minimum': (100, 181),
 }
 
 #: The ball's own luminance, from `gfx/table-palette.BALL` = (238, 242, 248).

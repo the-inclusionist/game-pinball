@@ -27,6 +27,25 @@
 // Everything moved with the middle: sixty units of new width, thirty of them on each side of the play,
 // so the layout is the one that was tuned and not a stretched copy of it. The bottom assembly is sized
 // against the BALL rather than against the table — `table/cabinet` argues that — so it slid whole.
+//
+// ========================= AND SINCE 2026-09-07 IT IS LAID OUT ON A PICTURE =========================
+// ⚠️ THE DEV PAINTED ONE AND SAID WHAT TO DO WITH IT: "artes feitas, lembrando: elas não são fiéis e é
+// preciso refazer os mapas em cima de cada arte." The geometry moved to the art and not the other way
+// round — `gfx/backdrop`'s own rule, that the player aims at what they see and the ball meets what
+// they do not. Coordinates were read off `shots/grid-narrow-tower.png`, the imported picture at four times with
+// this table's own units drawn on it.
+//
+// ⚠️ AND THEY REST STEEPER THAN THE ART DRAWS THEM, BY MEASUREMENT. Painted, the tips sit ten apart at
+// rest — and `tipRadius` is 2, so the channel between them is ten minus four, which is EXACTLY the
+// ball's diameter. Measured: the ball wedged on the two tips at (89, 378) and sat there for four
+// thousand frames, and "the ball is eventually lost" went red on a ball that was never lost at all. The
+// reach is the art's 64; what changed is the rest angle, from a drop of 0.367 to 0.5, which opens the
+// channel to sixteen and leaves the horizontal gap at two.
+//
+// ⚠️ AND THE ART DRAWS PADDLES THAT ALREADY OBEY THE DEV'S OWN RULE. Its pivots are 130 apart and its
+// paddles 64 long, which closes the middle to four units at the horizontal — "elas não devem se tocar
+// e o espaço entre elas deve ser menor que uma bolinha". The pair this replaces was 70 apart with a
+// reach of 33. Nobody coordinated that; the picture and the rule agree because both are about a ball.
 
 import type { AuthoredTable } from './authored.js';
 
@@ -63,23 +82,25 @@ export const NARROW_TOWER: AuthoredTable = {
      * A shelf everything falls past is also the truer thing for the LOWEST landing — the two above it
      * stay narrow, because those are shots rather than certainties.
      */
-    { name: 'landing1', kind: 'lane', role: 'free', bounds: { x: 4, y: 300, width: 172, height: 12 },
+    { name: 'landing1', kind: 'lane', role: 'free', bounds: { x: 40, y: 292, width: 105, height: 10 },
       scores: [1000], control: 'LaneControl', lamps: ['lamp.climb1'] },
     { name: 'landing2', kind: 'lane', role: 'free', bounds: { x: 90, y: 200, width: 30, height: 12 },
       scores: [2000], control: 'LaneControl', lamps: ['lamp.climb2'] },
-    { name: 'landing3', kind: 'lane', role: 'free', bounds: { x: 50, y: 100, width: 30, height: 12 },
+    { name: 'landing3', kind: 'lane', role: 'free', bounds: { x: 75, y: 136, width: 30, height: 8 },
       scores: [4000], control: 'LaneControl', lamps: ['lamp.climb3'] },
 
     // Struck from BELOW by a ball that has climbed the whole tower, so the face is the bottom edge,
     // written right to left to put the solid side downward. It had none, which is why a five-thousand
     // frame run met walls and flippers and nothing else with the summit on screen throughout.
-    { name: 'summit', kind: 'target', role: 'goal', bounds: { x: 80, y: 20, width: 20, height: 16 },
+    // The lit gate across the head of the tower, struck from below by a ball that has climbed it all.
+    { name: 'summit', kind: 'target', role: 'goal', bounds: { x: 70, y: 22, width: 40, height: 20 },
       scores: [25000], control: 'TargetControl', lamps: ['lamp.summit'],
-      collision: [{ kind: 'line', from: { x: 100, y: 36 }, to: { x: 80, y: 36 } }] },
+      collision: [{ kind: 'line', from: { x: 110, y: 42 }, to: { x: 70, y: 42 } }] },
 
-    { name: 'bumper.mid', kind: 'bumper', role: 'structure', bounds: { x: 81, y: 150, width: 18, height: 18 },
+    // The star at the middle of the shaft, which the art draws twenty-eight across.
+    { name: 'bumper.mid', kind: 'bumper', role: 'structure', bounds: { x: 76, y: 146, width: 28, height: 28 },
       scores: [500, 1000, 1500, 2000], control: 'BumperControl',
-      collision: [{ kind: 'circle', at: { x: 90, y: 159 }, radius: 9 }] },
+      collision: [{ kind: 'circle', at: { x: 90, y: 160 }, radius: 14 }] },
 
     /**
      * ⚠️ THE FUNNEL, WHICH THIS TABLE NEVER HAD, and the gap it left is the one `wide-arc`'s own
@@ -93,31 +114,43 @@ export const NARROW_TOWER: AuthoredTable = {
      *
      * Each guide runs from a side wall down to a flipper pivot, so the only way to the bottom is over
      * a paddle. Written to FACE the play, like every other one-sided edge here.
+     *
+     * ⚠️ AND THEY REACH THE WALLS, WHICH THE ART DOES NOT DRAW. Its triangles start sixteen units in,
+     * with a channel outside each — an outlane, which is what the same shape is labelled on
+     * `wide-arc`. Authored that way here the ball goes down the channel every time and never meets a
+     * paddle at all: "flapping the flippers changes the ball's life" went red, which is
+     * `tests/table-playable`'s definition of a table the player watches. This fixture exists to give
+     * the camera 240 pixels of travel, and a fixture whose ball cannot be played does not give it
+     * anything. The sixteen units are the liberty; the funnel is the reason.
      */
     { name: 'guide.left', kind: 'wall', role: 'structure',
-      bounds: { x: 4, y: 340, width: 46, height: 50 },
-      collision: [{ kind: 'line', from: { x: 4, y: 340 }, to: { x: 50, y: 390 } }] },
+      bounds: { x: 4, y: 305, width: 48, height: 51 },
+      collision: [{ kind: 'line', from: { x: 4, y: 305 }, to: { x: 52, y: 356 } }] },
     { name: 'guide.right', kind: 'wall', role: 'structure',
-      bounds: { x: 120, y: 340, width: 56, height: 50 },
-      collision: [{ kind: 'line', from: { x: 120, y: 390 }, to: { x: 176, y: 340 } }] },
+      bounds: { x: 128, y: 305, width: 48, height: 51 },
+      collision: [{ kind: 'line', from: { x: 128, y: 356 }, to: { x: 176, y: 305 } }] },
 
     // ⚠️ LENGTHENED WITH THE REST OF THE CATALOGUE — see `wide-arc` for the arithmetic. Pivots
     // at 50 and 120 since the table widened, a reach of 33 of the 35 to the middle, leaving 4
     // between the raised tips.
     { name: 'flipper.left', kind: 'flipper', role: 'structure',
-      bounds: { x: 90.6, y: 390, width: 29.4, height: 14.99 },
+      bounds: { x: 25, y: 358, width: 55.9, height: 28 },
       flipper: {
-        pivot: { x: 50, y: 390 }, tipAtRest: { x: 79.4, y: 404.99 }, sweepDegrees: -55,
+        pivot: { x: 25, y: 358 }, tipAtRest: { x: 80.9, y: 386 }, sweepDegrees: -55,
         baseRadius: 3, tipRadius: 2, extendTime: 0.08, retractTime: 0.16,
       } },
     { name: 'flipper.right', kind: 'flipper', role: 'structure',
-      bounds: { x: 88.32, y: 390, width: 31.68, height: 9.24 },
+      bounds: { x: 99.1, y: 358, width: 55.9, height: 28 },
       flipper: {
-        pivot: { x: 120, y: 390 }, tipAtRest: { x: 90.6, y: 404.99 }, sweepDegrees: 55,
+        pivot: { x: 155, y: 358 }, tipAtRest: { x: 99.1, y: 386 }, sweepDegrees: 55,
         baseRadius: 3, tipRadius: 2, extendTime: 0.08, retractTime: 0.16,
       } },
 
-    { name: 'drain', kind: 'drain', role: 'hazard', bounds: { x: 76, y: 410, width: 18, height: 8 },
+    // ⚠️ IT REACHES THE FLOOR, and the first version of this stopped ten units short of it. The ball
+    // fell through the strip below and `drainedBy` answered `outside` — a hole in the geometry rather
+    // than a way to lose, which is a distinction this project keeps precisely so a gate can tell them
+    // apart. A drain that does not touch the bottom of the table is a drain with a gap under it.
+    { name: 'drain', kind: 'drain', role: 'hazard', bounds: { x: 74, y: 404, width: 28, height: 16 },
       control: 'DrainControl' },
   ],
 };
