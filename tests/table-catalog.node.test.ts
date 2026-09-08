@@ -273,7 +273,6 @@ describe('four-flippers — the table that contradicts an inherited assumption',
 function leavesThroughAHole(table: AuthoredTable): boolean {
   const physics = buildPhysics(table);
   const ball = physics.spawnBall();
-  // ⚠️ UP THE LANE, WHICH LEANS NINE DEGREES. A plunger fires along its own channel, and on this
   ball.direction = { x: 0, y: -1 };
   ball.speed = launchSpeedFor(table);
 

@@ -44,16 +44,26 @@ import { createMover, type Mover } from './mover.js';
 import { flareGrip, stormPath } from './storm.js';
 import { createStuckWatch, type StuckWatch } from './stuck-watch.js';
 
-/** How a surface answers a ball. One per kind, because a bumper is not a wall. */
+/**
+ * How a surface answers a ball. One per kind, because a bumper is not a wall.
+ *
+ * ⚠️ AND EVERY ONE OF THEM SETS `frictionByImpact`, WHICH THE 1995 TABLE DOES NOT. `physics/collision`
+ * carries the whole argument: the transcription takes a fixed share of the ALONG-SURFACE speed on every
+ * contact, and a ball resting on a slope pays it sixty times a second — so it freezes where it was put.
+ * The Dev photographed exactly that on `ring-belt`. Read as a friction coefficient scaled by the
+ * impact, the same numbers agree with the transcription at 45° and let a ball roll.
+ *
+ * The numbers themselves are unchanged and are still ours, written for the authored tables.
+ */
 export const RESPONSES: Readonly<Record<string, CollisionResponse>> = {
-  // A wall gives most of the speed back and nothing more.
-  wall: { elasticity: 0.7, smoothness: 0.1, threshold: 1e9, boost: 0 },
+  // A wall gives most of the speed back across it and keeps what runs along it.
+  wall: { elasticity: 0.7, smoothness: 0.1, threshold: 1e9, boost: 0, frictionByImpact: true },
   // A bumper ADDS speed above a threshold, which is what makes it ignore a light touch.
-  bumper: { elasticity: 0.9, smoothness: 0.1, threshold: 1.0, boost: 1.4 },
+  bumper: { elasticity: 0.9, smoothness: 0.1, threshold: 1.0, boost: 1.4, frictionByImpact: true },
   // A flipper is a wall that hits back; the kick itself lives in `physics/flipper`.
-  flipper: { elasticity: 0.8, smoothness: 0.05, threshold: 1e9, boost: 0 },
+  flipper: { elasticity: 0.8, smoothness: 0.05, threshold: 1e9, boost: 0, frictionByImpact: true },
   // Everything else: a soft edge that mostly stops the ball.
-  default: { elasticity: 0.5, smoothness: 0.2, threshold: 1e9, boost: 0 },
+  default: { elasticity: 0.5, smoothness: 0.2, threshold: 1e9, boost: 0, frictionByImpact: true },
 };
 
 export function responseFor(component: AuthoredComponent): CollisionResponse {

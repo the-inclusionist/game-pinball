@@ -180,10 +180,22 @@ export const FACTORY: AuthoredTable = {
     // is where `low-orbit`'s first drone was and where sixty balls never met it. This one swings from
     // over the nest out to where the jib is drawn, on a diagonal — the same correction, made once
     // rather than three times.
+    /**
+     * ⚠️ ITS PATH WAS ABOVE THE TRAFFIC, and sixty balls never came near it once the ball learnt to roll.
+     * `physics/collision` charges friction against the impact now, so the population's routes changed:
+     * a heat map of where the balls actually are between y = 40 and y = 120 puts them among the three
+     * gauges — the busiest cells by an order of magnitude — and this crane swept from (110,64) to
+     * (142,94), above and to the right of all of it.
+     *
+     * Moved onto the band the balls use and widened from 5 to 8, which is the difference between a body
+     * a ball passes and one it meets. `crater-run`'s own drone note is the other half of the rule: "a
+     * long slow body is somewhere the ball is not, almost always" — this is short, quick and where they
+     * go.
+     */
     { name: 'crane', kind: 'rebounder', role: 'goal',
-      bounds: { x: 104, y: 58, width: 44, height: 42 },
+      bounds: { x: 88, y: 62, width: 60, height: 16 },
       scores: [3000], control: 'RebounderControl', lamps: ['lamp.crane'],
-      mover: { from: { x: 110, y: 64 }, to: { x: 142, y: 94 }, seconds: 1.6, radius: 5 } },
+      mover: { from: { x: 96, y: 70 }, to: { x: 140, y: 70 }, seconds: 1.6, radius: 8 } },
 
     /* ===================== THE GANTRY RAMP ===================== */
     // Up the left side, on the walkway the picture draws climbing out of the flames.

@@ -97,7 +97,6 @@ describe('⚠️ a ball coming back down the lane lands ON the plunger', () => {
     const [, table, plunger] = withPlunger[0]!;
     const physics = buildPhysics(table);
     const ball = physics.spawnBall();
-    // ⚠️ UP THE LANE, WHICH LEANS NINE DEGREES. A plunger fires along its own channel, and on this
     ball.direction = { x: 0, y: -1 };
     ball.speed = launchSpeedFor(table);
 

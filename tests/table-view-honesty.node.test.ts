@@ -266,7 +266,10 @@ const PAINTED = {
   'ion-storm': 5725,
   // ⚠️ +1070: the two INLANES the cabinet now gives all five of its tables, and this table's own
   // authoring up to the 1995 density — two flank drop banks and a three-rollover reentry row.
-  'crater-run': 4783,
+  // ⚠️ +41 for `lead.west`, a face on the left wall above the outlane. The day the ball learnt to roll
+  // it started sliding down that wall into the outlane's open top, thirty units wide of the left pivot,
+  // and a flapping run came out identical to a quiet one.
+  'crater-run': 4824,
   // ⚠️ +2640, the largest single move in this table: three more bumpers in a second gauntlet, a
   // four-target drop column up the left wall, two rebounders, four rollovers on the flanks and
   // three across the head. It is 300 tall against a 180 window and had 56 pixels of nothing in
@@ -301,7 +304,10 @@ const PAINTED = {
   // ⚠️ +1310: the lane divider this fixture never had, plus the two rails that turn a miss beside a
   // paddle into the outlane the art paints. Both were holes the old guides had been covering by
   // accident, and laying the table out on the picture stopped the accident.
-  'wide-arc': 9074,
+  // ⚠️ −171 when the funnel went back to running from the walls. The art's shorter guides and the rails
+  // and outlanes they needed could not be made playable — three arrangements measured, each with a hole
+  // in a different place — so the picture's outlanes stay paint, as bare-minimum's engines do.
+  'wide-arc': 8903,
   // ⚠️ 3553 UNTIL THE BALL GAINED A RADIUS. `table/physics-build` now offsets every wall by it, the way
   // the original does and `physics/wall` already did for the 1995 table, and two of this fixture's
   // gates went red: the ball scored nothing and flapping changed nothing. Both were passing on luck.

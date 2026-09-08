@@ -83,7 +83,6 @@ function visits(table: AuthoredTable, balls: number): Map<string, number> {
        * eighteen components on `ion-storm` alone — and the loss was this line missing, not the fix.
        */
       if (inPlungerLane(table, ball) && ball.speed < 20) {
-        // ⚠️ UP THE LANE, WHICH LEANS NINE DEGREES. A plunger fires along its own channel, and on this
         ball.direction = { x: 0, y: -1 };
         ball.speed = launchSpeedFor(table) * (0.55 + random() * 0.45);
       }

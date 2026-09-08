@@ -176,7 +176,6 @@ describe('⚠️ and a flipper does not turn the ball into a bullet', () => {
     for (const flapEvery of [8, 16, 24, 40]) {
       const physics = buildPhysics(table);
       const ball = physics.spawnBall();
-      // ⚠️ UP THE LANE, WHICH LEANS NINE DEGREES. A plunger fires along its own channel, and on this
       ball.direction = { x: 0, y: -1 };
       ball.speed = launchSpeedFor(table);
       for (let i = 0; i < 2000; i++) {

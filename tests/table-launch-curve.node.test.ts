@@ -58,7 +58,6 @@ const WITH_BEND = CATALOG.filter((t) => t.components.some((c) => c.name === 'wal
 function exitDirection(table: AuthoredTable): { x: number; y: number } {
   const physics = buildPhysics(table);
   const ball = physics.spawnBall();
-  // ⚠️ UP THE LANE, WHICH LEANS NINE DEGREES. A plunger fires along its own channel, and on this
   ball.direction = { x: 0, y: -1 };
   ball.speed = launchSpeedFor(table);
 

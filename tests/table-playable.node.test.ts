@@ -30,13 +30,27 @@ import { createRolloverWatch } from '../app/js/table/rollovers.js';
  * player does who cannot see the ball. Null is a launch nobody touches.
  */
 function launchAndWatch(table: AuthoredTable, frames = 4000, flapEvery: number | null = null) {
-  const physics = buildPhysics(table);
+  /**
+   * ⚠️ A SEEDED GENERATOR, BECAUSE THIS SURVEY RUNS THE STUCK WATCH. `physics/stuck`'s rescue throws a
+   * wedged ball in a RANDOM direction, and with nothing passed it falls back to `Math.random` — so a
+   * gate that compares two runs would be comparing two different games. It was harmless while a wall
+   * took nine tenths of the along-wall speed and nothing ever settled anywhere; `physics/collision`
+   * charges friction against the impact now, balls come to rest, and the rescue fires.
+   *
+   * `tests/table-secret` failed once in five runs on exactly this before it was found there too.
+   */
+  let seed = 20260908;
+  const physics = buildPhysics(table, {
+    random: () => {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      return seed / 0x7fffffff;
+    },
+  });
   // ⚠️ CROSSINGS COUNT TOO. Half of what an authored table offers is regions the ball rolls OVER, and a
   // gate that watched only collisions would call a table a corridor while the ball crossed three lanes.
   const rollovers = createRolloverWatch(table);
   const ball = physics.spawnBall();
   const from = { x: ball.position.x, y: ball.position.y };
-  // ⚠️ UP THE LANE, WHICH LEANS NINE DEGREES. A plunger fires along its own channel, and on this
   ball.direction = { x: 0, y: -1 };
   ball.speed = launchSpeedFor(table);
 
@@ -53,6 +67,17 @@ function launchAndWatch(table: AuthoredTable, frames = 4000, flapEvery: number |
       }
     }
     advanceFrame([ball], physics.context, FRAME_SECONDS);
+    /**
+     * ⚠️ THE STUCK WATCH RUNS HERE BECAUSE IT RUNS IN THE GAME, and leaving it out stopped being
+     * harmless the day a ball could come to REST. `physics/collision`'s friction used to take nine
+     * tenths of the along-surface speed on every contact, so nothing ever settled anywhere: every ball
+     * crept to the drain and these gates measured a table nobody could get stuck on. With a ball that
+     * rolls, a corner between a guide and a paddle holds it — which is what a real cradle IS — and four
+     * tables reported "the ball is never lost" for a ball sitting exactly where a player would flip it
+     * from. `main`'s loop has called this every frame since the physics was ported; this is the survey
+     * finally simulating the same game.
+     */
+    physics.stuck.check(ball, i * (1000 / 60));
     for (const hit of physics.takeHits()) touched.push(hit.name);
     for (const name of rollovers.poll(ball)) touched.push(name);
     furthestFromLane = Math.max(furthestFromLane, Math.abs(ball.position.x - from.x));

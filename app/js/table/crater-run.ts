@@ -213,6 +213,30 @@ export const CRATER_RUN: AuthoredTable = {
     { name: 'shelf.west1', kind: 'target', role: 'key', bounds: { x: 14, y: 112, width: 12, height: 12 },
       scores: [2000], control: 'TargetBankControl', bank: 'bank.west', lamps: ['lamp.shelfWest1'],
       collision: [{ kind: 'line', from: { x: 26, y: 112 }, to: { x: 26, y: 124 } }] },
+    /**
+     * ⚠️ THE LEAD-IN ABOVE THE LEFT OUTLANE, AND THIS TABLE NEEDED IT THE DAY THE BALL LEARNT TO ROLL.
+     *
+     * `physics/collision` charges friction against the impact now, so a ball slides along a wall instead
+     * of being stopped by it. Traced on the full launch: it came off `shelf.west2` at (34,143) and ran
+     * down the left wall — (22,157), (16,175), (10,201) — into the top of the outlane, and was lost at
+     * x = 12, THIRTY UNITS wide of the left pivot. A run flapping the flippers came out identical to a
+     * quiet one, which is `tests/table-playable`'s definition of a table the player watches rather than
+     * plays.
+     *
+     * ⚠️ AND IT IS SHORT ON PURPOSE, ENDING AT y = 186. Seven units above the outlane's mouth, so a
+     * ball hugging the wall is turned back into the funnel and a ball arriving from the middle still has
+     * the channel below it to fall into. Sealing the top was tried in `table/cabinet` for every table at
+     * once and cost eight gates: an outlane nothing can reach is the defect that ledger already records
+     * twelve of.
+     *
+     * ⚠️ AND IT STARTED FOURTEEN UNITS HIGHER, WHICH `tests/table-secret` CAUGHT. At y = 160 it turned
+     * enough of the population away from the passage that crossings fell from sixteen of sixty to
+     * FOURTEEN, under that gate's bar of fifteen. The lower line catches the ball this was written for
+     * and leaves the rest of the table's traffic alone — measured, not reasoned.
+     */
+    { name: 'lead.west', kind: 'wall', role: WALL, bounds: { x: 4, y: 172, width: 14, height: 14 },
+      collision: [{ kind: 'line', from: { x: 4, y: 172 }, to: { x: 18, y: 186 } }] },
+
     { name: 'shelf.west2', kind: 'target', role: 'key', bounds: { x: 14, y: 130, width: 12, height: 12 },
       scores: [2000], control: 'TargetBankControl', bank: 'bank.west', lamps: ['lamp.shelfWest2'],
       collision: [{ kind: 'line', from: { x: 26, y: 130 }, to: { x: 26, y: 142 } }] },

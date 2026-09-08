@@ -30,9 +30,9 @@
 //   · three rollover strips in a row at y = 134, which the art draws as lit green bars
 //   · the ARC-BOOST chute, which the art runs from (205,197) up to (310,78) — the old ramp was a guess
 //     at 45° in about the right place, and this is the same idea on the line that is drawn
-//   · a funnel whose guides START INSIDE THE TABLE, at x = 75 and x = 285, with the outlane channels
-//     the art marks in red outside them. The old pair ran from wall to pivot and this fixture had no
-//     outlane at all.
+//   · a funnel — and this is the one thing the art asked for and did not get. Its guides start 71 units
+//     inside each wall with an outlane outside them, and authored that way the ball cannot be played:
+//     the guides' own comment carries the three arrangements that were measured and what each one did.
 //
 // ⚠️ WHAT DID NOT MOVE IS THE PLUNGER LANE, and the reason is not laziness. `table/perspective` splits
 // the map at `plungerLaneOf`'s divider — 339 here — and slides everything right of it instead of
@@ -165,22 +165,34 @@ export const WIDE_ARC: AuthoredTable = {
     // seven-degree shelf and the ball went to SLEEP on it. A guide is a surface a ball slides down, and
     // the angle is what decides whether it slides or settles.
     /**
-     * ⚠️ THEY START INSIDE THE TABLE NOW, AND THE CHANNEL OUTSIDE THEM IS THE OUTLANE. The art paints
-     * two triangles whose upper vertices are at x = 75 and x = 285, with a red-marked lane running
-     * down the outside of each — "OUT-LANE / GRAV-STRESS" in the Dev's own lettering. The pair this
-     * replaces ran from the side wall to the pivot, which left this fixture the only table in the
-     * catalogue with no way to lose a ball except down the middle.
+     * ⚠️ THE FUNNEL RUNS FROM THE WALLS TO THE PADDLES' TIPS, AND THE ART DRAWS SOMETHING SHORTER.
+     *
+     * Its two triangles start 71 units inside each wall, with a red-marked outlane down the outside of
+     * each — "OUT-LANE / GRAV-STRESS" in the Dev's own lettering. Authored that way this table cannot be
+     * played, and every arrangement of it was measured before that sentence was written:
+     *
+     *   · guides ending at the PIVOTS, rails from the pivots down to the floor: a ball rolling down a
+     *     guide is handed straight to the rail beside it and out, touching the paddle only at its base
+     *     where the arm barely moves. `flipper.right@255,232`, then the outlane, in both runs.
+     *   · rails moved twenty units clear of the pivots to fix that: a twenty-unit WINDOW opens between
+     *     the two, the ball flies through it and ends up under both paddles. Flap periods of 24, 18, 30
+     *     and 12 frames all came out at (193,281) — no tempo tells a player from a spectator.
+     *   · guides ending at the TIPS, which is what `table/cabinet` does and why: the same, one hole
+     *     further along.
+     *
+     * ⚠️ SO THE PICTURE'S OUTLANES STAY PAINT. It is the decision `bare-minimum` already carries for its
+     * three engines and `narrow-tower` for its guides — "the sixteen units are the liberty; the funnel
+     * is the reason" — and it is the same trade both times: a table nobody can play is not a truer
+     * depiction of a picture. This fixture exists to give the horizontal camera something to follow.
+     *
+     * Forty-five degrees and no shallower, which is a rule this table taught: its own ramp was a
+     * seven-degree shelf and the ball went to SLEEP on it. A guide is a surface a ball slides down, and
+     * the angle is what decides whether it slides or settles.
      */
-    { name: 'guide.left', kind: 'wall', role: 'structure', bounds: { x: 75, y: 150, width: 37, height: 82 },
-      collision: [{ kind: 'line', from: { x: 75, y: 150 }, to: { x: 112, y: 232 } }] },
-    { name: 'guide.right', kind: 'wall', role: 'structure', bounds: { x: 248, y: 150, width: 37, height: 82 },
-      collision: [{ kind: 'line', from: { x: 248, y: 232 }, to: { x: 285, y: 150 } }] },
-
-    // The channels the art marks in red, outside each guide, running to the floor.
-    { name: 'outlane.left', kind: 'lane', role: 'hazard', bounds: { x: 45, y: 150, width: 24, height: 130 },
-      scores: [2000], control: 'LaneControl', lamps: ['lamp.left'] },
-    { name: 'outlane.right', kind: 'lane', role: 'hazard', bounds: { x: 291, y: 150, width: 24, height: 130 },
-      scores: [2000], control: 'LaneControl', lamps: ['lamp.right'] },
+    { name: 'guide.left', kind: 'wall', role: 'structure', bounds: { x: 4, y: 116, width: 168, height: 116 },
+      collision: [{ kind: 'line', from: { x: 4, y: 116 }, to: { x: 172, y: 232 } }] },
+    { name: 'guide.right', kind: 'wall', role: 'structure', bounds: { x: 188, y: 116, width: 168, height: 116 },
+      collision: [{ kind: 'line', from: { x: 188, y: 232 }, to: { x: 356, y: 116 } }] },
 
     /**
      * ⚠️ THE TIPS ARE SIXTEEN PIXELS APART AND WERE TWENTY-FOUR, which is the width of the drain's
@@ -211,29 +223,6 @@ export const WIDE_ARC: AuthoredTable = {
         pivot: { x: 248, y: 232 }, tipAtRest: { x: 187.7, y: 259.1 }, sweepDegrees: 55,
         baseRadius: 3, tipRadius: 2, extendTime: 0.08, retractTime: 0.16,
       } },
-
-    /**
-     * ⚠️ THE RAILS THAT TURN A MISS INTO AN OUTLANE, and without them this table had a HOLE. Traced
-     * after the lean came off: a full launch came down the right at x = 265, which is outside the right
-     * pivot at 248 and inside the outlane channel at 291 — so it met nothing at all and left through
-     * the floor. `drainedBy` answered `below`, which by this project's definition is a hole in the
-     * geometry rather than a way to lose.
-     *
-     * The art draws the rail: a white diagonal from the foot of each triangle down to the bottom
-     * corner, with the red "OUT-LANE / GRAV-STRESS" channel outside it. A ball that misses the paddle
-     * now slides into the lane that is painted for it and is lost the way the picture says it is.
-     *
-     * ⚠️ AND THE FUNNEL GUIDES ABOVE THEM DO NOT DO THIS JOB. They stop at the pivot, which is where a
-     * paddle starts; what happens to a ball that arrives BESIDE the paddle is a different question and
-     * this fixture had never been asked it — the pair it used to have ran from the side walls, so
-     * nothing could get there.
-     */
-    { name: 'rail.left', kind: 'wall', role: 'structure',
-      bounds: { x: 69, y: 232, width: 43, height: 36 },
-      collision: [{ kind: 'line', from: { x: 69, y: 268 }, to: { x: 112, y: 232 } }] },
-    { name: 'rail.right', kind: 'wall', role: 'structure',
-      bounds: { x: 248, y: 232, width: 43, height: 36 },
-      collision: [{ kind: 'line', from: { x: 248, y: 232 }, to: { x: 291, y: 268 } }] },
 
     { name: 'drain', kind: 'drain', role: 'hazard', bounds: { x: 164, y: 268, width: 32, height: 10 },
       control: 'DrainControl' },

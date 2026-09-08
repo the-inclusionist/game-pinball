@@ -170,7 +170,21 @@ describe('⚠️ `crater-run`’s passage is a route the ball takes', () => {
     let used = 0;
 
     for (let n = 0; n < BALLS; n++) {
-      const physics = buildPhysics(CRATER_RUN);
+      /**
+       * ⚠️ THE SEED GOES INTO THE PHYSICS AND IT USED NOT TO, WHICH MADE THIS SURVEY NON-DETERMINISTIC.
+       *
+       * `rng(20260906)` seeds the launch — direction, power, flap period — and `buildPhysics` was called
+       * with nothing, so the ONE piece of chance inside the simulation fell back to `Math.random`:
+       * `physics/stuck`'s nudge, which throws a wedged ball in a random direction.
+       *
+       * ⚠️ AND IT WAS HARMLESS UNTIL THE BALL COULD COME TO REST. A wall used to take nine tenths of the
+       * along-wall speed on every touch, so nothing settled anywhere and the nudge almost never fired;
+       * `physics/collision` charges friction against the impact now, balls rest, and the rescue runs.
+       * This gate then failed once in five runs at 14 crossings of 60 against a bar of 15 and passed the
+       * other four — a seeded test with an unseeded generator inside it, which is the shape
+       * `tests/table-reachable` records finding once and this file had the same hole.
+       */
+      const physics = buildPhysics(CRATER_RUN, { random });
       if (open) physics.setComponentActive('passage.crater', false);
 
       const ball = physics.spawnBall();
@@ -182,7 +196,6 @@ describe('⚠️ `crater-run`’s passage is a route the ball takes', () => {
 
       for (let i = 0; i < 4000; i++) {
         if (inPlungerLane(CRATER_RUN, ball) && ball.speed < 20) {
-          // ⚠️ UP THE LANE, WHICH LEANS NINE DEGREES. A plunger fires along its own channel, and on this
           ball.direction = { x: 0, y: -1 };
           ball.speed = launchSpeedFor(CRATER_RUN) * (0.55 + random() * 0.45);
         }

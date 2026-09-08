@@ -24,6 +24,35 @@ export interface CollisionResponse {
   /** Rebound speed above which the boost applies. It is what makes a bumper ignore a light touch. */
   readonly threshold: number;
   readonly boost: number;
+  /**
+   * ⚠️ THE THIRD LABELLED DEVIATION FROM THE TRANSCRIPTION, AND IT IS OFF FOR THE 1995 TABLE.
+   *
+   * `TBall::Collision` multiplies the ALONG-SURFACE speed by `smoothness` on every contact, whatever
+   * the contact is. That is a fixed toll, and it is wrong in one specific place: a ball RESTING on a
+   * surface collides every frame — gravity puts it back as fast as the collision pushes it off — so the
+   * toll is paid sixty times a second. A wall at 0.1 leaves a ball `0.1^60` of its speed after a second
+   * of sliding, which is why the Dev photographed one motionless on `ring-belt`'s guide: "a bolinha
+   * simplesmente congelou-se embaixo ao invés de rolar pela ladeira." The steady state on a 30° slope
+   * is 0.43 units a second.
+   *
+   * ⚠️ FRICTION IS PROPORTIONAL TO THE NORMAL IMPULSE, which is the physics the fixed toll is missing.
+   * A hard perpendicular hit presses the ball into the surface and scrubs its sideways speed; a ball
+   * sitting still presses on it with almost nothing and is barely slowed. `1 − smoothness` is read as
+   * that coefficient and multiplied by the impact, so:
+   *
+   *   · AT 45° THE TWO MODELS AGREE EXACTLY. The tangential and normal parts are equal there, so
+   *     `(1 − s)·proj / tangent` is `1 − s` and what is kept is `s` — the transcribed number.
+   *   · A STEEPER HIT keeps a little less than the toll did, and the difference is invisible: there is
+   *     hardly any tangential speed to keep.
+   *   · A GRAZE, AND A SLIDE, KEEP THEIRS. That is the whole of the change, and it is the case the
+   *     original's own tables never sit in for long.
+   *
+   * ⚠️ AND IT IS OPT-IN SO THE DEMONSTRATION IS UNTOUCHED. The 1995 table is a transcription being
+   * validated against the Dev's own archive, and its components' elasticity and smoothness come out of
+   * `PINBALL.DAT`. The authored tables' numbers are OURS — `table/physics-build` writes them by hand —
+   * so this changes our tables and not Microsoft's.
+   */
+  readonly frictionByImpact?: boolean;
 }
 
 /** Moves the ball past the contact so the next frame does not detect the same collision again. */
@@ -50,8 +79,22 @@ export function basicCollision(ball: BallState, nextPosition: Vector2, direction
   } else {
     const dx = projection * direction.x;
     const dy = projection * direction.y;
-    ball.direction.x = (dx + ball.direction.x) * r.smoothness + dx * r.elasticity;
-    ball.direction.y = (dy + ball.direction.y) * r.smoothness + dy * r.elasticity;
+    // The part of the incoming direction that runs ALONG the surface: `v + proj·n`.
+    const tx = dx + ball.direction.x;
+    const ty = dy + ball.direction.y;
+    /**
+     * How much of the along-surface speed survives. The transcription's answer is `smoothness`,
+     * whatever the contact; `frictionByImpact` makes it Coulomb — a loss proportional to how hard the
+     * ball is pressed into the surface, which is `projection`. See `CollisionResponse`.
+     */
+    let keep = r.smoothness;
+    if (r.frictionByImpact === true) {
+      const tangent = Math.hypot(tx, ty);
+      // `min` because friction stops a slide; it never drags the ball backwards along the surface.
+      keep = tangent > 0 ? Math.max(0, tangent - (1 - r.smoothness) * projection) / tangent : 0;
+    }
+    ball.direction.x = tx * keep + dx * r.elasticity;
+    ball.direction.y = ty * keep + dy * r.elasticity;
     normalize2d(ball.direction);
   }
 

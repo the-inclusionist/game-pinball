@@ -65,7 +65,6 @@ function launch(
   const physics = buildPhysics(table, {});
   const ball = physics.spawnBall();
   const start = ball.position.y;
-  // ⚠️ UP THE LANE, WHICH LEANS NINE DEGREES. A plunger fires along its own channel, and on this
   ball.direction = { x: 0, y: -1 };
   ball.speed = launchSpeedFor(table);
 
