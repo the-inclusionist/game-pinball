@@ -135,13 +135,13 @@ export const FACTORY: AuthoredTable = {
     // every machine puts a drop bank and it is where the art already drew one.
     { name: 'drop1', kind: 'target', role: 'key', bounds: { x: 59, y: 123, width: 16, height: 8 },
       scores: [1500], control: 'TargetBankControl', bank: 'bank.assembly', lamps: ['lamp.drop1'],
-      collision: [{ kind: 'line', from: { x: 59, y: 123 }, to: { x: 75, y: 123 } }] },
+      collision: [{ kind: 'line', from: { x: 59, y: 121 }, to: { x: 75, y: 123 } }] },
     { name: 'drop2', kind: 'target', role: 'key', bounds: { x: 81, y: 123, width: 16, height: 8 },
       scores: [1500], control: 'TargetBankControl', bank: 'bank.assembly', lamps: ['lamp.drop2'],
-      collision: [{ kind: 'line', from: { x: 81, y: 123 }, to: { x: 97, y: 123 } }] },
+      collision: [{ kind: 'line', from: { x: 81, y: 121 }, to: { x: 97, y: 123 } }] },
     { name: 'drop3', kind: 'target', role: 'key', bounds: { x: 103, y: 123, width: 16, height: 8 },
       scores: [1500], control: 'TargetBankControl', bank: 'bank.assembly', lamps: ['lamp.drop3'],
-      collision: [{ kind: 'line', from: { x: 103, y: 123 }, to: { x: 119, y: 123 } }] },
+      collision: [{ kind: 'line', from: { x: 103, y: 121 }, to: { x: 119, y: 123 } }] },
 
     /* ===================== THE WELLS ===================== */
     //

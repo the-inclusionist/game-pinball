@@ -282,7 +282,7 @@ export const RING_BELT: AuthoredTable = {
      */
     { name: 'core', kind: 'target', role: 'key', bounds: { x: 149, y: 70, width: 14, height: 14 },
       scores: [3000], control: 'TargetControl', lamps: ['lamp.core'],
-      collision: [{ kind: 'line', from: { x: 149, y: 84 }, to: { x: 163, y: 84 } }] },
+      collision: [{ kind: 'line', from: { x: 149, y: 82 }, to: { x: 163, y: 84 } }] },
   ],
 
   lamps: [

@@ -257,7 +257,7 @@ const PAINTED = {
   // ⚠️ −54 when `flag` moved four units right, which is a change to the TABLE. The lean brought it to
   // within three of `bumper3`'s rim, and a launched ball wedged in the crook and stayed there; the
   // flag's own comment carries the measurement. A shorter line across a narrower row paints less.
-  'low-orbit': 5393,
+  'low-orbit': 5441,
   // +572 on each of the four below: the cabinet's two inlanes, which five tables had never had.
   // The lower third paid 2000 for bad luck through the outlanes and nothing at all for good play.
   // ⚠️ +1768 when this table was authored up to the 1995 density: two more bumpers in the storm,
@@ -274,14 +274,14 @@ const PAINTED = {
   // four-target drop column up the left wall, two rebounders, four rollovers on the flanks and
   // three across the head. It is 300 tall against a 180 window and had 56 pixels of nothing in
   // the middle of its own climb.
-  'long-climb': 6254,
+  'long-climb': 6268,
   // ⚠️ +5437, and it is the last of the six to be authored up to the 1995 density — it was the
   // thinnest by a distance, at a THIRD of the archive's. Three more rocks on the belt, a
   // three-target drop column against each far wall, two rebounder cornices, and seventeen
   // rollovers spread across a table 360 wide whose outer thirds paid nothing at all.
   // -7 when the east scree column moved up twelve pixels: sixty balls never reached its lowest target,
   // which sat where the funnel has already gathered the ball toward the middle.
-  'ring-belt': 7390,
+  'ring-belt': 7404,
   /**
    * ⚠️ THE SEVENTH TABLE, AND ITS NUMBER IS A FIRST ENTRY RATHER THAN A CHANGE. `factory` was authored
    * onto the Dev's own picture and came in at 6591 painted pixels of a 55,632-pixel table — under the
@@ -290,14 +290,14 @@ const PAINTED = {
    * It is the largest of the six by area because it is the tallest table here at 304, and the ledger
    * exists so that a future edit which paints MORE has to be argued for rather than noticed later.
    */
-  'factory': 6591,
+  'factory': 6639,
   // ⚠️ +2122 when this table was authored up to the 1995 density: two more eddies in the chamber, a
   // three-target drop COLUMN on its wall, two spillways in its corners, three wake rollovers and
   // two rebounders below the vanes.
   // ⚠️ +87 for `deflector.left`, a face 31 pixels long added when the tables leaned: a launch off the
   // return bend crossed the whole chamber untouched and out of the outlane, the same 188 frames
   // whether the player flapped or not. Its own comment carries the trace.
-  'slipstream': 5207,
+  'slipstream': 5220,
   // ⚠️ +3381, the largest move any table has made, when it was laid out on the Dev's picture. Three
   // domes of radius 20 against three of radius 9, three rollover strips it never had, two outlanes it
   // never had, a chute drawn where the art draws it, and paddles 66 long against 38.
@@ -341,6 +341,11 @@ const PAINTED = {
  * (5137 → 5207) kept what the ART asked for: the layouts were re-authored onto the Dev's own pictures
  * the same day, and that instruction outlived the lean. `bare-minimum` is back to 388 exactly, because
  * the only thing that ever moved on it was the angle.
+ *
+ * ⚠️ AND FIVE OF THEM MOVED AGAIN BY A HANDFUL WHEN NINE FLAT FACES WERE TILTED. A face that looks up
+ * and is level is a shelf a ball rests on for ever, and the resting survey found four balls doing it;
+ * `tests/no-shelf-holds-a-ball` refuses one anywhere but the plunger now. A line that falls two units
+ * across its width crosses more rows than a level one, so each of the nine costs a few pixels.
  *
  * The ledger is a golden and it stays one: these numbers move when somebody says why.
  */

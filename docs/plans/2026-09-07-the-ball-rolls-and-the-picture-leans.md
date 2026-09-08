@@ -93,7 +93,30 @@ eight units. That is either a resting place on a collision line whose `bounds` i
 is legal and only means the survey's naming is thin — or a ball at rest in mid-air, which would be a
 physics defect and would be the most important thing in this document. It is checked first, in A4.
 
-### A4 · The work, in order
+### ⚠️ A IS DONE, AND WHAT IT FOUND WAS SMALLER AND DIFFERENT
+
+Landed 2026-09-08 over three commits. What the plan expected and what happened:
+
+| expected | happened |
+|---|---|
+| pockets on four tables, one to five each | **nine flat shelves** in the catalogue, all the same defect |
+| the cabinet's bottom assembly is the biggest share | **two cabinet-wide fixes tried and reverted**, eight gates red each time |
+| the survey lists rests; burn the list down | the survey's own DEFINITION was wrong twice before it measured anything |
+
+⚠️ **THE SURVEY WAS WRONG TWICE AND THAT IS MOST OF THE VALUE OF THIS PART.** Its first definition —
+"not drained after twenty seconds" — reported thirty-two pockets; reading the speeds killed it, because
+they were balls flying at 293 units a second on tables where twenty seconds is a short ball. Its second
+— displacement alone — reported two more at 100 and 140, and following those launches for two minutes
+showed them finishing on the plunger: a ball in a periodic orbit comes back to where it was. What is
+left is displacement AND speed, and it agrees with `physics/stuck`'s own question.
+
+⚠️ **AND EVERY REAL POCKET WAS ONE THING: A LEVEL FACE THAT LOOKS UP.** Gravity has no component along a
+horizontal surface, so a ball that lands there has nothing to start it again — correct physics and a
+table-design defect. Nine of them, all drop targets and one rebounder, now falling two units across
+their width. `tests/no-shelf-holds-a-ball` refuses another, and names the plunger as the one exception,
+because that is the face a ball is MEANT to wait on.
+
+### A4 · The work, in order### A4 · The work, in order
 
 1. **The two mid-air rests.** Explain them before touching anything else. If a ball can rest on
    nothing, no amount of table authoring will help and this plan changes.

@@ -217,7 +217,7 @@ export const LONG_CLIMB: AuthoredTable = {
     /* ===================== THE CREST ===================== */
     { name: 'crest', kind: 'target', role: 'goal', bounds: { x: 86, y: 30, width: 14, height: 14 },
       scores: [10000], control: 'TargetControl', lamps: ['lamp.crest'],
-      collision: [{ kind: 'line', from: { x: 86, y: 44 }, to: { x: 100, y: 44 } }] },
+      collision: [{ kind: 'line', from: { x: 86, y: 42 }, to: { x: 100, y: 44 } }] },
   ],
 
   lamps: [

@@ -295,13 +295,13 @@ export const LOW_ORBIT: AuthoredTable = {
      */
     { name: 'drop1', kind: 'target', role: 'key', bounds: { x: 40, y: 92, width: 16, height: 8 },
       scores: [1500], control: 'TargetBankControl', bank: 'bank.orbit', lamps: ['lamp.drop1'],
-      collision: [{ kind: 'line', from: { x: 40, y: 92 }, to: { x: 56, y: 92 } }] },
+      collision: [{ kind: 'line', from: { x: 40, y: 90 }, to: { x: 56, y: 92 } }] },
     { name: 'drop2', kind: 'target', role: 'key', bounds: { x: 62, y: 92, width: 16, height: 8 },
       scores: [1500], control: 'TargetBankControl', bank: 'bank.orbit', lamps: ['lamp.drop2'],
-      collision: [{ kind: 'line', from: { x: 62, y: 92 }, to: { x: 78, y: 92 } }] },
+      collision: [{ kind: 'line', from: { x: 62, y: 90 }, to: { x: 78, y: 92 } }] },
     { name: 'drop3', kind: 'target', role: 'key', bounds: { x: 84, y: 92, width: 16, height: 8 },
       scores: [1500], control: 'TargetBankControl', bank: 'bank.orbit', lamps: ['lamp.drop3'],
-      collision: [{ kind: 'line', from: { x: 84, y: 92 }, to: { x: 100, y: 92 } }] },
+      collision: [{ kind: 'line', from: { x: 84, y: 90 }, to: { x: 100, y: 92 } }] },
 
     /* ===================== THE RETURN LANES ===================== */
     //

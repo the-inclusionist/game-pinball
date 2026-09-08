@@ -271,7 +271,7 @@ export const SLIPSTREAM: AuthoredTable = {
 
     { name: 'crown', kind: 'target', role: 'key', bounds: { x: 102, y: 34, width: 14, height: 14 },
       scores: [6000], control: 'TargetControl', lamps: ['lamp.crown'],
-      collision: [{ kind: 'line', from: { x: 102, y: 48 }, to: { x: 116, y: 48 } }] },
+      collision: [{ kind: 'line', from: { x: 102, y: 46 }, to: { x: 116, y: 48 } }] },
   ],
 
   lamps: [
