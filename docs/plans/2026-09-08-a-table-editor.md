@@ -10,7 +10,22 @@ possible, and the two things that decide whether the result is worth having.
 
 ---
 
-## 0 · The two decisions this plan is really about
+## ⚠️ 0 · Both decisions answered, 2026-09-08
+
+> **§0.1 — who is holding the mouse:** *"a teacher or a child making a table of their own."*
+>
+> **§0.2 — what stops it producing broken tables:** *"você mesmo respondeu: THE EDITOR HAS TO ANSWER ALL
+> FIVE WHILE THE AUTHOR IS STILL LOOKING AT THE TABLE."*
+
+So: a feature of the game, not a tool for its author, and the five instruments run live. Everything
+below stands as written; the recommendations in §0.1 and §0.2 are decisions now.
+
+**Step 1 landed the same day.** `table/parts.ts` and `tests/table-parts` — and the gate found a defect
+in the library on its first mutation run: every wall asked to face UP faced down, and every one asked to
+face DOWN faced up, in the module written so that nobody would have to think about windings. It survived
+the first version of the gate because that only ever asked a target.
+
+## 0.1 · The two decisions, as they were put
 
 ### 0.1 · Who is holding the mouse
 

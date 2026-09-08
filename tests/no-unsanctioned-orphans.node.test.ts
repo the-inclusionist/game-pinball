@@ -38,6 +38,19 @@ const SANCTIONED: Readonly<Record<string, string>> = {
   'dat/spliced.ts':
     'the spliced-bitmap decoder. All 318 bitmaps in the shipped archive are raw, so it has nothing to '
     + 'do here; `dat/bitmap8.readIndexedBitmap` refuses a spliced one by name rather than walking it',
+  /**
+   * ⚠️ THE FIRST ORPHAN THAT IS OWED RATHER THAN EXPLAINED, and the difference matters. The four below
+   * are permanent: each says why nothing imports it and why that is right. This one is step 1 of
+   * `docs/plans/2026-09-08-a-table-editor.md` — the part library the editor is built on — and the plan
+   * says in the same breath that the catalogue should move onto it, one table at a time, so that there
+   * are not two ways of describing a table.
+   *
+   * It stops being an orphan the day either lands. If neither does, this line is the record that
+   * somebody wrote a library nobody uses.
+   */
+  'table/parts.ts':
+    'the part library from the table-editor plan, step 1. Nothing imports it until the editor exists or '
+    + 'the catalogue moves onto it; `tests/table-parts` is what holds it up meanwhile',
   'gfx/render.ts':
     'the dirty-rectangle compositor. The demonstration repaints all 43005 pixels each frame, which at '
     + 'this size costs less than the bookkeeping that would avoid it',
