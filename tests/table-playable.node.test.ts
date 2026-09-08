@@ -3,7 +3,7 @@ import { describe, test, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { buildPhysics, drainedBy, launchSpeedFor, launchDirectionFor, FRAME_SECONDS } from '../app/js/table/physics-build.js';
+import { buildPhysics, drainedBy, launchSpeedFor, FRAME_SECONDS } from '../app/js/table/physics-build.js';
 import { advanceFrame } from '../app/js/physics/step.js';
 import { CATALOG, BARE_MINIMUM } from '../app/js/table/catalog.js';
 import type { AuthoredTable } from '../app/js/table/authored.js';
@@ -37,9 +37,7 @@ function launchAndWatch(table: AuthoredTable, frames = 4000, flapEvery: number |
   const ball = physics.spawnBall();
   const from = { x: ball.position.x, y: ball.position.y };
   // ⚠️ UP THE LANE, WHICH LEANS NINE DEGREES. A plunger fires along its own channel, and on this
-  // engine a graze does not glance off a wall — it turns the ball into that wall's normal. See
-  // `launchDirectionFor`.
-  ball.direction = launchDirectionFor(table);
+  ball.direction = { x: 0, y: -1 };
   ball.speed = launchSpeedFor(table);
 
   const touched: string[] = [];

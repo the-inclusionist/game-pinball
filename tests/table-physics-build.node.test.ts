@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, test, expect } from 'vitest';
 import {
-  buildPhysics, responseFor, RESPONSES, FRAME_SECONDS, drainedBy, launchSpeedFor, launchDirectionFor, DEFAULT_GRAVITY,
+  buildPhysics, responseFor, RESPONSES, FRAME_SECONDS, drainedBy, launchSpeedFor, DEFAULT_GRAVITY,
 } from '../app/js/table/physics-build.js';
 import { advanceFrame } from '../app/js/physics/step.js';
 import { CATALOG, LOW_ORBIT } from '../app/js/table/catalog.js';
@@ -256,9 +256,7 @@ describe('⚠️ the drain is the one component that works by NOT being hit', ()
     // The end-to-end shape of it: launch, climb, fall, gone.
     const physics = buildPhysics(LOW_ORBIT);
     const ball = physics.spawnBall();
-    // ⚠️ UP THE LANE, WHICH LEANS NINE DEGREES — see `launchDirectionFor`. Fired straight up the ball
-    // grazes the leaning wall, and a graze on this engine turns it into that wall's normal.
-    ball.direction = launchDirectionFor(LOW_ORBIT, 260);
+    ball.direction = { x: 0, y: -1 };
     ball.speed = 260;
 
     /**

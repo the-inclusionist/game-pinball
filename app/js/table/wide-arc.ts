@@ -71,7 +71,30 @@ export const WIDE_ARC: AuthoredTable = {
       bounds: { x: 316, y: 4, width: 42, height: 22 },
       collision: [{ kind: 'line', from: { x: 356, y: 25 }, to: { x: 316, y: 7 } }] },
 
-    { name: 'plunger', kind: 'plunger', role: 'structure', bounds: { x: 344, y: 244, width: 10, height: 32 } },
+    /**
+     * ⚠️ THE LANE DIVIDER, AND THIS FIXTURE NEVER HAD ONE. Every table built on `table/cabinet` gets it
+     * and the three hand-authored ones were each written before that module existed; here the omission
+     * was invisible because `guide.right` used to run from the pivot all the way to the RIGHT WALL and
+     * closed that side by accident.
+     *
+     * Laying the table out on the Dev's picture moved the guide to where the art draws it — a triangle
+     * ending at x = 285 — and the accident stopped happening. Traced: the launch came down the right,
+     * bounced off `rail.right` and the wall, and left through the floor at x = 342, which is between
+     * the plunger and nothing at all. `drainedBy` answered `below`: a hole in the geometry.
+     *
+     * ⚠️ TWO FACES, for the reason `table/cabinet` gives at length: this is the only wall in the game
+     * with the play on one side and the plunger lane on the other, and a single face lets a ball in the
+     * lane walk straight through it.
+     */
+    { name: 'wall.laneDivider', kind: 'wall', role: 'structure',
+      bounds: { x: 339, y: 34, width: 4, height: 246 },
+      collision: [
+        { kind: 'line', from: { x: 339, y: 280 }, to: { x: 339, y: 34 } },
+        { kind: 'line', from: { x: 343, y: 34 }, to: { x: 343, y: 280 } },
+      ] },
+
+    { name: 'plunger', kind: 'plunger', role: 'structure', bounds: { x: 344, y: 244, width: 10, height: 32 },
+      collision: [{ kind: 'line', from: { x: 344, y: 244 }, to: { x: 354, y: 244 } }] },
 
     /**
      * The three domes, where the art paints them and at the size it paints them.
@@ -188,6 +211,29 @@ export const WIDE_ARC: AuthoredTable = {
         pivot: { x: 248, y: 232 }, tipAtRest: { x: 187.7, y: 259.1 }, sweepDegrees: 55,
         baseRadius: 3, tipRadius: 2, extendTime: 0.08, retractTime: 0.16,
       } },
+
+    /**
+     * ⚠️ THE RAILS THAT TURN A MISS INTO AN OUTLANE, and without them this table had a HOLE. Traced
+     * after the lean came off: a full launch came down the right at x = 265, which is outside the right
+     * pivot at 248 and inside the outlane channel at 291 — so it met nothing at all and left through
+     * the floor. `drainedBy` answered `below`, which by this project's definition is a hole in the
+     * geometry rather than a way to lose.
+     *
+     * The art draws the rail: a white diagonal from the foot of each triangle down to the bottom
+     * corner, with the red "OUT-LANE / GRAV-STRESS" channel outside it. A ball that misses the paddle
+     * now slides into the lane that is painted for it and is lost the way the picture says it is.
+     *
+     * ⚠️ AND THE FUNNEL GUIDES ABOVE THEM DO NOT DO THIS JOB. They stop at the pivot, which is where a
+     * paddle starts; what happens to a ball that arrives BESIDE the paddle is a different question and
+     * this fixture had never been asked it — the pair it used to have ran from the side walls, so
+     * nothing could get there.
+     */
+    { name: 'rail.left', kind: 'wall', role: 'structure',
+      bounds: { x: 69, y: 232, width: 43, height: 36 },
+      collision: [{ kind: 'line', from: { x: 69, y: 268 }, to: { x: 112, y: 232 } }] },
+    { name: 'rail.right', kind: 'wall', role: 'structure',
+      bounds: { x: 248, y: 232, width: 43, height: 36 },
+      collision: [{ kind: 'line', from: { x: 248, y: 232 }, to: { x: 291, y: 268 } }] },
 
     { name: 'drain', kind: 'drain', role: 'hazard', bounds: { x: 164, y: 268, width: 32, height: 10 },
       control: 'DrainControl' },

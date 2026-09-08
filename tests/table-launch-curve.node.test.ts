@@ -29,7 +29,7 @@
 // the thing it replaced, in the same run, and the claim cannot pass by accident. They are fixtures
 // rather than tables to play, which is the only reason they have not been converted.
 import { describe, test, expect } from 'vitest';
-import { buildPhysics, FRAME_SECONDS, launchSpeedFor, launchDirectionFor } from '../app/js/table/physics-build.js';
+import { buildPhysics, FRAME_SECONDS, launchSpeedFor } from '../app/js/table/physics-build.js';
 import { advanceFrame } from '../app/js/physics/step.js';
 import { CATALOG } from '../app/js/table/catalog.js';
 import { cabinet } from '../app/js/table/cabinet.js';
@@ -59,9 +59,7 @@ function exitDirection(table: AuthoredTable): { x: number; y: number } {
   const physics = buildPhysics(table);
   const ball = physics.spawnBall();
   // ⚠️ UP THE LANE, WHICH LEANS NINE DEGREES. A plunger fires along its own channel, and on this
-  // engine a graze does not glance off a wall — it turns the ball into that wall's normal. See
-  // `launchDirectionFor`.
-  ball.direction = launchDirectionFor(table);
+  ball.direction = { x: 0, y: -1 };
   ball.speed = launchSpeedFor(table);
 
   for (let i = 0; i < 900; i++) {

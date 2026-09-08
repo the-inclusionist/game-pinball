@@ -36,7 +36,7 @@ export const FOUR_FLIPPERS: AuthoredTable = {
   size: { width: 200, height: 210 },
   ballRadius: 3,
 
-  lamps: ['lamp.left', 'lamp.right'],
+  lamps: ['lamp.left', 'lamp.right', 'lamp.top', 'lamp.low'],
 
   components: [
     // Bounds without collision are a colour, not a wall — the ball left sideways until these were
@@ -96,6 +96,42 @@ export const FOUR_FLIPPERS: AuthoredTable = {
       } },
     { name: 'drain.lower', kind: 'drain', role: 'hazard', bounds: { x: 86, y: 200, width: 28, height: 8 },
       control: 'DrainControl' },
+
+    /**
+     * ⚠️ THE DIAMOND IS FOUR ENGINES AND THIS TABLE HAD TWO OF THEM, which is what put it back in the
+     * state its own comment below describes: "the ball came off the return bend and fell in a straight
+     * diagonal, meeting nothing worth anything on the way." The art draws four in a diamond — top,
+     * left, right and bottom — and the left and right pair sit either side of the route rather than on
+     * it. The BOTTOM one is the one the ball falls through, and it was paint.
+     *
+     * Found the day the nine-degree lean came off: every trajectory moved back and "the ball touches
+     * something that SCORES" went red. The lean had been the thing steering the ball into a bumper by
+     * accident, which is the same as saying nothing was steering it into one.
+     */
+    /**
+     * ⚠️ THE CHUTE, AND IT IS HERE BECAUSE I BROKE A FIX WHOSE COMMENT IS TWELVE LINES BELOW THIS ONE.
+     *
+     * `bumper.right` used to sit at x = 172, put there by a note that says exactly why: "IT WAS AT
+     * x = 142 AND THE BALL PASSED FOURTEEN PIXELS TO ITS RIGHT, EVERY TIME... moved to sit where the
+     * ball actually is." Laying the table out on the Dev's picture I moved it to 115, where the art's
+     * diamond of engines is, and put the table straight back into the state that note describes: the
+     * launch falls from (189,34) to (121,182) in one diagonal and meets nothing worth anything.
+     *
+     * ⚠️ AND THE ANSWER IS NOT TO PUT THE BUMPER BACK. The art draws the diamond in the middle and it
+     * draws a long orange CHUTE up the right — from (112,140) to (175,88) — which is precisely where
+     * the ball goes. The picture had the answer to the note's problem in it; what the layout lacked was
+     * the chute, not a bumper standing where no picture puts one.
+     */
+    { name: 'ramp.chute', kind: 'ramp', role: 'goal', bounds: { x: 112, y: 88, width: 63, height: 52 },
+      scores: [6000], control: 'RampControl', lamps: ['lamp.top'],
+      collision: [{ kind: 'line', from: { x: 112, y: 140 }, to: { x: 175, y: 88 } }] },
+
+    { name: 'bumper.top', kind: 'bumper', role: 'structure', bounds: { x: 71, y: 31, width: 28, height: 28 },
+      scores: [500, 1000, 1500, 2000], control: 'BumperControl', lamps: ['lamp.top'],
+      collision: [{ kind: 'circle', at: { x: 85, y: 45 }, radius: 14 }] },
+    { name: 'bumper.low', kind: 'bumper', role: 'structure', bounds: { x: 73, y: 66, width: 28, height: 28 },
+      scores: [500, 1000, 1500, 2000], control: 'BumperControl', lamps: ['lamp.low'],
+      collision: [{ kind: 'circle', at: { x: 87, y: 80 }, radius: 14 }] },
 
     { name: 'bumper.left', kind: 'bumper', role: 'structure', bounds: { x: 43, y: 48, width: 28, height: 28 },
       scores: [500, 1000, 1500, 2000], control: 'BumperControl', lamps: ['lamp.left'],

@@ -22,16 +22,12 @@
 // because a ball stepped by one big jump misses what it passes through — and a body whose position is
 // integrated frame by frame drifts differently on a slow machine, which is a table that plays
 // differently on a school laptop.
+import { LOW_ORBIT } from '../app/js/table/catalog.js';
 import { describe, test, expect } from 'vitest';
-import { taper } from '../app/js/table/perspective.js';
-import { AUTHORED_TABLES } from '../app/js/table/catalog.js';
 import { createMover, moverAt } from '../app/js/table/mover.js';
 import { buildPhysics, FRAME_SECONDS } from '../app/js/table/physics-build.js';
 import { advanceFrame } from '../app/js/physics/step.js';
 import { validateTable, type AuthoredComponent, type AuthoredTable } from '../app/js/table/authored.js';
-
-/** The table this fixture stands on, upright — see `withDrone` for why it is not the leaning one. */
-const UPRIGHT_LOW_ORBIT = AUTHORED_TABLES.find((t) => t.name === 'low-orbit')!;
 
 const PATH = { from: { x: 20, y: 50 }, to: { x: 80, y: 50 }, seconds: 2, radius: 5 };
 
@@ -149,16 +145,9 @@ describe('⚠️ a travelling body in a real table', () => {
     ...over,
   });
 
-  /**
-   * ⚠️ THE DRONE IS ADDED UPRIGHT AND THE WHOLE TABLE IS THEN LEANED, which is what `table/catalog`
-   * does to every table. Bolting a body written in flat coordinates onto an already-leaning table puts
-   * it somewhere the table's own furniture has moved away from: measured, the drone at phase 0.75 sat
-   * at x = 71 with something else between it and the ball, and "a ball dropped onto it bounces" failed
-   * on a drone that was no longer under the ball. An author writes upright; the lean is applied once.
-   */
-  const withDrone = (): AuthoredTable => taper({
-    ...UPRIGHT_LOW_ORBIT,
-    components: [...UPRIGHT_LOW_ORBIT.components, drone()],
+  const withDrone = (): AuthoredTable => ({
+    ...LOW_ORBIT,
+    components: [...LOW_ORBIT.components, drone()],
   });
 
   test('the table it is on is legal', () => {

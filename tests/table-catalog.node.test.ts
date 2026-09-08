@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, test, expect } from 'vitest';
 import {
-  AUTHORED_TABLES, CATALOG, DEFAULT_TABLE, PLAYABLE_TABLES, tableNamed,
+  CATALOG, DEFAULT_TABLE, PLAYABLE_TABLES, tableNamed,
   LOW_ORBIT, WIDE_ARC, NARROW_TOWER, FOUR_FLIPPERS, BARE_MINIMUM,
 } from '../app/js/table/catalog.js';
 import { cabinet } from '../app/js/table/cabinet.js';
@@ -9,7 +9,7 @@ import {
   validateTable, toLiveTable, declaredComponentsOf, normalOf, type AuthoredTable,
 } from '../app/js/table/authored.js';
 import {
-  buildPhysics, drainedBy, launchSpeedFor, launchDirectionFor, FRAME_SECONDS,
+  buildPhysics, drainedBy, launchSpeedFor, FRAME_SECONDS,
 } from '../app/js/table/physics-build.js';
 import { advanceFrame } from '../app/js/physics/step.js';
 import { DEFAULT_CAMERA, createCamera, stepAxis, maxOffsetOf } from '../app/js/shell/camera.js';
@@ -274,9 +274,7 @@ function leavesThroughAHole(table: AuthoredTable): boolean {
   const physics = buildPhysics(table);
   const ball = physics.spawnBall();
   // ⚠️ UP THE LANE, WHICH LEANS NINE DEGREES. A plunger fires along its own channel, and on this
-  // engine a graze does not glance off a wall — it turns the ball into that wall's normal. See
-  // `launchDirectionFor`.
-  ball.direction = launchDirectionFor(table);
+  ball.direction = { x: 0, y: -1 };
   ball.speed = launchSpeedFor(table);
 
   for (let i = 0; i < 4000; i++) {
@@ -540,19 +538,6 @@ const SHELL_OVERRIDES: Readonly<Record<string, readonly string[]>> = {
 };
 
 describe('⚠️ every playable table is built on the one cabinet', () => {
-  /**
-   * ⚠️ THIS WHOLE BLOCK ASKS ITS QUESTION UPRIGHT, which is why it reads `AUTHORED_TABLES` rather than
-   * the catalogue everything else uses. `table/catalog` puts every table through `table/perspective` —
-   * nine degrees, the Dev's trapezium — and that transform touches every point above the floor, so a
-   * shell built straight out of `cabinet()` differs from every table in the catalogue everywhere.
-   * Comparing them there would report "all seven have drifted", which is the opposite of true: they
-   * lean together, through one function.
-   *
-   * Drift is an AUTHORING question — did this file write its own copy of the shell — and it belongs in
-   * the space the author typed in. The lean is checked by `tests/table-perspective`, on the tables the
-   * game actually plays.
-   */
-  const upright = (table: AuthoredTable) => AUTHORED_TABLES.find((t) => t.name === table.name)!;
   const shell = (table: AuthoredTable) => new Map(
     cabinet({ width: table.size.width, height: table.size.height }).map((c) => [c.name, c]),
   );
@@ -568,7 +553,7 @@ describe('⚠️ every playable table is built on the one cabinet', () => {
       for (const name of names) {
         const original = shell(table).get(name)!;
         // Everything of this table that lives in the replaced component's column.
-        const pieces = upright(table).components.filter((c) => c.bounds.x === original.bounds.x
+        const pieces = table.components.filter((c) => c.bounds.x === original.bounds.x
           && c.bounds.width === original.bounds.width);
         const top = Math.min(...pieces.map((c) => c.bounds.y));
         const bottom = Math.max(...pieces.map((c) => c.bounds.y + c.bounds.height));
@@ -589,7 +574,7 @@ describe('⚠️ every playable table is built on the one cabinet', () => {
   });
 
   test.each(PLAYABLE_TABLES.map((t) => [t.name, t] as const))('%s has all of it', (_name, table) => {
-    const mine = new Map(upright(table).components.map((c) => [c.name, c]));
+    const mine = new Map(table.components.map((c) => [c.name, c]));
 
     for (const name of shell(table).keys()) {
       expect(mine.has(name), `${name} is missing`).toBe(true);
@@ -602,7 +587,7 @@ describe('⚠️ every playable table is built on the one cabinet', () => {
     // coordinates would pass the test above and be exactly the defect this pair exists to catch —
     // `low-orbit`'s flippers sat seven pixels right of the cabinet's for months, because it centred
     // them on the TABLE and the cabinet centres them on the PLAY.
-    const mine = new Map(upright(table).components.map((c) => [c.name, c]));
+    const mine = new Map(table.components.map((c) => [c.name, c]));
 
     const excused = new Set(SHELL_OVERRIDES[table.name] ?? []);
 

@@ -136,6 +136,30 @@ weakening its claim.
 
 ---
 
+## ⚠️ PART B IS WITHDRAWN, AND PART A IS NOT
+
+The Dev played the nine-degree lean and took it off: *"Não converge. Olhe as linhas perpendiculares
+vermelhas. No fim, o resultado de colocar 9 graus de cada lado foi bem ruim, por isso, deixe tudo reto,
+como era antes."*
+
+Everything below about the picture leaning is therefore **history**, kept because what the lean COST is
+worth more than the transform was. It needed the plunger lane to slide instead of being squeezed or no
+table in the catalogue could launch; it needed the launcher aimed at the chord of its own parabola; it
+made `narrow-tower` impossible at 120 wide; and it grew resting pockets on three tables. Every one of
+those was found by measuring, and every one of them existed only because of the lean.
+
+⚠️ **AND TWO THINGS IT LEFT BEHIND ARE KEPT.** `narrow-tower` stays 180 wide, because the Dev painted its
+art at that size. And every table's layout stays where the art puts it — "refazer os mapas em cima de
+cada arte" was a separate instruction and it outlived this one.
+
+⚠️ **AND TAKING IT OFF FOUND TWO HOLES THE LEAN HAD BEEN HIDING.** `wide-arc` had no lane divider at all
+— its old funnel guide ran to the right wall and closed that side by accident — and `four-flippers` lost
+the one bumper a note had put on the launch's route. Both are fixed on the art rather than by putting
+the accidents back.
+
+**Part A — the ball rolls — is untouched by this.** It is about friction and resting pockets and it was
+never about the angle.
+
 ## Part B — the false perspective
 
 ### B0 · What the Dev asked for

@@ -39,7 +39,6 @@ import {
   buildPhysics, drainedBy, inPlungerLane, launchSpeedFor, FRAME_SECONDS,
 } from './table/physics-build.js';
 import { advanceFrame } from './physics/step.js';
-import { launchDirectionFor } from './table/physics-build.js';
 import { createLaneProgress } from './table/lane-progress.js';
 import { openSecrets } from './table/secret.js';
 import { loadBackdrop } from './gfx/backdrop.js';
@@ -339,8 +338,7 @@ function launch(speed = launchSpeedFor(authored)): void {
   // game-over screen, and the count stays at zero while the ball goes round again.
   if (live.flags.ballCount === 0) return;
   ball.active = true;
-  // ⚠️ UP THE LANE AND NOT UP THE SCREEN. Every table leans nine degrees; see `launchDirectionFor`.
-  ball.direction = launchDirectionFor(authored);
+  ball.direction = { x: 0, y: -1 };
   ball.speed = speed;
   phase = 'playing';
   announceMission();
@@ -1122,7 +1120,7 @@ function step(frames: number): void {
 
       const fresh = physics.spawnBall();
       ball.position = fresh.position;
-      ball.direction = launchDirectionFor(authored);
+      ball.direction = { x: 0, y: -1 };
       ball.speed = 0;
       // The ball is only put back if there is one to put back. `launch` refuses on a finished game.
       phase = 'title';

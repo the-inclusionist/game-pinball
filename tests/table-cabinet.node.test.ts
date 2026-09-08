@@ -27,9 +27,7 @@ import { describe, test, expect } from 'vitest';
 import { buildPhysics, FRAME_SECONDS } from '../app/js/table/physics-build.js';
 import { advanceFrame } from '../app/js/physics/step.js';
 import { PLAYABLE_TABLES } from '../app/js/table/catalog.js';
-import { launchSpeedFor, launchDirectionFor, inPlungerLane } from '../app/js/table/physics-build.js';
-import { taperMap } from '../app/js/table/perspective.js';
-import { plungerLaneOf } from '../app/js/table/cabinet.js';
+import { launchSpeedFor, inPlungerLane } from '../app/js/table/physics-build.js';
 
 const withPlunger = PLAYABLE_TABLES.map((table) => [
   table.name, table, table.components.find((c) => c.kind === 'plunger')!,
@@ -100,9 +98,7 @@ describe('⚠️ a ball coming back down the lane lands ON the plunger', () => {
     const physics = buildPhysics(table);
     const ball = physics.spawnBall();
     // ⚠️ UP THE LANE, WHICH LEANS NINE DEGREES. A plunger fires along its own channel, and on this
-    // engine a graze does not glance off a wall — it turns the ball into that wall's normal. See
-    // `launchDirectionFor`.
-    ball.direction = launchDirectionFor(table);
+    ball.direction = { x: 0, y: -1 };
     ball.speed = launchSpeedFor(table);
 
     for (let i = 0; i < 60; i++) {
@@ -260,20 +256,10 @@ describe('⚠️ is the ball in the plunger lane', () => {
  */
 describe('⚠️ the lane divider holds from the lane side too', () => {
   test.each(withPlunger)('%s: a ball shoved out of the lane stays in it', (name, table, plunger) => {
-    /**
-     * ⚠️ THE LANE IS WHERE THE LANE IS, AND IT LEANS. Both halves of this used to be written as
-     * literals — the ball started in the plunger's own column eighty units higher up, and the divider
-     * was `width − 21` — and `table/perspective` slides the whole assembly left by a sixth of a unit
-     * for every unit of height. Eighty units up that is thirteen, which is a lane's whole width: the
-     * ball was being placed outside the corridor and the answer compared against a divider that is no
-     * longer there. `taperMap` is the table's own arithmetic rather than a second copy of it.
-     */
-    const map = taperMap(table);
     for (const speed of [40, 120, 300]) {
       const physics = buildPhysics(table);
       const ball = physics.spawnBall();
-      const y = plunger.bounds.y - 80;
-      ball.position = { x: map(plungerLaneOf(table.size).laneX + 5, y), y };
+      ball.position = { x: plunger.bounds.x + plunger.bounds.width / 2, y: plunger.bounds.y - 80 };
       ball.direction = { x: -1, y: 0 };
       ball.speed = speed;
 
@@ -284,7 +270,7 @@ describe('⚠️ the lane divider holds from the lane side too', () => {
 
       // The divider's left face at the height the ball ended at. Anything left of it is in the play,
       // and the ball has no business there without going over the top of the lane.
-      const leftFace = map(table.size.width - 21, ball.position.y);
+      const leftFace = table.size.width - 21;
       expect(ball.position.x, `${name} at ${speed}: ended x=${ball.position.x.toFixed(1)}`
         + ` against a divider at ${leftFace.toFixed(1)}`).toBeGreaterThan(leftFace);
     }

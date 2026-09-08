@@ -27,8 +27,6 @@
 // declares today. When a ramp declares a field, it goes here and nowhere else.
 
 import { thrustField, type ThrustState } from './ball-assist.js';
-import { leanOf } from './perspective.js';
-import { plungerLaneOf } from './cabinet.js';
 import type { BallState } from '../physics/collision.js';
 import {
   createEdgeManager, placeLineInGrid, placeCircleInGrid, type Edge, type EdgeManager,
@@ -257,65 +255,6 @@ export function inPlungerLane(
  * rather than just reaching it. A table twice as tall needs a plunger √2 times stronger, and nothing
  * about that is a matter of taste.
  */
-/**
- * Which way the plunger fires.
- *
- * ⚠️ UP THE LANE, AND THE LANE LEANS. The Dev's words are about the launcher rather than about the
- * walls: "Deixe todos os túneis inclinados em nove graus", and then "lançador a nove graus em todas as
- * mesas". A plunger is a rod in a channel — it can only push the ball along the channel it sits in —
- * and a rod firing straight up a channel that leans nine degrees is a rod bolted across its own lane.
- *
- * ⚠️ AND ON THIS ENGINE TOUCHING A WALL IS FATAL RATHER THAN UNTIDY, which is worth writing down
- * because it is the ported original's own behaviour and it is not what anyone expects a wall to do.
- * `physics/collision` transcribes `TBall::Collision`: the new direction is `smoothness · v_tangential +
- * elasticity · v_normal`, and a wall's smoothness is 0.1. NINE TENTHS OF THE ALONG-WALL VELOCITY IS
- * DESTROYED by a touch, while the speed only drops by the normal share — so a graze does not glance
- * off, it TURNS THE BALL INTO THE WALL'S NORMAL at close to the speed it arrived. Traced on `low-orbit`
- * before this existed: fired straight up a lane leaning nine degrees, the ball touched the outer wall
- * at frame 3 and was travelling sideways by frame 8, at 95 units a second, going nowhere. Every table
- * in the catalogue failed "the ball leaves the plunger lane".
- *
- * ========================= AND IT AIMS AT THE CHORD, NOT ALONG THE LANE =========================
- * ⚠️ A BALL FIRED ALONG A STRAIGHT LANE DOES NOT FOLLOW IT, because the path is a PARABOLA and the lane
- * is a line. The sideways speed is constant while gravity eats the upward one, so the angle steepens
- * all the way up: aimed exactly along the lane the ball leaves it immediately and the gap grows as
- * ½·lean·g·t² — measured on `low-orbit`, 4.8 units by the mouth of the lane, and 7.9 on `factory`,
- * against about three of clearance either side of the ball. Traced: it climbed 130 of the 160 it needs
- * and then caught the divider.
- *
- * So the aim is the CHORD of that parabola rather than its tangent: start shallower than the lane, end
- * steeper, cross it at the exit. `vx = lean · (v − ½·g·T)` is the sideways speed whose arc meets the
- * lane again exactly at the height `T` is the time to, and the largest gap in between is then
- * `lean·g·T²/8` — a QUARTER of what aiming along the lane costs, which is 1.2 units on `low-orbit` and
- * 2.0 on `factory`. That fits inside the lane with room to spare, at every power the plunger offers.
- *
- * ⚠️ AND THE TARGET IS THE BALL'S OWN CLIMB, NOT ALWAYS THE MOUTH OF THE LANE. A half-drawn plunger
- * cannot reach the mouth; asking the aim to meet the lane at a height that launch never gets to would
- * give it a sideways speed for a journey it does not make, and it would cross the divider on the way
- * up. `Math.min` is that sentence: aim at the mouth, or at your own apex, whichever comes first.
- */
-export function launchDirectionFor(
-  table: AuthoredTable, speed: number = launchSpeedFor(table), o: PhysicsOptions = {},
-): { x: number; y: number } {
-  const lean = leanOf(table);
-  const gravity = o.gravity ?? DEFAULT_GRAVITY;
-  /**
-   * How far the ball has to climb to leave the lane: from where it rests on the plunger to the top of
-   * the divider. The cabinet seats the plunger 35 above the floor and the ball two radii above that,
-   * and `plungerLaneOf` publishes the mouth — the arithmetic is here rather than as one number because
-   * a number would go on answering after the cabinet moved either of them.
-   */
-  const toTheMouth = Math.max(
-    0, table.size.height - 35 - 2 * table.ballRadius - plungerLaneOf(table.size).dividerTop,
-  );
-  const climb = Math.min((speed * speed) / (2 * gravity), toTheMouth);
-  const rise = Math.sqrt(Math.max(0, speed * speed - 2 * gravity * climb));
-  const seconds = (speed - rise) / gravity;
-  const sideways = lean * (speed - 0.5 * gravity * seconds);
-  const length = Math.hypot(sideways, speed);
-  return { x: -sideways / length, y: -speed / length };
-}
-
 export function launchSpeedFor(table: AuthoredTable, o: PhysicsOptions = {}): number {
   const gravity = o.gravity ?? DEFAULT_GRAVITY;
   return Math.sqrt(2 * gravity * table.size.height) * LAUNCH_MARGIN;
@@ -799,8 +738,7 @@ export function buildPhysics(table: AuthoredTable, o: PhysicsOptions = {}): Tabl
       return createBall({
         radius: table.ballRadius,
         position: { x, y },
-        // Up the lane, which leans — see `launchDirectionFor`.
-        direction: launchDirectionFor(table),
+        direction: { x: 0, y: -1 },
         speed: 0,
         // The ball's own chance, used by `throwBall` when a kickout releases it. See `PhysicsOptions`.
         ...(o.random ? { random: o.random } : {}),

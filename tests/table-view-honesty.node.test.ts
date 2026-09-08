@@ -257,28 +257,28 @@ const PAINTED = {
   // ⚠️ −54 when `flag` moved four units right, which is a change to the TABLE. The lean brought it to
   // within three of `bumper3`'s rim, and a launched ball wedged in the crook and stayed there; the
   // flag's own comment carries the measurement. A shorter line across a narrower row paints less.
-  'low-orbit': 6096,
+  'low-orbit': 5393,
   // +572 on each of the four below: the cabinet's two inlanes, which five tables had never had.
   // The lower third paid 2000 for bad luck through the outlanes and nothing at all for good play.
   // ⚠️ +1768 when this table was authored up to the 1995 density: two more bumpers in the storm,
   // four drop targets in two flank shelves, three more arc rollovers and two ion trails down the
   // sides, and the eye rollover in the middle. Bumpers are the expensive ones to paint — a filled circle against a stroked line.
-  'ion-storm': 6589,
+  'ion-storm': 5725,
   // ⚠️ +1070: the two INLANES the cabinet now gives all five of its tables, and this table's own
   // authoring up to the 1995 density — two flank drop banks and a three-rollover reentry row.
-  'crater-run': 5741,
+  'crater-run': 4783,
   // ⚠️ +2640, the largest single move in this table: three more bumpers in a second gauntlet, a
   // four-target drop column up the left wall, two rebounders, four rollovers on the flanks and
   // three across the head. It is 300 tall against a 180 window and had 56 pixels of nothing in
   // the middle of its own climb.
-  'long-climb': 7273,
+  'long-climb': 6254,
   // ⚠️ +5437, and it is the last of the six to be authored up to the 1995 density — it was the
   // thinnest by a distance, at a THIRD of the archive's. Three more rocks on the belt, a
   // three-target drop column against each far wall, two rebounder cornices, and seventeen
   // rollovers spread across a table 360 wide whose outer thirds paid nothing at all.
   // -7 when the east scree column moved up twelve pixels: sixty balls never reached its lowest target,
   // which sat where the funnel has already gathered the ball toward the middle.
-  'ring-belt': 8384,
+  'ring-belt': 7390,
   /**
    * ⚠️ THE SEVENTH TABLE, AND ITS NUMBER IS A FIRST ENTRY RATHER THAN A CHANGE. `factory` was authored
    * onto the Dev's own picture and came in at 6591 painted pixels of a 55,632-pixel table — under the
@@ -287,18 +287,21 @@ const PAINTED = {
    * It is the largest of the six by area because it is the tallest table here at 304, and the ledger
    * exists so that a future edit which paints MORE has to be argued for rather than noticed later.
    */
-  'factory': 7501,
+  'factory': 6591,
   // ⚠️ +2122 when this table was authored up to the 1995 density: two more eddies in the chamber, a
   // three-target drop COLUMN on its wall, two spillways in its corners, three wake rollovers and
   // two rebounders below the vanes.
   // ⚠️ +87 for `deflector.left`, a face 31 pixels long added when the tables leaned: a launch off the
   // return bend crossed the whole chamber untouched and out of the outlane, the same 188 frames
   // whether the player flapped or not. Its own comment carries the trace.
-  'slipstream': 6039,
+  'slipstream': 5207,
   // ⚠️ +3381, the largest move any table has made, when it was laid out on the Dev's picture. Three
   // domes of radius 20 against three of radius 9, three rollover strips it never had, two outlanes it
   // never had, a chute drawn where the art draws it, and paddles 66 long against 38.
-  'wide-arc': 8177,
+  // ⚠️ +1310: the lane divider this fixture never had, plus the two rails that turn a miss beside a
+  // paddle into the outlane the art paints. Both were holes the old guides had been covering by
+  // accident, and laying the table out on the picture stopped the accident.
+  'wide-arc': 9074,
   // ⚠️ 3553 UNTIL THE BALL GAINED A RADIUS. `table/physics-build` now offsets every wall by it, the way
   // the original does and `physics/wall` already did for the 1995 table, and two of this fixture's
   // gates went red: the ball scored nothing and flapping changed nothing. Both were passing on luck.
@@ -310,39 +313,28 @@ const PAINTED = {
   // paints a wider ceiling, a longer bottom landing and two guides that reach further.
   // ⚠️ +567 when the layout moved onto the picture: a wider summit gate, a star bumper twenty-eight
   // across instead of eighteen, and paddles 62 long against 33.
-  'narrow-tower': 4502,
+  'narrow-tower': 3987,
   // ⚠️ +715 when the two nine-unit bumpers became the art's four twenty-eight-unit rocket engines.
-  'four-flippers': 3733,
+  // ⚠️ +1467: two more engines of the art's diamond and the chute it draws up the right, which is
+  // where the launch actually goes — see the table's own note about the bumper I moved off that route.
+  'four-flippers': 4799,
   // ⚠️ -8 when its lean went from 8.64 degrees to the full nine: the floor that held it back is gone.
-  'bare-minimum': 268,
+  'bare-minimum': 388,
 };
 
 /**
- * ⚠️ EVERY NUMBER ABOVE MOVED ONCE, TOGETHER, ON THE DAY THE TABLES LEANED.
+ * ⚠️ EVERY NUMBER ABOVE MOVED TWICE IN ONE DAY AND CAME BACK, AND THE ROUND TRIP IS THE RECORD.
  *
- * The Dev asked for nine degrees — "transformando todas as mesas em trapézios com angulos internos de
- * 81 graus na base" — and `table/perspective` puts every table through it. Ten of the eleven paint
- * MORE, between 11% and 19%, and the reason is not that anything was added: a line drawn on a slant
- * covers more pixels than the same line drawn straight, because it crosses more rows and columns, and
- * every wall, guide, divider and lane on every table is now on a slant. The two corner arcs are drawn
- * as eight chords each and pay it twice.
+ * The tables leaned nine degrees — the Dev's trapezium — and ten of the eleven painted MORE, between
+ * 11% and 19%, because a line drawn on a slant covers more pixels than the same line drawn straight.
+ * Then he played it and took it off: "no fim, o resultado de colocar 9 graus de cada lado foi bem ruim,
+ * por isso, deixe tudo reto, como era antes." These are the upright numbers again.
  *
- * ⚠️ AND ONE WENT DOWN, WHICH IS THE ONE WORTH READING. `bare-minimum` lost 104 pixels — 388 to 284 —
- * because it is 100 wide against a lane that takes 21 of it, so the floor in `MIN_TOP_BALLS` holds its
- * lean to 8.6° and its ceiling, its longest horizontal run, is drawn shorter at the top of a trapezium.
- * A fixture painting less is the shape of a fixture that has LOST something, and here it is the shape
- * of one that has narrowed.
- *
- * ⚠️ AND A THIRD, SMALLER STILL, WHEN THE LANES LEARNT TO SPAN THEIR CHANNEL. A lane's `bounds` is
- * both a trigger and, for a component with no collision of its own, the thing the renderer fills — so
- * a box widened to contain a leaning channel paints a few more columns. Between 4 and 51 pixels a
- * table, and it is what stopped `lane.launch` scoring nothing at all.
- *
- * ⚠️ AND THE SECOND, SMALLER MOVEMENT IN THE SAME DAY WAS THE ROUNDING. A `bounds` is a rectangle of
- * pixels and the lean hands out fractions, so `table/perspective` rounds them — which moves a few
- * edges by half a pixel each and shifts every table's count by a handful either way. It is recorded
- * here rather than folded in silently because a golden that moves twice for two reasons should say so
- * twice.
+ * ⚠️ AND FOUR OF THEM DID NOT COME BACK TO WHERE THEY STARTED, which is the useful half. `wide-arc`
+ * (4313 → 7764), `four-flippers` (2623 → 3332), `narrow-tower` (3110 → 3987) and `slipstream`
+ * (5137 → 5207) kept what the ART asked for: the layouts were re-authored onto the Dev's own pictures
+ * the same day, and that instruction outlived the lean. `bare-minimum` is back to 388 exactly, because
+ * the only thing that ever moved on it was the angle.
  *
  * The ledger is a golden and it stays one: these numbers move when somebody says why.
  */

@@ -41,7 +41,7 @@ import { createFramebuffer } from '../app/js/gfx/framebuffer.js';
 import { drawDemoInto } from '../app/js/shell/demo-page.js';
 import { layoutHud, DEFAULT_HUD } from '../app/js/shell/hud.js';
 import { drawTable, blitView } from '../app/js/gfx/table-view.js';
-import { AUTHORED_TABLES, CATALOG } from '../app/js/table/catalog.js';
+import { CATALOG } from '../app/js/table/catalog.js';
 import { buildPng, magnify } from './helpers/png.js';
 
 const DAT = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/PINBALL.DAT';
@@ -145,10 +145,11 @@ describe('the MAPS the authored tables are drawn from', () => {
    * painted on a RECTANGLE — `table/perspective` leans the picture afterwards, along with everything
    * standing on it. A reference showing the lean would be a reference that asks him to paint it twice.
    *
-   * So these come from `AUTHORED_TABLES`, the tables as their files write them, and they are the whole
-   * table at its own size rather than a window onto it.
+   * ⚠️ AND THEY CAME FROM AN `AUTHORED_TABLES` THAT NO LONGER EXISTS. For a day every table was leaned
+   * nine degrees in `table/catalog` and this needed the upright copy; the Dev took the lean off — "deixe
+   * tudo reto, como era antes" — so the catalogue IS the upright tables again and there is one of them.
    */
-  test.each(AUTHORED_TABLES.map((table) => [table.name, table] as const))(
+  test.each(CATALOG.map((table) => [table.name, table] as const))(
     '%s: the whole table, upright, written to shots/',
     (name, table) => {
       const picture = drawTable({ table });

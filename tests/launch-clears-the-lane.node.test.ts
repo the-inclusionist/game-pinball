@@ -37,7 +37,7 @@
 // smuggled in through `extraField` would break.
 
 import { describe, test, expect } from 'vitest';
-import { buildPhysics, FRAME_SECONDS, launchSpeedFor, launchDirectionFor } from '../app/js/table/physics-build.js';
+import { buildPhysics, FRAME_SECONDS, launchSpeedFor } from '../app/js/table/physics-build.js';
 import { advanceFrame } from '../app/js/physics/step.js';
 import { CATALOG } from '../app/js/table/catalog.js';
 import { MISSION_TIME_SCALE } from '../app/js/table/ball-assist.js';
@@ -66,9 +66,7 @@ function launch(
   const ball = physics.spawnBall();
   const start = ball.position.y;
   // ⚠️ UP THE LANE, WHICH LEANS NINE DEGREES. A plunger fires along its own channel, and on this
-  // engine a graze does not glance off a wall — it turns the ball into that wall's normal. See
-  // `launchDirectionFor`.
-  ball.direction = launchDirectionFor(table);
+  ball.direction = { x: 0, y: -1 };
   ball.speed = launchSpeedFor(table);
 
   /**

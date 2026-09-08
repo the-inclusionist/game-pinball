@@ -24,7 +24,7 @@
 // launch varies in power and drift because a real one does; the flippers flap on a rhythm that varies
 // per ball because a player is not a metronome.
 import { describe, test, expect } from 'vitest';
-import { buildPhysics, drainedBy, inPlungerLane, launchSpeedFor, launchDirectionFor, FRAME_SECONDS } from '../app/js/table/physics-build.js';
+import { buildPhysics, drainedBy, inPlungerLane, launchSpeedFor, FRAME_SECONDS } from '../app/js/table/physics-build.js';
 import { advanceFrame } from '../app/js/physics/step.js';
 import { PLAYABLE_TABLES } from '../app/js/table/catalog.js';
 import type { AuthoredTable } from '../app/js/table/authored.js';
@@ -84,9 +84,7 @@ function visits(table: AuthoredTable, balls: number): Map<string, number> {
        */
       if (inPlungerLane(table, ball) && ball.speed < 20) {
         // ⚠️ UP THE LANE, WHICH LEANS NINE DEGREES. A plunger fires along its own channel, and on this
-        // engine a graze does not glance off a wall — it turns the ball into that wall's normal. See
-        // `launchDirectionFor`.
-        ball.direction = launchDirectionFor(table);
+        ball.direction = { x: 0, y: -1 };
         ball.speed = launchSpeedFor(table) * (0.55 + random() * 0.45);
       }
       if (i % flap === 0) { physics.setFlippers('left', true); physics.setFlippers('right', true); }
