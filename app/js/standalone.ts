@@ -69,4 +69,19 @@ document.documentElement.lang = bcp47(cartridgeLocale());
  *
  * Gated in `tests/the-shell-does-the-hosts-work`, which refuses a static one by name.
  */
-await import('./main.js');
+const { createPinball } = await import('./main.js');
+
+/**
+ * AND THE HOST DECIDES WHEN A GAME BEGINS.
+ *
+ * ⚠️ "NOTHING RUNS UNTIL `create(ctx)` IS CALLED. NO SIDE EFFECTS AT MODULE SCOPE" — the contract, and
+ * spec D14 underneath it. Until this line the cartridge started itself on import, which works perfectly
+ * on a page with one game and is a defect on a page with two: the host would be merging its half of the
+ * options into an engine the game had already stopped waiting for.
+ *
+ * 📌 THE WHOLE SEARCH IS THIS GAME'S, BECAUSE THIS PAGE IS THIS GAME'S. That is a decision a host
+ * makes — "what the shell decided this cartridge may read from the address" — and the platform will
+ * decide differently, giving each cartridge a namespaced slice of one address. The cartridge does not
+ * have to change for that, which is the point of handing it over rather than letting it read.
+ */
+createPinball({ params: new URLSearchParams(location.search) });

@@ -62,16 +62,31 @@ describe('the entry point carries no state of its own', () => {
       .toBeGreaterThan(20);
   });
 
-  test('⚠️ and importing this file no longer RUNS the game, which is the other half of D14', () => {
+  test('⚠️ and importing this file RUNS NOTHING, which is the other half of D14', () => {
     /**
-     * The call is still here — slice A1 claims identical behaviour and fifteen browser suites boot this
-     * file — but it is one line at the end rather than two thousand at the top. Slice A2 moves it into
-     * `src/standalone.ts`, and this case is what will fail when it does, which is the point: it is the
-     * line that says importing the cartridge must stop doing anything.
+     * ⚠️ "NOTHING RUNS UNTIL `create(ctx)` IS CALLED. No side effects at module scope" —
+     * `cartridge-contract.md`, and it is the rule this case now measures rather than the one it used to.
+     *
+     * 📌 IT USED TO ASSERT THE OPPOSITE, ON PURPOSE. Slice A1 wrapped the body in a factory and left
+     * `createPinball();` at the end, so that fifteen browser suites went on booting the file and the
+     * claim of that slice — identical behaviour — had something to be checked against. The case said in
+     * its own words that it was written to fail the day the call moved. It moved; this is that day.
+     *
+     * What breaks without it is not visible on a page with one game: the cartridge starts itself, so the
+     * host's options are merged into an engine the game has already stopped waiting for.
      */
-    const calls = SOURCE.filter((line) => line.trim() === 'createPinball();');
+    expect(SOURCE.filter((line) => line.trim().startsWith('createPinball(')),
+      'importing the cartridge still starts it — the host decides when a game begins')
+      .toEqual([]);
+  });
 
-    expect(calls.length, 'the boot is not a single line any more').toBe(1);
-    expect(SOURCE.indexOf(calls[0]!), 'and it is not at the top').toBeGreaterThan(opensAt);
+  test('⚠️ and the shell is what starts it', () => {
+    // Without this, the case above is satisfied by DELETING the boot: a cartridge nobody starts passes
+    // every structural claim in this file and draws nothing at all.
+    const shell = readFileSync(
+      resolve(dirname(fileURLToPath(import.meta.url)), '../app/js/standalone.ts'), 'utf8',
+    );
+
+    expect(shell, 'nothing starts the game').toMatch(/createPinball\(/);
   });
 });

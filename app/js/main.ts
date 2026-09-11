@@ -145,7 +145,31 @@ export interface PinballInstance {
   teardown(): void;
 }
 
-export function createPinball(): PinballInstance {
+/**
+ * WHAT THE SHELL HANDS THIS CARTRIDGE.
+ *
+ * ⚠️ ONE FIELD OF FIVE, AND THE OTHER FOUR ARE NAMED SO THAT "not yet" IS NOT READ AS "forgotten".
+ * `cartridge-contract.md` gives `create(ctx)` the engine, the region, a random stream, a translator and
+ * the parameters. `params` is here first because it is the only one of the five this game can take
+ * without the engine existing — the other four arrive with slice A2c's delegating declaration, which is
+ * what lets the host build an engine before this body has run.
+ *
+ * 📌 AND THE TYPE IS DECLARED HERE RATHER THAN IMPORTED because the contract's `GameCtx` is a document
+ * and not a published type. When the engine or the platform publishes one, this is deleted and that one
+ * is imported — a local copy of a published type is the shape this repository keeps paying for.
+ */
+export interface PinballCtx {
+  /**
+   * What the shell decided this cartridge may read from the address.
+   *
+   * ⚠️ NOT `location.search`, AND THE DIFFERENCE IS THE PLATFORM. One address carries every cartridge
+   * on the page: a game reading `?table=` off `location` reads a parameter that may have been meant for
+   * another game, and a shell that wanted to hand it a different one has no way to.
+   */
+  readonly params: URLSearchParams;
+}
+
+export function createPinball(ctx: PinballCtx): PinballInstance {
 
 
 /**
@@ -157,7 +181,7 @@ let palette: PaletteChoice = readPalette(localStorage);
 
 // `?table=wide-arc` opens another one of the five. There is no menu yet, and a query parameter is
 // enough to look at all of them without one.
-const requested = new URLSearchParams(location.search).get('table');
+const requested = ctx.params.get('table');
 /**
  * The times table, carried in the address beside the table for the same reason the table is.
  *
@@ -166,7 +190,7 @@ const requested = new URLSearchParams(location.search).get('table');
  * resolves at module scope — and a mission number left behind by that reload would put the player back
  * on the number screen for a drill they had just chosen.
  */
-const requestedTimes = Number(new URLSearchParams(location.search).get('times'));
+const requestedTimes = Number(ctx.params.get('times'));
 const authored = (requested && tableNamed(requested)) || DEFAULT_TABLE;
 
 // A table that does not validate must not open. The rules are in `table/authored` and every one of
@@ -1805,7 +1829,7 @@ let musicStartedAt: number | null = null;
  * stop being useful because somebody does.
  */
 const archiveSounds = new Map<number, AudioBuffer>();
-const demoRequested = new URLSearchParams(location.search).get('demo') === 'original';
+const demoRequested = ctx.params.get('demo') === 'original';
 const demoPage = demoRequested
   ? mountDemoPage({
     doc: document,
@@ -1954,6 +1978,22 @@ const optionsDialog = mountChoiceDialog<PaletteChoice>({
 const screens = titleScreen({
   onStart: (table, times) => {
     if (table !== authored.name) {
+      /**
+       * 🔴 AND THIS IS A CARTRIDGE NAVIGATING THE WHOLE PAGE, WHICH IS STILL OWED.
+       *
+       * Reading the address is the shell's to hand over and now does (`ctx.params`); WRITING it is worse
+       * than reading it, because on the platform of ADR-0117 this takes the site down and every other
+       * cartridge with it — to change one table.
+       *
+       * ⚠️ IT IS LEFT BECAUSE THE FIX IS A DECISION AND NOT A RENAME. The paragraph above says why the
+       * reload is here: rebuilding a world in place is what this entry point deliberately does not do,
+       * and «a half-reinitialised table would be the kind of defect this port spends its nights on». The
+       * shell-shaped answer is a `restart(params)` the host owns, which is a hook the contract does not
+       * have yet. Named in the plan's §B6, where the work is.
+       *
+       * 📌 It reads `location` rather than `ctx.params` ON PURPOSE: it is building the address to
+       * NAVIGATE to, which is the page's, not the parameters it was given.
+       */
       const url = new URL(location.href);
       url.searchParams.set('table', table);
       // ⚠️ AND THE NUMBER GOES WITH IT, or the reload lands back on the screen it was just chosen on.
@@ -2417,13 +2457,3 @@ Object.assign(window as unknown as Record<string, unknown>, {
     },
   };
 }
-
-/**
- * ⚠️ AND THIS LINE IS THE SLICE'S WHOLE POINT: the game is no longer STARTED BY BEING IMPORTED.
- *
- * It is still started here, so that `app/index.html` and fifteen browser suites go on doing exactly what
- * they did — this slice claims identical behaviour and 233 test files are the check. Slice A2 moves the
- * call into `src/standalone.ts`, which is the point at which importing this file does nothing at all and
- * the platform can import it too.
- */
-createPinball();

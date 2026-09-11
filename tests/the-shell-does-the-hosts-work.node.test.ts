@@ -124,6 +124,24 @@ describe('the standalone shell hosts the cartridge', () => {
       .not.toMatch(/^import .*'\.\/main\.js'/m);
   });
 
+  test('⚠️ the cartridge does not read the page\'s address', () => {
+    /**
+     * ⚠️ "A CARTRIDGE READS `ctx.params`, NOT `location.search`" — the contract, and the reason is that
+     * the address does not belong to it. On the platform one address carries every cartridge on the page:
+     * a game that reads `?table=` off `location` reads a parameter that may have been meant for another
+     * game, and a shell that wanted to give it a different one has no way to.
+     *
+     * 📌 THE WRITE IS A SEPARATE QUESTION AND IT IS STILL OPEN. `titleScreen.onStart` navigates the
+     * whole page with `location.assign` to rebuild the world on a new table — which on the platform would
+     * take the site down with it. Rebuilding in place instead is a decision about this game's boot, not a
+     * rename, so it is named in the plan rather than smuggled into this case.
+     */
+    const source = code('app/js/main.ts');
+
+    expect(source, 'the cartridge is reading a page it does not own')
+      .not.toMatch(/location\.search/);
+  });
+
   test('⚠️ and the page loads the shell rather than the game', () => {
     /**
      * The shell existing is not the same as the shell being used. The page is the one place that decides,
