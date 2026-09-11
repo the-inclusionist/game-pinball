@@ -2202,6 +2202,12 @@ Object.assign(window as unknown as Record<string, unknown>, {
     get hint() { return hint; },
     /** Exposed so the browser gate can confirm sound rather than assume it. */
     get blind() { return isBlind(); },
+    /**
+     * ⚠️ THE MEASURED REACH, exposed for the same reason the camera's two axes are: a fact that lives
+     * only inside the engine is a fact no boot check can confirm. `engine.alcance` was permanently
+     * `{ ok: false, pedidas: 0 }` while this game declared no preset, and nothing anywhere could see it.
+     */
+    get reach() { return shell.engine.alcance; },
     get sonar() {
       return { guideCount: shell.engine.sonar.guideCount, sonarCount: shell.engine.sonar.sonarCount };
     },

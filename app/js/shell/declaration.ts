@@ -200,6 +200,18 @@ export function createDeclaration(world: PinballWorld): GameDeclaration {
      */
     seguraTeclas: () => true,
 
+    /**
+     * ⚠️ NO, AND SAYING SO IS WHAT MAKES THE ENGINE'S `?? false` THIS GAME'S ANSWER RATHER THAN A GUESS.
+     *
+     * The field is optional where `holdsAtOnce` is mandatory, and the engine's reason for the difference
+     * is that this one fails VISIBLY: a drawing game that forgets it "é inoperável no próprio aparelho de
+     * quem o escreve". A pinball is two paddles and a plunger — there is no continuous position to aim,
+     * and it plays on a machine with no mouse and no touch at all.
+     *
+     * It is the third axis the reach arithmetic reads, beside `holdsAtOnce` and `seguraTeclas`.
+     */
+    needsPointer: () => false,
+
     // A pinball never waits for the player.
     tick: 'clock',
 

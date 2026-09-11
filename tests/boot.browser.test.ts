@@ -21,6 +21,7 @@ import { PAGE_MARKUP } from './helpers/page.js';
 
 interface PinballDebug {
   problems: readonly string[];
+  reach: { ok: boolean; pedidas: number; seguraPedidas: number };
   table: string;
   tables: readonly string[];
   hud: { playfield: { x: number; y: number; width: number; height: number } };
@@ -38,6 +39,37 @@ beforeAll(async () => {
   // boot of a different program.
   document.body.innerHTML = PAGE_MARKUP;
   await import('../app/js/main.js');
+});
+
+describe('⚠️ what this game asks of a machine, measured at boot', () => {
+  test('⚠️ the engine knows how many actions this cabinet needs', () => {
+    /**
+     * ⚠️ THIS WAS STRUCTURALLY ZERO AND COULD NOT BE ANYTHING ELSE. `createGame` computes the action set
+     * from the `preset` it is given; with none it is empty, the reach card is skipped by a length guard,
+     * and `engine.alcance` answers `{ ok: false, pedidas: 0 }` for ever — a permanent "nothing fits" that
+     * no screen shows and no test could distinguish from a machine that genuinely cannot play.
+     *
+     * A pinball asks a transport for eight positions and asks it to HOLD two of them at once. On a phone
+     * that registers two fingers, or a tablet with no keyboard and no pad, that is the difference between
+     * a child being told what is missing and a child poking a ball that will not move.
+     */
+    expect(debug().reach.pedidas, 'the engine was told this game\u2019s positions').toBe(8);
+    expect(debug().reach.seguraPedidas, 'and how many are held at once').toBe(2);
+  });
+
+  test('⚠️ and it does NOT show the reach card here, because this machine can play', () => {
+    /**
+     * The other half, and the one worth measuring rather than assuming: a card that fires where it should
+     * not is how a feature gets switched off. The engine reads touch as `pointer:coarse && hover:none`;
+     * under Playwright there is a keyboard, so the card must stay away.
+     *
+     * ⚠️ IF THIS EVER GOES RED IT IS A FINDING ABOUT THE DETECTION, not a reason to stop declaring the
+     * preset — the engine's own comment admits it errs on a tablet WITH a keyboard and tolerates the error
+     * because the screen informs rather than refuses.
+     */
+    expect(debug().reach.ok, 'a machine with a keyboard reaches this cabinet').toBe(true);
+    expect(document.getElementById('reach-notice'), 'no card was drawn').toBeNull();
+  });
 });
 
 describe('the page comes up', () => {

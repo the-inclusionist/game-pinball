@@ -6,6 +6,7 @@ import { PAGE_MARKUP } from './helpers/page.js';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { conformanceProblems } from '@the-inclusionist/engine/core/contract.js';
+import { presetActions, presetProblems } from '@the-inclusionist/engine/core/actions.js';
 import { WIDE_ARC } from '../app/js/table/catalog.js';
 import { layoutHud, DEFAULT_HUD } from '../app/js/shell/hud.js';
 import {
@@ -141,6 +142,23 @@ describe('the camera on a table wider than the window', () => {
     // And the browser gate can SEE it: the plan asks for "canvas presente + estado do jogo", and a
     // camera axis missing from `__pinball` is an axis no boot check can confirm.
     expect(source, 'the debug surface carries both axes').toMatch(/get cameraX\(\) \{ return shell\.cameraX; \}/);
+  });
+
+  test('⚠️ and the engine is told the WORDS of this game’s controls', () => {
+    /**
+     * ⚠️ WITHOUT THIS THE REACH CARD CANNOT FIRE AT ALL. `createGame` computes `acoesDoJogo` from the
+     * preset; with none it is empty, `mostrarAvisoDeAlcance` is skipped by a length guard, and
+     * `engine.alcance` answers `{ ok: false, pedidas: 0 }` — a permanent "nothing fits" that reaches
+     * nobody. A child on a tablet with no keyboard and no pad gets a table, a ball, and no sentence
+     * saying nothing on it can move a flipper.
+     *
+     * The words themselves are `shell/preset`'s and are gated there; this is the wiring, which is the
+     * half that was missing for two majors.
+     */
+    const preset = createPinballOptions(options()).preset;
+
+    expect(presetProblems(preset), 'the engine accepts it').toEqual([]);
+    expect(presetActions(preset).length, 'and it names the cabinet\u2019s positions').toBe(8);
   });
 
   test('⚠️ and the FRAME LOOP is handed the engine’s failure channel, which no unit test can see', () => {

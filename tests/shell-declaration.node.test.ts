@@ -108,6 +108,21 @@ describe('⚠️ how many fingers this table asks for, and whether it asks them 
     expect(createDeclaration(world()).holdsAtOnce()).toBe(2);
   });
 
+  test('⚠️ and this game does NOT need a pointer, which is a statement rather than a default', () => {
+    /**
+     * `needsPointer` is optional and its absence resolves to `false`, so declaring it changes no
+     * behaviour — which is exactly why it is worth declaring. The engine's own note on why this field is
+     * optional where `holdsAtOnce` is mandatory: a drawing game that forgets it "é inoperável no próprio
+     * aparelho de quem o escreve", so the silence is caught by the author rather than by the child.
+     *
+     * A pinball is played with two paddles and a plunger and has no continuous position to aim: it can be
+     * played on a machine with no mouse and no touch at all. Saying so out loud is what turns the
+     * engine's `?? false` from a guess into this game's answer, and it is what the reach arithmetic reads
+     * for its third axis.
+     */
+    expect(createDeclaration(world()).needsPointer?.()).toBe(false);
+  });
+
   test('and YES, keys are held here — the flipper stays up and the plunger is a charge', () => {
     /**
      * This is the field that decides whether the engine OFFERS latching: press once to hold, press again

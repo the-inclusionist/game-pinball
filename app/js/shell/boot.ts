@@ -99,6 +99,8 @@ import {
 } from './camera.js';
 import { layoutHud, DEFAULT_HUD, type HudConfig, type HudLayout } from './hud.js';
 import { createTranslator, type Locale, type Translate } from '../i18n/index.js';
+import { pinballPreset } from './preset.js';
+import type { ActionPreset } from '@the-inclusionist/engine/core/actions.js';
 import { createNamer, nameTableOf, type ComponentKind } from '../i18n/names.js';
 import { keyOf } from '../i18n/keys.js';
 
@@ -135,6 +137,14 @@ export interface PinballGameOptions {
   readonly declines: Record<string, boolean>;
   /** ⚠️ FALSE, AND THE ENGINE'S DEFAULT IS TRUE. See this module's header for the three reasons. */
   readonly baixarPesados: boolean;
+  /**
+   * THE WORDS OF THIS GAME'S CONTROLS — see `shell/preset` for what they are and why they are derived.
+   *
+   * ⚠️ IT IS THE INPUT TO THE REACH ARITHMETIC AND NOT DECORATION. Without it `createGame` computes an
+   * empty action set, never shows the card that tells a child on a two-finger phone what is short, and
+   * answers `engine.alcance` with a permanent `{ ok: false, pedidas: 0 }` that nobody reads.
+   */
+  readonly preset: ActionPreset;
   readonly isNavigable: () => boolean;
   readonly isBlindMode?: () => boolean;
   /**
@@ -262,6 +272,12 @@ export function createPinballOptions(o: BootOptions): PinballGameOptions {
     host: o.host,
     declines: pinballDeclines(),
     baixarPesados: false,
+    /**
+     * ⚠️ BUILT WITH THIS GAME'S TRANSLATOR, because `ActionWord.label` is a rendered STRING and not a
+     * key: the engine has no dictionary of this game's words. It is read once, at boot, which is why a
+     * language change is `§9` of the plan and not a thing this line can answer by itself.
+     */
+    preset: pinballPreset(createTranslator(o.locale)),
     /**
      * ⚠️ NEVER, UNTIL AN ENGINE MENU IS ACTUALLY ON SCREEN. See this module's header: answering `true`
      * while paused handed the engine every navigation key at window-capture, for menus this game does
