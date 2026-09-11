@@ -95,6 +95,22 @@ describe('⚠️ and its hooks ARE what this game already hands the engine', () 
     }
   });
 
+  test('⚠️ and `baixarPesados` is NOT among them, because it is the host’s', () => {
+    /**
+     * 🔴 IT WAS, FOR ONE DAY. `shell/cartridge` first declared its own hooks type and put the field in it,
+     * on the reasoning that this game's `false` rests on a fact about this repository (ADR-0010). Engine
+     * 9.0.0 published `GanchosDoCartucho` and settled it the other way: the field is absent from
+     * `MetadeDoJogo`, so it belongs to whoever hosts the cartridge.
+     *
+     * ⚠️ AND THE DECISION DID NOT MOVE WITH THE FIELD. `shell/boot` still passes `false`, because this
+     * repository's own standalone shell is the host today. What changes is who would answer it on the
+     * platform of ADR-0117 — and there the answer is the platform's, which is what that record says.
+     */
+    expect(Object.keys(cartridgeHooks(options()))).not.toContain('baixarPesados');
+    expect((createPinballOptions(options()) as unknown as Record<string, unknown>)['baixarPesados'],
+      'the boot stopped passing it, which is a different change from this one').toBe(false);
+  });
+
   test('⚠️ and it declares nothing the engine does not take, which a typo would', () => {
     /**
      * A hook named `isNavigible` would be accepted by `Object.entries` and ignored by the engine for ever:

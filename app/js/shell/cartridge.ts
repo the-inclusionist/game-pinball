@@ -18,10 +18,17 @@
 // 📌 AND THAT ANSWERS ONE OF THE FOUR QUESTIONS `cartridge-contract.md` SAYS NOT TO INVENT: `declines` is
 // the GAME's half. It reads as a statement about what a game does not have, and the engine agrees.
 //
-// ========================= WHY THE TYPES ARE DECLARED HERE =========================
-// ⚠️ `GanchosDoCartucho` LIVES AT ENGINE HEAD AND THE REGISTRY ANSWERS `8.0.0`, WHICH IS OLDER. So do
-// `mount()` and the four fields §5 added. A consumer can only install what is published, so the shape comes
-// from the contract document and nothing here imports a name that is not in the package.
+// ========================= THE TYPE IS THE ENGINE'S NOW =========================
+// 🔴 THIS PARAGRAPH SAID THE OPPOSITE FOR ONE DAY: "`GanchosDoCartucho` lives at engine HEAD and the
+// registry answers `8.0.0`, which is older", so the shape was declared here. **9.0.0 published it**, and a
+// local copy of a published type is a second description of one fact — the shape this repository has paid
+// for on a bumper's rectangle, a HUD inset and a plunger's speed. It is imported.
+//
+// ⚠️ AND THE SWAP MOVED A FIELD, WHICH IS THE USEFUL PART. `GanchosDoCartucho` is
+// `Omit<MetadeDoJogo, 'declaration'>` and `baixarPesados` IS NOT IN IT — the contract puts it on the host
+// and the engine agrees. So it stops travelling with the hooks. The DECISION does not change: ADR-0010's
+// `false` still stands and `shell/boot` still passes it, because today this repository's own standalone
+// shell is the host. When the platform of ADR-0117 becomes the host, the platform answers it.
 //
 // ========================= WHAT IS NOT HERE YET =========================
 // `create(ctx)` and the declaration. `Cartridge.declaration` is a VALUE and this game's is built from a
@@ -30,6 +37,7 @@
 // read as "forgotten".
 
 import { createPinballOptions, type BootOptions } from './boot.js';
+import type { GanchosDoCartucho } from '@the-inclusionist/engine';
 import { AVAILABLE_LOCALES, dictionaryOf, type Locale } from '../i18n/index.js';
 
 /**
@@ -53,17 +61,14 @@ export const cartridgeDicts: Readonly<Record<Locale, Record<string, string>>> = 
   Object.fromEntries(AVAILABLE_LOCALES.map((code) => [code, dictionaryOf(code)])),
 ) as Readonly<Record<Locale, Record<string, string>>>;
 
-/** The fields of `CreateGameOptions` that only this game can answer, minus the declaration. */
-export interface CartridgeHooks {
-  readonly isNavigable: () => boolean;
-  readonly setPhase: (phase: 'title' | 'playing' | 'paused') => void;
-  readonly isBlindMode?: () => boolean;
-  readonly sonarPlayers?: () => unknown[];
-  readonly preset: unknown;
-  readonly players: unknown;
-  readonly declines: Record<string, boolean>;
-  readonly baixarPesados: boolean;
-}
+/**
+ * The fields of `CreateGameOptions` that only this game can answer, minus the declaration.
+ *
+ * ⚠️ THE ENGINE'S OWN TYPE, published in 9.0.0. Fourteen names, and getting one of them wrong is the
+ * defect `tests/cartridge-halves` was written for: a hook the engine does not read is a question the game
+ * believes it answered.
+ */
+export type CartridgeHooks = GanchosDoCartucho;
 
 /**
  * This game's half, built from the same place the boot builds it.
@@ -73,10 +78,9 @@ export interface CartridgeHooks {
  * cartridge-halves` asserts they agree while both exist, and slice A2 removes the second by having the
  * standalone shell build its options FROM here.
  *
- * 📌 `baixarPesados` TRAVELS WITH THEM AND THE CONTRACT PUTS IT ON THE HOST. It is here because the reason
- * for this game's `false` is a fact about this repository — no service worker, nothing that reads that
- * cache (ADR-0010) — and a host that ignores it loses nothing. When the platform of ADR-0117 becomes the
- * host, the platform's answer wins and this field stops travelling.
+ * 📌 `baixarPesados` DOES NOT TRAVEL WITH THEM, AND THAT IS THE ENGINE'S RULING RATHER THAN A PREFERENCE.
+ * It is absent from `MetadeDoJogo`, so it is the host's. `shell/boot` goes on passing it because this
+ * repository's own standalone shell is the host today; ADR-0010's `false` is unchanged.
  */
 export function cartridgeHooks(o: BootOptions): CartridgeHooks {
   const options = createPinballOptions(o) as unknown as Record<string, unknown>;
@@ -84,10 +88,10 @@ export function cartridgeHooks(o: BootOptions): CartridgeHooks {
     isNavigable: options['isNavigable'] as () => boolean,
     setPhase: options['setPhase'] as (p: 'title' | 'playing' | 'paused') => void,
     ...(options['isBlindMode'] ? { isBlindMode: options['isBlindMode'] as () => boolean } : {}),
-    ...(options['sonarPlayers'] ? { sonarPlayers: options['sonarPlayers'] as () => unknown[] } : {}),
-    preset: options['preset'],
-    players: options['players'],
-    declines: options['declines'] as Record<string, boolean>,
-    baixarPesados: options['baixarPesados'] as boolean,
+    ...(options['sonarPlayers']
+      ? { sonarPlayers: options['sonarPlayers'] as CartridgeHooks['sonarPlayers'] } : {}),
+    preset: options['preset'] as CartridgeHooks['preset'],
+    players: options['players'] as CartridgeHooks['players'],
+    declines: options['declines'] as CartridgeHooks['declines'],
   };
 }
