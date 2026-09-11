@@ -88,6 +88,8 @@ import { soundEntriesOf, VOICES } from './audio/voices.js';
 import { createWebAudioOutput } from './audio/web-audio.js';
 import { ensureAC } from '@the-inclusionist/engine/platform/audio.js';
 import { startFrames } from './shell/frame-loop.js';
+import { createAnnouncer } from './shell/announce.js';
+import { srSay, srAlert } from '@the-inclusionist/engine/core/a11y-sr.js';
 /**
  * ⚠️ BLIND MODE IS THE ENGINE'S STATE NOW, AND THIS IMPORT IS THE WHOLE OF THAT CHANGE.
  *
@@ -431,8 +433,7 @@ const endOfGame: EndOfGameOptions = {
    * whatever the last comet or the last bumper had to say.
    */
   announce: (words) => {
-    const alert = document.getElementById('sr-alert');
-    if (alert) alert.textContent = words;
+    announce.alert(words);
   },
 };
 
@@ -460,8 +461,7 @@ const endOfGame: EndOfGameOptions = {
  * `multiball` is the one that is an EVENT, so it is the only one with a body.
  */
 function takePowerUp(kind: PowerUpKind, at: typeof ball): void {
-  const status = document.getElementById('sr-status');
-  if (status) status.textContent = shell.t(`pinball.powerUp.${kind}`);
+  announce.say(shell.t(`pinball.powerUp.${kind}`));
   if (kind !== 'multiball') return;
 
   /**
@@ -496,8 +496,7 @@ function reportComet(struck: CometStrike): void {
   const drill = comets;
   if (!drill) return;
   const report = reportOf(struck, drill.number);
-  const status = document.getElementById('sr-status');
-  if (status) status.textContent = shell.t(report.key, report.params);
+  announce.say(shell.t(report.key, report.params));
   if (!report.ended) return;
 
   // ⚠️ "O jogador ganha o jogo ao completar 20 pontos de missão." — so the GAME ends, not just the
@@ -616,8 +615,7 @@ const sonarPlayer = { i: 0, x: 0, y: 0 };
  * HUD blocks are readable on request and deliberately not live. See `shell/hud-dom`.
  */
 function sayUnavailable(): void {
-  const status = document.getElementById('sr-status');
-  if (status) status.textContent = shell.t('pinball.a11y.unavailableInDemo');
+  announce.say(shell.t('pinball.a11y.unavailableInDemo'));
 }
 
 /**
@@ -709,6 +707,22 @@ const shell = bootPinball({
    */
   setPhase: (next) => enterPhase(next),
 }, createGame);
+
+/**
+ * ⚠️ HOW THIS GAME SAYS ANYTHING, AND IT USED TO BE EIGHT `textContent =` AND ONE CHANNEL.
+ *
+ * Writing a live region reaches a child who already has a screen reader running and nobody else; on a
+ * school machine with nothing installed it is silence. `engine.tts.narrate` speaks through the engine's
+ * own mixer with no assistive technology at all — and the 🗨️ button that turns it on has been on screen
+ * since engine 8, doing nothing for a single sentence this game wrote.
+ *
+ * See `shell/announce` for why both channels fire and why that is not double-speaking.
+ */
+const announce = createAnnouncer({
+  srSay,
+  srAlert,
+  narrate: (words) => shell.engine.tts.narrate(words),
+});
 
 // What the host document failed to provide. Empty is the good case; the engine does not throw for it,
 // so somebody has to look.
@@ -1515,8 +1529,7 @@ const cabinet = {
 function enterPhase(next: Phase): void {
   phase = next;
   hint = next === 'paused' ? shell.t('pinball.hud.paused') : shell.t('pinball.hud.waiting');
-  const status = document.getElementById('sr-status');
-  if (status) status.textContent = hint;
+  announce.say(hint);
   showPauseMenu();
 }
 
@@ -1609,8 +1622,7 @@ const accessibility = {
     engineState.setModoCegoValue(!isBlind());
     // Announced through the host's own live region, which is where an EVENT belongs — the HUD blocks
     // are readable on request and deliberately not live. See `shell/hud-dom`.
-    const status = document.getElementById('sr-status');
-    if (status) status.textContent = shell.t(isBlind() ? 'pinball.a11y.blindOn' : 'pinball.a11y.blindOff');
+    announce.say(shell.t(isBlind() ? 'pinball.a11y.blindOn' : 'pinball.a11y.blindOff'));
   },
   /**
    * ⚠️ THE SWEEP IS THE PART THAT ANSWERS TODAY, AND THE AUTOMATIC GUIDE IS OFF BY THE ENGINE'S OWN
@@ -1812,8 +1824,7 @@ const demoPage = demoRequested
       return true;
     },
     onError: (message) => {
-      const alert = document.getElementById('sr-alert');
-      if (alert) alert.textContent = shell.t('pinball.demo.failed', { n: message });
+      announce.alert(shell.t('pinball.demo.failed', { n: message }));
     },
   })
   : null;
@@ -1846,8 +1857,7 @@ function choosePalette(choice: PaletteChoice): void {
   palette = choice;
   writePalette(localStorage, palette);
   composePicture();
-  const status = document.getElementById('sr-status');
-  if (status) status.textContent = shell.t(PALETTE_LABEL[palette]);
+  announce.say(shell.t(PALETTE_LABEL[palette]));
 }
 
 /**
@@ -2270,6 +2280,11 @@ Object.assign(window as unknown as Record<string, unknown>, {
      */
     /** The language this game is drawing in, so a gate can ask whether it is the engine's. */
     get locale() { return locale; },
+    /**
+     * How many sentences this game has spoken ALOUD. Exposed for the same reason the reach is: a channel
+     * that is wired and never fires looks exactly like a channel that is not wired.
+     */
+    get narrateCount() { return shell.engine.tts.narrateCount; },
     get reach() { return shell.engine.alcance; },
     /**
      * ⚠️ WHAT THE ENGINE THINKS IS ON SCREEN, which is not the same question as what IS on screen.
