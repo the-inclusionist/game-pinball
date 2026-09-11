@@ -25,7 +25,9 @@
 import '../css/style.css';
 
 import { createGame } from '@the-inclusionist/engine';
-import { bootPinball, type LiveTable, type Phase } from './shell/boot.js';
+import {
+  bootPinball, createPinballOptions, type BootOptions, type LiveTable, type Phase,
+} from './shell/boot.js';
 import { CATALOG, DEFAULT_TABLE, tableNamed } from './table/catalog.js';
 import { toLiveTable, validateTable, type TableState } from './table/authored.js';
 import { DEFAULT_CAMERA } from './shell/camera.js';
@@ -694,7 +696,13 @@ function sayUnavailable(): void {
   announce.say(shell.t('pinball.a11y.unavailableInDemo'));
 }
 
-const shell = bootPinball({
+/**
+ * ⚠️ THE OPTIONS ARE NAMED NOW, BECAUSE TWO THINGS READ THEM. `createGame` takes them and so does the
+ * shell that follows, and the call that used to hide inside `bootPinball` is the one line ADR-0139 says a
+ * cartridge must not contain. Naming them here is the last step before slice A2 moves these four lines
+ * into `src/standalone.ts` and this file stops knowing that `createGame` exists.
+ */
+const bootOptions: BootOptions = {
   locale,
   table,
   /**
@@ -766,7 +774,14 @@ const shell = bootPinball({
    * the dialog write the same state, so a child who changes it in one place sees it in the other.
    */
   setCorrection: (choice) => applyVision(choice),
-}, createGame);
+};
+
+/**
+ * ⚠️ AND THIS IS THE LINE A CARTRIDGE MAY NOT HAVE. `createGame` mounts a whole accessibility stack — a
+ * bar, a screen reader, a keyboard runtime — and N calls on one page mean N of each competing for one
+ * document. ADR-0139 puts it on the shell; slice A2 is when this line leaves.
+ */
+const shell = bootPinball(bootOptions, createGame(createPinballOptions(bootOptions)));
 
 /**
  * ⚠️ HOW THIS GAME SAYS ANYTHING, AND IT USED TO BE EIGHT `textContent =` AND ONE CHANNEL.

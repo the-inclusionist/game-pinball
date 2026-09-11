@@ -11,7 +11,7 @@ import { WIDE_ARC } from '../app/js/table/catalog.js';
 import { layoutHud, DEFAULT_HUD } from '../app/js/shell/hud.js';
 import {
   bootPinball, createPinballOptions, createPinballWorld, pinballDeclines, REQUIRED_MARKUP,
-  type BootOptions, type LiveTable, type PinballGameOptions,
+  type BootOptions, type LiveTable,
 } from '../app/js/shell/boot.js';
 
 function table(over: Partial<LiveTable> = {}): LiveTable {
@@ -38,9 +38,14 @@ function options(over: Partial<BootOptions> = {}): BootOptions {
   return { locale: 'pt', table: table(), host, ...over };
 }
 
-/** Stands in for the engine's `createGame`, which the entry point supplies for real. */
-const fakeEngine = (problems: readonly string[] = []) =>
-  (o: PinballGameOptions) => ({ problems, received: o });
+/**
+ * Stands in for the ENGINE, which the shell supplies for real.
+ *
+ * ⚠️ IT USED TO STAND IN FOR `createGame` — a factory the boot called itself. ADR-0139 moved that call to
+ * the shell, so what `bootPinball` receives is the finished engine and what a double has to be is an
+ * engine. The difference is the whole of slice A2: a cartridge does not make one.
+ */
+const fakeEngine = (problems: readonly string[] = []) => ({ problems });
 
 /**
  * ⚠️ A TABLE WIDER THAN THE VIEW SCROLLS SIDEWAYS TOO, which phase 8 of the plan asks for in one line:
@@ -598,10 +603,21 @@ describe('booting', () => {
     expect(shell.problems).toEqual(['#sr-alert missing']);
   });
 
-  test('the caller keeps the engine it handed over, fully typed', () => {
-    const shell = bootPinball(options(), (o) => ({ problems: [], received: o }));
+  test('⚠️ the declaration the shell builds is the one the engine is handed', () => {
+    /**
+     * ⚠️ THIS USED TO READ IT BACK OUT OF A FAKE ENGINE, which only worked while `bootPinball` was the
+     * thing that called `createGame`. It does not any more (ADR-0139), so the question is asked of the
+     * builder instead — which is more direct and does not need a double at all.
+     *
+     * The claim is unchanged and is worth keeping: the declaration the SHELL exposes and the declaration
+     * the ENGINE is given have to be the same object. Two would mean the accessibility stack describing a
+     * table that is not the one on screen.
+     */
+    const built = createPinballOptions(options());
+    const shell = bootPinball(options(), fakeEngine());
 
-    expect(shell.engine.received.declaration).toBe(shell.declaration);
+    expect(built.declaration.topology()).toEqual(shell.declaration.topology());
+    expect(built.declaration.tick).toBe(shell.declaration.tick);
   });
 
   test('the HUD is laid out for THIS table’s width', () => {

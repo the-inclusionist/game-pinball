@@ -425,14 +425,10 @@ export interface PinballShell<E extends EngineLike> {
  * API because `E` is inferred from what it hands over.
  */
 export function bootPinball<E extends EngineLike>(
-  o: BootOptions, createGame: (options: PinballGameOptions) => E,
+  o: BootOptions, engine: E,
 ): PinballShell<E> {
   const cameraConfig = o.camera ?? DEFAULT_CAMERA;
   const hudConfig = o.hud ?? { ...DEFAULT_HUD, playfieldWidth: o.table.playfieldWidth };
-
-  const options = createPinballOptions(o);
-  // Throws on a malformed declaration; reports missing markup instead of throwing.
-  const engine = createGame(options);
 
   let camera = createCamera(cameraConfig);
 
@@ -454,7 +450,13 @@ export function bootPinball<E extends EngineLike>(
 
   return {
     engine,
-    declaration: options.declaration,
+    /**
+     * ⚠️ BUILT HERE RATHER THAN READ BACK FROM THE OPTIONS, because the shell no longer builds them: the
+     * caller does, and hands over a finished engine (ADR-0139). `createPinballOptions` is pure, so asking
+     * it again costs one object and keeps this property what it always was — the declaration for THIS
+     * table, which is what the sonar and the screen reader describe.
+     */
+    declaration: createPinballOptions(o).declaration,
     t: createTranslator(o.locale),
     hud,
     get camera() { return camera; },
