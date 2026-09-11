@@ -1,0 +1,100 @@
+---
+metadata:
+  status: "accepted"
+  date: 2026-09-11
+  decision-makers: [Dev]
+  consulted:
+    - "The Dev, verbatim: 'atualizei a engine para a versão 8.0.0. Estude o pacote da engine do
+       inclusionista... se adeque a essa versão e passe a usá-la.'"
+    - "ADR-0009 — the engine is consumed from the registry. This record is what the upgrade it made
+       possible turned out to cost, and it retires that record's workaround."
+    - "ADR-0094 (engine) — the neural voice is a DOOR the game opens, because the provider drags
+       `onnxruntime-web` in as a non-optional peer: 135 MB in every consumer's node_modules."
+    - "ADR-0110 (b), ADR-0116, ADR-0119 (engine) — the heavy things come down on first load, because
+       a child who arrives on the second day without a network must not find the voice missing."
+    - "ADR-0117 (engine) — those bytes should be the PLATFORM's to pay once per origin, not each
+       cartridge's."
+  informed: []
+
+title: This cartridge declines the neural voice and the first-load download, because nothing in it could read either
+
+context-and-problem-statement: |
+  Moving from engine 6.36.1 to 8.0.0 crossed two majors, and two of the changes are not API shapes but
+  QUESTIONS THIS GAME HAS TO ANSWER. Both are about what the engine may fetch on a child's machine.
+
+  ⚠️ THE FIRST IS THE NEURAL VOICE, AND THE ANSWER WAS ALREADY BEING GIVEN IN SILENCE. 6.36.1 named
+  `@mintplex-labs/piper-tts-web` in a dynamic `import(...)` of its own without declaring the package,
+  which is the defect ADR-0009 was written about: this repository aliased the specifier to a stub that
+  THREW, and the engine's own `.catch` fell back to the browser's speech. It worked, and nothing
+  anywhere recorded that this game has no neural voice. Engine 8 has the field for it — `Declinios
+  .semVozNeural` — and the engine's own measurement is why: of six games in its catalogue, THREE had
+  no neural voice and nothing said which three.
+
+  ⚠️ THE SECOND ARRIVED AS A DEFAULT AND WOULD HAVE COST 285 MB. `createGame` in 7.x and 8.x runs
+  `if (o.baixarPesados !== false)` on every boot and pulls the four neural voice models, the vision
+  runtime and its three models, and the voice runtime into Cache Storage in the background. A consumer
+  that does not think about the field gets that download.
+
+decision-drivers:
+  - "⚠️ NOTHING IN THIS REPOSITORY READS THAT CACHE. `platform/pesados` writes into a Cache Storage
+     bucket served by a service worker, and this game has neither a service worker nor a web manifest.
+     The bytes would arrive and be read by nobody."
+  - "The voices could not be spoken with. This game does not pass `carregarVozNeural`, so the four
+     models it would download are for an engine it never opens."
+  - "The precache budget the plan opens on: school machines, and the music decision already turned on
+     megabytes."
+  - "⚠️ A BROWSER SUITE WOULD FIRE IT. In Node `caches` is undefined and the download reports `falhou`
+     harmlessly; under Playwright it is defined, and every booting suite would pull 285 MB from a CDN.
+     The engine's own note says a real-browser case must not do that."
+  - "ADR-0106 §5 (engine): a control that cannot work must not be offered. An undeclared voice is the
+     same defect one layer down — a menu entry whose download never starts."
+
+considered-options:
+  - "Install `@mintplex-labs/piper-tts-web` and open the door. Refused, and refused before: it brings
+     `onnxruntime-web` as a non-optional peer, 135 MB, for the FALLBACK of a fallback — the cloud voice
+     is the primary and the neural one is the offline stand-in."
+  - "Keep the throwing stub. Refused because it is no longer possible OR needed: engine 8 mentions the
+     package only in prose, so the alias resolves nothing, and the sentence the stub was standing in
+     for now has a field of its own."
+  - "Leave `baixarPesados` at its default and accept the 285 MB. Refused on the first driver: the
+     download has no reader here. It is not a question of whether the bytes are worth it — they would
+     be written to a cache this game never opens."
+  - "Call `baixarPesados({ apenas: [...] })` directly for the vision runtime alone. Not taken, and not
+     refused: it is the shape to reach for the day this game gains a service worker, and taking it
+     today would be building the reader before there is anything to read."
+  - "⚠️ CHOSEN: declare `semVozNeural`, pass `baixarPesados: false`, and delete the stub and both Vite
+     aliases."
+
+decision-outcome: |
+  ⚠️ CHOSEN: `declines: { semVozNeural: true }` and `baixarPesados: false`, in `shell/boot`, where
+  `tests/shell-boot` holds both against the reasoning above.
+
+  `shims/piper-tts-web.ts` is deleted, with the two `resolve.alias` entries that pointed at it — one
+  for the build and one repeated into the browser test project, because a Vite project does not inherit
+  `resolve` from the config around it. The build proves the deletion: it succeeds with no alias, which
+  is only true because the engine no longer imports the package.
+
+  📌 BOTH ARE ONE LINE AND BOTH ARE REVERSIBLE, which is the shape they are deliberately kept in. The
+  day this game becomes a PWA, or opens the voice door, the reason stops holding and the flag comes
+  out. ADR-0117 (engine) says the download should be the platform's to pay once per origin; that
+  decision is not this repository's to take, and refusing it here does not foreclose it.
+
+consequences:
+  good:
+    - "The absence of the neural voice is now a declared decision a reader can find, instead of a
+       behaviour produced by a stub that threw."
+    - "A child on a school link does not spend 285 MB on models this game cannot use."
+    - "⚠️ The browser suites can boot the real entry point again. Left at the default, every one of
+       them would have pulled the catalogue from a CDN on every run."
+    - "ADR-0009's workaround is retired rather than inherited: the stub and its two aliases are gone,
+       and the defect that occasioned them was fixed upstream."
+  bad:
+    - "⚠️ This game still has no neural voice, and now says so. A player who would have used it gets
+       the browser's own, which speaks the right language and is worse — the same cost ADR-0009
+       recorded, moved from a silence to a sentence."
+    - "The vision runtime — face, gesture and hand tracking — is not pre-fetched either. It is not
+       pre-fetched for any reason of its own; it rides in the same catalogue, and separating it is the
+       `apenas` option named above and not taken."
+    - "⚠️ AND `baixarPesados: false` IS A DEFAULT REFUSED, WHICH IS THE KIND THAT ROTS QUIETLY. If this
+       game gains a service worker and nobody reopens this record, the flag will go on refusing a
+       download that by then WOULD have a reader. The gate names the condition; it cannot detect it."

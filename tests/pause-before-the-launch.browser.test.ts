@@ -28,6 +28,7 @@
 // The walk below presses the plunger after resuming, which is what holds that.
 import { describe, test, expect, beforeAll } from 'vitest';
 import { userEvent } from 'vitest/browser';
+import { PAGE_MARKUP } from './helpers/page.js';
 
 interface PinballDebug { backdropLoaded: boolean; phase: string }
 const debug = (): PinballDebug => (window as unknown as { __pinball: PinballDebug }).__pinball;
@@ -40,12 +41,7 @@ const menu = (): HTMLElement => document.getElementById('pinball-pause')!;
 const shown = (el: HTMLElement): boolean => getComputedStyle(el).display !== 'none';
 
 beforeAll(async () => {
-  document.body.innerHTML = `
-    <main id="game-region" tabindex="-1"></main>
-    <div id="sr-status" role="status" aria-live="polite"></div>
-    <div id="sr-alert" role="alert" aria-live="assertive"></div>
-    <svg id="cvd-filters" width="0" height="0" aria-hidden="true" focusable="false"></svg>
-  `;
+  document.body.innerHTML = PAGE_MARKUP;
   await import('../app/js/main.js');
   for (let i = 0; i < 600 && !debug().backdropLoaded; i++) await frames(1);
 });

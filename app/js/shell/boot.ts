@@ -23,10 +23,30 @@
 // every rule in this module be exercised in a node test with no DOM. Keeping it is now a choice about
 // testability rather than a way around somebody else's build.
 //
-// ========================= WHAT THIS GAME DECLINES: NOTHING =========================
-// The engine lets a game declare what it does not have. A quiz declines the pause menu because it has
-// no phases and the pad assistant because it has no pad. A pinball has both, so it declines nothing,
-// and that empty object is the honest answer rather than an oversight.
+// ========================= WHAT THIS GAME DECLINES: THE NEURAL VOICE =========================
+// The engine lets a game declare what it does not have, and until engine 8 this game declined NOTHING —
+// an empty object described as "the honest answer rather than an oversight". It was neither, and the
+// field that arrived in 8.0.0 is what says so: this port has never carried the neural voice, because
+// `@mintplex-labs/piper-tts-web` drags `onnxruntime-web` in as a non-optional peer — 135 MB in the
+// `node_modules` of a game that would never speak with it. What stood in for the sentence was a stub
+// that THREW (`shims/piper-tts-web.ts`, deleted with this migration), because 6.36.1 imported the
+// package by name and nothing could be declared about it.
+//
+// ⚠️ AND THE PAUSE MENU IS NOT DECLINED BECAUSE IT CAN NO LONGER BE. `semMenuDePausa` was retired, put
+// back after measuring four of five games using it, and retired again on the Dev's own reason: the pause
+// card and the accessibility icons belong in EVERY game. The engine's card is mounted hidden at
+// `host.pauseHost ?? #game-region` and a mounted card eats no keys; only an open one owns the keyboard,
+// and nothing here ever opens it. This game keeps `shell/pause-menu`.
+//
+// ========================= AND THE HEAVY THINGS ARE NOT FETCHED =========================
+// ⚠️ `baixarPesados` DEFAULTS TO TRUE and `createGame` fires it on every boot: ~285 MB of neural voice
+// models, a vision runtime and its three models, into Cache Storage in the background. This game says no,
+// and the reason that settles it is not the size — it is that NOTHING HERE WOULD READ THEM. That cache is
+// served by a service worker, and this repository has neither a service worker nor a web manifest.
+//
+// 📌 One line, reversible: the day this game becomes a PWA, or opens the voice door above, the reason
+// stops holding and the flag comes out. ADR-0117 says those bytes should be the PLATFORM's to pay once
+// per origin, which is not this repository's decision to take.
 //
 // ========================= AND IT IS NAVIGABLE FOR NOBODY, WHICH IS A CORRECTION =========================
 // `isNavigable` answers "is it menu time?". The engine's default is `true`, which suits a game with no
@@ -83,7 +103,21 @@ import { createNamer, nameTableOf, type ComponentKind } from '../i18n/names.js';
 import { keyOf } from '../i18n/keys.js';
 
 /** The ids `createGame` looks for. Named here so this game can be checked against them. */
-export const REQUIRED_MARKUP: readonly string[] = ['#game-region', '#sr-status', '#sr-alert'];
+export const REQUIRED_MARKUP: readonly string[] = [
+  '#game-region', '#sr-status', '#sr-alert',
+  /**
+   * ⚠️ THE ONE THE ENGINE WRITES INTO RATHER THAN READS, and it arrived with engine 8. `createGame`
+   * mounts the first screen's accessibility bar into it: blind mode, the screen reader, Libras, the
+   * autism adjustments and latching — four of which this game never offered at all.
+   *
+   * ⚠️ AND NOT HIGH CONTRAST OR COLOUR CORRECTION, WHICH IS A MEASUREMENT AND NOT AN OMISSION. Those two
+   * icons are mounted only for a game that hands the engine a theme writer and a correction writer, and
+   * this one has its own: `shell/options`'s palette and `shell/vision`'s dialog. The bar was read in a
+   * real browser before this sentence was written; the earlier version of it named six and was wrong.
+   * Without it the engine reports that the child cannot reach any of them before the game starts.
+   */
+  '#title-icons',
+];
 
 export type Phase = 'title' | 'playing' | 'paused';
 
@@ -99,24 +133,33 @@ export interface PinballGameOptions {
   readonly declaration: GameDeclaration;
   readonly host: HostLike;
   readonly declines: Record<string, boolean>;
+  /** ⚠️ FALSE, AND THE ENGINE'S DEFAULT IS TRUE. See this module's header for the three reasons. */
+  readonly baixarPesados: boolean;
   readonly isNavigable: () => boolean;
   readonly isBlindMode?: () => boolean;
   /**
-   * ⚠️ A STABLE ARRAY, NOT A FRESH ONE. `audio-sonar.updateGuide` counts frames on `guideT`, a field it
-   * writes ONTO the player object, and pings when it reaches 48. Returning a new object each call resets
-   * that counter every frame and the guide never fires — which is the engine's own default behaviour,
-   * since it derives a fresh player from `focusOf` when a game supplies no list.
+   * ⚠️ A STABLE ARRAY, NOT A FRESH ONE, AND THE REASON CHANGED UNDER THE RULE. The engine used to
+   * count frames on a `guideT` it wrote onto the player and ping at 48; since engine 7 the guide is a
+   * CONTINUOUS audio graph hung on the player as `_guia`, with its own frame counter inside it. So a
+   * fresh object each call now drops a live oscillator rather than resetting a counter — which is the
+   * engine's own default behaviour, since it derives a fresh player from `focusOf` when a game supplies
+   * no list.
    */
   readonly sonarPlayers?: () => SonarPlayerLike[];
 }
 
-/** The sonar's view of a player. `guideT` is the engine's scratch space and is written by it. */
+/**
+ * The sonar's view of a player: an index and a place, and nothing else.
+ *
+ * ⚠️ IT CARRIED A `viz` AND A `guideT` UNTIL ENGINE 8, AND THE ENGINE READS NEITHER. `guideT` went
+ * when the beep became a continuous graph; `viz` went when the sonar stopped knowing what a visual mode
+ * is — it asked the string "blindness or low vision?" and now receives the answer through
+ * `visaoComprometida`. Fields nothing reads are the shape a stale comment takes in a type.
+ */
 export interface SonarPlayerLike {
   readonly i: number;
   x: number;
   y: number;
-  readonly viz: string;
-  guideT?: number;
 }
 
 /** The only part of the engine's `Engine` this module reads. The caller keeps the rest, fully typed. */
@@ -205,9 +248,9 @@ export function createPinballWorld(table: LiveTable, locale: Locale) {
   };
 }
 
-/** This game declines nothing. See this module's header. */
+/** This game declines the neural voice, and nothing else. See this module's header. */
 export function pinballDeclines(): Record<string, boolean> {
-  return {};
+  return { semVozNeural: true };
 }
 
 /** Everything `createGame` is handed, built without calling it — which is what makes this testable. */
@@ -218,6 +261,7 @@ export function createPinballOptions(o: BootOptions): PinballGameOptions {
     declaration,
     host: o.host,
     declines: pinballDeclines(),
+    baixarPesados: false,
     /**
      * ⚠️ NEVER, UNTIL AN ENGINE MENU IS ACTUALLY ON SCREEN. See this module's header: answering `true`
      * while paused handed the engine every navigation key at window-capture, for menus this game does

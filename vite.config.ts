@@ -5,22 +5,15 @@ import { dirname, join } from 'node:path';
 
 const RAIZ = dirname(fileURLToPath(import.meta.url));
 
-/**
- * The one import the engine makes that nothing resolves. See `shims/piper-tts-web.ts` for what it is,
- * why it is a stub rather than a dependency, and why the fix belongs in the engine.
- *
- * An alias rather than `optimizeDeps.exclude` or `build.rollupOptions.external`, because both of
- * those leave a bare specifier in the output: the browser then throws `Failed to resolve module
- * specifier` into the console on every start. An alias resolves, and the module it resolves to throws
- * exactly where the engine already catches.
- *
- * ⚠️ AND IT IS REPEATED INTO THE BROWSER PROJECT BELOW, because a project is a whole Vite config and
- * does NOT inherit `resolve` from the one around it. Set only at the top it builds `dist` and leaves
- * the browser tests importing a module the dev server cannot serve — which is not reported as a
- * missing package but as `Failed to fetch dynamically imported module: /js/main.ts`, four suites at
- * once, naming a file that is perfectly fine.
+/*
+ * ⚠️ THE PIPER ALIAS LIVED HERE UNTIL ENGINE 8.0.0, AND ITS ABSENCE IS THE NEWS. `6.36.1` named
+ * `@mintplex-labs/piper-tts-web` in a dynamic `import(...)` of its own and did not declare the package,
+ * so every consumer installing from the registry failed to build; this file aliased the specifier to a
+ * stub that threw, twice over, because a Vite project does not inherit `resolve` from the config around
+ * it. ADR-0094 moved the naming to the GAME (`carregarVozNeural`) and the engine now mentions the
+ * package only in prose — measured in the 8.0.0 tree before these lines were deleted. A game that does
+ * not open that door says so in one field instead: `declines.semVozNeural`, in `shell/boot`.
  */
-const PIPER_STUB = { '@mintplex-labs/piper-tts-web': join(RAIZ, 'shims/piper-tts-web.ts') };
 
 // ============================================================================
 // WHY THE VITE ROOT IS `app/` AND NOT THE REPOSITORY
@@ -48,16 +41,6 @@ const PIPER_STUB = { '@mintplex-labs/piper-tts-web': join(RAIZ, 'shims/piper-tts
 export default defineConfig({
   root: join(RAIZ, 'app'),
   build: { outDir: join(RAIZ, 'dist'), emptyOutDir: true },
-  /**
-   * The one import the engine makes that nothing resolves. See `shims/piper-tts-web.ts` for what it
-   * is, why it is a stub rather than a dependency, and why the fix belongs in the engine.
-   *
-   * Here rather than in `optimizeDeps.exclude` or `build.rollupOptions.external` because both of
-   * those leave a bare specifier in the output: the browser then throws `Failed to resolve module
-   * specifier` into the console on every start. An alias resolves, and the module it resolves to
-   * throws where the engine already catches.
-   */
-  resolve: { alias: PIPER_STUB },
   test: {
     /**
      * ⚠️ RANDOM ORDER, EVERY RUN, AND IT FOUND SOMETHING THE HOUR IT WAS TURNED ON.
@@ -110,7 +93,6 @@ export default defineConfig({
       },
       {
         root: join(RAIZ, 'app'),
-        resolve: { alias: PIPER_STUB },
         test: {
           name: 'browser',
           // ⚠️ AFTER THE NODE PROJECT — see `groupOrder` above. Two real engines cannot share a machine

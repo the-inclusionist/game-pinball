@@ -169,6 +169,37 @@ export function createDeclaration(world: PinballWorld): GameDeclaration {
      */
     world: () => ({ kind: 'element', selector: '#game-region' }),
 
+    /**
+     * ⚠️ TWO, AND THE COUNT IS THE CRADLE. The engine asks how many positions this game needs HELD AT THE
+     * SAME TIME, and in a pinball that is both flippers: a ball held on one paddle while the other one
+     * flips is not a trick, it is how the table is played. On a phone that registers two fingers, this is
+     * the number that decides whether a child is told so before they start.
+     *
+     * ⚠️ AND NOT THREE, WHICH IS WHAT COUNTING THE ACTIONS WOULD HAVE GIVEN. `shell/keymap` offers four —
+     * `left`, `right`, `plunger`, `pause` — and the plunger is a held charge like the flippers are. But it
+     * is only ever drawn back with the ball IN THE LANE, and multiball does not put one there: `main.ts`
+     * spawns the extra balls AT THE BALL THAT EARNED THEM. There is no state of this game where the
+     * plunger and a flipper have to be held together.
+     *
+     * The engine's own note is the reason this is a judgement rather than an arithmetic: the platformer
+     * declared nine actions against nine on-screen places and its warning never fired, while running,
+     * walking and jumping at once were three fingers a two-finger phone does not have.
+     */
+    holdsAtOnce: () => 2,
+
+    /**
+     * ⚠️ YES, AND THIS IS THE FIELD A PINBALL WOULD BE WRONG TO GET WRONG. It decides whether the engine
+     * OFFERS latching — press once to hold, press again to release — and that control exists for a child
+     * who cannot keep a key pressed. Two things in this game are held: a flipper stays up while its key is
+     * down, and the plunger is a CHARGE, where the longer it is held the further the ball goes
+     * (`shell/plunger`, written because the Dev asked for exactly that).
+     *
+     * ⚠️ AND `holdsAtOnce` ABOVE DOES NOT ANSWER IT, which is the engine's own finding: that field counts
+     * simultaneous positions and refuses zero, so a quiz that holds nothing still declares one. "One at a
+     * time" and "one HELD" are the same number and different questions.
+     */
+    seguraTeclas: () => true,
+
     // A pinball never waits for the player.
     tick: 'clock',
 

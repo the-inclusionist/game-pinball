@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, test, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
+import { PAGE_MARKUP } from './helpers/page.js';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { conformanceProblems } from '@the-inclusionist/engine/core/contract.js';
@@ -327,11 +328,43 @@ describe('what is handed to the engine', () => {
     expect(problems).toEqual([]);
   });
 
-  test('THIS GAME DECLINES NOTHING', () => {
-    // A quiz declines the pause menu and the pad assistant. A pinball has both, so the empty object
-    // is the honest answer rather than an oversight.
-    expect(pinballDeclines()).toEqual({});
-    expect(createPinballOptions(options()).declines).toEqual({});
+  test('⚠️ THIS GAME DECLINES THE NEURAL VOICE, AND NOTHING ELSE', () => {
+    /**
+     * ⚠️ IT USED TO DECLINE NOTHING, AND THE VOICE WAS MISSING ANYWAY — which is the difference this
+     * field exists for. `@mintplex-labs/piper-tts-web` drags `onnxruntime-web` in as a non-optional
+     * peer, 135 MB into the `node_modules` of a game that would never speak with it, so this port has
+     * always gone without; until engine 8 there was no way to SAY so, and a stub that threw
+     * (`shims/piper-tts-web.ts`) stood in for the sentence.
+     *
+     * The engine measured what silence costs on 2026-09-08: three of its six games had no neural voice
+     * and nothing anywhere said which three. Declining is a decision a reader can find; not declaring is
+     * an omission that reaches a child as a menu entry that never loads.
+     *
+     * ⚠️ AND THE PAUSE IS NOT DECLINED BECAUSE IT CAN NO LONGER BE. `semMenuDePausa` was retired, put
+     * back, and retired again in the engine's own record: the pause card and the accessibility icons
+     * belong to every game. This one keeps its own menu and never opens the engine's.
+     */
+    expect(pinballDeclines()).toEqual({ semVozNeural: true });
+    expect(createPinballOptions(options()).declines).toEqual({ semVozNeural: true });
+  });
+
+  test('⚠️ and the 285 MB of heavy things are NOT fetched, because nothing here would read them', () => {
+    /**
+     * ⚠️ `baixarPesados` DEFAULTS TO TRUE, and `createGame` fires it on every boot — four neural voice
+     * models, a vision runtime and its three models, ~285 MB into Cache Storage in the background.
+     *
+     * Three reasons this cartridge says no, and the first is the one that settles it:
+     *   · NOTHING HERE READS THAT CACHE. It is served by a service worker, and this repository has no
+     *     service worker and no web manifest. The bytes would arrive and be read by nobody.
+     *   · The voices could not be spoken with anyway — see the decline above.
+     *   · A BROWSER SUITE WOULD FIRE IT. In Node `caches` is undefined and the download fails
+     *     harmlessly; under Playwright it is defined, and every booting suite would pull 285 MB from a
+     *     CDN. The engine's own note says a real-browser case must not do that.
+     *
+     * 📌 One line, reversible: the day this game becomes a PWA, or opens the voice door, the reason
+     * above stops holding and the flag comes out.
+     */
+    expect(createPinballOptions(options()).baixarPesados).toBe(false);
   });
 
   test('⚠️ it is navigable for NOBODY, and that is a correction', () => {
@@ -376,7 +409,43 @@ describe('what is handed to the engine', () => {
   });
 
   test('the markup the engine requires is named, so a host can be checked against it', () => {
-    expect(REQUIRED_MARKUP).toEqual(['#game-region', '#sr-status', '#sr-alert']);
+    /**
+     * ⚠️ `#title-icons` ARRIVED WITH ENGINE 8, and it is the one on this list the engine WRITES INTO
+     * rather than reads. `createGame` mounts the first screen's accessibility bar there — blind mode,
+     * the screen reader, Libras, the autism adjustments, latching — and a document without it
+     * gets a line in `problems` saying the child cannot reach any of them before the game starts.
+     */
+    expect(REQUIRED_MARKUP).toEqual(['#game-region', '#sr-status', '#sr-alert', '#title-icons']);
+  });
+
+  test('⚠️ and the page this repository SHIPS has every one of them', () => {
+    /**
+     * ⚠️ NAMING THE MARKUP AND SHIPPING IT ARE TWO THINGS, and until engine 8 only the first was
+     * checked. The engine does not throw for a missing id — it REPORTS, into a `problems` array that a
+     * console warning is the only reader of — so a page that lost one would boot, look fine, and have
+     * lost a feature nothing announces. That is how `#title-icons` was missing everywhere at once: five
+     * of the engine's six games had no accessibility bar and nothing anywhere said so.
+     */
+    const page = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../app/index.html'), 'utf8');
+
+    for (const selector of REQUIRED_MARKUP) {
+      expect(page, `app/index.html is missing ${selector}`).toContain(`id="${selector.slice(1)}"`);
+    }
+  });
+
+  test('⚠️ and so does the fixture every browser suite boots against', () => {
+    /**
+     * ⚠️ THE FIXTURE CLAIMED TO BE A COPY OF THAT PAGE, TWELVE TIMES OVER, and nothing checked the
+     * claim. Each browser suite carried the markup inline under the same comment — "the page's own
+     * markup, as app/index.html writes it" — so when engine 8 added one element, all twelve went stale
+     * at once and every browser suite failed at import in both engines.
+     *
+     * They are one string now in tests/helpers/page, and this is what keeps that string honest.
+     */
+    for (const selector of REQUIRED_MARKUP) {
+      expect(PAGE_MARKUP, `the browser fixture is missing ${selector}`)
+        .toContain(`id="${selector.slice(1)}"`);
+    }
   });
 });
 

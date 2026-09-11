@@ -3,18 +3,24 @@
 //
 // ⚠️ IT USED TO COME FROM A PATH. `"@the-inclusionist/engine": "file:../SP-the-inclusionist-tracer"`
 // installs a SYMLINK into the engine's own working tree, and for the first eight phases of this port
-// that was the only way to have it at all — it was not published yet. The Dev published it, and this
-// repository moved to `^6.36.1`.
+// that was the only way to have it at all — it was not published yet. The Dev published it, this
+// repository moved to `^6.36.1`, and on 2026-09-11 to `^8.0.0` — which is the whole point of the move:
+// an upgrade is a deliberate act with a version number attached.
 //
 // ========================= WHY THAT IS WORTH A GATE =========================
 // A `file:` link is not a weaker version of a dependency. It is a different thing, and three of its
 // differences cost this project real time on the day it was removed:
 //
-//   · ⚠️ IT HIDES MISSING DEPENDENCIES. The engine's `platform/tts` reaches for
-//     `@mintplex-labs/piper-tts-web`, which the published package does not declare. Through the
+//   · ⚠️ IT HIDES MISSING DEPENDENCIES. The engine's `platform/tts` reached for
+//     `@mintplex-labs/piper-tts-web`, which the published package did not declare. Through the
 //     symlink it resolved anyway, out of the ENGINE's own `node_modules`, by accident of layout. The
 //     first build against the registry failed, and the defect had been there the whole time, invisible
-//     precisely because the link made it so. `shims/piper-tts-web.ts` holds what was done about it.
+//     precisely because the link made it so.
+//
+//     📌 FIXED UPSTREAM IN ENGINE 8, AND THAT IS WHAT THIS GATE IS FOR. ADR-0094 (engine) moved the
+//     naming of the provider to the GAME, so the package appears in the engine only in prose; the stub
+//     this repository aliased it to is deleted, and what replaced it is one declared line
+//     (`declines.semVozNeural`). A defect only an outside consumer could see, reported and then gone.
 //   · IT HAS NO VERSION AND NO INTEGRITY HASH. `package-lock.json` records `"link": true` and nothing
 //     else, so nothing pins WHICH engine this game was tested against, and a clone on another machine
 //     gets whatever that path happens to contain — or fails, if it contains nothing.

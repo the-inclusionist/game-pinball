@@ -51,6 +51,7 @@
 // The 36.5% that differs is not slack — it is the components, their surrounds and the lights, and the
 // pixel-level truth about those lives in `tests/gfx-surround` where it can be stated precisely.
 import { describe, test, expect, beforeAll } from 'vitest';
+import { PAGE_MARKUP } from './helpers/page.js';
 
 interface PinballDebug {
   problems: readonly string[];
@@ -98,12 +99,7 @@ async function shippedArt(table: string): Promise<ImageData> {
 beforeAll(async () => {
   // The page's own markup, as `app/index.html` writes it — a boot against different markup would be a
   // boot of a different program.
-  document.body.innerHTML = `
-    <main id="game-region" tabindex="-1"></main>
-    <div id="sr-status" role="status" aria-live="polite"></div>
-    <div id="sr-alert" role="alert" aria-live="assertive"></div>
-    <svg id="cvd-filters" width="0" height="0" aria-hidden="true" focusable="false"></svg>
-  `;
+  document.body.innerHTML = PAGE_MARKUP;
   await import('../app/js/main.js');
 
   /**

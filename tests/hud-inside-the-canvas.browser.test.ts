@@ -25,6 +25,7 @@
 // reach the elements. Neither can know how many lines a string takes: that is a font, a width and a
 // language, and it is the only thing that decides whether this happens.
 import { describe, test, expect, beforeAll } from 'vitest';
+import { PAGE_MARKUP } from './helpers/page.js';
 
 interface PinballDebug { backdropLoaded: boolean }
 const debug = (): PinballDebug => (window as unknown as { __pinball: PinballDebug }).__pinball;
@@ -47,12 +48,7 @@ const LONGEST = 'A mesa de 1995: a física, as lâmpadas, as rampas, os sprites 
 
 beforeAll(async () => {
   document.head.innerHTML = '';
-  document.body.innerHTML = `
-    <main id="game-region" tabindex="-1"></main>
-    <div id="sr-status" role="status" aria-live="polite"></div>
-    <div id="sr-alert" role="alert" aria-live="assertive"></div>
-    <svg id="cvd-filters" width="0" height="0" aria-hidden="true" focusable="false"></svg>
-  `;
+  document.body.innerHTML = PAGE_MARKUP;
   await import('../app/js/main.js');
   for (let i = 0; i < 600 && !debug().backdropLoaded; i++) await frames(1);
   // Into a game, which is the only state the HUD is shown in.

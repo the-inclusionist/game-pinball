@@ -91,6 +91,37 @@ describe('the topology is the table, and the ruler is the ball', () => {
   });
 });
 
+describe('⚠️ how many fingers this table asks for, and whether it asks them to STAY down', () => {
+  /**
+   * ⚠️ THE VALIDATOR CANNOT CHECK EITHER OF THESE, which is why they get a case of their own.
+   * `conformanceProblems` asks that the fields EXIST; what they answer is a judgement about this game,
+   * and a wrong judgement reaches a child rather than a test runner — as a warning that never fires on a
+   * two-finger phone, or as a latching control that is never offered to somebody who cannot hold a key.
+   */
+  test('TWO positions at once: both flippers, which is the cradle', () => {
+    /**
+     * ⚠️ AND NOT THREE, WHICH IS WHAT COUNTING THE ACTIONS GIVES. `shell/keymap` offers four and the
+     * plunger is held like a flipper is — but it is only ever drawn back with the ball IN THE LANE, and
+     * multiball puts its extra balls at the ball that earned them, never in the lane. Nothing in this
+     * game needs the plunger and a flipper down together.
+     */
+    expect(createDeclaration(world()).holdsAtOnce()).toBe(2);
+  });
+
+  test('and YES, keys are held here — the flipper stays up and the plunger is a charge', () => {
+    /**
+     * This is the field that decides whether the engine OFFERS latching: press once to hold, press again
+     * to release. It exists for a child who cannot keep a key pressed, and in this game there are two
+     * things to hold — a flipper while the ball is cradled, and the plunger, where how long it is held is
+     * how far the ball goes.
+     *
+     * ⚠️ `holdsAtOnce` ABOVE DOES NOT ANSWER THIS. It counts simultaneous positions and refuses zero, so
+     * a game that holds nothing still declares one.
+     */
+    expect(createDeclaration(world()).seguraTeclas()).toBe(true);
+  });
+});
+
 describe('the ball is the focus', () => {
   test('focus is the ball’s position, with an id per player', () => {
     const focus = createDeclaration(world()).focusOf(1);

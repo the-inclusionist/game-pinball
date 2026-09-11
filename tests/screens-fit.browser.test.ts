@@ -21,6 +21,7 @@
 // question when an eighth entry is added.
 import { describe, test, expect, beforeAll } from 'vitest';
 import { userEvent } from 'vitest/browser';
+import { TOPBAR_MARKUP } from './helpers/page.js';
 
 interface PinballDebug { backdropLoaded: boolean; phase: string }
 const debug = (): PinballDebug => (window as unknown as { __pinball: PinballDebug }).__pinball;
@@ -60,7 +61,7 @@ beforeAll(async () => {
    * any whole scale — and asking it at the smallest one the game is ever shown at is asking it where
    * it is hardest to satisfy.
    */
-  document.body.innerHTML = `
+  document.body.innerHTML = `${TOPBAR_MARKUP}
     <main id="game-region" tabindex="-1" style="position:relative;width:320px;height:180px;overflow:hidden"></main>
     <div id="sr-status" role="status" aria-live="polite"></div>
     <div id="sr-alert" role="alert" aria-live="assertive"></div>

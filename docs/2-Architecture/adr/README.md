@@ -27,3 +27,4 @@ question, the drivers, the options that were weighed, the decision, and its cons
 | [ADR-0007](ADR-0007-the-ground-may-be-lit-to-a-ceiling-and-the-flare-is-the-one-exception.yaml) | The ground may be lit, up to a measured ceiling, and the flare is the one place the rule is broken on purpose |
 | [ADR-0008](ADR-0008-contrast-is-measured-at-the-boundary-not-over-the-picture.yaml) | Contrast is a property of a boundary, so the shadow goes around each component and the pictures come back up |
 | [ADR-0009](ADR-0009-the-engine-is-consumed-from-the-registry.yaml) | The engine is consumed from the registry, and the path link was hiding a defect in it |
+| [ADR-0010](ADR-0010-what-this-cartridge-lets-the-engine-fetch.yaml) | This cartridge declines the neural voice and the first-load download, because nothing in it could read either |

@@ -20,6 +20,7 @@
 // for; `display: none` would remove them from the accessibility tree and take the announcements away
 // from the one person they are for. The clip technique is the only one that does both.
 import { describe, test, expect, beforeAll } from 'vitest';
+import { TOPBAR_MARKUP } from './helpers/page.js';
 
 const frames = async (n: number): Promise<void> => {
   for (let i = 0; i < n; i++) await new Promise((r) => requestAnimationFrame(() => r(null)));
@@ -27,7 +28,7 @@ const frames = async (n: number): Promise<void> => {
 
 beforeAll(async () => {
   document.head.innerHTML = '';
-  document.body.innerHTML = `
+  document.body.innerHTML = `${TOPBAR_MARKUP}
     <main id="game-region" tabindex="-1"></main>
     <div id="sr-status" role="status" aria-live="polite">Pausado</div>
     <div id="sr-alert" role="alert" aria-live="assertive"></div>

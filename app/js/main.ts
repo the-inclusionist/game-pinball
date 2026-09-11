@@ -85,6 +85,21 @@ import { createSoundBoard, releaseVoice } from './audio/sfx.js';
 import { soundEntriesOf, VOICES } from './audio/voices.js';
 import { createWebAudioOutput } from './audio/web-audio.js';
 import { ensureAC } from '@the-inclusionist/engine/platform/audio.js';
+/**
+ * ⚠️ BLIND MODE IS THE ENGINE'S STATE NOW, AND THIS IMPORT IS THE WHOLE OF THAT CHANGE.
+ *
+ * It was a `let blind = false` in this file, read by `isBlindMode` and written by the `b` key and by
+ * this game's own icon. Engine 8 MOUNTS the first screen's accessibility bar itself, and that bar has a
+ * blind button which writes to `core/state.modoCego` — so the private variable would have made two
+ * switches for one mode, each blind to the other. The engine's own record has that exact defect in it,
+ * from the other side: a reader left on a constant while the writer had moved, and a mode that turned on
+ * once and could not be turned off.
+ *
+ * `import * as` gives a LIVE binding, so `state.modoCego` is the value now and not the value at boot.
+ * It also persists — the same key every Inclusionist game reads — so a child who needs it turns it on
+ * once, not once per game.
+ */
+import * as engineState from '@the-inclusionist/engine/core/state.js';
 
 /**
  * ⚠️ READ ONCE, AT BOOT, AND FROM A STORE THAT MAY REFUSE. `shell/options` swallows the throw a private
@@ -570,14 +585,27 @@ let resumeTo: Phase = 'playing';
  * supplied none, so the engine's default `() => false` stood and the audio guide never fired — two
  * commits after the contract's target list was filled in for that guide to use.
  */
-let blind = false;
+const isBlind = (): boolean => engineState.modoCego;
 
 /**
- * ⚠️ ONE OBJECT, REUSED. `audio-sonar.updateGuide` counts frames on `guideT`, a field it writes onto
- * this object, and pings when it reaches 48. A fresh object each call resets the counter every frame and
- * the guide never fires at all.
+ * ⚠️ ONE OBJECT, REUSED — THE SAME RULE, FOR A DIFFERENT REASON SINCE ENGINE 7.
+ *
+ * It used to be that `updateGuide` counted frames on `guideT`, a field it wrote onto this object, and
+ * pinged at 48; a fresh object each frame reset the counter and the guide never fired. ⚠️ BOTH HALVES
+ * OF THAT ARE NOW FALSE and the note is kept because a stale explanation of a live rule is the worse
+ * defect: the beep became a CONTINUOUS audio graph, and `guideT` left the engine's entity with it.
+ *
+ * What the engine hangs on the player now is `_guia` — an oscillator, a filter, a gain and a panner that
+ * have to SURVIVE FROM ONE FRAME TO THE NEXT, with `desdeARota` counting frames until the route is worth
+ * recomputing. A fresh object each call drops the live oscillator instead of resetting a counter. Same
+ * rule, and it matters more than it did.
+ *
+ * ⚠️ AND `viz` IS GONE TOO, which is the other half of the same change: the sonar stopped knowing what
+ * a visual mode IS. It used to read the string and ask itself "blindness or low vision?"; that question
+ * now arrives answered, through `visaoComprometida`, which `createGame` fills from the state this game
+ * feeds it with `isBlindMode`.
  */
-const sonarPlayer = { i: 0, x: 0, y: 0, viz: 'normal' as const, guideT: 0 };
+const sonarPlayer = { i: 0, x: 0, y: 0 };
 
 /**
  * Says, through the host's own live region, that the accessibility layer has nothing to describe here.
@@ -616,7 +644,7 @@ const shell = bootPinball({
   // `createGame` reports it in `problems` instead of throwing — which is exactly how it went unnoticed
   // until the game was actually booted.
   host: { doc: document, win: window, cvdHost: document.getElementById('cvd-filters') },
-  isBlindMode: () => blind,
+  isBlindMode: () => isBlind(),
   sonarPlayers: () => [sonarPlayer],
 }, createGame);
 
@@ -1505,11 +1533,11 @@ const accessibility = {
     // over — the contract still holds the authored table, and a guide describing it over a blank
     // screen is the confident wrong answer this refusal was added for.
     if (demoRequested && !demoView) return sayUnavailable();
-    blind = !blind;
+    engineState.setModoCegoValue(!isBlind());
     // Announced through the host's own live region, which is where an EVENT belongs — the HUD blocks
     // are readable on request and deliberately not live. See `shell/hud-dom`.
     const status = document.getElementById('sr-status');
-    if (status) status.textContent = shell.t(blind ? 'pinball.a11y.blindOn' : 'pinball.a11y.blindOff');
+    if (status) status.textContent = shell.t(isBlind() ? 'pinball.a11y.blindOn' : 'pinball.a11y.blindOff');
   },
   /**
    * ⚠️ THE SWEEP IS THE PART THAT ANSWERS TODAY, AND THE AUTOMATIC GUIDE IS OFF BY THE ENGINE'S OWN
@@ -2008,18 +2036,24 @@ const hud = mountHud({
  * it costs the game no pixels at all and is the same three controls on every screen, including the
  * first one.
  */
-const topbar = document.createElement('header');
-topbar.className = 'pinball-topbar';
-region.parentElement?.insertBefore(topbar, region);
+/**
+ * ⚠️ THE STRIP IS IN THE DOCUMENT NOW AND IS NOT BUILT HERE, and the reason is a clock. It used to be
+ * a `createElement` on this line; engine 8 wants `#title-icons` at BOOT — `createGame` mounts its own
+ * half of the bar into it — and the boot runs fifteen hundred lines above this one. A strip built here
+ * would arrive after the engine had already reported it missing.
+ *
+ * So `app/index.html` carries the header, `REQUIRED_MARKUP` names the id, and this appends the game's
+ * own two buttons beside the engine's.
+ */
+const topbar = document.querySelector<HTMLElement>('.pinball-topbar');
+if (!topbar) throw new Error('the accessibility strip is missing from the document');
 
 const a11yBar = mountA11yBar({
   doc: document,
   host: topbar,
   t: shell.t,
-  onBlind: () => accessibility.toggleBlindMode(),
   onSonar: () => accessibility.sweep(),
   onPalette: () => accessibility.cyclePalette(),
-  blind: () => blind,
   palette: () => shell.t(isCbSafe(palette) ? 'pinball.palette.cbSafe' : 'pinball.palette.normal'),
 });
 
@@ -2155,7 +2189,7 @@ Object.assign(window as unknown as Record<string, unknown>, {
     get cameraY() { return Math.floor(shell.camera.offset); },
     get hint() { return hint; },
     /** Exposed so the browser gate can confirm sound rather than assume it. */
-    get blind() { return blind; },
+    get blind() { return isBlind(); },
     get sonar() {
       return { guideCount: shell.engine.sonar.guideCount, sonarCount: shell.engine.sonar.sonarCount };
     },

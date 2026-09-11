@@ -117,3 +117,19 @@ consequences:
        publishing tree could not see. Nothing here can stop the next one — it can only be the place
        that finds it, which means a failing build in this repository is now evidence about the engine
        and should be read that way before it is read as a defect here."
+
+erratum:
+  2026-09-11: |
+    ⚠️ THE VERSION IN `decision-outcome` IS `^6.36.1` AND THE DEPENDENCY IS NOW `^8.0.0`. The record
+    stands as written — the decision was the REGISTRY, not the number — and the number is corrected here
+    rather than in place, which is what ADR-0057 (engine) asks of a record that is still true.
+
+    ⚠️ AND THE WORKAROUND IT DESCRIBES IS GONE. `shims/piper-tts-web.ts` and its two Vite aliases were
+    deleted on the same day: engine 8 mentions `@mintplex-labs/piper-tts-web` only in prose, because
+    ADR-0094 (engine) moved the naming of the provider to the GAME. What this repository does instead is
+    DECLARE the absence — `declines.semVozNeural` — which is ADR-0010.
+
+    ⚠️ THE `bad` CONSEQUENCE ABOUT THE NEURAL VOICE IS STILL TRUE, and it is worth reading twice for
+    that reason: the defect that produced it was fixed upstream, and the CONSEQUENCE did not change. The
+    voice is absent because 135 MB of `onnxruntime-web` is still the price of it, which was never the
+    packaging defect — it only looked like it while the packaging defect was in the way.

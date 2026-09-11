@@ -22,6 +22,7 @@
 // could flatten six playfields into one grey smudge. This measures whether it did.
 import { describe, test, expect, beforeAll } from 'vitest';
 import { PLAYABLE_TABLES } from '../app/js/table/catalog.js';
+import { PAGE_MARKUP } from './helpers/page.js';
 
 interface PinballDebug { backdropLoaded: boolean }
 const debug = (): PinballDebug => (window as unknown as { __pinball: PinballDebug }).__pinball;
@@ -55,12 +56,7 @@ const apart = (a: number[], b: number[]): number =>
   a.reduce((worst, value, i) => Math.max(worst, Math.abs(value - b[i]!)), 0);
 
 beforeAll(async () => {
-  document.body.innerHTML = `
-    <main id="game-region" tabindex="-1"></main>
-    <div id="sr-status" role="status" aria-live="polite"></div>
-    <div id="sr-alert" role="alert" aria-live="assertive"></div>
-    <svg id="cvd-filters" width="0" height="0" aria-hidden="true" focusable="false"></svg>
-  `;
+  document.body.innerHTML = PAGE_MARKUP;
   await import('../app/js/main.js');
   for (let i = 0; i < 600 && !debug().backdropLoaded; i++) await frames(1);
   document.querySelector<HTMLElement>('.pinball-title button')?.click();

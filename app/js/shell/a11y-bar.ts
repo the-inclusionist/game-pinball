@@ -1,5 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// shell/a11y-bar — blind mode, the sonar and the table's colours, as icons in the HUD.
+// shell/a11y-bar — the sonar and the table's colours, as icons in the HUD.
+//
+// ⚠️ AND BLIND MODE LEFT THIS FILE WITH ENGINE 8, WHICH IS THE POINT OF THE WHOLE MODULE ARRIVING
+// UPSTREAM. `createGame` now MOUNTS the first screen's accessibility bar itself, into `#title-icons`, and
+// it carries blind mode plus four things this game never offered: the screen reader, Libras, the autism
+// adjustments and latching. (Not high contrast or colour correction — those are mounted only for a game
+// that hands the engine a theme writer and a correction writer, and this one keeps its own palette and
+// vision dialog. Read in a real browser, because the first version of this note guessed.) Why it
+// started doing it — five of its six games had no such bar at all, and each one had been left to
+// remember. What stays here is what the engine has NO counterpart for: a sonar sweep and a table palette.
+//
+// ⚠️ TWO BUTTONS FOR ONE MODE WOULD BE THE DEFECT, not the tidiness. They now share a state
+// (`core/state.modoCego`, which is also where the `b` key writes), so a second one would not be DEAD —
+// it would be the same control twice, side by side, in the one strip that has to be read at a glance.
 //
 // ⚠️ THE DEV: "remova modo cego sonar e cores via teclado: eles devem aparecer no hud da mesma forma que
 // aparecem no projeto game-platformer."
@@ -20,11 +33,9 @@
 // imitation for its own sake: a child who moves between the two games meets the same three things in the
 // same shape, and a teacher who has learnt one has learnt both.
 //
-// ⚠️ THE GLYPH FOR BLIND MODE IS THE ENGINE'S OWN. `PAUSE_ICONS` names it 🦯 under `icon.blind`, and
-// taking a different one would be this game calling the same feature something else. The other two have
-// no counterpart there — the engine has no table palette and no sonar sweep — so they are ours, and they
-// are chosen to be legible at ten pixels rather than to be clever.
-import { PAUSE_ICONS } from '@the-inclusionist/engine/ui/pause-icons.js';
+// ⚠️ THESE TWO HAVE NO COUNTERPART IN THE ENGINE — it has no table palette and no sonar sweep — so the
+// glyphs are ours, and they are chosen to be legible at ten pixels rather than to be clever. The one that
+// WAS the engine's, 🦯 for blind mode, went where the glyph came from.
 
 /** What a button does and what it reports. */
 export interface A11yToggle {
@@ -37,27 +48,24 @@ export interface A11yToggle {
   /**
    * How the label reports the control.
    *
-   * ⚠️ THREE AND NOT A BOOLEAN, because the palette named itself twice. With `stateful: true` the label
-   * came out "Cores, Cores para daltonismo": the button's own name, then a state whose name already
-   * contains it. A palette's state IS its name — "Cores para daltonismo" says both what the control is
-   * and what it is doing — so it takes `named`, which uses the state alone.
+   * ⚠️ NOT A BOOLEAN, because the palette named itself twice. With `stateful: true` the label came out
+   * "Cores, Cores para daltonismo": the button's own name, then a state whose name already contains it.
+   * A palette's state IS its name — "Cores para daltonismo" says both what the control is and what it is
+   * doing — so it takes `named`, which uses the state alone.
+   *
+   * ⚠️ AND `onOff` WENT WITH BLIND MODE. It was the third case and the only on/off control here; the
+   * engine's own bar carries the on/off ones now, and a case with no member is a branch no reader can
+   * check.
    */
-  readonly reports: 'onOff' | 'named' | 'action';
+  readonly reports: 'named' | 'action';
 }
 
 /**
- * ⚠️ THE SONAR IS AN ACTION AND THE OTHER TWO ARE STATES, which is why `reports` exists rather than
+ * ⚠️ THE SONAR IS AN ACTION AND THE PALETTE IS A STATE, which is why `reports` exists rather than
  * every button announcing an on and an off. A sweep happens once; saying "sonar, ligado" after it would
  * describe a mode the game does not have.
  */
 export const A11Y_TOGGLES: readonly A11yToggle[] = [
-  {
-    key: 'blind',
-    // The engine's own glyph, read out of its table rather than copied — see this module's header.
-    glyph: PAUSE_ICONS.find((i) => i.k === 'blind')?.e ?? '🦯',
-    labelKey: 'pinball.controls.blindMode',
-    reports: 'onOff',
-  },
   { key: 'sonar', glyph: '📡', labelKey: 'pinball.controls.sweep', reports: 'action' },
   { key: 'palette', glyph: '🎨', labelKey: 'pinball.controls.palette', reports: 'named' },
 ];
@@ -81,11 +89,8 @@ export interface A11yBarOptions {
    * pixels at all.
    */
   readonly box?: { readonly left: string; readonly top: string; readonly width: string };
-  readonly onBlind: () => void;
   readonly onSonar: () => void;
   readonly onPalette: () => void;
-  /** Whether blind mode is on right now, for the label. */
-  readonly blind: () => boolean;
   /** The name of the palette in force, for the label. */
   readonly palette: () => string;
 }
@@ -138,8 +143,7 @@ export function mountA11yBar(o: A11yBarOptions): A11yBar {
       lineHeight: '1', borderRadius: '20%',
     });
     button.addEventListener('click', () => {
-      if (toggle.key === 'blind') o.onBlind();
-      else if (toggle.key === 'sonar') o.onSonar();
+      if (toggle.key === 'sonar') o.onSonar();
       else o.onPalette();
       refresh();
     });
@@ -159,11 +163,7 @@ export function mountA11yBar(o: A11yBarOptions): A11yBar {
     for (const { toggle, button } of buttons) {
       const name = o.t(toggle.labelKey);
       if (toggle.reports === 'action') button.setAttribute('aria-label', name);
-      else if (toggle.reports === 'named') button.setAttribute('aria-label', o.palette());
-      else {
-        button.setAttribute('aria-label',
-          `${name}, ${o.t(o.blind() ? 'pinball.a11y.on' : 'pinball.a11y.off')}`);
-      }
+      else button.setAttribute('aria-label', o.palette());
     }
   }
 

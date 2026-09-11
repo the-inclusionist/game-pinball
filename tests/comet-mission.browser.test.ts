@@ -19,6 +19,7 @@ import { userEvent } from 'vitest/browser';
 import { COMET_BODY } from '../app/js/gfx/comet-view.js';
 import { WINNING_POINTS, MISSION_NUMBERS, MAX_COMETS, type Comet }
   from '../app/js/control/comet-mission.js';
+import { PAGE_MARKUP } from './helpers/page.js';
 
 interface PinballDebug {
   backdropLoaded: boolean;
@@ -33,12 +34,7 @@ const frames = async (n: number): Promise<void> => {
 };
 
 beforeAll(async () => {
-  document.body.innerHTML = `
-    <main id="game-region" tabindex="-1"></main>
-    <div id="sr-status" role="status" aria-live="polite"></div>
-    <div id="sr-alert" role="alert" aria-live="assertive"></div>
-    <svg id="cvd-filters" width="0" height="0" aria-hidden="true" focusable="false"></svg>
-  `;
+  document.body.innerHTML = PAGE_MARKUP;
   await import('../app/js/main.js');
   for (let i = 0; i < 600 && !debug().backdropLoaded; i++) await frames(1);
 });

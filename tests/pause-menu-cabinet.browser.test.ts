@@ -30,6 +30,7 @@
 // and a live `document.activeElement`. The node suite was green throughout.
 import { describe, test, expect, beforeAll } from 'vitest';
 import { userEvent } from 'vitest/browser';
+import { PAGE_MARKUP } from './helpers/page.js';
 
 interface PinballDebug { phase: string; score: number }
 const debug = (): PinballDebug => (window as unknown as { __pinball: PinballDebug }).__pinball;
@@ -80,12 +81,7 @@ async function playing(): Promise<void> {
 }
 
 beforeAll(async () => {
-  document.body.innerHTML = `
-    <main id="game-region" tabindex="-1"></main>
-    <div id="sr-status" role="status" aria-live="polite"></div>
-    <div id="sr-alert" role="alert" aria-live="assertive"></div>
-    <svg id="cvd-filters" width="0" height="0" aria-hidden="true" focusable="false"></svg>
-  `;
+  document.body.innerHTML = PAGE_MARKUP;
   await import('../app/js/main.js');
   await frames(10);
   await play();

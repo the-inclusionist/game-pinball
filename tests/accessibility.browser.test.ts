@@ -15,6 +15,7 @@
 // What makes these browser tests rather than node ones is the same thing as everywhere else here: the
 // keys are bound to `#game-region` and not to `window`, so only a real focus proves a real key arrives.
 import { describe, test, expect, beforeAll } from 'vitest';
+import { PAGE_MARKUP } from './helpers/page.js';
 
 interface PinballDebug {
   phase: string;
@@ -96,7 +97,16 @@ const frames = async (n: number): Promise<void> => {
  * the same move first.
  */
 const icon = async (key: string): Promise<void> => {
-  const button = document.querySelector<HTMLElement>(`#pinball-a11y [data-pi="${key}"]`);
+  /**
+   * ⚠️ TWO BARS SINCE ENGINE 8, AND THE BLIND BUTTON CHANGED SIDES. `createGame` now mounts the first
+   * screen's accessibility bar into `#title-icons` — blind mode, the screen reader, Libras, the autism
+   * adjustments, latching — and this game's own strip kept only what the engine has no counterpart
+   * for: the sonar sweep and the table palette. Asking for both is what makes this helper describe the
+   * PLAYER's question ("press the icon for X") rather than which module happens to own it.
+   */
+  const button = document.querySelector<HTMLElement>(
+    `#pinball-a11y [data-pi="${key}"], #title-icons [data-pi="${key}"]`,
+  );
   if (!button) throw new Error(`no ${key} icon in the HUD`);
   button.click();
   await new Promise((resolve) => { requestAnimationFrame(() => resolve(undefined)); });
@@ -114,12 +124,15 @@ const icon = async (key: string): Promise<void> => {
 let blindAtBoot = true;
 
 beforeAll(async () => {
-  document.body.innerHTML = `
-    <main id="game-region" tabindex="-1"></main>
-    <div id="sr-status" role="status" aria-live="polite"></div>
-    <div id="sr-alert" role="alert" aria-live="assertive"></div>
-    <svg id="cvd-filters" width="0" height="0" aria-hidden="true" focusable="false"></svg>
-  `;
+  document.body.innerHTML = PAGE_MARKUP;
+  /**
+   * ⚠️ BLIND MODE IS PERSISTED NOW, WHICH MAKES "IT STARTS OFF" A CLAIM ABOUT STORAGE. Engine 8 keeps
+   * it in `core/state`, written through to `incl_modocego` in `localStorage` — deliberately, so a child
+   * who needs it turns it on once for every Inclusionist game rather than once per game. The cost lands
+   * here: suites share an origin, so a suite that leaves the mode on would decide the next suite's boot.
+   * Clearing it is what keeps `blindAtBoot` a measurement rather than a coincidence of ordering.
+   */
+  try { localStorage.removeItem('incl_modocego'); } catch { /* a private window refuses; the default is off anyway */ }
   await import('../app/js/main.js');
   blindAtBoot = debug().blind;
   /**

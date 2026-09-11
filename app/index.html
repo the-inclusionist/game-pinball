@@ -18,6 +18,22 @@
   <link rel="stylesheet" href="/vendor/fonts.css">
 </head>
 <body>
+  <!--
+    ⚠️ THE STRIP ABOVE THE GAME, AND `#title-icons` IS THE ENGINE'S HALF OF IT.
+    Engine 8 mounts the accessibility bar of the FIRST SCREEN itself — measured in a real browser, it
+    puts up blind mode, the screen reader, Libras, the autism adjustments and latching, plus three marked
+    "em construção" — and it looks for this id (or for a declared `host.a11yBarHost`). Not finding it,
+    `createGame` reports a line saying the child cannot reach any of them before the game starts. The
+    engine measured five of its six games missing that bar entirely.
+
+    It is HTML rather than a `createElement` in `main.ts` because the engine wants it at BOOT, and the
+    boot runs long before the strip used to be built. The game's own two buttons — the sonar sweep and
+    the table palette, which the engine has no counterpart for — are appended beside it.
+  -->
+  <header class="pinball-topbar">
+    <div id="title-icons"></div>
+  </header>
+
   <!-- #game-region: the engine binds the keyboard HERE, never to `window`. The id is not decorative. -->
   <main id="game-region" tabindex="-1"></main>
   <div id="sr-status" role="status" aria-live="polite"></div>
