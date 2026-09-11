@@ -32,6 +32,7 @@
 // reported the wrong choice, once.
 
 import { SCREEN_FACE } from './title-dom.js';
+import { setOverlayVisible, isOverlayVisible } from './overlay-visibility.js';
 import { ownCabinetKeys, type PinballAction } from './controls.js';
 import { controlLegend } from './control-legend.js';
 
@@ -245,7 +246,7 @@ export function mountPauseMenu(o: PauseMenuOptions): PauseMenu {
 
   /** Takes an entry: the menu shuts first, so a handler that opens a screen is not drawing under it. */
   const choose = (entry: PauseEntry): void => {
-    root.style.display = 'none';
+    setOverlayVisible(root, false);
     handlers[entry]();
   };
 
@@ -308,7 +309,7 @@ export function mountPauseMenu(o: PauseMenuOptions): PauseMenu {
    * precisely so it holds.
    */
   ownCabinetKeys(root as unknown as Parameters<typeof ownCabinetKeys>[0], {
-    isOpen: () => root.style.display !== 'none',
+    isOpen: () => isOverlayVisible(root),
     /**
      * ⚠️ UP AND DOWN RATHER THAN THE FLIPPERS, WHICH IS THE DEV'S REMAP ARRIVING HERE.
      *
@@ -338,6 +339,13 @@ export function mountPauseMenu(o: PauseMenuOptions): PauseMenu {
   body.appendChild(column);
   body.appendChild(aside);
   root.appendChild(body);
+  /**
+   * ⚠️ BORN SHUT IN BOTH PROPERTIES, which the inline `display: none` above does NOT do on its own.
+   * `hidden` defaults to false, and `hidden` is the only thing the engine reads
+   * (`ui/settings-panel.topVisibleOverlay`) — so a screen styled shut and never marked shut is a screen
+   * the engine holds open from the moment it is mounted. Measured on the title screen in both engines.
+   */
+  setOverlayVisible(root, false);
   o.host.appendChild(root);
 
   return {
@@ -357,13 +365,13 @@ export function mountPauseMenu(o: PauseMenuOptions): PauseMenu {
      * The focus is taken on the TRANSITION, which is what "opening" meant all along.
      */
     open(): void {
-      if (root.style.display === 'flex') return;
+      if (isOverlayVisible(root)) return;
       refreshAside();
-      root.style.display = 'flex';
+      setOverlayVisible(root, true);
       // The first entry, so a player who opened this by accident presses the same key twice and is back.
       moveTo(0);
     },
-    close(): void { root.style.display = 'none'; },
+    close(): void { setOverlayVisible(root, false); },
     /**
      * The colours entry, so whatever it opens can hand the focus back to it.
      *

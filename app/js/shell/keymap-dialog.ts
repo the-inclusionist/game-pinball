@@ -20,6 +20,7 @@
 // everywhere else in the game.
 
 import { ownCabinetKeys, type PinballAction } from './controls.js';
+import { setOverlayVisible, isOverlayVisible } from './overlay-visibility.js';
 import {
   EDITABLE_ACTIONS, conflictOf, rebind, type BindingTable,
 } from './keymap.js';
@@ -183,7 +184,7 @@ export function mountKeymapDialog(o: KeymapDialogOptions): KeymapDialog {
 
   const close = (): void => {
     stopCapture();
-    root.style.display = 'none';
+    setOverlayVisible(root, false);
     o.restoreFocus?.();
   };
 
@@ -194,7 +195,7 @@ export function mountKeymapDialog(o: KeymapDialogOptions): KeymapDialog {
    * the capture listener above without a second rule about who owns what.
    */
   ownCabinetKeys(root as unknown as Parameters<typeof ownCabinetKeys>[0], {
-    isOpen: () => root.style.display !== 'none' && capturing === null,
+    isOpen: () => isOverlayVisible(root) && capturing === null,
     // A column, like the pause menu: W and S walk it, J opens a row for capture, K and start leave.
     on: {
       up: () => moveTo(cursor - 1),
@@ -212,17 +213,24 @@ export function mountKeymapDialog(o: KeymapDialogOptions): KeymapDialog {
   });
 
   o.overlays.register(KEYMAP_DIALOG_ID, { close, inEscapeChain: true });
+  /**
+   * ⚠️ BORN SHUT IN BOTH PROPERTIES, which the inline `display: none` above does NOT do on its own.
+   * `hidden` defaults to false, and `hidden` is the only thing the engine reads
+   * (`ui/settings-panel.topVisibleOverlay`) — so a screen styled shut and never marked shut is a screen
+   * the engine holds open from the moment it is mounted. Measured on the title screen in both engines.
+   */
+  setOverlayVisible(root, false);
   o.host.appendChild(root);
 
   return {
     element: root,
     close,
-    isOpen: () => root.style.display !== 'none',
+    isOpen: () => isOverlayVisible(root),
     open(): void {
-      if (root.style.display === 'flex') return;
+      if (isOverlayVisible(root)) return;
       draw();
       status.textContent = o.t('pinball.bindings.hint');
-      root.style.display = 'flex';
+      setOverlayVisible(root, true);
       moveTo(0);
     },
   };

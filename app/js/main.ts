@@ -2208,6 +2208,16 @@ Object.assign(window as unknown as Record<string, unknown>, {
      * `{ ok: false, pedidas: 0 }` while this game declared no preset, and nothing anywhere could see it.
      */
     get reach() { return shell.engine.alcance; },
+    /**
+     * ⚠️ WHAT THE ENGINE THINKS IS ON SCREEN, which is not the same question as what IS on screen.
+     *
+     * `ui/settings-panel.topVisibleOverlay` scans `#game-region .overlay` and keeps what is not
+     * `hidden`. A screen of this game that hides itself with `display` alone is therefore OPEN as far as
+     * the engine is concerned, for ever — and there is no way to see that from inside this game, which
+     * is why the two accessors exist.
+     */
+    get engineSeesOpen() { return shell.engine.nav.sharedDialogOpen(); },
+    engineItemsIn(element: HTMLElement) { return shell.engine.nav.menuItems(element); },
     get sonar() {
       return { guideCount: shell.engine.sonar.guideCount, sonarCount: shell.engine.sonar.sonarCount };
     },

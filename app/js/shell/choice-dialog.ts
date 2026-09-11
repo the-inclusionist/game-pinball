@@ -39,6 +39,7 @@
  * menu wants to open this.
  */
 import { ownCabinetKeys } from './controls.js';
+import { setOverlayVisible, isOverlayVisible } from './overlay-visibility.js';
 
 /**
  * ⚠️ GENERIC OVER THE CHOICE, BECAUSE THE SECOND ONE ARRIVED. This was `mountOptionsDialog`, bound to
@@ -212,8 +213,7 @@ export function mountChoiceDialog<T extends string>(o: ChoiceDialogOptions<T>): 
   root.appendChild(column);
 
   function close(): void {
-    root.hidden = true;
-    root.style.display = 'none';
+    setOverlayVisible(root, false);
     o.restoreFocus?.();
   }
 
@@ -244,9 +244,16 @@ export function mountChoiceDialog<T extends string>(o: ChoiceDialogOptions<T>): 
    * two were written a commit apart and the second only existed because the first was noticed.
    */
   ownCabinetKeys(root as unknown as Parameters<typeof ownCabinetKeys>[0], {
-    isOpen: () => !root.hidden,
+    isOpen: () => isOverlayVisible(root),
   });
 
+  /**
+   * ⚠️ BORN SHUT IN BOTH PROPERTIES, which the inline `display: none` above does NOT do on its own.
+   * `hidden` defaults to false, and `hidden` is the only thing the engine reads
+   * (`ui/settings-panel.topVisibleOverlay`) — so a screen styled shut and never marked shut is a screen
+   * the engine holds open from the moment it is mounted. Measured on the title screen in both engines.
+   */
+  setOverlayVisible(root, false);
   o.host.appendChild(root);
   // ⚠️ THE REGISTERED CLOSE IS THE ONE THAT HIDES IT. Registering anything else is worse than not
   // registering at all: Escape reports success and the dialog stays exactly where it was.
@@ -257,8 +264,7 @@ export function mountChoiceDialog<T extends string>(o: ChoiceDialogOptions<T>): 
     open() {
       // Read afresh, every time. See `current` above for what a snapshot would say.
       refresh();
-      root.hidden = false;
-      root.style.display = 'flex';
+      setOverlayVisible(root, true);
       // ⚠️ THE FOCUS MOVES IN, or the keydown above never fires and the arrows go on working the
       // flippers behind the dialog. The first choice rather than the dialog itself, so a screen reader
       // reads an option instead of an empty container.

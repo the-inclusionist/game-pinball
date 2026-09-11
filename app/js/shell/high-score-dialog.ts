@@ -47,6 +47,7 @@ import {
   scorePosition, placeScore, readTable, writeTable, MAX_NAME, type HighScoreStore,
 } from '../control/high-score.js';
 import { ownCabinetKeys } from './controls.js';
+import { setOverlayVisible, isOverlayVisible } from './overlay-visibility.js';
 
 export const HIGH_SCORE_DIALOG_ID = 'pinball-high-score';
 
@@ -208,7 +209,7 @@ export function mountHighScoreDialog(o: HighScoreDialogOptions): HighScoreDialog
   };
 
   const close = (): void => {
-    root.style.display = 'none';
+    setOverlayVisible(root, false);
     o.onDone?.();
   };
 
@@ -277,7 +278,7 @@ export function mountHighScoreDialog(o: HighScoreDialogOptions): HighScoreDialog
    * start button and on this screen that is what it is for.
    */
   ownCabinetKeys(root as unknown as Parameters<typeof ownCabinetKeys>[0], {
-    isOpen: () => root.style.display !== 'none',
+    isOpen: () => isOverlayVisible(root),
     /**
      * ⚠️ THIS ONE IS A GRID AND NOT A LIST, so up and down are worth a row rather than a step.
      *
@@ -301,6 +302,13 @@ export function mountHighScoreDialog(o: HighScoreDialogOptions): HighScoreDialog
     },
   });
 
+  /**
+   * ⚠️ BORN SHUT IN BOTH PROPERTIES, which the inline `display: none` above does NOT do on its own.
+   * `hidden` defaults to false, and `hidden` is the only thing the engine reads
+   * (`ui/settings-panel.topVisibleOverlay`) — so a screen styled shut and never marked shut is a screen
+   * the engine holds open from the moment it is mounted. Measured on the title screen in both engines.
+   */
+  setOverlayVisible(root, false);
   o.host.appendChild(root);
 
   return {
@@ -314,7 +322,7 @@ export function mountHighScoreDialog(o: HighScoreDialogOptions): HighScoreDialog
       name = '';
       showName();
       said.textContent = String(score);
-      root.style.display = 'flex';
+      setOverlayVisible(root, true);
       moveTo(0);
       return true;
     },
