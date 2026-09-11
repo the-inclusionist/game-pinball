@@ -105,6 +105,97 @@ describe('⚠️ the original game data never enters the history', () => {
    * now arithmetic rather than atmosphere, and that a TRUE count pins itself: the next asset to land turns
    * this red until somebody updates the sentence, which is the whole point of writing it down.
    */
+  /**
+   * ⚠️ A DIRECTORY-SCOPED LICENCE THAT DOES NOT NAME THE FILE IS A HOLE, AND FOUR PICTURES WERE IN IT.
+   *
+   * The ledger above accepts one `LICENSE.txt` for a whole directory, and it is right to: six pictures
+   * under one dedication should not carry six copies of the same text. But it matches on the DIRECTORY,
+   * so a file that arrives in a directory that already has a licence is covered by arithmetic rather than
+   * by anybody's decision — and `app/assets/tables/LICENSE.txt` named seven of the eleven pictures beside
+   * it while four had landed under a section of the note headed "whose terms are NOT YET RECORDED".
+   *
+   * A redistributor opening that directory reads a dedication and eleven files, and has no way to learn
+   * that four of them were not part of it. That is the exact harm a licence file exists to prevent.
+   *
+   * ⚠️ AND THE RULE IS NOT "ONE FILE PER ASSET", which is what the ledger above already refused. It is
+   * that whatever the licence file covers, it SAYS what it covers. Naming is cheap; being covered by
+   * proximity is what is not.
+   */
+  /**
+   * ⚠️ NAMING A LICENCE IS NOT SHIPPING ONE, AND THE OFL SAYS SO IN ITS OWN CONDITION 5.
+   *
+   * The OFL requires that the licence travel WITH the font — "must be distributed entirely under this
+   * license, and must not be distributed under any other license" — and this repository shipped four
+   * Atkinson faces beside a file that named the licence and linked to it. `docs/LICENSES.md` §4.3 said so
+   * out loud ("a link is not a copy"), the file beside the fonts said so about itself ("THIS IS OWED"),
+   * and `README.md` made it a publication blocker. Three documents agreeing that an obligation is unmet
+   * is not the same as meeting it, and the gate that existed asked only whether the words "SIL Open Font
+   * License 1.1" appeared somewhere in the note.
+   *
+   * ⚠️ THE REPOSITORY ALREADY HELD THE ANSWER ONE DIRECTORY OVER. `app/assets/fonts/press-start-2p.OFL.txt`
+   * is the verbatim text, and it is what this test measures the other one against: the licence BODY is the
+   * same for every font under the OFL, and only the copyright line above it differs. So the check is not a
+   * word count or a byte size — it is that the operative clauses are present, in both files.
+   */
+  test('⚠️ and a font’s licence file carries the TEXT, not the name of the text', () => {
+    const files = tracked();
+    const FONT = /\.(woff2?|ttf|otf)$/i;
+    /** The clauses that make the OFL operate. A file without these is a reference to a licence. */
+    const OPERATIVE = [
+      'PERMISSION & CONDITIONS',
+      '1) Neither the Font Software nor any of its individual components',
+      '5) The Font Software, modified or unmodified, in part or in whole,',
+      'TERMINATION',
+      'DISCLAIMER',
+    ];
+
+    const fonts = files.filter((f) => FONT.test(f));
+    const thin: string[] = [];
+    for (const font of fonts) {
+      const directory = font.slice(0, font.lastIndexOf('/'));
+      const base = font.replace(/\.[^.]+$/, '');
+      const licences = files.filter((f) => /(licen[cs]e|OFL|COPYING)/i.test(f)
+        && (f.startsWith(base) || f.slice(0, f.lastIndexOf('/')) === directory));
+
+      const carried = licences.some((f) => {
+        const text = readFileSync(resolve(ROOT, f), 'utf8');
+        return OPERATIVE.every((clause) => text.includes(clause));
+      });
+      if (!carried) thin.push(`${font} — ${licences.join(', ') || 'no licence file'} names the OFL without carrying it`);
+    }
+
+    expect(thin, 'fonts shipped beside a reference to their licence rather than the licence').toEqual([]);
+    expect(fonts.length, 'there are fonts to check').toBeGreaterThan(0);
+  });
+
+  test('⚠️ a licence that covers a whole directory NAMES every asset in it', () => {
+    const assets = tracked().filter((f) => ASSET.test(f));
+    const files = tracked();
+    const LICENCE = /(licen[cs]e|OFL|COPYING)/i;
+
+    const uncovered: string[] = [];
+    for (const asset of assets) {
+      const directory = asset.slice(0, asset.lastIndexOf('/'));
+      const name = asset.split('/').pop()!;
+      const base = asset.replace(/\.[^.]+$/, '');
+
+      // A licence that shares the asset's own file name covers it by that name alone — one font, one
+      // `press-start-2p.OFL.txt`. Only the DIRECTORY-scoped ones have to list what they reach.
+      if (files.some((f) => LICENCE.test(f) && f.startsWith(base))) continue;
+
+      const scoped = files.filter((f) => LICENCE.test(f) && f.slice(0, f.lastIndexOf('/')) === directory);
+      if (!scoped.length) continue; // the ledger above is what reports this one
+
+      const named = scoped.some((f) => readFileSync(resolve(ROOT, f), 'utf8').includes(name));
+      if (!named) uncovered.push(`${asset} — ${scoped.join(', ')} does not name it`);
+    }
+
+    expect(uncovered, 'assets a directory licence covers by proximity without saying so').toEqual([]);
+    // ⚠️ AND THE SCAN REACHED SOMETHING. Every clause above is a `continue`; a bug in any of them would
+    // empty the loop and leave this passing over nothing at all.
+    expect(assets.length, 'there are assets to check').toBeGreaterThan(0);
+  });
+
   test('⚠️ and no sentence in the note counts fewer assets than the tree holds', () => {
     const note = readFileSync(resolve(ROOT, 'docs', 'LICENSES.md'), 'utf8');
     const assets = tracked().filter((f) => ASSET.test(f));

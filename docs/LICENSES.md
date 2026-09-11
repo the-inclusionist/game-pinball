@@ -177,7 +177,7 @@ recorded" for a day and now says CC0 is a section that shows the rule working: t
 the licence followed it. Deleting the intervening state would leave a document that looks as though it
 had always known.
 
-### 4.3 · Atkinson Hyperlegible, and one obligation this repository owes
+### 4.3 · Atkinson Hyperlegible, and the obligation this repository owed
 
 Added 2026-09-07, on the Dev's *"Menus devem usar a mesma identidade visual que o game-platformer."*
 
@@ -189,20 +189,37 @@ Added 2026-09-07, on the Dev's *"Menus devem usar a mesma identidade visual que 
 | licence | **SIL Open Font License 1.1** |
 | source | `~/Claude/game-platformer/app/public/vendor/fonts/` — the same files that project calls "Fontes oficiais do EdSP" |
 
-⚠️ **AND THE LICENCE TEXT IS NOT YET BESIDE THEM, WHICH IS AN OBLIGATION AND NOT A DETAIL.** The OFL
-requires the licence to travel with the font; `OFL.txt` beside them names it and links it, and a link is
-not a copy. The verbatim text goes there before this game is published anywhere. It is written down here
-rather than remembered because a licence obligation that lives in somebody's memory is the one that
-ships unmet.
+✅ **THE LICENCE TEXT IS BESIDE THEM SINCE 2026-09-11.** This paragraph said for four days that it was
+not, and it was right to: the OFL requires the licence to travel with the font, `OFL.txt` named it and
+linked it, and a link is not a copy. `README.md` called it a publication blocker, the file beside the
+fonts declared its own debt, and this section recorded it — three documents agreeing that an obligation
+was unmet, which is not the same as meeting it.
+
+⚠️ **AND THE TEXT WAS ALREADY IN THIS REPOSITORY, ONE DIRECTORY OVER.** `press-start-2p.OFL.txt` is
+verbatim OFL-1.1; the licence BODY is invariant across fonts and only the copyright line above it differs.
+So the four faces got the same body, copied from that file rather than retyped, and
+`tests/licence-note` now checks that a font's licence file carries the OPERATIVE CLAUSES rather than the
+licence's name — born red on all four, which is how this was discharged rather than declared.
+
+⚠️ **NO RESERVED FONT NAME IS RECORDED, AND THE ABSENCE IS STATED RATHER THAN ASSUMED.** Press Start 2P
+reserves its name and the file beside it says so; nothing shipped with these four declares one, and none
+was found stated in the catalogue they came from. The faces are bundled unmodified either way, so the
+obligation is met in fact and only the record would be short if the upstream does reserve one. The file
+beside the fonts names the paragraph to correct.
+
+📌 **AND THE SAME DEBT IS OPEN ACROSS THE CATALOGUE.** Measured on 2026-09-11: neither the engine's
+`app/public/vendor/` nor `game-platformer`'s ships a licence file of any kind beside its fonts — nineteen
+families in the engine's case. That is not this repository's to fix, and it is recorded because the fix
+here was cheap and the same one would work there.
 
 ⚠️ **THEY DO NOT REPLACE PRESS START 2P.** §4 records that font as the first asset this repository ever
 shipped, and it is still what the title's wordmark is set in — the Dev asked for it by name. Atkinson is
 the READING face: the table list, the pause menu, the score, the keys. A logo and a paragraph are
 different jobs, and a pixel face is a poor one to read a list in.
 
-### 4.4 · The four fixture playfields, whose terms are NOT YET RECORDED
+### 4.4 · The four fixture playfields, whose terms were NOT RECORDED for four days
 
-Opened 2026-09-07, and this section is deliberately the same shape §4.2 had for a day.
+Opened 2026-09-07 in deliberately the same shape §4.2 had for a day, and **closed 2026-09-11**.
 
 The Dev painted `wide-arc.jpg`, `four-flippers.jpg`, `narrow-tower.jpg` and `bare-minimum.jpg` after
 being sent their maps, and they ship reduced as `app/assets/tables/wide-arc.png`,
@@ -211,9 +228,10 @@ being sent their maps, and they ship reduced as `app/assets/tables/wide-arc.png`
 | | |
 |---|---|
 | files | `wide-arc.png`, `four-flippers.png`, `narrow-tower.png`, `bare-minimum.png` in `app/assets/tables/` |
-| painted by | José Rocha, September 2026 |
-| tool | **not stated** |
-| licence | **not yet recorded** |
+| prompted by | José Rocha, September 2026 |
+| tool | Google Gemini ("Nano Banana") |
+| dedication | **CC0 1.0 Universal**, per §4.1 |
+| copyright claimed | none |
 
 ⚠️ **AND CC0 IS NOT WRITTEN ON THEM BY ANALOGY, WHICH IS THE WHOLE OF §4.2's LESSON.** The seven
 playfields are CC0 because of a fact about *them* — that they are machine-generated, so no copyright
@@ -223,12 +241,21 @@ pictures. These four arrived in the same directory later that day. A statement a
 contained is not a statement about what would be put in it next, and reading it as one is exactly the
 step §4.2 exists to refuse.
 
-**What is owed:** one sentence from the Dev saying how these four were made. If the answer is Gemini
-again, they join §4.1 unchanged and this section says so; if he drew them himself, the answer is his to
-choose and the argument in §4.1 does not apply at all.
+**What was owed was one sentence from the Dev saying how these four were made**, and on 2026-09-11 he
+gave it: *"Gemini, como as outras sete."* So they join §4.1 unchanged, on a fact about them rather than on
+a resemblance to their neighbours, and `app/assets/tables/LICENSE.txt` now names all eleven pictures
+instead of seven.
 
-Until then they are shipped and **the record says it does not know**, which is the honest state — the
-alternative is a licence file that asserts something nobody checked.
+⚠️ **AND THE FOUR DAYS ARE KEPT IN THE RECORD RATHER THAN TIDIED AWAY**, for the reason §4.2 gives about
+its own day of not knowing: a section that says "not recorded" and then says CC0 is a section showing the
+rule work — the fact came first and the licence followed it. Deleting the interval would leave a document
+that looks as though it had always known, which is the document nobody can check.
+
+🔴 **WHAT THE FOUR DAYS ACTUALLY COST IS WORTH NAMING.** `app/assets/tables/LICENSE.txt` named seven
+pictures while sitting in a directory that held eleven, and `tests/licence-note` accepted that because it
+matched the licence to the DIRECTORY. A redistributor opening that folder read a dedication and eleven
+files, with nothing to tell them four were outside it — which is the exact harm a licence file exists to
+prevent. The gate now requires a directory-scoped licence to NAME what it covers.
 
 ### 4.1 · The table art is machine-generated, and it is dedicated under CC0 1.0
 

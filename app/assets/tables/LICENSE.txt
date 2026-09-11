@@ -1,9 +1,10 @@
-The seven playfield pictures in this directory
-=============================================
+The eleven playfield pictures in this directory
+==============================================
 
-    low-orbit.png   ion-storm.png   crater-run.png
-    slipstream.png  long-climb.png  ring-belt.png
-    factory.png
+    low-orbit.png   ion-storm.png    crater-run.png
+    slipstream.png  long-climb.png   ring-belt.png
+    factory.png     wide-arc.png     four-flippers.png
+    narrow-tower.png                 bare-minimum.png
 
 are dedicated to the public domain under
 
@@ -21,6 +22,16 @@ Provenance
     factory.png   added 2026-09-07, from art/factory.jpg, which arrived in the
                   same batch as the six above and on the same terms. If that is
                   wrong, this is the line to correct.
+    the last four wide-arc, four-flippers, narrow-tower and bare-minimum were
+                  painted later on 2026-09-07, after the Dev was sent their maps.
+                  Their terms were NOT RECORDED for four days, and this file
+                  named seven of eleven pictures while covering all of them by
+                  living in the same directory -- so a redistributor read a
+                  dedication and eleven files with no way to learn that four were
+                  outside it. Asked on 2026-09-11 how they were made, the Dev
+                  answered: "Gemini, como as outras sete." Same tool, same
+                  regime, same dedication. docs/LICENSES.md §4.4 has the record
+                  of the four days and why the answer could not be assumed.
     derived by    reduction to the playfield's own size, dimming, and
                   quantisation to 128 colours. The masters are not versioned;
                   see .gitignore and art/README.md.

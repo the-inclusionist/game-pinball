@@ -115,18 +115,22 @@ and its row in `docs/LICENSES.md`.
 **Two fonts.** *Press Start 2P* in `app/assets/fonts`, which the title's wordmark is set in, and
 *Atkinson Hyperlegible* in `app/public/vendor/fonts` — the reading face every menu uses, taken from
 `game-platformer` so the two games in this catalogue are read in the same letters. Both are under the
-**SIL Open Font License 1.1**. Press Start 2P's text is copied verbatim beside it; Atkinson's is
-recorded as OWED, in `docs/LICENSES.md` §4.3, and goes beside it before this game is published.
+**SIL Open Font License 1.1**, with the text copied verbatim beside each of them. Atkinson's was a LINK
+for four days and `docs/LICENSES.md` §4.3 carried it as OWED; it was discharged on 2026-09-11 from the copy
+this repository already shipped, and a gate now asks whether a font's licence file carries the OPERATIVE
+CLAUSES rather than the licence's name.
 
-**Seven playfield pictures** in `app/assets/tables`, and **the two photographs behind the menus** in
+**Eleven playfield pictures** in `app/assets/tables`, and **the two photographs behind the menus** in
 `app/assets/screens` — generated with Google Gemini and dedicated **CC0 1.0 with no copyright claimed**,
 because a Creative Commons licence operates on a copyright and a copyright needs a human author. Each
 directory's `LICENSE.txt` carries the argument beside the files.
 
-**And four more playfields whose terms are not yet recorded** — `wide-arc`, `four-flippers`,
-`narrow-tower` and `bare-minimum` in `app/assets/tables`. They are not dedicated under CC0, because
-that dedication rests on a fact about how the other seven were made and nobody has stated one about
-these. `docs/LICENSES.md` §4.4 says what is owed.
+⚠️ Four of those eleven — `wide-arc`, `four-flippers`, `narrow-tower` and `bare-minimum` — shipped for
+four days with their terms NOT RECORDED, under a `LICENSE.txt` that named the other seven and covered
+them only by living in the same directory. The dedication rests on a fact about how a picture was made,
+and extending it by resemblance is the step `docs/LICENSES.md` §4.2 exists to refuse. The Dev answered on
+2026-09-11 — *"Gemini, como as outras sete"* — so the four join the rest, the directory's licence now names
+all eleven, and a gate requires a directory-scoped licence to say what it covers.
 
 Everything else the tables are drawn with is still code — `gfx/table-view` strokes each component as
 the shape it is — so it is AGPL like the rest. This paragraph said there was no art here until the font

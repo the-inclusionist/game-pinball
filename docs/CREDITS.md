@@ -95,18 +95,22 @@ the characters low vision confuses — I l 1, O 0, b d.
 ⚠️ The FILE NAMES are written out because `tests/licence-note` reads this document for each one. See the
 note under Press Start 2P for why that gate stopped taking one entry as evidence for everything.
 
-⚠️ And the licence text beside them is a LINK and not yet a copy, which the OFL requires. It is recorded
-as owed in [`docs/LICENSES.md` §4.3](LICENSES.md).
+✅ And the licence text is beside them since 2026-09-11, verbatim, as the OFL requires. It was a LINK for
+four days and recorded as owed; the body was copied from `press-start-2p.OFL.txt`, which this repository
+already shipped, so no transcription could creep in. [`docs/LICENSES.md` §4.3](LICENSES.md) has the
+record.
 
-## The four fixture playfields — terms not yet recorded
+## The four fixture playfields — the same tool, and the same dedication
 
 `app/assets/tables/wide-arc.png`, `four-flippers.png`, `narrow-tower.png` and `bare-minimum.png` were
-painted by **José Rocha**, September 2026, and **how** is not recorded.
+generated with **Google Gemini ("Nano Banana")**, prompted by **José Rocha**, September 2026, and are
+dedicated **CC0 1.0 Universal with no copyright claimed**, exactly as the other seven are.
 
-They are not credited as machine-generated and they are not dedicated under CC0, because neither is
-known. [`docs/LICENSES.md` §4.4](LICENSES.md) says what is owed and why the seven playfields' dedication
-is not simply extended over them: that dedication rests on a fact about how those seven were made, and
-nobody has stated one about these four.
+⚠️ And **how** was not recorded for four days, which is kept here rather than tidied away. The dedication
+over the other seven rests on a fact about how those seven were made, and extending it to these four by
+resemblance would have been asserting something nobody had checked — in the document whose only purpose is
+to state obligations accurately. Asked on 2026-09-11, the Dev answered: *"Gemini, como as outras sete."*
+The fact came first and the licence followed it. [`docs/LICENSES.md` §4.4](LICENSES.md) has the record.
 
 ## The table art — public domain, no copyright claimed
 
