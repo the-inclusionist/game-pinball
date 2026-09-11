@@ -24,7 +24,7 @@
 | 9 | One language, chosen | ✅ `461d692` |
 | 10 | The game speaks out loud | ✅ `72e82bb` |
 | 12 | Left to the Dev | ⏸ ADR-0002 answered `0a6e6c0`; five open, all his |
-| B | The cartridge architecture | 🛠 **in progress** — A0, A0.1, A2a, A2b done; **A2c is next**, then A3, A4 |
+| B | The cartridge architecture | 🛠 **in progress** — A0, A0.1, A2a, A2b done. **A2c is next and it is A1's work**: measured 2026-09-11, it needs the delegating declaration, not a move |
 
 **Part A is complete.** `npm run validate`: 235 suites, 2891 passing, 1 skipped, build — exit zero.
 
@@ -433,9 +433,54 @@ design decision.
 | **A1** | The factory: the body of `main.ts` becomes `create(ctx)` returning `{ update, teardown }`, with `main.ts` still calling it at import | the whole existing suite — identical behaviour is the claim, and 232 files are the check |
 | **A2a** | ✅ `e3be145` — the seam: `bootPinball(o, engine)` receives the ENGINE instead of the factory that makes one, so the `createGame` call is one named line in the caller rather than buried in the boot | the whole suite, plus `tests/shell-boot` asking the BUILDER for the declaration instead of reading it back out of a fake engine |
 | **A2b** | ✅ `b28fb85` — `app/js/standalone.ts` takes the host's half: `initI18n`, `registerDict` over the cartridge's exported dictionaries, `idiomaPronto()` and the page's `lang`. `app/index.html` loads it; the seventeen browser suites boot through it | `tests/the-shell-does-the-hosts-work`, born red five times over. 🔴 And `tests/one-language` caught `documentElement.lang` going unwritten — a regression invisible in source and visible in a browser |
-| **A2c** | `createGame` leaves the cartridge entirely, with the loop | the same suite, plus that nothing in `app/js` calls `createGame` any more |
+| **A2c** | `createGame` leaves the cartridge entirely, with the loop. 🔴 **MEASURED AND IT IS NOT A MOVE — see below** | the same suite, plus that nothing in `app/js` calls `createGame` any more |
 | **A3** | `package.json` — peer + dev dependencies, `exports`, `files`, `private` removed; `vite.config` gains the `lib` target | the lib build produces an ES module that externalises the engine |
 | **A4** | `vite-plugin-pwa` on the app build | ⚠️ **§1's GATE FIRES HERE, BY DESIGN** — a tracked service worker with `baixarPesados: false` is refused until ADR-0010 is reopened |
+
+### 🔴 A2c measured, 2026-09-11: the obvious cut does not exist
+
+**The cut was attempted and reverted, and what it found is worth more than the attempt.** The natural
+boundary is the line `const shell = bootPinball(…)`: everything above it is what a game can answer alone,
+everything below needs an engine. Splitting there into two function scopes produces **forty compile
+errors**, because **twenty-three bindings are declared BELOW the cut and referenced ABOVE it**:
+
+```
+shell  announce  screen  region  tablePicture  audio  board  backdrop  notThere  laneDepths  live
+hint  step  cabinet  enterPhase  accessibility  screens  title  leaveGame  vision  applyVision
+highScores  hud
+```
+
+Every one of those references is inside a closure that runs long after the body has finished, which is
+why the game works and why one scope was the right shape for a single-artefact game. It is also why the
+two halves cannot simply become two functions: the upper half's `bootOptions` reads `applyVision`
+(declared at 2052) and `enterPhase` (1575), so even the OPTIONS object cannot be built before the body
+that follows it has been declared.
+
+⚠️ **AND THE CONTRACT RULES OUT THE WORKAROUND, WHICH IS THE USEFUL HALF OF THE MEASUREMENT.**
+`cartridge-contract.md` makes `Cartridge.declaration` a **value the host reads BEFORE `create(ctx)` runs** —
+`createGame` takes it and calls `conformanceProblems` on it once. So there is no ordering in which this
+game chooses its table first and hands over a finished declaration: the table comes from `ctx.params`,
+and `ctx` does not exist until after `createGame`.
+
+📌 **THE CONTRACT ALSO NAMES THE ANSWER, UNDER "the one hard problem".** Option (a): *"a delegating
+declaration — a declaration whose every member forwards to the mounted cartridge"*, which it says works
+today with no engine change. This plan reached the same shape independently (the note under the slice
+table), and this game is already built for it: `createPinballWorld` returns GETTERS, and `ADR-0084` is the
+precedent for a `topology` that is recomputed rather than fixed.
+
+**So A2c is A1's work, and the slice table had them in the wrong order.** What it actually takes:
+
+1. a stable `declaration` exported from `shell/cartridge`, forwarding to whichever instance is current;
+2. `createPinball` becoming `create(ctx)`: reading `ctx.params` instead of `location.search`, `ctx.rng`
+   instead of the five `Math.random` seams, `ctx.region` instead of `#game-region`, and publishing its
+   world into the delegate;
+3. only then does `createGame` move to the shell, because only then does the shell have a declaration to
+   hand it.
+
+⚠️ **AND THE GATE FOR IT IS WRITTEN DOWN RATHER THAN LEFT RED.** `tests/the-shell-does-the-hosts-work`
+holds the ledger of the host's work and `createGame(` belongs in it; the file says in a note why it is not
+there yet. A gate that stays red for three commits teaches a reader to run the suite with one known
+failure, which is how the next real one gets waved through.
 
 📌 **A2 SPLIT IN THREE WHILE IT WAS BEING DONE, AND THE REASON IS THE ROW ABOVE IT.** A2a moved a seam,
 A2b moved the language, A2c moves `createGame` — three commits, each separately reversible, where one would

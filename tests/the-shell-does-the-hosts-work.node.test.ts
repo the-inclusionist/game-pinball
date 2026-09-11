@@ -66,6 +66,19 @@ const THE_HOSTS_WORK = [
   'initI18n(', 'registerDict(', 'idiomaPronto(', 'documentElement.lang',
 ] as const;
 
+/**
+ * 📌 `createGame(` IS NOT ON THAT LIST YET, AND LEAVING IT OFF IS DELIBERATE RATHER THAN FORGOTTEN.
+ *
+ * It belongs there — it is the call ADR-0139 exists to move, and it is still in the cartridge. Adding it
+ * today turns two cases red and nothing in this commit can turn them green: the engine is built from a
+ * DECLARATION, this game's declaration describes the playfield that was actually chosen, and the choice
+ * is made six hundred lines into a body that cannot run before the engine exists. Slice A2c is that
+ * knot, and the plan's §B6 carries the measurement — twenty-three bindings cross the cut.
+ *
+ * A gate that is red for three commits teaches a reader to run the suite with one known failure, which is
+ * how the next real one gets waved through. The line is written down instead, where the work is.
+ */
+
 describe('the standalone shell hosts the cartridge', () => {
   test('⚠️ there is a shell, and it is not the game', () => {
     // Without this the two ledgers below pass over an empty string: a file that does not exist contains no
