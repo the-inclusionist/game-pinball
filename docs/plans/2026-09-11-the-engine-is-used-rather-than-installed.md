@@ -17,7 +17,7 @@
 | 2 | The licence debt | ✅ `0a6174f` — **the publication blocker is discharged** |
 | 3 | The loop says it stopped | ✅ `68da7dc` |
 | 4 | The game says what it takes to play it | ✅ `e48090a` |
-| 5 | The two engine gaps | ⏸ engine half ✅ `55b71ce`; **consumer half waits on a release** |
+| 5 | The two engine gaps | ✅ engine half `55b71ce`, **released in 9.0.0**; consumer half is now unblocked |
 | 6 | What the engine thinks is on screen | ✅ `b784448` |
 | 7 | The cabinet becomes a declaration | ✅ `0547271` |
 | 8 | The menus become reachable | ✅ `8c6a8b3` + `9c5456f` |
@@ -29,10 +29,9 @@
 **Part A is complete except §5's consumer half.** `npm run validate`: 232 suites, 2870 passing, 1 skipped,
 build — exit zero.
 
-⚠️ **AND §5 IS WAITING ON A BIGGER RELEASE THAN IT ASKED FOR.** The engine's own tree has since gained
-`26b6d92 feat(boot): the engine mounts and unmounts a cartridge` — ADR-0142 — built on top of the four
-fields §5 added. The npm registry still answers `8.0.0`, so nothing here can consume any of it yet, and the
-version when it comes will carry `mount()` too.
+✅ **AND THE RELEASE CAME: `9.0.0`, ON 2026-09-11.** It carries the four fields §5 added AND ADR-0142's
+`mount()`/`unmount()`, which is why it is a major rather than the 8.1.0 §5 asked for. See **B7** for what it
+changed here, which is less than a major usually costs.
 
 ## Context
 
@@ -536,3 +535,52 @@ What the conversion will start from, so nobody has to measure it twice:
    `Cartridge.slug` is a required field and the contract says it *"matches the repository and the package
    name"*. The remote fixed the folder half; the package name is the Dev's to choose, and this plan does
    not choose it.
+
+## B7 · Engine 9.0.0, and what it actually costs this game
+
+> **The Dev, 2026-09-11:** *"a engine teve update para versão 9.0.0. Estude-a. E adicione as adaptações
+> necessárias ao plano."*
+
+✅ **THE BUMP IS DONE AND IT COST NOTHING**: `^9.0.0` installed, typecheck clean, 234 suites, 2879 passing,
+build — exit zero, with **no source change at all**. Only `package.json` and the lockfile moved.
+
+### The two breaking changes, and why neither reaches here
+
+| Break | Who it reaches | This game |
+|---|---|---|
+| `Engine` gains two REQUIRED members, `mount(declaration, ganchos?)` and `unmount()` | "anyone implementing `Engine` by hand" | ✅ untouched. `shell/boot`'s `EngineLike` restates only `problems`, so the assignability runs the safe way: the engine must satisfy US, not the other way round |
+| `EscritoresVisuais.seguraTeclas` and `PauseIconsCtx.seguraTeclas` become `() => boolean` | "a consumer that builds a pause-icons context by hand" | ✅ untouched — this game never calls `initPauseIcons` |
+
+📌 **AND THAT NARROW SEAM IS THE SAME ONE §1 MEASURED.** Two majors ago the whole 6→8 jump cost one compile
+error, for the reason `shell/boot`'s header gives: the engine's option types are restated at the boundary
+and `main.ts` imports `createGame` directly, so the two are checked against each other. A third major has
+now cost zero.
+
+### What 9.0.0 UNBLOCKS
+
+1. ⚠️ **§5's CONSUMER HALF STOPS BEING BLOCKED.** `getPauseActs`, `setPauseActor`, `setTemaDoJogador` and
+   `setCorrecaoDoJogador` are in the published package — verified in `dist-pkg`, not assumed from a
+   changelog. So this game can now:
+   - supply `getPauseActs` for `resume`/`quit`, which is what lets `entrarNaBarra` leave the engine's card
+     before handing the directions to the accessibility bar (ADR-0044 item 7, unreachable until now);
+   - supply `setCorrecaoDoJogador`, which mounts the 🚥 icon — this game already HAS a correction writer
+     (`engine.aplicarFiltroDeVisao`, used by `shell/vision`);
+   - ⚠️ and still NOT supply `setTemaDoJogador`, deliberately: high contrast is applied by repainting
+     textures and this game's picture is a 320×180 framebuffer. The ⚫ icon stays absent because the game
+     cannot honour it, which is the rule working.
+
+2. 📌 **`GanchosDoCartucho` IS PUBLISHED, WHICH MAKES ONE OF MY OWN NOTES STALE.** `shell/cartridge` declares
+   `CartridgeHooks` locally and says why: *"`GanchosDoCartucho` lives at engine HEAD and the registry
+   answers `8.0.0`, which is older."* It does not any more. The local type becomes a second description of
+   a published one — the exact shape this repository keeps paying for — so slice **A0.1** replaces it with
+   the import, and `tests/cartridge-halves` is what proves the swap changed nothing.
+
+3. **`mount()`/`unmount()` exist for the HOST, and this repository is not one.** A cartridge never calls
+   either; the standalone shell of slice A2 calls `createGame` once and does not swap cartridges. They are
+   named here so the next reader does not go looking for a use.
+
+### Revised order
+
+`A0.1` (the published hooks type) → `§5-consumer` (the two writers and the pause acts) → `A2` (the shell)
+→ `A3` → `A4`. §5's consumer half jumps the queue because it is small, it was already designed, and it is
+the one piece that reaches a child directly: it is what puts the colour-correction icon on the bar.
