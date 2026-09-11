@@ -102,7 +102,7 @@ beforeAll(async () => {
   // boot of a different program.
   document.body.innerHTML = PAGE_MARKUP;
   pinLanguage();
-  await import('../app/js/main.js');
+  await import('../app/js/standalone.js');
 
   /**
    * ⚠️ WAITED FOR, NOT COUNTED. This was `await frames(30)`, and thirty frames is a bet on how busy

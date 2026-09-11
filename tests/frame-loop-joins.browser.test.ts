@@ -47,7 +47,7 @@ beforeAll(async () => {
   history.replaceState({}, '', '?table=ion-storm');
   document.body.innerHTML = PAGE_MARKUP;
   pinLanguage();
-  await import('../app/js/main.js');
+  await import('../app/js/standalone.js');
 });
 
 describe('the frame loop moves what nobody pressed', () => {

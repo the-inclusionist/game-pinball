@@ -36,7 +36,7 @@ beforeAll(async () => {
     <svg id="cvd-filters" width="0" height="0" aria-hidden="true" focusable="false"></svg>
   `;
   pinLanguage();
-  await import('../app/js/main.js');
+  await import('../app/js/standalone.js');
   await frames(6);
 });
 

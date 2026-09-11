@@ -135,7 +135,7 @@ beforeAll(async () => {
    */
   try { localStorage.removeItem('incl_modocego'); } catch { /* a private window refuses; the default is off anyway */ }
   pinLanguage();
-  await import('../app/js/main.js');
+  await import('../app/js/standalone.js');
   blindAtBoot = debug().blind;
   /**
    * ⚠️ INTO A GAME THE WAY A PLAYER GETS INTO ONE, which this file used not to do: it booted `main`

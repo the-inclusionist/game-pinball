@@ -283,7 +283,7 @@ const key = (code: string, type: 'keydown' | 'keyup'): void => {
 beforeAll(async () => {
   document.body.innerHTML = PAGE_MARKUP;
   pinLanguage();
-  await import('../app/js/main.js');
+  await import('../app/js/standalone.js');
   /**
    * ⚠️ INTO A GAME THE WAY A PLAYER GETS INTO ONE, which this file used not to do: it booted `main`
    * and pressed game keys with the TITLE SCREEN still covering the table. That worked for as long as

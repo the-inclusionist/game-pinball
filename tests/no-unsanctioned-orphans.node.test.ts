@@ -22,12 +22,14 @@ import { fileURLToPath } from 'node:url';
 const APP = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'app', 'js');
 
 /**
- * The six that are allowed to be orphans, and why. Each was decided in a commit and the reason lives in
+ * The five that are allowed to be orphans, and why. Each was decided in a commit and the reason lives in
  * the module's own header; this is the ledger, not the argument.
  */
 const SANCTIONED: Readonly<Record<string, string>> = {
-  'main.ts':
-    'the browser entry point — `index.html` imports it, and nothing in `app/js` should',
+  'standalone.ts':
+    'the browser entry point — `index.html` loads it, and nothing in `app/js` should. It is the HOST '
+    + 'half of ADR-0139: it registers the dictionaries the cartridge exports, settles the language, and '
+    + 'only then imports the game',
   'control/links.ts':
     'the flat wiring loom the original runs; `table/original-dispatch` wires per KIND instead, and two '
     + 'looms would drift. What lives only here is the completeness question, asked by '
@@ -54,23 +56,6 @@ const SANCTIONED: Readonly<Record<string, string>> = {
   'gfx/render.ts':
     'the dirty-rectangle compositor. The demonstration repaints all 43005 pixels each frame, which at '
     + 'this size costs less than the bookkeeping that would avoid it',
-  /**
-   * ⚠️ THE SECOND ORPHAN THAT IS OWED, AND IT IS OWED FOR THREE COMMITS RATHER THAN INDEFINITELY.
-   *
-   * `shell/cartridge` is slice A0 of the plan's §B6: the game-owned half of `CreateGameOptions`, named as
-   * the object a host receives (ADR-0139). Nothing imports it because the thing that WILL import it is
-   * `src/standalone.ts`, which is slice A2 — and the slices are ordered so the mechanical risk of turning
-   * `main.ts` into a factory is taken by itself, not mixed with this.
-   *
-   * 📌 IT IS DELIBERATELY A SECOND DESCRIPTION FOR NOW, and `tests/cartridge-halves` is the price of
-   * that: it asserts the cartridge's hooks ARE what `createPinballOptions` already hands the engine. A
-   * second description with nothing checking it is how two answers to one question start; this one is
-   * checked, and it stops being second at A2.
-   */
-  'shell/cartridge.ts':
-    'the game-owned half of the options, slice A0 of the cartridge conversion. Nothing imports it until '
-    + '`src/standalone.ts` builds its options from it (slice A2); `tests/cartridge-halves` holds it up '
-    + 'meanwhile, and asserts it agrees with the boot while both exist',
 };
 
 function modulesUnder(directory: string, prefix = ''): string[] {
@@ -86,6 +71,12 @@ function modulesUnder(directory: string, prefix = ''): string[] {
 /**
  * Every relative specifier a file imports, resolved to a path under `app/js`.
  *
+ * ⚠️ DYNAMIC IMPORTS COUNT, AND LEAVING THEM OUT WOULD HAVE MADE THIS LEDGER LIE. `app/js/standalone`
+ * loads the cartridge with `await import('./main.js')` — it has to, because a static import hoists above
+ * the registration it exists to run first. A scanner that matched only `from '…'` would go on reporting
+ * `main.ts` as imported by nobody, and its ledger entry would have stayed green while being false: the
+ * entry point moved and the reason underneath it did not.
+ *
  * ⚠️ RESOLVED BY HAND, NOT BY `path.resolve`. The module paths here are posix-shaped
  * (`table/x.ts`) because that is what an import specifier looks like, and `path.resolve` on Windows
  * answers with a drive letter and backslashes — which reported a hundred and twenty-five orphans out
@@ -93,7 +84,7 @@ function modulesUnder(directory: string, prefix = ''): string[] {
  */
 function importsOf(module: string, source: string): string[] {
   const out: string[] = [];
-  for (const match of source.matchAll(/from '(\.[^']*)\.js'/g)) {
+  for (const match of source.matchAll(/(?:from|\bimport\s*\()\s*'(\.[^']*)\.js'/g)) {
     const parts = [...dirname(module).split('/'), ...match[1]!.split('/')];
     const stack: string[] = [];
     for (const part of parts) {

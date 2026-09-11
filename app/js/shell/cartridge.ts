@@ -38,7 +38,8 @@
 
 import { createPinballOptions, type BootOptions } from './boot.js';
 import type { GanchosDoCartucho } from '@the-inclusionist/engine';
-import { AVAILABLE_LOCALES, dictionaryOf, type Locale } from '../i18n/index.js';
+import { getLocale } from '@the-inclusionist/engine/core/i18n.js';
+import { AVAILABLE_LOCALES, BASE_LOCALE, dictionaryOf, type Locale } from '../i18n/index.js';
 
 /**
  * THE NAME THIS CARTRIDGE ANSWERS TO.
@@ -49,6 +50,28 @@ import { AVAILABLE_LOCALES, dictionaryOf, type Locale } from '../i18n/index.js';
  * constant follows the two that already match rather than inventing a third answer.
  */
 export const CARTRIDGE_SLUG = 'game-pinball';
+
+/**
+ * WHICH OF THIS CARTRIDGE'S LANGUAGES THE ENGINE'S CHOICE LANDS ON.
+ *
+ * ⚠️ ONE RULE WITH TWO READERS, AND THAT IS WHY IT IS A FUNCTION RATHER THAN TWO EXPRESSIONS. The
+ * cartridge needs it to build its translator and the SHELL needs it to write the page's `lang` — and this
+ * repository's recurring defect is exactly the shape the second copy would have: two descriptions of one
+ * fact, agreeing until one of them is edited.
+ *
+ * 📌 THE FALLBACK IS THE WHOLE OF IT. The engine has locales this game has not been translated into,
+ * and it chose before this game ran — from a saved preference, or from `navigator.language`. Falling back
+ * to the base language is the honest answer: a half-translated screen is worse than a consistent one.
+ *
+ * ⚠️ AND IT READS THE ENGINE'S MODULE STATE, WHICH IT WILL STOP DOING. The contract hands the
+ * translator over in `create(ctx)`; until that slice exists, `getLocale()` is the one place both halves
+ * already agree on. It answers the BASE locale until `idiomaPronto()` has settled, so a host calls it
+ * after that await and not before.
+ */
+export function cartridgeLocale(): Locale {
+  const chosen = getLocale();
+  return (AVAILABLE_LOCALES as readonly string[]).includes(chosen) ? chosen as Locale : BASE_LOCALE;
+}
 
 /**
  * THE WORDS, FOR THE SHELL TO REGISTER.

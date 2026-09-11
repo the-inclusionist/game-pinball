@@ -59,7 +59,7 @@ const apart = (a: number[], b: number[]): number =>
 beforeAll(async () => {
   document.body.innerHTML = PAGE_MARKUP;
   pinLanguage();
-  await import('../app/js/main.js');
+  await import('../app/js/standalone.js');
   for (let i = 0; i < 600 && !debug().backdropLoaded; i++) await frames(1);
   document.querySelector<HTMLElement>('.pinball-title button')?.click();
   await frames(5);

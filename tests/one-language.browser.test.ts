@@ -32,7 +32,7 @@ const frames = async (n: number): Promise<void> => {
 beforeAll(async () => {
   document.body.innerHTML = PAGE_MARKUP;
   pinLanguage();
-  await import('../app/js/main.js');
+  await import('../app/js/standalone.js');
   await frames(10);
 });
 

@@ -27,8 +27,13 @@ export const ENGINE_LANG_KEY = 'incl_lang';
 /**
  * Decides the language before a suite boots the game.
  *
- * ⚠️ CALL IT BEFORE `import('../app/js/main.js')`, not after: the choice is read once, during the engine's
- * `initI18n`, which `createGame` runs at boot. Called late it changes nothing and says nothing.
+ * ⚠️ CALL IT BEFORE `import('../app/js/standalone.js')`, not after: the choice is read once, during the
+ * engine's `initI18n`, which the SHELL runs — that is the first thing `standalone` does, before it
+ * imports a line of the game. Called late it changes nothing and says nothing.
+ *
+ * 📌 AND THE SUITES BOOT THROUGH THE SHELL FOR THAT REASON, not as a spelling. Importing `main.js`
+ * directly is importing a cartridge with no host: no dictionaries registered, so the game draws its own
+ * keys, and no language settled.
  */
 export function pinLanguage(code = 'pt'): void {
   try {

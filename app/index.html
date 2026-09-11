@@ -44,6 +44,11 @@
     and the visual menu loses half of what it offers. Found by booting, not by reading.
   -->
   <svg id="cvd-filters" width="0" height="0" aria-hidden="true" focusable="false"></svg>
-  <script type="module" src="./js/main.ts"></script>
+  <!--
+    ⚠️ THE SHELL, NOT THE GAME. ADR-0139: a cartridge is loaded BY a host, and this page's host is
+    `standalone.ts` — it registers the dictionaries, settles the language, and only then imports the
+    cartridge. Pointing this back at `main.ts` would run the game before a word of that was done.
+  -->
+  <script type="module" src="./js/standalone.ts"></script>
 </body>
 </html>

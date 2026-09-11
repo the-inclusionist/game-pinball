@@ -83,8 +83,8 @@ import { MUSIC_WINDOW, MUSIC_LOOKAHEAD } from './shell/demo.js';
 import { playSchedule } from './audio/midi-player.js';
 import { createDemo, hintFor, type Demo } from './shell/demo.js';
 import { keyOf } from './i18n/keys.js';
-import { AVAILABLE_LOCALES, BASE_LOCALE, dictionaryOf, type Locale } from './i18n/index.js';
-import { initI18n, idiomaPronto, getLocale, registerDict, bcp47 } from '@the-inclusionist/engine/core/i18n.js';
+import { type Locale } from './i18n/index.js';
+import { cartridgeLocale } from './shell/cartridge.js';
 import { createSoundBoard, releaseVoice } from './audio/sfx.js';
 import { soundEntriesOf, VOICES } from './audio/voices.js';
 import { createWebAudioOutput } from './audio/web-audio.js';
@@ -108,56 +108,20 @@ import { srSay, srAlert } from '@the-inclusionist/engine/core/a11y-sr.js';
  */
 import * as engineState from '@the-inclusionist/engine/core/state.js';
 
-/* ======================= THE SHELL'S PROLOGUE, AND IT MOVES OUT AT SLICE A2 =======================
- *
- * ⚠️ EVERYTHING BELOW THIS BANNER UNTIL THE NEXT ONE IS WORK A HOST DOES, NOT WORK A CARTRIDGE DOES.
- * ADR-0139 puts the dictionary registration and the locale on whichever shell loads the game; `main.ts`
- * is this repository's standalone shell today, so it does them here.
- *
- * 📌 IT WAS SIX HUNDRED LINES FURTHER DOWN, IN THE MIDDLE OF THE GAME'S OWN STATE, and moving it up
- * changes no behaviour: nothing above it reads a translated word. What it buys is a file with one cut in
- * it instead of two — slice A1 wraps everything after this prologue into `create(ctx)`, and a prologue
- * sitting in the middle of that body would have had to be wrapped with it or hoisted under pressure.
- */
 /**
- * The language this game draws in — THE ENGINE'S, not a literal of its own.
+ * THE LANGUAGE THIS GAME DRAWS IN, decided by whoever loaded it.
  *
- * 🔴 IT WAS `'pt'`, WRITTEN OUT, AND THE TWO HALVES OF THE SCREEN DID NOT AGREE. Measured 2026-09-11 in
- * both test browsers: the engine answered `en` and this game said `pt`. Everything the engine draws — the
- * accessibility bar, the pause card, the reach notice — spoke one language over a HUD, a table list and a
- * pause menu that spoke another. Three dictionaries shipped and a player could reach one.
+ * ⚠️ IT IS NOT CHOSEN HERE ANY MORE, AND THAT IS ADR-0139. Settling a locale and writing the page's
+ * `lang` is work a HOST does — `app/js/standalone.ts` does it for the standalone page, and the platform
+ * does it on its side. What a cartridge does is READ the answer, which is why this is a call and not a
+ * literal, and why there is no `await` beside it: by the time the cartridge is imported the shell has
+ * already waited on `idiomaPronto()`.
  *
- * ⚠️ THE ENGINE IS THE ONE THAT ASKED THE CHILD'S MACHINE. `initI18n` reads a saved preference first and
- * `navigator.language` second. This game asked nothing. Reading its answer is not a courtesy: it is the
- * only way one screen speaks one language, and under ADR-0117 the language belongs to the SITE anyway.
- *
- * ⚠️ AND THE AWAIT IS NOT OPTIONAL, WHICH THE MEASUREMENT ALSO SHOWED. Every locale but `pt` is a chunk
- * fetched on demand, so `getLocale()` answers `pt` until it lands — chromium and firefox disagreed with
- * each other purely on that timing. `idiomaPronto()` is the engine's own handle for it, and
- * `boot/create-game` waits on exactly the same one before it writes its icon labels.
- *
- * 📌 AND THE REGISTRATION IS THE SHELL'S, WHICH MATTERS FOR WHAT COMES NEXT. `ADR-0139` makes a cartridge
- * EXPORT its dictionaries and never register them; `main.ts` is this game's standalone shell today, so the
- * two lines below are the shell doing its job. When the cartridge conversion comes they move to
- * `src/standalone.ts` and the platform does the same thing on its side — `app/js/i18n` is untouched.
+ * 📌 AND IT STILL READS THE ENGINE RATHER THAN A PARAMETER, because `ctx` does not exist yet: the
+ * contract hands the translator over in `create(ctx)`, and that is a later slice. Until then the engine's
+ * own module state is the one place both halves already agree on.
  */
-initI18n(document);
-for (const code of AVAILABLE_LOCALES) {
-  const refused = registerDict(code === 'pt' ? 'pt' : code, dictionaryOf(code));
-  // A non-empty answer is a key collision with the engine's own 558: one surface would silently start
-  // speaking the other's words. Gated in `tests/i18n-engine-registration`; reported here because a
-  // console line at boot is what the engine's own `registerDict` promises a writer.
-  if (refused.length) console.warn('[pinball] keys the engine refused:', refused);
-}
-await idiomaPronto();
-
-const chosen = getLocale();
-const locale: Locale = (AVAILABLE_LOCALES as readonly string[]).includes(chosen)
-  ? chosen as Locale
-  // The engine has locales this game has not been translated into. Falling back is the honest answer;
-  // drawing a half-translated screen would be worse than drawing a consistent one in the base language.
-  : BASE_LOCALE;
-document.documentElement.lang = bcp47(locale);
+const locale: Locale = cartridgeLocale();
 
 /* ======================= AND HERE THE CARTRIDGE BEGINS =======================
  *

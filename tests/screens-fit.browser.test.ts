@@ -69,7 +69,7 @@ beforeAll(async () => {
     <svg id="cvd-filters" width="0" height="0" aria-hidden="true" focusable="false"></svg>
   `;
   pinLanguage();
-  await import('../app/js/main.js');
+  await import('../app/js/standalone.js');
   for (let i = 0; i < 600 && !debug().backdropLoaded; i++) await frames(1);
   await frames(5);
 });

@@ -51,7 +51,7 @@ beforeAll(async () => {
   document.head.innerHTML = '';
   document.body.innerHTML = PAGE_MARKUP;
   pinLanguage();
-  await import('../app/js/main.js');
+  await import('../app/js/standalone.js');
   for (let i = 0; i < 600 && !debug().backdropLoaded; i++) await frames(1);
   // Into a game, which is the only state the HUD is shown in.
   document.querySelector<HTMLElement>('.pinball-title button')?.click();

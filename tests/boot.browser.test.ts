@@ -40,7 +40,7 @@ beforeAll(async () => {
   // boot of a different program.
   document.body.innerHTML = PAGE_MARKUP;
   pinLanguage();
-  await import('../app/js/main.js');
+  await import('../app/js/standalone.js');
 });
 
 describe('⚠️ what this game asks of a machine, measured at boot', () => {
