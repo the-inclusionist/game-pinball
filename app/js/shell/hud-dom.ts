@@ -110,8 +110,24 @@ export function mountHud(o: HudDomOptions): MountedHud {
     color: HUD_TEXT_COLOR,
     containerType: 'inline-size',
     fontSize: `calc(100cqw * ${HUD_LINE_HEIGHT} / ${o.screen.screenWidth})`,
-    // A stack rather than a face: no font is shipped, and a HUD that waits for a download shows
-    // nothing while it waits. `tabular-nums` keeps the score from jittering as its digits change.
+    /**
+     * A STACK RATHER THAN A FACE, and one of the two reasons written here has expired.
+     *
+     * 🔴 IT SAID «no font is shipped». Four Atkinson Hyperlegible faces and Press Start 2P have shipped
+     * since 2026-09-07, and `document.fonts.check` answers true before the HUD is drawn — measured in both
+     * browsers on 2026-09-11. The sentence was true when it was written and stopped being true three
+     * commits later, which is the shape this repository keeps finding in its own prose.
+     *
+     * ⚠️ THE OTHER REASON HOLDS AND IS THE ONE THAT DECIDES: `tabular-nums` keeps the score from jittering
+     * as its digits change, and a monospace stack gives it for nothing. A score that shifts sideways on
+     * every bumper is a score a player cannot read at a glance, and this one is read WHILE a ball is in
+     * play.
+     *
+     * 📌 AND WHETHER THE READING FACE SHOULD WIN ANYWAY IS THE DEV'S, NOT THIS LINE'S. Atkinson exists to
+     * separate the characters low vision confuses, which is an argument no monospace stack answers; it is
+     * also an ADR-0002 question, because the HUD's block sizes are that record's. Named here rather than
+     * decided, and `tests/hud-inside-the-canvas` measures whichever face is in force.
+     */
     fontFamily: 'ui-monospace, "DejaVu Sans Mono", Menlo, Consolas, monospace',
     fontVariantNumeric: 'tabular-nums',
     lineHeight: '1.1',

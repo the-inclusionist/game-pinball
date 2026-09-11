@@ -190,6 +190,16 @@ writes and a screen nothing opens.
 ONE remapper is reachable today — this game's. The «two remappers, one child» defect is CREATED by §8, so it
 is §8's to close, in the same commit that opens the door.
 
+📏 **RE-MEASURED AFTER §8 LANDED, AND IT IS STILL NOT OWED.** §8 switched the predicate on and did NOT
+close this, which would be a loose end if the premise had changed — so it was checked rather than assumed.
+The engine's remap panel lives inside the engine's PAUSE CARD, behind its `options` item; the card is
+mounted hidden and **nothing in this game calls `engine.pausa.mostrar`** (`git grep` over `app/js` returns
+nothing). A player still cannot reach the engine's remapper, so there is still exactly one, and migrating
+the store would move a child's saved keys to a screen they cannot open.
+
+⚠️ **THE CONDITION IS NAMED SO IT CANNOT PASS UNNOTICED:** the day anything in this game opens the
+engine's pause card, the migration is owed in that same commit.
+
 ⚠️ The sweep and the palette keys stay OUT of the declaration — they are not `KeyScheme` positions, and
 inventing a shared-vocabulary slot for one pinball's accessibility keys is the wrong place to put them.
 

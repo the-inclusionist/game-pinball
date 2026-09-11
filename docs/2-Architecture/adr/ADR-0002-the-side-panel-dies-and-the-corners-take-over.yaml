@@ -140,7 +140,29 @@ consequences:
     - "Two narrow columns are an awkward shape for a player name."
   ugly:
     - "The layout is decided before there is anything to draw in it. The block sizes come from a font
-       that does not exist yet, and the numbers will move once it does."
+       that does not exist yet, and the numbers will move once it does.
+
+       ERRATUM 2026-09-11: ANSWERED, AND NOT THE WAY THIS LINE EXPECTED. A font did arrive — four
+       Atkinson Hyperlegible faces on 2026-09-07 — and the numbers did NOT move, because the HUD does
+       not use it. Measured in both browsers: `document.fonts.status` is `loaded` and Atkinson is
+       available before the blocks are drawn, and `getComputedStyle` reports the blocks are rendered in
+       `ui-monospace, DejaVu Sans Mono, Menlo, Consolas, monospace`.
+
+       That is a decision and not an accident: `tabular-nums` keeps the score from jittering as its
+       digits change, and a score that shifts sideways on every bumper cannot be read at a glance while
+       a ball is in play. ⚠️ BUT ONE OF THE TWO REASONS WRITTEN BESIDE IT HAD EXPIRED — `shell/hud-dom`
+       said 'no font is shipped', which stopped being true three commits after it was written. The
+       correction is in that file.
+
+       ⚠️ AND THE BLOCK SIZES ARE NO LONGER PREDICTED. `tests/hud-inside-the-canvas` measures every
+       block's real rectangle against the canvas, in a real browser, and now also pins the two facts
+       that measurement depends on: the fonts have settled, and the face is the one the game chose.
+
+       📌 WHAT IS STILL OPEN IS A DIFFERENT QUESTION, AND IT IS THE DEV'S. Atkinson exists to separate
+       the characters low vision confuses, which no monospace stack answers; whether the reading face
+       should win over the tabular figures is a choice about who this HUD is for, and this record is
+       where it would be made. Corrected in place under ADR-0057 (engine), which allows an erratum and
+       nothing else."
 
 more-information: |
   Implemented in `app/js/shell/hud.ts`, tested in `tests/shell-hud.node.test.ts`. The rule in § 2 is

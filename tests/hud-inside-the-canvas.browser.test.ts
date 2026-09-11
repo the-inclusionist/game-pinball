@@ -68,6 +68,29 @@ beforeAll(async () => {
 const canvas = (): DOMRect => document.querySelector('canvas')!.getBoundingClientRect();
 
 describe('every HUD block stays inside the canvas', () => {
+  test('⚠️ and it is measured with the face it actually uses, after the fonts have settled', () => {
+    /**
+     * ⚠️ A LAYOUT MEASURED IN A FALLBACK FACE IS A MEASUREMENT OF NOTHING. Every case below reads
+     * `getBoundingClientRect`, and a block measured before its webfont lands is measured in whatever the
+     * browser had to hand — which is how a gate goes green over a layout that breaks on a child's machine
+     * once the download finishes.
+     *
+     * 📏 MEASURED 2026-09-11, in both engines: the fonts report `loaded`, Atkinson is available — and the
+     * HUD is drawn in a MONOSPACE STACK, on purpose. `shell/hud-dom` carries the reason (`tabular-nums`, so
+     * the score does not jitter as its digits change) and the correction to the reason that had expired.
+     *
+     * So this case pins two facts the ones below depend on: the fonts are settled, and the face is the one
+     * the game chose. ADR-0002's open consequence — «the block sizes come from a font that does not exist
+     * yet, and the numbers will move once it does» — is answered by that pair: the font exists, the HUD
+     * does not use it, and the sizes are measured rather than predicted.
+     */
+    expect(document.fonts.status, 'the fonts had not settled when the blocks were measured').toBe('loaded');
+
+    const block = document.querySelector<HTMLElement>('[data-block]')!;
+    expect(getComputedStyle(block).fontFamily, 'the HUD is drawn in a face nobody chose')
+      .toContain('monospace');
+  });
+
   test('with the text each of them normally carries', () => {
     const box = canvas();
     const outside = [...document.querySelectorAll<HTMLElement>('[data-block]')]
