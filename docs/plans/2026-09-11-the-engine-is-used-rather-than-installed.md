@@ -2,6 +2,12 @@
 
 > Approved by the Dev on 2026-09-11, after four decisions recorded below. Sections are worked in order;
 > a section is finished when `npm run validate` comes out zero and its gates are in the tree.
+>
+> ⚠️ **AMENDED 2026-09-11, ON THE CARTRIDGE ARCHITECTURE.** The Dev: *"Atualize o plano para que este
+> trabalho contemple este material."* Five records and three documents arrived that change WHO calls
+> `createGame` and WHERE the loop lives — see **Part B** at the end. Sections 1–7 are unaffected in
+> substance and §§3, 9 and 10 change shape; every amendment is written into the section it touches rather
+> than only collected at the end, so a reader of one section is not reading a stale one.
 
 ## Context
 
@@ -344,3 +350,112 @@ Per stage, and none of it is optional:
 - §8's regression gate is the one to run by hand as well as in CI: with a ball in play and nothing open,
   press J, K, U, 7, Y, 8, O and watch the flippers and the plunger move.
 - Commits directly on `main` in both repositories; another session shares both working trees.
+
+---
+
+# Part B · The cartridge architecture, folded in
+
+> Read on 2026-09-11 at the Dev's instruction: `the-inclusionist-site/docs/{cartridge-brief,
+> cartridge-contract,architecture}.md` and **ADR-0117, ADR-0139, ADR-0140, ADR-0141, ADR-0142** in
+> `the-inclusionist-docs`. **Those records win wherever this plan disagrees with them.**
+
+## B0 · What changed, in one paragraph
+
+A game stops being a unit of installation. **The site is the PWA** (ADR-0117); a game ships TWO artefacts
+from one source (ADR-0140) — a standalone PWA *and* a cartridge — and **a cartridge never calls
+`createGame`** (ADR-0139): it exports its `GameDeclaration` and the game-owned half of the options, and
+whoever hosts it calls `createGame` once. The engine gains `mount(declaration, hooks)` / `unmount()`
+(ADR-0142), and a cartridge draws randomness only from `ctx.rng` (ADR-0141).
+
+## B1 · ⚠️ THIS REPOSITORY IS TOLD TO WAIT, AND THE PLAN RESPECTS THAT
+
+The brief is explicit, on ADR-0068 §6: one game goes end to end first, that game is **whackwhack**, and
+*"if you are not whackwhack, wait for the contract to come back with its holes filled."* The contract
+itself lists four things it says must not be invented — including the exact shape of `ctx` and whether
+`declines` is host-owned or game-owned, which is a field **this plan already wrote into `ADR-0010`**.
+
+**So Part B is not scheduled work.** It is what §§1–10 must not contradict, plus the inventory that the
+conversion will start from. The conversion begins when the Dev says whackwhack has landed.
+
+## B2 · What §§1–7 got right, measured against the contract
+
+Worth stating, because it is most of the plan: **the game-owned half of `CreateGameOptions` is exactly
+what §§4, 7 and 8 have been filling in.** `CartridgeHooks` is `isNavigable`, `comIndice`, `naBarraDe`,
+`navBar`, `players`, `setPhase`, `sonarPlayers`, `isBlindMode`, `preset` — and `preset` (§4), `players`
+(§7), `isNavigable` and `setPhase` (§8) are four of the nine. None of that work is wasted or misplaced;
+it moves from an options object into a `hooks` object, unchanged.
+
+§6 is load-bearing in the same way: a cartridge that leaves a node outside its `region` is the defect
+`teardown` exists to prevent, and a screen the engine cannot tell is shut is the same class of thing.
+
+## B3 · What Part A has to be corrected about
+
+### §3 — the frame loop belongs to the SHELL
+
+⚠️ **"A cartridge never calls `startLoop`"**, and six cartridges each opening a `requestAnimationFrame`
+is six loops fighting over one frame. §3 put the loop into `shell/frame-loop` and wired `engine.aoFalhar`
+to it. 📌 **AND THAT IS WHY IT IS A MODULE**: the extraction §3 made for testability is exactly the move
+the conversion needs — `startFrames` goes to `src/standalone.ts` and the cartridge exposes `update(dt)`.
+The `aoFalhar` wiring stays right where the contract puts it: *"the shell wires it to `srAlert` and to
+something visible"*, which is spec D16.
+
+### §9 — a cartridge EXPORTS its dictionaries and never registers them
+
+The contract: `dicts` is *"registered by whichever shell loads this cartridge; a cartridge never registers
+its own"*. §9 says the game calls `registerDict` itself. ⚠️ **THAT IS NOW HALF WRONG**: the standalone
+shell registers them, the platform registers them, and the game exports them. The locale half of §9 —
+taking the language from the engine instead of hard-coding `'pt'` — is unchanged and becomes MORE
+necessary: on the platform the language is the site's.
+
+### §10 — unchanged, and the seam is in the right place
+
+`core/a11y-sr` and `core/i18n` are named in the contract as *"what stays a deep import"*, because they
+hold no module state. §10's `shell/announce` seam takes its three functions by injection, which is what a
+`ctx`-shaped world wants anyway.
+
+### ADR-0010 — its `bad` consequence is coming true on schedule
+
+That record wrote a defect against itself: *"`baixarPesados: false` IS A DEFAULT REFUSED, WHICH IS THE
+KIND THAT ROTS QUIETLY. If this game gains a service worker and nobody reopens this record, the flag will
+go on refusing a download that by then WOULD have a reader."*
+
+⚠️ **THE BRIEF REQUIRES A SERVICE WORKER**: *"Be a PWA in standalone mode... Adding `vite-plugin-pwa` to
+the app build is part of this work."* 📌 **AND §1's GATE WILL FIRE THE DAY IT LANDS**, by construction — it
+refuses a tracked `sw.js` or `.webmanifest` while the flag is false. That is the gate working, not a
+nuisance, and the record is reopened then rather than edited now.
+
+Two halves to answer at that point, and they are different:
+- **Standalone**: a PWA with a service worker HAS a reader for that cache. The flag's reason expires.
+- **Cartridge**: the question does not arise — the pinball will not call `createGame`, so `baixarPesados`
+  is the platform's field. ADR-0117 §2: *"the platform loads the accessibility stack ONCE."*
+
+⚠️ **AND `declines.semVozNeural` MAY BE ON THE WRONG SIDE OF THE LINE.** The contract lists `declines`
+among the four things *"open, and not to be invented"* — host-owned or game-owned is undecided. ADR-0010
+put it in the game's hands. If it turns out host-owned, that record needs an erratum, not a reversal: the
+DECISION (no neural voice here) stands either way; what moves is who says it.
+
+## B4 · The inventory, measured 2026-09-11
+
+What the conversion will start from, so nobody has to measure it twice:
+
+| Rule | This repository today |
+|---|---|
+| No module-scope `let` (spec D14) | 🔴 **24 in `app/js/main.ts`** — and `main.ts` is 2300 lines that boot on import |
+| A cartridge never calls `createGame` | called through `bootPinball` (`shell/boot.ts`), which becomes `src/standalone.ts` |
+| A cartridge never calls `startLoop` / owns no rAF | `startFrames` in `shell/frame-loop` — §3 already made it a module that takes its clock |
+| Never import `rnd`/`randInt`/`shuffle`/`reseed` | ✅ **zero imports of `core/rng`** — measured; this game never reached for the shared stream |
+| Randomness comes from `ctx.rng` | five modules use `Math.random`, all behind an injectable `random` option: `physics/step`, `physics/stuck`, `control/comet-mission`, `control/power-ups`, `audio/midi-player` |
+| A cartridge reads `ctx.params`, not `location.search` | read in `main.ts` only — `?table=`, `?times=`, `?demo=original` |
+| Export `dicts` | `app/js/i18n/` is a value-returning translator already; the dictionaries are exported, the REGISTRATION is what moves |
+| Two build targets, `peerDependencies`, `exports`, no `private` | none of it yet; `package.json` is `private: true` |
+| PWA in standalone mode | no service worker, no manifest — see ADR-0010 above |
+
+## B5 · Two things the brief says about this repository that are now stale
+
+1. ⚠️ **"pinball: it has no git remote at all"** — it has one since 2026-09-11:
+   `github.com/the-inclusionist/game-pinball`, private, `main` tracked.
+2. ⚠️ **"its slug is undecided — the package says `game-space-cadet`, the folder says `game-pinball`, and
+   ADR-0082 §1 makes them the same word."** Still true, and it is now a BLOCKER rather than an untidiness:
+   `Cartridge.slug` is a required field and the contract says it *"matches the repository and the package
+   name"*. The remote fixed the folder half; the package name is the Dev's to choose, and this plan does
+   not choose it.
