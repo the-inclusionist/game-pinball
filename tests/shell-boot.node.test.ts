@@ -143,6 +143,30 @@ describe('the camera on a table wider than the window', () => {
     expect(source, 'the debug surface carries both axes').toMatch(/get cameraX\(\) \{ return shell\.cameraX; \}/);
   });
 
+  test('⚠️ and the FRAME LOOP is handed the engine’s failure channel, which no unit test can see', () => {
+    /**
+     * An inventory rather than a run, for the reason this file's camera case gives two tests up: `main.ts`
+     * is the browser entry point and nothing drives it. `tests/shell-frame-loop` proves that a frame which
+     * throws reaches `aoFalhar` and that NOTHING is scheduled after it; what it cannot see is whether the
+     * `aoFalhar` this game passes is the ENGINE'S — the one that writes the assertive live region, draws a
+     * visible box and narrates — or a stub somebody left behind.
+     *
+     * ⚠️ AND THE SECOND CLAUSE IS THE ONE THAT MATTERS MOST. The loop was a bare
+     * `requestAnimationFrame(frame)` recursion for the whole port; a `try` that got reverted, or a second
+     * loop added beside this one, would leave the game stopping in silence again — and silence is exactly
+     * what this game produces while it is thinking, so nobody would notice. The engine's own note: "parar
+     * não é opcional; o que ele perde é dizer que parou."
+     */
+    const source = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../app/js/main.ts'), 'utf8');
+
+    expect(source, 'the loop comes from the module that carries the reasoning')
+      .toMatch(/startFrames\(\{/);
+    expect(source, 'and the engine is what it tells when a frame throws')
+      .toMatch(/aoFalhar: \(error\) => shell\.engine\.aoFalhar\(error\)/);
+    expect(source, 'and no bare frame recursion is left to stop in silence')
+      .not.toMatch(/requestAnimationFrame\(frame\)/);
+  });
+
   test('⚠️ and the accessibility keys are refused only while there is NOTHING to describe', () => {
     // This test used to say the keys are refused for the whole demonstration, and that was right for
     // as long as it was true: the declaration was built once at boot from the AUTHORED table, so with

@@ -85,6 +85,7 @@ import { createSoundBoard, releaseVoice } from './audio/sfx.js';
 import { soundEntriesOf, VOICES } from './audio/voices.js';
 import { createWebAudioOutput } from './audio/web-audio.js';
 import { ensureAC } from '@the-inclusionist/engine/platform/audio.js';
+import { startFrames } from './shell/frame-loop.js';
 /**
  * ⚠️ BLIND MODE IS THE ENGINE'S STATE NOW, AND THIS IMPORT IS THE WHOLE OF THAT CHANGE.
  *
@@ -886,7 +887,6 @@ const rollovers = createRolloverWatch(authored);
 let frameCount = 0;
 let ballsLost = 0;
 let lastFrames = 0;
-let previous = performance.now();
 /**
  * ⚠️ ONE FRAME, CALLABLE. The loop below drives it, and so can a test.
  *
@@ -1330,12 +1330,24 @@ function paint(): void {
   context.putImageData(image, 0, 0);
 }
 
-function frame(now: number): void {
-  step(Math.min(4, (now - previous) / (1000 / 60)));
-  previous = now;
-  requestAnimationFrame(frame);
-}
-requestAnimationFrame(frame);
+/**
+ * ⚠️ THE FRAMES, AND WHAT HAPPENS WHEN ONE OF THEM THROWS.
+ *
+ * This was five lines here and none of them was a `try`. `requestAnimationFrame` does not re-schedule a
+ * callback that raised, so one unexpected null under `step()` ended the game with nothing but a console
+ * line to say so — and a player in BLIND MODE cannot tell that silence from the silence of a game that is
+ * thinking. They wait for something that already died.
+ *
+ * `shell/frame-loop` carries the reasoning and the clamp; `engine.aoFalhar` is the engine's own answer,
+ * handed over by `createGame` and unwired here until now: it writes the assertive live region, draws a
+ * visible box and narrates.
+ */
+startFrames({
+  raf: (callback) => requestAnimationFrame(callback),
+  now: () => performance.now(),
+  step,
+  aoFalhar: (error) => shell.engine.aoFalhar(error),
+});
 
 /**
  * ⚠️ THE GAME HAD NO INPUT UNTIL THIS LINE, AND A THOUSAND TESTS WERE GREEN OVER IT.
