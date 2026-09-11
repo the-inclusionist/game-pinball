@@ -226,7 +226,14 @@ delivered), ring-walking, focus management, the "N of M" announcement, and the p
 1. With nothing open and a ball in play, every cabinet key still reaches the table (J, K, U, 7, Y, 8, O).
    ⚠️ Write it first against a forced `isNavigable: () => true`, watch it fail on §6's defect, then watch
    §6 turn it green. That sequence is the proof and belongs in the commit message.
-2. Escape over the palette closes it.
+2. ~~Escape over the palette closes it.~~ 🔴 **MEASURED 2026-09-11 AND THE PREMISE WAS WRONG: IT ALREADY
+   CLOSES.** `shell/choice-dialog:232` binds its own `keydown` for Escape and the paragraph above it says
+   so — "Escape is handled HERE, not by the engine, though this dialog is registered with the engine's
+   chain and should be". The header sentence this prediction was built on ("pressing Escape over the open
+   dialog did nothing") is about a ball IN PLAY, where the engine's chain does not run; with the dialog
+   open, the game has always answered. So §8 buys the palette the directional, the pad, the «N of M»
+   announcement and the accessibility bar — not Escape — and switching the engine on while the game's own
+   listener stays would be TWO handlers on one key, which is the thing this section exists to avoid.
 3. The engine's pause card opens, is navigable, and is **exitable** — root + "no" returns to play.
 4. Both menu systems never own the cabinet at once.
 
