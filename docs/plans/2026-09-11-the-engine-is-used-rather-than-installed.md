@@ -17,17 +17,16 @@
 | 2 | The licence debt | ✅ `0a6174f` — **the publication blocker is discharged** |
 | 3 | The loop says it stopped | ✅ `68da7dc` |
 | 4 | The game says what it takes to play it | ✅ `e48090a` |
-| 5 | The two engine gaps | ✅ engine half `55b71ce`, **released in 9.0.0**; consumer half is now unblocked |
+| 5 | The two engine gaps | ✅ engine half `55b71ce`, released in 9.0.0; consumer half `f5064f1` |
 | 6 | What the engine thinks is on screen | ✅ `b784448` |
 | 7 | The cabinet becomes a declaration | ✅ `0547271` |
 | 8 | The menus become reachable | ✅ `8c6a8b3` + `9c5456f` |
 | 9 | One language, chosen | ✅ `461d692` |
 | 10 | The game speaks out loud | ✅ `72e82bb` |
 | 12 | Left to the Dev | ⏸ ADR-0002 answered `0a6e6c0`; five open, all his |
-| B | The cartridge architecture | 📋 recorded; the brief tells this repository to wait |
+| B | The cartridge architecture | 🛠 **in progress** — A0, A0.1, A2a, A2b done; **A2c is next**, then A3, A4 |
 
-**Part A is complete except §5's consumer half.** `npm run validate`: 232 suites, 2870 passing, 1 skipped,
-build — exit zero.
+**Part A is complete.** `npm run validate`: 235 suites, 2891 passing, 1 skipped, build — exit zero.
 
 ✅ **AND THE RELEASE CAME: `9.0.0`, ON 2026-09-11.** It carries the four fields §5 added AND ADR-0142's
 `mount()`/`unmount()`, which is why it is a major rather than the 8.1.0 §5 asked for. See **B7** for what it
@@ -432,9 +431,24 @@ design decision.
 |---|---|---|
 | **A0** | `app/js/cartridge.ts` — the identity, the dictionaries and the game-owned HOOKS, as one exported object | a gate that the hooks EQUAL what `createPinballOptions` hands `createGame` today, so the split is proved before anything moves |
 | **A1** | The factory: the body of `main.ts` becomes `create(ctx)` returning `{ update, teardown }`, with `main.ts` still calling it at import | the whole existing suite — identical behaviour is the claim, and 232 files are the check |
-| **A2** | `src/standalone.ts` takes the boot: `createGame`, the `ctx`, the loop. `app/index.html` points at it | the same suite, plus that nothing in `app/js` calls `createGame` any more |
+| **A2a** | ✅ `e3be145` — the seam: `bootPinball(o, engine)` receives the ENGINE instead of the factory that makes one, so the `createGame` call is one named line in the caller rather than buried in the boot | the whole suite, plus `tests/shell-boot` asking the BUILDER for the declaration instead of reading it back out of a fake engine |
+| **A2b** | ✅ `b28fb85` — `app/js/standalone.ts` takes the host's half: `initI18n`, `registerDict` over the cartridge's exported dictionaries, `idiomaPronto()` and the page's `lang`. `app/index.html` loads it; the seventeen browser suites boot through it | `tests/the-shell-does-the-hosts-work`, born red five times over. 🔴 And `tests/one-language` caught `documentElement.lang` going unwritten — a regression invisible in source and visible in a browser |
+| **A2c** | `createGame` leaves the cartridge entirely, with the loop | the same suite, plus that nothing in `app/js` calls `createGame` any more |
 | **A3** | `package.json` — peer + dev dependencies, `exports`, `files`, `private` removed; `vite.config` gains the `lib` target | the lib build produces an ES module that externalises the engine |
 | **A4** | `vite-plugin-pwa` on the app build | ⚠️ **§1's GATE FIRES HERE, BY DESIGN** — a tracked service worker with `baixarPesados: false` is refused until ADR-0010 is reopened |
+
+📌 **A2 SPLIT IN THREE WHILE IT WAS BEING DONE, AND THE REASON IS THE ROW ABOVE IT.** A2a moved a seam,
+A2b moved the language, A2c moves `createGame` — three commits, each separately reversible, where one would
+have mixed a mechanical move with a design decision and left no way to tell which half broke the suite.
+A2b is the one that proves the value of that: its own regression was a single line that no source-reading
+gate could see, and it was caught because the browser suites still ran unchanged around it.
+
+⚠️ **AND A2b MADE ONE MEASUREMENT HONEST THAT WAS ABOUT TO BECOME LOAD-BEARING.**
+`tests/no-unsanctioned-orphans` matched only `from '…'`, so a dynamic import counted as nothing. The shell
+loads the cartridge with `await import('./main.js')` — it has to, because a static import hoists above the
+registration it exists to run first — so `main.ts` would have stayed in the ledger as "imported by nobody"
+while being imported on every boot, with the entry underneath reading as verified. The scanner counts
+`import(` now, and `shell/cartridge` left the ledger exactly as its own entry had promised.
 
 ⚠️ **THE DECLARATION IS THE ONE DESIGN PROBLEM, AND IT IS IN A1.** `Cartridge.declaration` is a value, and
 this game's declaration is built from a LIVE world that does not exist until `create(ctx)` has read
@@ -581,6 +595,7 @@ now cost zero.
 
 ### Revised order
 
-`A0.1` (the published hooks type) → `§5-consumer` (the two writers and the pause acts) → `A2` (the shell)
-→ `A3` → `A4`. §5's consumer half jumps the queue because it is small, it was already designed, and it is
+`A0.1` ✅ `36a4962` (the published hooks type) → `§5-consumer` ✅ `f5064f1` (the two writers and the
+pause acts) → `A2a` ✅ `e3be145` → `A2b` ✅ `b28fb85` → **`A2c`** (`createGame` leaves the cartridge) →
+`A3` → `A4`. §5's consumer half jumps the queue because it is small, it was already designed, and it is
 the one piece that reaches a child directly: it is what puts the colour-correction icon on the bar.
