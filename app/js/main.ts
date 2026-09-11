@@ -157,6 +157,30 @@ const locale: Locale = (AVAILABLE_LOCALES as readonly string[]).includes(chosen)
   : BASE_LOCALE;
 document.documentElement.lang = bcp47(locale);
 
+/* ======================= AND HERE THE CARTRIDGE BEGINS =======================
+ *
+ * ⚠️ EVERYTHING BELOW IS ONE GAME'S STATE AND NOTHING ELSE, which is what `ADR-0139` and spec D14 ask
+ * for: "state at module scope survives `teardown()` and leaks into the next game on the same page". This
+ * file had twenty-four `let` at module scope and booted on import; now it has none and boots when asked.
+ *
+ * ⚠️ THE BODY IS NOT RE-INDENTED, AND THAT IS A DECISION RATHER THAN A SHORTCUT. Two thousand two
+ * hundred lines shifted by two spaces is a diff nobody can review, and it is worse than unreadable: this
+ * file writes markup and labels with TEMPLATE LITERALS, and indenting those changes the text that reaches
+ * a player. The wrap is two lines so that what moved is legible as two lines.
+ *
+ * 📌 `ctx` ARRIVES AT SLICE A2, not here. The contract's `create(ctx)` hands over the engine, the region,
+ * the random stream, the translator and the parameters — and there is no shell to supply any of them until
+ * `src/standalone.ts` exists. A parameter invented before its caller is a shape nobody has checked.
+ */
+export interface PinballInstance {
+  /** ⚠️ `frames`, NOT SECONDS — the engine's ticker counts in frames and so does everything under this. */
+  update(frames: number): void;
+  /** Releases everything this instance took: the loop, the listeners, the audio and the canvas. */
+  teardown(): void;
+}
+
+export function createPinball(): PinballInstance {
+
 
 /**
  * ⚠️ READ ONCE, AT BOOT, AND FROM A STORE THAT MAY REFUSE. `shell/options` swallows the throw a private
@@ -811,7 +835,13 @@ window.addEventListener('resize', fitCanvas);
  * `pointerdown` rather than `click`, because the focus moves on the down and a `click` handler would
  * be arguing with it after the fact.
  */
-document.addEventListener('pointerdown', (event) => {
+/**
+ * ⚠️ NAMED, BECAUSE A LISTENER THAT CANNOT BE REMOVED IS A LEAK WITH A SCHEDULE. It was an inline arrow,
+ * which `removeEventListener` has no way to name — and a cartridge that a host unmounts leaves it behind
+ * on the DOCUMENT, still dragging the focus back to a region that belongs to the game that came after.
+ * ADR-0139's `teardown()` is what makes that a defect rather than a curiosity.
+ */
+function focusBackToRegion(event: PointerEvent): void {
   /**
    * ⚠️ THE TEST IS "IS THIS A CONTROL", NOT "IS THIS INSIDE THE GAME", AND THAT DISTINCTION IS THE
    * FOURTH REPORT OF THIS DEFECT. It read `region.contains(target)` and left everything inside alone
@@ -830,7 +860,8 @@ document.addEventListener('pointerdown', (event) => {
   const target = event.target instanceof Element ? event.target : null;
   if (target?.closest('button, a, input, select, textarea, [tabindex]:not([tabindex="-1"])')) return;
   region.focus();
-});
+}
+document.addEventListener('pointerdown', focusBackToRegion);
 const context = canvas.getContext('2d')!;
 const image = context.createImageData(screen.width, screen.height);
 
@@ -1429,7 +1460,7 @@ function paint(): void {
  * handed over by `createGame` and unwired here until now: it writes the assertive live region, draws a
  * visible box and narrates.
  */
-startFrames({
+const stopFrames = startFrames({
   raf: (callback) => requestAnimationFrame(callback),
   now: () => performance.now(),
   step,
@@ -2360,3 +2391,36 @@ Object.assign(window as unknown as Record<string, unknown>, {
   },
 });
 
+/**
+ * ⚠️ WHAT A HOST GETS BACK, AND WHY `teardown` IS A LIST AND NOT A GESTURE. Each line below undoes one
+ * thing this instance took from a page it does not own. What is missing from the list is a leak with a
+ * schedule — ADR-0139's whole point is that the NEXT cartridge inherits whatever this one left.
+ *
+ * 📌 THE REGION IS NOT EMPTIED HERE. The contract gives that to the shell — "after this returns,
+ * `region` is emptied by the shell" — so doing it twice would be this game deciding something that is not
+ * its to decide. What this removes is what it hung OUTSIDE the region: two listeners on `window` and
+ * `document`, which the shell cannot see and could never clean up for it.
+ */
+  return {
+    update: step,
+    teardown(): void {
+      stopFrames();
+      unbindControls();
+      window.removeEventListener('resize', fitCanvas);
+      document.removeEventListener('pointerdown', focusBackToRegion);
+      // ⚠️ AND THE AUDIO CONTEXT, because a browser caps how many a page may have: a host that mounted
+      // and unmounted six cartridges without this would find the seventh silent, with no error anywhere.
+      void audio?.close();
+    },
+  };
+}
+
+/**
+ * ⚠️ AND THIS LINE IS THE SLICE'S WHOLE POINT: the game is no longer STARTED BY BEING IMPORTED.
+ *
+ * It is still started here, so that `app/index.html` and fifteen browser suites go on doing exactly what
+ * they did — this slice claims identical behaviour and 233 test files are the check. Slice A2 moves the
+ * call into `src/standalone.ts`, which is the point at which importing this file does nothing at all and
+ * the platform can import it too.
+ */
+createPinball();
