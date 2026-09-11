@@ -402,7 +402,49 @@ from one source (ADR-0140) — a standalone PWA *and* a cartridge — and **a ca
 whoever hosts it calls `createGame` once. The engine gains `mount(declaration, hooks)` / `unmount()`
 (ADR-0142), and a cartridge draws randomness only from `ctx.rng` (ADR-0141).
 
-## B1 · ⚠️ THIS REPOSITORY IS TOLD TO WAIT, AND THE PLAN RESPECTS THAT
+## B1 · ⚠️ THE WAIT IS OVER — THE DEV OVERRODE IT ON 2026-09-11
+
+> **The Dev:** *"Não é pra esperar o whackwhack. Continue."*
+
+The brief's ordering advice is his to set aside and he has. What does NOT go away with it is the one thing
+the brief said must not be invented and that still has no answer:
+
+🔴 **THE SLUG.** `Cartridge.slug` is required and `ADR-0082` §1 makes it the same word as the repository
+and the package. The folder says `game-pinball`, the remote says `game-pinball`, and `package.json` says
+`@the-inclusionist/game-space-cadet`. Two of three agree; the third is the published name and changing it
+is a publishing decision. **This is the Dev's, and B6 stops at it rather than guessing.**
+
+⚠️ **AND WHAT THE REGISTRY ANSWERS IS 8.0.0, WHICH IS OLDER THAN THE ENGINE'S OWN TREE.** `mount()`,
+`GanchosDoCartucho` and the four fields §5 added all live at engine HEAD and none of them is published. So
+the conversion targets what a consumer can actually install: the cartridge SHAPE comes from
+`cartridge-contract.md`, declared in this repository, and nothing here imports `mount`.
+
+📌 And the engine has already answered one of the contract's four open questions from the inside:
+`MetadeDoJogo` puts **`declines` in the game's half**, alongside the four fields §5 added.
+
+## B6 · The conversion, in slices that each leave the suite green
+
+⚠️ **`app/js/main.ts` IS 2350 LINES WITH 24 MODULE-SCOPE `let`, AND WRAPPING IT IN ONE MOVE IS HOW A GREEN
+SUITE BREAKS.** Fifteen browser suites boot that file. The slices below are ordered so that every one of
+them is separately verifiable, and so that the mechanical risk is taken alone rather than mixed with a
+design decision.
+
+| # | Slice | What proves it |
+|---|---|---|
+| **A0** | `app/js/cartridge.ts` — the identity, the dictionaries and the game-owned HOOKS, as one exported object | a gate that the hooks EQUAL what `createPinballOptions` hands `createGame` today, so the split is proved before anything moves |
+| **A1** | The factory: the body of `main.ts` becomes `create(ctx)` returning `{ update, teardown }`, with `main.ts` still calling it at import | the whole existing suite — identical behaviour is the claim, and 232 files are the check |
+| **A2** | `src/standalone.ts` takes the boot: `createGame`, the `ctx`, the loop. `app/index.html` points at it | the same suite, plus that nothing in `app/js` calls `createGame` any more |
+| **A3** | `package.json` — peer + dev dependencies, `exports`, `files`, `private` removed; `vite.config` gains the `lib` target | the lib build produces an ES module that externalises the engine |
+| **A4** | `vite-plugin-pwa` on the app build | ⚠️ **§1's GATE FIRES HERE, BY DESIGN** — a tracked service worker with `baixarPesados: false` is refused until ADR-0010 is reopened |
+
+⚠️ **THE DECLARATION IS THE ONE DESIGN PROBLEM, AND IT IS IN A1.** `Cartridge.declaration` is a value, and
+this game's declaration is built from a LIVE world that does not exist until `create(ctx)` has read
+`ctx.params` and chosen a table. The answer is the shape this game already uses: `createPinballWorld`
+returns GETTERS, so the exported declaration delegates to whatever instance is current — which is also what
+the engine did to itself for `mount()` (`let cartucho: MetadeDoJogo = o`). Not invented: copied from the
+two places that already solved it.
+
+## B1-old · What the brief said, kept because the reasoning is still worth reading
 
 The brief is explicit, on ADR-0068 §6: one game goes end to end first, that game is **whackwhack**, and
 *"if you are not whackwhack, wait for the contract to come back with its holes filled."* The contract

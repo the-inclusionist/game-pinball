@@ -54,6 +54,23 @@ const SANCTIONED: Readonly<Record<string, string>> = {
   'gfx/render.ts':
     'the dirty-rectangle compositor. The demonstration repaints all 43005 pixels each frame, which at '
     + 'this size costs less than the bookkeeping that would avoid it',
+  /**
+   * ⚠️ THE SECOND ORPHAN THAT IS OWED, AND IT IS OWED FOR THREE COMMITS RATHER THAN INDEFINITELY.
+   *
+   * `shell/cartridge` is slice A0 of the plan's §B6: the game-owned half of `CreateGameOptions`, named as
+   * the object a host receives (ADR-0139). Nothing imports it because the thing that WILL import it is
+   * `src/standalone.ts`, which is slice A2 — and the slices are ordered so the mechanical risk of turning
+   * `main.ts` into a factory is taken by itself, not mixed with this.
+   *
+   * 📌 IT IS DELIBERATELY A SECOND DESCRIPTION FOR NOW, and `tests/cartridge-halves` is the price of
+   * that: it asserts the cartridge's hooks ARE what `createPinballOptions` already hands the engine. A
+   * second description with nothing checking it is how two answers to one question start; this one is
+   * checked, and it stops being second at A2.
+   */
+  'shell/cartridge.ts':
+    'the game-owned half of the options, slice A0 of the cartridge conversion. Nothing imports it until '
+    + '`src/standalone.ts` builds its options from it (slice A2); `tests/cartridge-halves` holds it up '
+    + 'meanwhile, and asserts it agrees with the boot while both exist',
 };
 
 function modulesUnder(directory: string, prefix = ''): string[] {
