@@ -48,14 +48,29 @@ export interface FrameLoopOptions {
 const FRAME_MS = 1000 / 60;
 
 /**
- * Starts the frames. Returns nothing, because there is nothing to stop: the loop ends when a frame throws
- * and at no other time.
+ * Starts the frames, and hands back the way to stop them.
+ *
+ * 🔴 IT RETURNED NOTHING, ON A REASON THAT HAS EXPIRED: «there is nothing to stop: the loop ends when a
+ * frame throws and at no other time». That was true while this game was the only thing on its page and ran
+ * until the tab closed. ADR-0139 makes it a cartridge a host MOUNTS and UNMOUNTS, and a `teardown()` that
+ * leaves a loop running over torn-down state is not a teardown — it is a promise the next frame breaks, by
+ * reading a canvas that has been emptied and an audio context that is closed.
+ *
+ * ⚠️ A FLAG AND NOT `cancelAnimationFrame`, because the handle is the CALLER's shape rather than this
+ * module's: the standalone shell passes the browser's `requestAnimationFrame`, a test passes a queue, and
+ * the platform will pass its own ticker. A stopper that needed a cancel function would make every one of
+ * them supply two things instead of one, to cancel a frame that is about to return anyway.
+ *
+ * 📌 STOPPING IS IDEMPOTENT AND SILENT. A host that unmounts twice, or that unmounts a game which already
+ * stopped itself by throwing, is doing nothing wrong and should not be told it is.
  */
-export function startFrames(o: FrameLoopOptions): void {
+export function startFrames(o: FrameLoopOptions): () => void {
   const cap = o.maxFrames ?? 4;
   let previous = o.now();
+  let stopped = false;
 
   const frame = (now: number): void => {
+    if (stopped) return;
     try {
       o.step(Math.min(cap, (now - previous) / FRAME_MS));
       previous = now;
@@ -64,8 +79,9 @@ export function startFrames(o: FrameLoopOptions): void {
       o.aoFalhar(error);
       return;
     }
-    o.raf(frame);
+    if (!stopped) o.raf(frame);
   };
 
   o.raf(frame);
+  return () => { stopped = true; };
 }

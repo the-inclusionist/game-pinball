@@ -90,6 +90,33 @@ describe('the frame loop', () => {
     expect(clock.tick(32), 'and there is nothing left to run').toBe(false);
   });
 
+  test('⚠️ and the caller can STOP it, which a cartridge that is being unmounted has to', () => {
+    /**
+     * 🔴 THIS MODULE'S HEADER SAID «there is nothing to stop: the loop ends when a frame throws and at no
+     * other time», AND THAT REASON HAS EXPIRED. It was true while this game was the only thing on its page
+     * and ran until the tab closed. ADR-0139 makes it a cartridge a host MOUNTS and UNMOUNTS, and a
+     * `teardown()` that leaves a loop running over torn-down state is not a teardown — it is a promise the
+     * next frame breaks, by reading a canvas that has been emptied and an audio context that is closed.
+     *
+     * ⚠️ A FLAG AND NOT `cancelAnimationFrame`, because the handle is the CALLER's shape and not this
+     * module's: the standalone shell passes the browser's `requestAnimationFrame`, a test passes a queue,
+     * and the platform will pass its own ticker. A stopper that needed a cancel function would make every
+     * one of them supply two things instead of one.
+     */
+    const clock = fakeClock();
+    const seen: number[] = [];
+
+    const stop = startFrames({ raf: clock.raf, now: () => 0, step: (f) => seen.push(f), aoFalhar: () => {} });
+    clock.tick(16);
+    expect(seen.length, 'it never ran at all').toBe(1);
+
+    stop();
+    clock.tick(32);
+
+    expect(seen.length, 'a frame ran after the loop was stopped').toBe(1);
+    expect(clock.pending, 'and it scheduled another one on the way out').toBe(0);
+  });
+
   test('and a healthy frame DOES schedule the next one', () => {
     // The mirror of the case above: without this, a loop that never scheduled anything would satisfy it.
     const clock = fakeClock();
