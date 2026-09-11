@@ -9,6 +9,31 @@
 > substance and §§3, 9 and 10 change shape; every amendment is written into the section it touches rather
 > than only collected at the end, so a reader of one section is not reading a stale one.
 
+## Where this stands, 2026-09-11
+
+| § | What | State |
+|---|---|---|
+| 1 | The record stops lying | ✅ `323696f` |
+| 2 | The licence debt | ✅ `0a6174f` — **the publication blocker is discharged** |
+| 3 | The loop says it stopped | ✅ `68da7dc` |
+| 4 | The game says what it takes to play it | ✅ `e48090a` |
+| 5 | The two engine gaps | ⏸ engine half ✅ `55b71ce`; **consumer half waits on a release** |
+| 6 | What the engine thinks is on screen | ✅ `b784448` |
+| 7 | The cabinet becomes a declaration | ✅ `0547271` |
+| 8 | The menus become reachable | ✅ `8c6a8b3` + `9c5456f` |
+| 9 | One language, chosen | ✅ `461d692` |
+| 10 | The game speaks out loud | ✅ `72e82bb` |
+| 12 | Left to the Dev | ⏸ ADR-0002 answered `0a6e6c0`; five open, all his |
+| B | The cartridge architecture | 📋 recorded; the brief tells this repository to wait |
+
+**Part A is complete except §5's consumer half.** `npm run validate`: 232 suites, 2870 passing, 1 skipped,
+build — exit zero.
+
+⚠️ **AND §5 IS WAITING ON A BIGGER RELEASE THAN IT ASKED FOR.** The engine's own tree has since gained
+`26b6d92 feat(boot): the engine mounts and unmounts a cartridge` — ADR-0142 — built on top of the four
+fields §5 added. The npm registry still answers `8.0.0`, so nothing here can consume any of it yet, and the
+version when it comes will carry `mount()` too.
+
 ## Context
 
 `game-pinball` moved to `@the-inclusionist/engine` 8.0.0 today. The migration made the game *compile and
@@ -43,7 +68,7 @@ the game's main feature and gets its own plan next; §11 names what this plan ha
 
 ---
 
-## 1 · The record stops lying
+## ✅ 1 · The record stops lying — DONE `323696f`
 
 No runtime change. Four claims measurement contradicts, one comment citing a deleted module, one flake.
 
@@ -65,7 +90,7 @@ own time bomb: *if a service worker or a web manifest is ever tracked, `baixarPe
 red by mutation (add a fake `manifest.webmanifest` to the tracked set). (c) The flake's budget is proved
 by mutation — drop it to 1500 ms, watch the file fail, restore, and say so in the commit.
 
-## 2 · The licence debt, which blocks publication
+## ✅ 2 · The licence debt, which blocks publication — DONE `0a6174f`
 
 `README.md:119` makes the missing OFL text a publication blocker.
 
@@ -82,7 +107,7 @@ by mutation — drop it to 1500 ms, watch the file fail, restore, and say so in 
 the four fixtures. (b) The file beside the Atkinson fonts must carry the OFL's operative clauses, not just
 its name — born red today.
 
-## 3 · The loop says it stopped
+## ✅ 3 · The loop says it stopped — DONE `68da7dc`
 
 `main.ts:1333-1338` is a bare `requestAnimationFrame` recursion with no `try`. A throw inside `step()`
 stops the frames in silence, and to a child in blind mode a stopped game and a thinking game are the same
@@ -94,7 +119,7 @@ thing. `engine.aoFalhar` exists for exactly this and is unwired.
 the engine's stop announcement, the crash box is in the document, and **no further frame runs**. Born red
 trivially — today the throw escapes to `window.onerror` and the frames keep arriving.
 
-## 4 · The game says what it takes to play it
+## ✅ 4 · The game says what it takes to play it — DONE `e48090a`
 
 `preset` undeclared ⇒ `acoesDoJogo = []` ⇒ `mostrarAvisoDeAlcance` is skipped (`create-game.ts:830`) and
 `engine.alcance` is permanently `{ok:false, pedidas:0}` — a value that says "nothing fits" and is shown to
@@ -113,7 +138,7 @@ and `CABINET_OF_ENGINE_ACTION` (`shell/pad.ts:89`) are the two halves of one fac
 
 ⚠️ Verify in the browser project that the notice does **not** fire under Playwright before shipping.
 
-## 5 · The two engine gaps, closed in the engine
+## ⏸ 5 · The two engine gaps, closed in the engine — ENGINE HALF DONE `55b71ce`, CONSUMER HALF BLOCKED
 
 *Decision #4. These are additive optional fields; nothing that exists breaks.*
 
@@ -147,7 +172,7 @@ repainting textures and this game has no such world — its picture is a 320×18
 `composePicture()`. Writing one is a separate piece of work and is named here so "not yet" is not read as
 "forgotten".
 
-## 6 · The engine gets a truthful answer about what is on screen
+## ✅ 6 · The engine gets a truthful answer about what is on screen — DONE `b784448`
 
 *No observable behaviour changes. This exists so that §8 is not a gamble.*
 
@@ -166,7 +191,7 @@ vision, keymap): closed ⇒ `nav.sharedDialogOpen()` is `null`; open ⇒ it is t
 `nav.menuItems(el).length` equals the buttons the screen reports. **Born red today twice**, for two
 different reasons. Run it before touching anything — its red is the evidence §8's premise holds.
 
-## 7 · The cabinet becomes a declaration
+## ✅ 7 · The cabinet becomes a declaration — DONE `0547271`
 
 `create-game.ts:702-714` registers **`null`** for both mappings, so `initKB()` builds the **engine's**
 factory and `resetKB()` restores the engine's cabinet, not this one. Invisible today only because
@@ -213,7 +238,7 @@ red was obtained. Second gate: `conformanceProblems(declaration)` stays `[]` —
 ⚠️ Most entangled cluster in the repository: `shell/controls.ts` is imported by 11 modules and 11 test
 files. Any test that needs changing is telling you something.
 
-## 8 · The menus become reachable
+## ✅ 8 · The menus become reachable — DONE `8c6a8b3` + `9c5456f`
 
 *Decision #2: the engine navigates everything. Last, because §6 and §7 are what make it survivable.*
 
@@ -257,7 +282,7 @@ delivered), ring-walking, focus management, the "N of M" announcement, and the p
 bubble listener that unpauses with a dialog still open. This game's bubble listener does not bind Escape, so
 the trap should not fire — **confirm by pressing the key, not by reading that sentence.**
 
-## 9 · One language, chosen
+## ✅ 9 · One language, chosen — DONE `461d692`
 
 *Decision #3.* `locale: 'pt'` is hard-coded and there is no `?lang=`; `en` and `es` ship behind no door.
 
@@ -278,7 +303,7 @@ other's words. Proved by mutation: register a key named `sr.laco.parou`. (b) Aft
 engine's words. `create-game.ts:602` shows the engine's own answer — `idiomaPronto().then(...)`. Use that
 handle rather than inventing a second one.
 
-## 10 · The game speaks out loud
+## ✅ 10 · The game speaks out loud — DONE `72e82bb`
 
 *Placed last of the runtime stages because it is the one a player hears, and it wants the rest working.*
 
@@ -322,7 +347,7 @@ node gate cannot even be written against today's code, because there is no seam.
 - `table/parts.ts` stays a sanctioned orphan until the editor lands — `tests/no-unsanctioned-orphans:42-53`
   is the line that says somebody wrote a library nobody uses, and the editor is what discharges it.
 
-## 12 · Left to the Dev, named rather than assumed
+## ⏸ 12 · Left to the Dev, named rather than assumed — ONE ANSWERED (`0a6e6c0`), FIVE OPEN
 
 None of these blocks a stage above; each is a decision only he can take.
 
@@ -363,7 +388,7 @@ Per stage, and none of it is optional:
 
 ---
 
-# Part B · The cartridge architecture, folded in
+# 📋 Part B · The cartridge architecture, folded in — RECORDED, NOT SCHEDULED
 
 > Read on 2026-09-11 at the Dev's instruction: `the-inclusionist-site/docs/{cartridge-brief,
 > cartridge-contract,architecture}.md` and **ADR-0117, ADR-0139, ADR-0140, ADR-0141, ADR-0142** in
