@@ -197,3 +197,10 @@ So they pass. They pass by proving nothing, and some of them assert it out loud:
 
 That is not part of this migration and it is not left for later either: it is the next commit, and its
 gate is that no test names a filesystem path outside this repository.
+
+✅ **DONE, commit `ee0ecb9`.** The location is derived from `import.meta.url` in `tests/helpers/original-data`
+and `tests/no-absolute-paths` is the gate. With the archive reachable again the thirty-six suites run for
+real and all of them pass — nothing had rotted behind the silence, which is luck and not evidence. One of
+them could not finish: "every note is in a range an ear covers" was a loop of four assertions over 14,139
+notes, 7.6 seconds against a 5-second default, and it had never been measured because it had been running
+over nothing.

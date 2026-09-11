@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, test, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { PAGE_MARKUP } from './helpers/page.js';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -365,6 +366,32 @@ describe('what is handed to the engine', () => {
      * above stops holding and the flag comes out.
      */
     expect(createPinballOptions(options()).baixarPesados).toBe(false);
+  });
+
+  test('⚠️ and the REASON for that false is checked, because it is the kind that outlives itself', () => {
+    /**
+     * ⚠️ ADR-0010 NAMES THIS DEFECT AGAINST ITSELF: "`baixarPesados: false` IS A DEFAULT REFUSED, WHICH
+     * IS THE KIND THAT ROTS QUIETLY. If this game gains a service worker and nobody reopens this record,
+     * the flag will go on refusing a download that by then WOULD have a reader."
+     *
+     * The reason the flag is false is not the size of the download. It is that NOTHING HERE READS THAT
+     * CACHE: `platform/pesados` fills a Cache Storage bucket a service worker serves from, and this
+     * repository has neither a service worker nor a web manifest. The day one is committed, the reason
+     * stops holding — and a reason that lives only in a comment is the one that ships stale.
+     *
+     * So the condition is a gate rather than a sentence. It cannot decide what the flag should become;
+     * it can only refuse to let the question go unasked.
+     *
+     * ⚠️ AND IT READS `git ls-files` RATHER THAN THE FILESYSTEM, deliberately: a service worker built
+     * into `dist` is not the thing that changes this decision. A service worker somebody COMMITTED is.
+     */
+    const tracked = execFileSync('git', ['ls-files'], {
+      cwd: resolve(dirname(fileURLToPath(import.meta.url)), '..'), encoding: 'utf8',
+    }).split('\n').filter(Boolean);
+    const readers = tracked.filter((f) => /(^|\/)(sw|service-worker)\.[cm]?[jt]s$|\.webmanifest$/.test(f));
+
+    expect(readers, 'a service worker or manifest landed: ADR-0010 has to be reopened, because '
+      + 'baixarPesados: false now refuses a download that has a reader').toEqual([]);
   });
 
   test('⚠️ it is navigable for NOBODY, and that is a correction', () => {

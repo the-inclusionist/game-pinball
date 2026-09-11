@@ -219,9 +219,24 @@ describe('⚠️ `crater-run`’s passage is a route the ball takes', () => {
     return used;
   };
 
+  /**
+   * ⚠️ A BUDGET, BECAUSE THIS SURVEY CROSSED THE DEFAULT ONCE AND ONLY ONCE.
+   *
+   * 📏 Measured 2026-09-11: the twelve cases in this file take 1.68 s when the file runs alone, and this
+   * one case passed 5 s in a full run with two web servers competing for the machine. It is sixty launches
+   * of a thousand frames, which is the most arithmetic any single case here does.
+   *
+   * ⚠️ PER-TEST AND NOT A GLOBAL `testTimeout`, which is the whole decision. A global bump would move
+   * this file's ceiling AND the ceiling of every fast case beside it, so the next survey to drift towards a
+   * cliff would arrive at it silently. A budget on the case that needs one is a number somebody has to
+   * write down, next to what was measured.
+   *
+   * 15 s is three times the slowest observation rather than a round number: the load this machine can be
+   * under is not this file's to predict, and a budget that only just fits is the flake wearing a number.
+   */
   test('⚠️ shut, NOTHING crosses — which is the half that says the wall is real', () => {
     expect(crossings(false)).toBe(0);
-  });
+  }, 15_000);
 
   test('⚠️ and open, most of them do', () => {
     // Measured at 37 in 60. The gate asks for a quarter, so a change that halved the effect is still

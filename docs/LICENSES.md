@@ -106,12 +106,22 @@ whoever made it.
 
 Applied here, honestly, as of phase 8:
 
-- ⚠️ **THERE IS ONE ASSET, AS OF 2026-09-06, AND IT IS A FONT.** This line used to read "there is no
-  art in this repository: `git ls-files` matches no image, font or audio file at all", and that stopped
-  being true the moment the Dev asked for the title screen to be set in **Press Start 2P**.
+- ⚠️ **THERE ARE EIGHTEEN ASSETS, AS OF 2026-09-11**: eleven playfield pictures, two screen
+  photographs and five fonts. Each is accounted for in the sections below.
 
-  It is the first thing here that is not code, so it is the first test of the two rules below, and both
-  are satisfied rather than asserted:
+  🔴 **THIS LINE HAS BEEN WRONG TWICE, AND BOTH TIMES IN THE SAME WAY.** It first read that the
+  repository held no art at all, and stopped being true the moment the Dev asked for the title to be set in
+  **Press Start 2P**. It was then corrected to say a font was the only one — and stayed that way while
+  eleven playfields and two screens landed under it, in the document whose only purpose is to be accurate
+  about what is being licensed. `tests/licence-note` had TWO gates over this file and neither could see it:
+  both ask whether a RETIRED SENTENCE has come back, and neither could read a number.
+
+  ⚠️ **SO THE ARITHMETIC IS GATED NOW**, not the phrasing: a sentence here that counts assets may not
+  count fewer than `git ls-files` holds, which means the count above pins itself and the next asset to land
+  turns the suite red until somebody writes it down. That is the intended cost.
+
+  The font was the first thing here that was not code, so it was the first test of the two rules below, and
+  both are satisfied rather than asserted:
 
   | | |
   |---|---|
@@ -125,7 +135,8 @@ Applied here, honestly, as of phase 8:
   game that has to run offline on a school machine, and it is a request to a third party carrying the
   player's address every time a child opens the title screen. Twelve kilobytes is cheaper than either.
 
-- No other asset exists. `git ls-files` still matches no image and no audio file.
+- **No audio file is tracked.** The 1995 game's sixty WAVs and two MIDIs are Microsoft's and are covered
+  by §3: they live in a gitignored directory and are fetched once, locally, by `npm run data:extract`.
 - What phase 8 draws is not art in that sense. `gfx/table-view.ts` draws each component as the shape it
   collides with, in colours `gfx/table-palette.ts` computes per role and per world. **That is code**,
   and it is AGPL like everything else around it. Calling it art would invoke a regime over something
@@ -292,7 +303,11 @@ comfortably with AGPL and would sit badly with a licence that depended on the cl
 a position stated for an administrative act, that is a question for a lawyer and not for this file.
 
 - The third-party regime still binds **from the moment third-party art arrives** — from the engine's
-  artist, from a stock source, from anywhere with a rights holder. That has not happened.
+  artist, from a stock source, from anywhere with a rights holder. ⚠️ **IT HAS HAPPENED ONCE, AND IT IS
+  THE FONTS.** Braille Institute holds the copyright in Atkinson Hyperlegible and the Press Start 2P
+  Project Authors hold theirs; both travel under the OFL, which is the third-party regime working exactly
+  as §2 describes. No third-party PICTURE has arrived — the eleven playfields and two screens are
+  machine-generated and dedicated under CC0.
 
 Two rules apply the instant the first asset lands, and both come from the engine:
 
@@ -308,7 +323,8 @@ Two rules apply the instant the first asset lands, and both come from the engine
 | `node_modules/@the-inclusionist/engine` | the engine | AGPL-3.0-or-later, third party |
 | algorithms in `app/js/physics`, `app/js/control`, `app/js/dat` | transcribed from upstream | MIT upstream, AGPL as transcribed; credited |
 | `game_resources/` | Microsoft's data | no redistribution right — **never committed** |
-| *(no path yet)* | art | its author's licence, per file, when it exists |
+| `app/assets/tables/`, `app/assets/screens/` | pictures, machine-generated | **CC0 1.0**, §4.1 and §4.2, with a `LICENSE.txt` in each directory |
+| `app/assets/fonts/`, `app/public/vendor/fonts/` | fonts, third party | **SIL OFL 1.1**, §4.3, with the licence text beside the binaries |
 
 ## 6 · If you are adding something
 

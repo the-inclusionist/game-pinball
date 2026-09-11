@@ -314,6 +314,12 @@ What the projection does to the catalogue, measured against a 180-tall view:
 | bare-minimum | 0.427 | 115 | **fits whole** |
 | narrow-tower | 0.261 | 199 | 19 |
 
+⚠️ **THIS AMENDED ADR-0001 AND THE RECORD IS NO LONGER OWED — IT DIED WITH PART B.** The amendment was
+owed BY the warp, and the warp was withdrawn on the Dev's own sentence (see the banner above). ADR-0001
+needs no erratum for a thing that never shipped. The paragraph stays because a reader who searches this
+file for "OWED" has to find the answer next to the question, and because the measurement inside it is
+still true of the straight tables. Original text follows.
+
 ⚠️ **THIS AMENDS ADR-0001 AND THE RECORD IS OWED.** "A câmera segue a bola e perder as pás de vista faz
 parte do jogo" was decided against a `low-orbit` that scrolled 55 pixels. Under a real camera it scrolls
 none: five of the eleven tables fit on the screen entirely, and the fixture that exists to give the

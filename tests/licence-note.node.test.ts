@@ -86,6 +86,65 @@ describe('⚠️ the original game data never enters the history', () => {
     expect(assets.length, 'the asset ledger has something in it').toBeGreaterThan(0);
   });
 
+  /**
+   * ⚠️ AND A PHRASE GATE CANNOT CATCH A CLAIM THAT MERELY COUNTED WRONG.
+   *
+   * The two cases below this one ask whether a RETIRED SENTENCE has come back. They were written the day
+   * the first font landed and they have held since. What they could not see is the note going on to say
+   * something NEW and false: §4 opened with "there is one asset and it is a font" and closed with "no
+   * other asset exists", and by 2026-09-11 the tree held eighteen — eleven playfields, two screens and
+   * five fonts. Both sentences were written true, both rotted in place, and the document whose only job
+   * is to be accurate about what is being licensed was the last place anybody looked.
+   *
+   * So the arithmetic gets a gate of its own: a sentence in the note that COUNTS assets may not count
+   * fewer than `git ls-files` holds.
+   *
+   * ⚠️ ITS LIMIT, STATED. It reads two sentence shapes — "there is/are N asset(s)" and "N other asset(s)
+   * exist(s)" — and `no` is a number here. A claim phrased any other way slips past, and the note is prose
+   * rather than a form. What the gate buys is that the two shapes this document actually reaches for are
+   * now arithmetic rather than atmosphere, and that a TRUE count pins itself: the next asset to land turns
+   * this red until somebody updates the sentence, which is the whole point of writing it down.
+   */
+  test('⚠️ and no sentence in the note counts fewer assets than the tree holds', () => {
+    const note = readFileSync(resolve(ROOT, 'docs', 'LICENSES.md'), 'utf8');
+    const assets = tracked().filter((f) => ASSET.test(f));
+
+    const WORDS: Record<string, number> = {
+      no: 0, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
+      eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17,
+      eighteen: 18, nineteen: 19, twenty: 20,
+    };
+    const numberOf = (word: string): number | null => {
+      const w = word.toLowerCase();
+      if (/^\d+$/.test(w)) return Number(w);
+      return w in WORDS ? WORDS[w]! : null;
+    };
+
+    const CLAIMS = [
+      /there (?:is|are) ([A-Za-z]+|\d+) (?:other )?assets?\b/gi,
+      /\b([A-Za-z]+|\d+) other assets? (?:exists?|remains?)\b/gi,
+    ];
+
+    const counted: number[] = [];
+    const short: string[] = [];
+    for (const pattern of CLAIMS) {
+      for (const [whole, word] of note.matchAll(pattern)) {
+        const n = numberOf(word!);
+        if (n === null) continue;
+        counted.push(n);
+        if (n < assets.length) short.push(`"${whole.trim()}" — the tree holds ${assets.length}`);
+      }
+    }
+
+    expect(short, 'the note counts fewer assets than are tracked').toEqual([]);
+    /**
+     * ⚠️ AND THE SCAN HAS TO HAVE FOUND ONE. Two of these sentences existed and both were wrong; a
+     * pattern that matched neither would pass for ever and say nothing, which is the failure this
+     * repository has now met in three separate ledgers.
+     */
+    expect(counted.length, 'the note makes a countable claim at all').toBeGreaterThan(0);
+  });
+
   test('and no asset arrives without the note saying it did', () => {
     // The counterpart: § 4 must go on describing the state of the tree. It said "there is no art in
     // this repository" until the font landed, and a note that still said so would be a licence

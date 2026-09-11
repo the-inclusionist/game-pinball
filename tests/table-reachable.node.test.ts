@@ -209,15 +209,23 @@ const RESTS_AGAINST = /^(wall\.|plunger$)/;
  */
 const KNOWN_RARE: Readonly<Record<string, readonly string[]>> = {
   /**
-   * ⚠️ `probe.belt` IS THE FOURTH AND IT ARRIVED WITH THE LEAN. The other three are recorded above as
-   * the day this table lost three components to a re-authoring; this one is `table/perspective`, which
-   * squeezes the playfield toward the centre as it rises — so sixty balls that used to find the belt's
-   * probe now pass inside it.
+   * ⚠️ `probe.belt` IS THE FOURTH, AND THE REASON WRITTEN HERE WAS WRONG. It said the entry arrived
+   * with the lean — `table/perspective`, which squeezed the playfield toward the centre as it rose, so
+   * sixty balls that used to find the belt's probe passed inside it.
    *
-   * ⚠️ AND IT IS THE SECOND TIME THIS TABLE HAS BEEN THE ONE THAT PAID, which is the useful part.
-   * `ring-belt` is 360 wide against a catalogue of 183s, so the same nine degrees move its outer thirds
-   * further than any other table's, and it was already the table carrying entries here. It is owed a
-   * re-authoring rather than more ledger lines, and this is the line that says so out loud.
+   * 🔴 THAT MODULE NO LONGER EXISTS. The Dev withdrew the nine-degree warp on 2026-09-09 ("deixe tudo
+   * reto, como era antes") and `cb28055` deleted it; the reason on file went on naming it for two days. A
+   * ledger line whose justification cites a deleted module is worse than no line, because it reads as
+   * checked.
+   *
+   * 📏 RE-MEASURED 2026-09-11, on the straight table, by deleting the entry and running the survey:
+   * `probe.belt` IS STILL UNREACHED in sixty balls. So the entry stands and its cause was never the
+   * perspective — it is the same cause as the three above it, written out in the block comment: a
+   * 360-wide table whose outer thirds were reached by a rebound the longer paddles no longer produce.
+   * Four entries, one cause, one piece of owed work.
+   *
+   * ⚠️ AND THAT IS WHY IT IS WORTH RE-MEASURING A LEDGER RATHER THAN READING IT. Had the reason been
+   * true, the revert would have emptied this line by itself and nobody would have looked.
    */
   'ring-belt': ['outlane.left', 'scree.west3', 'scree.east2', 'probe.belt'],
 };
