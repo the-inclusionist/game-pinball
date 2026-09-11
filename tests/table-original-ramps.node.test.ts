@@ -7,6 +7,7 @@ import {
 import { buildOriginalTable } from '../app/js/table/original.js';
 import { planeBounds, boundsCorrected } from '../app/js/table/ramp.js';
 import { loadTable } from '../app/js/dat/loader.js';
+import { resource } from './helpers/original-data.js';
 
 /**
  * ⚠️ A RAMP IS THE ONLY THING ON THIS TABLE THAT IS NOT MADE OF WALL RECORDS.
@@ -16,7 +17,7 @@ import { loadTable } from '../app/js/dat/loader.js';
  * a count and then a run of TRIANGLES, each with its own plane equation and its own gravity.
  */
 
-const DAT = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/PINBALL.DAT';
+const DAT = resource('PINBALL.DAT');
 const manifest = () => {
   if (!existsSync(DAT)) return null;
   const buf = readFileSync(DAT);

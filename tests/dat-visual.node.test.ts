@@ -5,6 +5,7 @@ import { readVisual, readKicker, DEFAULT_VISUAL } from '../app/js/dat/visual.js'
 import { readGroups, EntryType, type Group } from '../app/js/dat/partman.js';
 import { floatAttribute } from '../app/js/dat/attributes.js';
 import { SCORE_COMPONENTS } from '../app/js/control/score-table.js';
+import { resource } from './helpers/original-data.js';
 
 /**
  * ⚠️ THE NUMBERS EVERY COMPONENT IS MADE OF, WHICH NOTHING COULD READ.
@@ -15,7 +16,7 @@ import { SCORE_COMPONENTS } from '../app/js/control/score-table.js';
  * demonstration mode scores at level zero and lights nothing.
  */
 
-const DAT = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/PINBALL.DAT';
+const DAT = resource('PINBALL.DAT');
 const archive = (): Group[] | null => {
   if (!existsSync(DAT)) return null;
   const buf = readFileSync(DAT);

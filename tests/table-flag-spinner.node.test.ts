@@ -5,6 +5,7 @@ import { createFlagSpinner } from '../app/js/table/flag-spinner.js';
 import { buildOriginalFlags, flagNames } from '../app/js/table/original-flags.js';
 import { buildOriginalTable } from '../app/js/table/original.js';
 import { loadTable } from '../app/js/dat/loader.js';
+import { resource } from './helpers/original-data.js';
 
 /**
  * ⚠️ THE TWO FLAGS ARE SPINNERS, AND THE BALL GOES THROUGH THEM.
@@ -18,7 +19,7 @@ import { loadTable } from '../app/js/dat/loader.js';
  * second for the rest of the game. Two of six seeded minutes of play ended that way.
  */
 
-const DAT = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/PINBALL.DAT';
+const DAT = resource('PINBALL.DAT');
 const manifest = () => {
   if (!existsSync(DAT)) return null;
   const buf = readFileSync(DAT);

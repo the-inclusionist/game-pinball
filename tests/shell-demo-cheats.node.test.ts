@@ -20,8 +20,9 @@ import { describe, test, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
 import { createDemo } from '../app/js/shell/demo.js';
 import { CHEAT_GATES } from '../app/js/control/bindings.js';
+import { resource } from './helpers/original-data.js';
 
-const DAT = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/PINBALL.DAT';
+const DAT = resource('PINBALL.DAT');
 const build = () => {
   if (!existsSync(DAT)) return null;
   const buf = readFileSync(DAT);

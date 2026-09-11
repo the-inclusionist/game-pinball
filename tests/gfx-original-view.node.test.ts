@@ -8,6 +8,7 @@ import { pack } from '../app/js/gfx/framebuffer.js';
 import { EntryType } from '../app/js/dat/partman.js';
 import { readBitmapHeader, HEADER_SIZE } from '../app/js/dat/bitmap8.js';
 import { unpackIndexed } from '../app/js/dat/indexed.js';
+import { resource } from './helpers/original-data.js';
 
 /**
  * ⚠️ THE SECOND HALF OF THE DEMONSTRATION MODE: something to look at.
@@ -16,7 +17,7 @@ import { unpackIndexed } from '../app/js/dat/indexed.js';
  * on, through the archive's own palette, with the projection the original uses.
  */
 
-const DAT = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/PINBALL.DAT';
+const DAT = resource('PINBALL.DAT');
 const archive = (): Group[] | null => {
   if (!existsSync(DAT)) return null;
   const buf = readFileSync(DAT);

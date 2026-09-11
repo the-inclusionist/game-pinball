@@ -7,6 +7,7 @@ import {
   readLampSprites, readSprite, drawLamp, drawSpriteCentred, TABLE_ORIGIN_RECORD,
 } from '../app/js/gfx/original-sprites.js';
 import { createFramebuffer, pack } from '../app/js/gfx/framebuffer.js';
+import { resource } from './helpers/original-data.js';
 
 /**
  * ⚠️ THE LAMPS ARE DRAWN WHERE THE WINDOW SAYS, NOT WHERE THE PLAYFIELD DOES.
@@ -18,7 +19,7 @@ import { createFramebuffer, pack } from '../app/js/gfx/framebuffer.js';
  * forty of them fall off the picture entirely, which is the only reason it would be noticed at all.
  */
 
-const DAT = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/PINBALL.DAT';
+const DAT = resource('PINBALL.DAT');
 const archive = () => {
   if (!existsSync(DAT)) return null;
   const buf = readFileSync(DAT);

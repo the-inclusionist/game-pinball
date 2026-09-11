@@ -7,6 +7,7 @@ import {
 import { buildOriginalTable } from '../app/js/table/original.js';
 import { loadTable } from '../app/js/dat/loader.js';
 import { floatAttribute } from '../app/js/dat/attributes.js';
+import { resource } from './helpers/original-data.js';
 
 /**
  * ⚠️ A FLIPPER IS THREE POINTS AND TWO TIMES, and no angle anywhere.
@@ -17,7 +18,7 @@ import { floatAttribute } from '../app/js/dat/attributes.js';
  * meaningless and the flipper collapses to a line.
  */
 
-const DAT = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/PINBALL.DAT';
+const DAT = resource('PINBALL.DAT');
 const manifest = () => {
   if (!existsSync(DAT)) return null;
   const buf = readFileSync(DAT);

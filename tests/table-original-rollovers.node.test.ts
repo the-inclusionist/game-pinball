@@ -5,6 +5,7 @@ import { buildOriginalRollovers, rolloverNames } from '../app/js/table/original-
 import { buildOriginalTable, WALL_RECORD } from '../app/js/table/original.js';
 import { floatAttribute } from '../app/js/dat/attributes.js';
 import { loadTable } from '../app/js/dat/loader.js';
+import { resource } from './helpers/original-data.js';
 
 /**
  * ⚠️ EIGHTEEN LANES THE BALL IS MEANT TO ROLL ACROSS, AND THE TABLE WAS BUILDING WALLS IT BOUNCED OFF.
@@ -15,7 +16,7 @@ import { loadTable } from '../app/js/dat/loader.js';
  * The whole "am I on the lane?" state is which edges the collision search can see.
  */
 
-const DAT = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/PINBALL.DAT';
+const DAT = resource('PINBALL.DAT');
 const manifest = () => {
   if (!existsSync(DAT)) return null;
   const buf = readFileSync(DAT);

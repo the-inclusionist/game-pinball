@@ -10,6 +10,7 @@ import { readTableObjects } from '../app/js/dat/loader.js';
 import { loadTable } from '../app/js/dat/loader.js';
 import { readVisual } from '../app/js/dat/visual.js';
 import type { TimerService } from '../app/js/table/bumper.js';
+import { resource } from './helpers/original-data.js';
 
 /**
  * ⚠️ THE PLUNGER IS ALMOST ALL CONSTANTS.
@@ -19,7 +20,7 @@ import type { TimerService } from '../app/js/table/bumper.js';
  * quietly plunge with zeros.
  */
 
-const DAT = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/PINBALL.DAT';
+const DAT = resource('PINBALL.DAT');
 const manifest = () => {
   if (!existsSync(DAT)) return null;
   const buf = readFileSync(DAT);

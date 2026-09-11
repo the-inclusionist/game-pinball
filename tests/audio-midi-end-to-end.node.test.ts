@@ -3,6 +3,7 @@ import { describe, test, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
 import { readMidiFile, isStandardMidi, durationOf } from '../app/js/audio/midi.js';
 import { scheduleMidi, scheduleLength, DRUM_CHANNEL } from '../app/js/audio/midi-synth.js';
+import { resource } from './helpers/original-data.js';
 
 /**
  * ⚠️ THE WHOLE CHAIN, ON A REAL FILE.
@@ -16,7 +17,7 @@ import { scheduleMidi, scheduleLength, DRUM_CHANNEL } from '../app/js/audio/midi
  * every conformance test in this project takes.
  */
 
-const MIDI = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/PINBALL.MID';
+const MIDI = resource('PINBALL.MID');
 
 describe('the original’s own music, scheduled', () => {
   test('it parses as a standard MIDI file', () => {
@@ -46,12 +47,21 @@ describe('the original’s own music, scheduled', () => {
     if (!existsSync(MIDI)) return expect(existsSync(MIDI)).toBe(false);
     const file = readMidiFile(new Uint8Array(readFileSync(MIDI)))!;
 
-    for (const note of scheduleMidi(file)) {
-      expect(note.frequency).toBeGreaterThan(8);
-      expect(note.frequency).toBeLessThan(13000);
-      expect(note.duration).toBeGreaterThan(0);
-      expect(note.gain).toBeGreaterThan(0);
-    }
+    /**
+     * ⚠️ ONE ASSERTION OVER THE WHOLE PIECE, AND NOT FOUR PER NOTE. This was a loop with four
+     * `expect`s inside it, which is several thousand assertions against the real `PINBALL.MID` — 7.6
+     * seconds against a 5-second default, and it TIMED OUT the first time the file was reachable again.
+     * It had never been measured: the path this suite opened had been wrong since the repository was
+     * renamed, so the loop had been running over nothing.
+     *
+     * ⚠️ AND THE COUNT IS PART OF THE CLAIM. A filter over an empty schedule is an empty list, which
+     * is what "every note is in range" would look like if `scheduleMidi` returned nothing at all.
+     */
+    const notes = scheduleMidi(file);
+    const wrong = notes.filter((n) => !(n.frequency > 8 && n.frequency < 13000 && n.duration > 0 && n.gain > 0));
+
+    expect(notes.length, 'there is a piece to check').toBeGreaterThan(0);
+    expect(wrong.slice(0, 3), `${wrong.length} of ${notes.length} notes are out of range`).toEqual([]);
   });
 
   test('⚠️ and it is a PIECE, not one long chord', () => {

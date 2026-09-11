@@ -14,8 +14,9 @@ import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { createDemo } from '../app/js/shell/demo.js';
 import { readGroups } from '../app/js/dat/partman.js';
 import { findSoundLinks, TIMER_SOUND_COMPONENTS } from '../app/js/audio/sound-links.js';
+import { RESOURCES } from './helpers/original-data.js';
 
-const DIR = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources';
+const DIR = RESOURCES;
 const DAT = `${DIR}/PINBALL.DAT`;
 
 /**

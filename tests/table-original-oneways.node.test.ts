@@ -5,6 +5,7 @@ import { buildOriginalOneways, onewayNames, PASSING_OFFSET } from '../app/js/tab
 import { buildOriginalTable, WALL_RECORD } from '../app/js/table/original.js';
 import { floatAttribute } from '../app/js/dat/attributes.js';
 import { loadTable } from '../app/js/dat/loader.js';
+import { resource } from './helpers/original-data.js';
 
 /**
  * ⚠️ A ONE-WAY IS ONE WALL RECORD AND TWO LINES, AND NEITHER IS THE ONE THE TABLE WOULD BUILD.
@@ -15,7 +16,7 @@ import { loadTable } from '../app/js/dat/loader.js';
  * offsets push the lines to OPPOSITE sides of the points they share.
  */
 
-const DAT = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/PINBALL.DAT';
+const DAT = resource('PINBALL.DAT');
 const manifest = () => {
   if (!existsSync(DAT)) return null;
   const buf = readFileSync(DAT);

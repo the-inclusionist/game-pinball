@@ -21,6 +21,7 @@ import { ALIEN_MENACE, TIME_WARP_PART_TWO, GAME_OVER } from '../app/js/control/b
 import { MISSION_TABLE } from '../app/js/control/mission-table.js';
 import { loadTable } from '../app/js/dat/loader.js';
 import type { ControlContext } from '../app/js/control/dispatch.js';
+import { resource } from './helpers/original-data.js';
 
 /**
  * ⚠️ THE LAST JOIN, AND THE FIRST TIME THE THREE PIECES MEET.
@@ -30,7 +31,7 @@ import type { ControlContext } from '../app/js/control/dispatch.js';
  * its own and none of them had ever met the other two.
  */
 
-const DAT = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/PINBALL.DAT';
+const DAT = resource('PINBALL.DAT');
 const manifest = () => {
   if (!existsSync(DAT)) return null;
   const buf = readFileSync(DAT);

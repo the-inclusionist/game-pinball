@@ -5,6 +5,7 @@ import { buildOriginalComponents, visualStatesOf } from '../app/js/table/origina
 import { readGroups, type Group } from '../app/js/dat/partman.js';
 import { loadTable, ObjectType } from '../app/js/dat/loader.js';
 import { kindOf } from '../app/js/i18n/names.js';
+import { resource } from './helpers/original-data.js';
 
 /**
  * ⚠️ THE FORTY `T*` PORTS, REACHED FROM THE ARCHIVE FOR THE FIRST TIME.
@@ -17,7 +18,7 @@ import { kindOf } from '../app/js/i18n/names.js';
  * and therefore their own price, and the hundred and forty lights.
  */
 
-const DAT = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/PINBALL.DAT';
+const DAT = resource('PINBALL.DAT');
 const archive = (): Group[] | null => {
   if (!existsSync(DAT)) return null;
   const buf = readFileSync(DAT);

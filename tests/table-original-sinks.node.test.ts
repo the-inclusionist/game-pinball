@@ -4,6 +4,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { buildOriginalSinks } from '../app/js/table/original-sinks.js';
 import { loadTable } from '../app/js/dat/loader.js';
 import type { Vector2 } from '../app/js/maths/maths.js';
+import { resource } from './helpers/original-data.js';
 
 /**
  * ⚠️ A SINK IS A HOLE THAT GIVES THE BALL BACK, AND EVERY NUMBER IN IT IS IN THE FILE.
@@ -17,7 +18,7 @@ import type { Vector2 } from '../app/js/maths/maths.js';
  * reference list names at all. Counting the wormhole instead of the file would leave it a plain wall.
  */
 
-const DAT = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/PINBALL.DAT';
+const DAT = resource('PINBALL.DAT');
 const manifest = () => {
   if (!existsSync(DAT)) return null;
   const buf = readFileSync(DAT);

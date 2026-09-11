@@ -9,6 +9,7 @@ import { RESOURCE_KEYS } from '../app/js/i18n/keys.js';
 import { buildOriginalComponents } from '../app/js/table/original-components.js';
 import { loadTable } from '../app/js/dat/loader.js';
 import { readGroups } from '../app/js/dat/partman.js';
+import { resource } from './helpers/original-data.js';
 
 /**
  * ⚠️ DATA TRAPPED IN CODE.
@@ -19,7 +20,7 @@ import { readGroups } from '../app/js/dat/partman.js';
  * is the last thing between this port and a 1995 table that plays rather than one that is shown.
  */
 
-const DAT = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/PINBALL.DAT';
+const DAT = resource('PINBALL.DAT');
 const manifest = () => {
   if (!existsSync(DAT)) return null;
   const buf = readFileSync(DAT);

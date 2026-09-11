@@ -7,6 +7,7 @@ import { buildOriginalTable } from '../app/js/table/original.js';
 import { loadTable } from '../app/js/dat/loader.js';
 import type { TimerService } from '../app/js/table/bumper.js';
 import type { BallState } from '../app/js/physics/collision.js';
+import { resource } from './helpers/original-data.js';
 
 /**
  * ⚠️ THE THIRTEEN RED TARGETS, WHICH ARE THE FUEL SET, THE MISSION SET, THE TWO HAZARD SETS AND THE
@@ -14,7 +15,7 @@ import type { BallState } from '../app/js/physics/collision.js';
  * matters here more than anywhere else on the table.
  */
 
-const DAT = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/PINBALL.DAT';
+const DAT = resource('PINBALL.DAT');
 const manifest = () => {
   if (!existsSync(DAT)) return null;
   const buf = readFileSync(DAT);

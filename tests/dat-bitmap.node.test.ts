@@ -3,6 +3,7 @@ import { describe, test, expect } from 'vitest';
 import { bitmap8, BITMAP_FLAG } from './helpers/partout.js';
 import { readBitmapHeader, readIndexedBitmap, BitmapType } from '../app/js/dat/bitmap8.js';
 import { readFileSync, existsSync } from 'node:fs';
+import { resource } from './helpers/original-data.js';
 
 describe('bitmap8 — header', () => {
   test('reads dimensions, position and data size', () => {
@@ -117,7 +118,7 @@ describe('bitmap8 — unpacking a whole bitmap', () => {
   });
 
   test('and the shipped archive carries none, which is why nothing was ever wrong on screen', async () => {
-    const DAT = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/PINBALL.DAT';
+    const DAT = resource('PINBALL.DAT');
     if (!existsSync(DAT)) return expect(existsSync(DAT)).toBe(false);
     const { loadTable } = await import('../app/js/dat/loader.js');
     const { EntryType } = await import('../app/js/dat/partman.js');

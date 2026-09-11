@@ -3,6 +3,7 @@ import { describe, test, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
 import { SCORE_COMPONENTS } from '../app/js/control/score-table.js';
 import { readGroups } from '../app/js/dat/partman.js';
+import { resource } from './helpers/original-data.js';
 
 /**
  * ⚠️ THE SCORE TABLE COULD NOT REACH A SINGLE COMPONENT IN THE REAL ARCHIVE.
@@ -22,7 +23,7 @@ import { readGroups } from '../app/js/dat/partman.js';
  * gap rather than a design choice.
  */
 
-const DAT = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/PINBALL.DAT';
+const DAT = resource('PINBALL.DAT');
 
 describe('every scoring component says which group it is', () => {
   test('all of them carry a tag', () => {

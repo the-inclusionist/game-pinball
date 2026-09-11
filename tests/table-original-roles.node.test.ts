@@ -4,6 +4,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { ROLE_OF_KIND, roleOfComponent } from '../app/js/table/original-roles.js';
 import { COMPONENT_KINDS, kindOf } from '../app/js/i18n/names.js';
 import { readGroups } from '../app/js/dat/partman.js';
+import { resource } from './helpers/original-data.js';
 
 /**
  * ⚠️ THIS TABLE IS A DECISION AND THESE TESTS DO NOT DEFEND IT.
@@ -15,7 +16,7 @@ import { readGroups } from '../app/js/dat/partman.js';
  * else quietly breaks.
  */
 
-const DAT = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/PINBALL.DAT';
+const DAT = resource('PINBALL.DAT');
 
 describe('the role of each kind of 1995 component', () => {
   test('⚠️ every kind has one, because a default would describe silently', () => {

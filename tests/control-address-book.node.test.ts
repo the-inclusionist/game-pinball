@@ -22,8 +22,9 @@ import {
 } from '../app/js/control/simple-components.js';
 import { SCORE_COMPONENTS } from '../app/js/control/score-table.js';
 import { createComponentRegistry, makeLinks, type LinkableComponent } from '../app/js/control/links.js';
+import { resource } from './helpers/original-data.js';
 
-const DAT = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/PINBALL.DAT';
+const DAT = resource('PINBALL.DAT');
 const groupNames = (): Set<string> | null => {
   if (!existsSync(DAT)) return null;
   const buf = readFileSync(DAT);

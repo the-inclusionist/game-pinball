@@ -19,8 +19,9 @@ import { floatAttribute } from '../app/js/dat/attributes.js';
 import { boundsOfWall, WALL_RECORD } from '../app/js/table/original.js';
 import { readCamera, screenBoundsOf, decodePlayfield } from '../app/js/gfx/original-view.js';
 import { halve } from '../app/js/gfx/scale.js';
+import { resource } from './helpers/original-data.js';
 
-const DAT = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/PINBALL.DAT';
+const DAT = resource('PINBALL.DAT');
 const archive = () => {
   if (!existsSync(DAT)) return null;
   const buf = readFileSync(DAT);

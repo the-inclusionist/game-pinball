@@ -43,8 +43,9 @@ import { layoutHud, DEFAULT_HUD } from '../app/js/shell/hud.js';
 import { drawTable, blitView } from '../app/js/gfx/table-view.js';
 import { CATALOG } from '../app/js/table/catalog.js';
 import { buildPng, magnify } from './helpers/png.js';
+import { resource } from './helpers/original-data.js';
 
-const DAT = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/PINBALL.DAT';
+const DAT = resource('PINBALL.DAT');
 const MAGNIFY = 3;
 
 describe('the frame the demonstration draws', () => {

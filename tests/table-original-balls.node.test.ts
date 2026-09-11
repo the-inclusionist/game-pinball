@@ -3,6 +3,7 @@ import { describe, test, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
 import { buildOriginalTable, MAX_BALLS } from '../app/js/table/original.js';
 import { readGroups } from '../app/js/dat/partman.js';
+import { resource } from './helpers/original-data.js';
 
 /**
  * ⚠️ THE TABLE KEEPS A POOL OF BALLS, AND `AddBall` REUSES BEFORE IT MAKES.
@@ -14,7 +15,7 @@ import { readGroups } from '../app/js/dat/partman.js';
  * them and every sink would wait for room that was never going to appear.
  */
 
-const DAT = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/PINBALL.DAT';
+const DAT = resource('PINBALL.DAT');
 const table = () => {
   if (!existsSync(DAT)) return null;
   const buf = readFileSync(DAT);

@@ -21,8 +21,9 @@
 import { describe, test, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
 import { createDemo } from '../app/js/shell/demo.js';
+import { resource } from './helpers/original-data.js';
 
-const DAT = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/PINBALL.DAT';
+const DAT = resource('PINBALL.DAT');
 
 /** Mulberry32, so a run asks about ONE path rather than a different one each time. */
 function seeded(seed = 0x9e3779b9): () => number {

@@ -4,6 +4,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { buildOriginalGates } from '../app/js/table/original-gates.js';
 import { buildOriginalTable } from '../app/js/table/original.js';
 import { loadTable } from '../app/js/dat/loader.js';
+import { resource } from './helpers/original-data.js';
 
 /**
  * ⚠️ A GATE IS THE TABLE'S OWN EDGES PLUS A SWITCH.
@@ -14,7 +15,7 @@ import { loadTable } from '../app/js/dat/loader.js';
  * open would still pass.
  */
 
-const DAT = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/PINBALL.DAT';
+const DAT = resource('PINBALL.DAT');
 const manifest = () => {
   if (!existsSync(DAT)) return null;
   const buf = readFileSync(DAT);

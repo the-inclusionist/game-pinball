@@ -3,6 +3,7 @@ import { describe, test, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
 import { floatAttribute, int16Attribute, groupNamed } from '../app/js/dat/attributes.js';
 import { readGroups, EntryType, type Group } from '../app/js/dat/partman.js';
+import { resource } from './helpers/original-data.js';
 
 /**
  * ⚠️ THE RECORD ID IS THE FIRST FLOAT, AND NOTHING ELSE SAYS WHICH ARRAY IS WHICH.
@@ -17,7 +18,7 @@ import { readGroups, EntryType, type Group } from '../app/js/dat/partman.js';
  * conformance test in this project does.
  */
 
-const DAT = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/PINBALL.DAT';
+const DAT = resource('PINBALL.DAT');
 const archive = (): Group[] | null => {
   if (!existsSync(DAT)) return null;
   const buf = readFileSync(DAT);

@@ -3,12 +3,13 @@ import { describe, test, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
 import { readGroups } from '../app/js/dat/partman.js';
 
-const DAT = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/PINBALL.DAT';
+const DAT = resource('PINBALL.DAT');
 import {
   SIMPLE_COMPONENTS, SIMPLE_LIGHTS, SIMPLE_LIGHT_GROUPS, SIMPLE_SOUNDS, SIMPLE_TEXT_BOXES, SIMPLE_TAGS,
   resolveSimpleComponents,
 } from '../app/js/control/simple-components.js';
 import { SCORE_COMPONENTS } from '../app/js/control/score-table.js';
+import { resource } from './helpers/original-data.js';
 
 describe('the address book, as the original ships it', () => {
   test('there are exactly 145 names', () => {

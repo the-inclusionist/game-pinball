@@ -11,8 +11,9 @@ import { readGroups } from '../app/js/dat/partman.js';
 import { createDemo } from '../app/js/shell/demo.js';
 import { describeComponents, targetsOfMission, demoWorld } from '../app/js/shell/demo-world.js';
 import { MISSION_TABLE } from '../app/js/control/mission-table.js';
+import { resource } from './helpers/original-data.js';
 
-const DAT = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/PINBALL.DAT';
+const DAT = resource('PINBALL.DAT');
 
 const archive = () => {
   if (!existsSync(DAT)) return null;

@@ -8,6 +8,7 @@ import { buildOriginalTable } from '../app/js/table/original.js';
 import { loadTable } from '../app/js/dat/loader.js';
 import { floatAttribute } from '../app/js/dat/attributes.js';
 import type { TimerService } from '../app/js/table/bumper.js';
+import { resource } from './helpers/original-data.js';
 
 /**
  * ⚠️ THE MOUTH IS NOT THE CIRCLE THAT IS DRAWN.
@@ -17,7 +18,7 @@ import type { TimerService } from '../app/js/table/bumper.js';
  * away — and it would read as a bug in the collision search rather than in the geometry.
  */
 
-const DAT = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/PINBALL.DAT';
+const DAT = resource('PINBALL.DAT');
 const manifest = () => {
   if (!existsSync(DAT)) return null;
   const buf = readFileSync(DAT);

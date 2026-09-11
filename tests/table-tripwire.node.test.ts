@@ -5,6 +5,7 @@ import { createTripwire } from '../app/js/table/tripwire.js';
 import { buildOriginalTripwires } from '../app/js/table/original-tripwires.js';
 import { buildOriginalTable } from '../app/js/table/original.js';
 import { loadTable } from '../app/js/dat/loader.js';
+import { resource } from './helpers/original-data.js';
 
 /**
  * ⚠️ A TRIPWIRE IS AN ORDINARY WALL RECORD WITH A COMPONENT THAT DOES NOT BOUNCE.
@@ -17,7 +18,7 @@ import { loadTable } from '../app/js/dat/loader.js';
  * Until this existed the five skill-shot trip lines were walls the ball came back off.
  */
 
-const DAT = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/PINBALL.DAT';
+const DAT = resource('PINBALL.DAT');
 const manifest = () => {
   if (!existsSync(DAT)) return null;
   const buf = readFileSync(DAT);

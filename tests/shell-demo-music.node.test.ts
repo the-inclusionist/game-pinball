@@ -5,6 +5,7 @@ import { createDemo } from '../app/js/shell/demo.js';
 import { MUSIC_LOOKAHEAD, MUSIC_WINDOW } from '../app/js/shell/demo.js';
 import { findSoundLinks, strandingRisks } from '../app/js/audio/sound-links.js';
 import { readGroups } from '../app/js/dat/partman.js';
+import { resource, RESOURCES } from './helpers/original-data.js';
 
 /**
  * ⚠️ THE SYNTHESIZER WAS WRITTEN AND IMPORTED BY NOTHING.
@@ -15,8 +16,8 @@ import { readGroups } from '../app/js/dat/partman.js';
  * build, and a player who already owns the game already has the file.
  */
 
-const DAT = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/PINBALL.DAT';
-const MID = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/PINBALL.MID';
+const DAT = resource('PINBALL.DAT');
+const MID = resource('PINBALL.MID');
 const bytesOf = (path: string): ArrayBuffer | null => {
   if (!existsSync(path)) return null;
   const buf = readFileSync(path);
@@ -49,7 +50,7 @@ describe('the demonstration can be given music too', () => {
     // `PINBALL2.MID` is the other format the original ships, and `isStandardMidi` says so. A parser
     // that guessed would produce a schedule of noise from a file it did not understand.
     const dat = bytesOf(DAT);
-    const notMidi = bytesOf('C:/Users/candi/Claude/SpaceCadetPinball/game_resources/PINBALL2.MID');
+    const notMidi = bytesOf(resource('PINBALL2.MID'));
     if (!dat || !notMidi) return expect(existsSync(DAT)).toBe(false);
 
     const demo = createDemo(dat);
@@ -113,7 +114,7 @@ describe('the demonstration can be given the real sounds', () => {
     // it is the one that has to be empty.
     const dat = bytesOf(DAT);
     if (!dat) return expect(existsSync(DAT)).toBe(false);
-    const here = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/';
+    const here = RESOURCES;
     if (!existsSync(`${here}SOUND1.WAV`)) return expect(existsSync(`${here}SOUND1.WAV`)).toBe(false);
 
     const demo = createDemo(dat);
@@ -167,7 +168,7 @@ describe('which missing sounds matter', () => {
   test('⚠️ and the six this machine lacks are all in the harmless list', () => {
     const dat = bytesOf(DAT);
     if (!dat) return expect(existsSync(DAT)).toBe(false);
-    const here = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/';
+    const here = RESOURCES;
     if (!existsSync(`${here}SOUND1.WAV`)) return expect(existsSync(`${here}SOUND1.WAV`)).toBe(false);
     const demo = createDemo(dat);
     const present = [...demo.soundFiles.values()]

@@ -6,6 +6,7 @@ import { buildOriginalTable } from '../app/js/table/original.js';
 import { loadTable } from '../app/js/dat/loader.js';
 import type { TimerService } from '../app/js/table/bumper.js';
 import type { BallState } from '../app/js/physics/collision.js';
+import { resource } from './helpers/original-data.js';
 
 /**
  * ⚠️ A POPUP TARGET DROPS ITSELF BEFORE IT REPORTS, AND ONLY ON A HARD HIT.
@@ -15,7 +16,7 @@ import type { BallState } from '../app/js/physics/collision.js';
  * rule the bumper has, and the same one the table's wall wrapper cannot see.
  */
 
-const DAT = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/PINBALL.DAT';
+const DAT = resource('PINBALL.DAT');
 const manifest = () => {
   if (!existsSync(DAT)) return null;
   const buf = readFileSync(DAT);

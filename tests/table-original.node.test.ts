@@ -7,6 +7,7 @@ import {
 import { floatAttribute, groupNamed } from '../app/js/dat/attributes.js';
 import { readGroups, type Group } from '../app/js/dat/partman.js';
 import { advanceFrame } from '../app/js/physics/step.js';
+import { resource } from './helpers/original-data.js';
 
 /**
  * ⚠️ THE VALIDATION CONFIGURATION, ACTUALLY RUNNING.
@@ -24,7 +25,7 @@ import { advanceFrame } from '../app/js/physics/step.js';
  * never distributed; a machine without it cannot run these, which is the shape the licence imposes.
  */
 
-const DAT = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/PINBALL.DAT';
+const DAT = resource('PINBALL.DAT');
 const archive = (): Group[] | null => {
   if (!existsSync(DAT)) return null;
   const buf = readFileSync(DAT);

@@ -26,8 +26,9 @@ import { drawTable, blitView } from '../app/js/gfx/table-view.js';
 import { createFramebuffer } from '../app/js/gfx/framebuffer.js';
 import { layoutHud, DEFAULT_HUD } from '../app/js/shell/hud.js';
 import { LOW_ORBIT } from '../app/js/table/catalog.js';
+import { resource } from './helpers/original-data.js';
 
-const DAT = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/PINBALL.DAT';
+const DAT = resource('PINBALL.DAT');
 
 /** Sixty frames a second. The only number in this file that is not arbitrary. */
 const FRAME_BUDGET_MS = 1000 / 60;

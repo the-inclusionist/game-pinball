@@ -5,6 +5,7 @@ import { readGroups } from '../app/js/dat/partman.js';
 import { readPlayfieldDepth, readCamera, decodePlayfield } from '../app/js/gfx/original-view.js';
 import { fillCircleBehind } from '../app/js/gfx/table-view.js';
 import { createFramebuffer } from '../app/js/gfx/framebuffer.js';
+import { resource } from './helpers/original-data.js';
 
 /**
  * ⚠️ THE BALL HAS TO GO UNDER THE RAMPS, AND THE ARCHIVE ALREADY SAYS WHERE.
@@ -15,7 +16,7 @@ import { createFramebuffer } from '../app/js/gfx/framebuffer.js';
  * arch it is physically beneath.
  */
 
-const DAT = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/PINBALL.DAT';
+const DAT = resource('PINBALL.DAT');
 const archive = () => {
   if (!existsSync(DAT)) return null;
   const buf = readFileSync(DAT);

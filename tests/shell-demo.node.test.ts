@@ -12,6 +12,7 @@ import { VOICES, SILENT_KINDS, soundForKind } from '../app/js/audio/voices.js';
 import { kindOf, COMPONENT_KINDS } from '../app/js/i18n/names.js';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { resource } from './helpers/original-data.js';
 
 /**
  * ⚠️ A SEEDED SOURCE, BECAUSE THE TABLE'S GRAVITY CARRIES A JITTER. `TTableLayer::FieldEffect` puts a
@@ -183,7 +184,7 @@ function ballRows(demo: ReturnType<typeof createDemo>, at: { x: number; y: numbe
   return rows.size;
 }
 
-const DAT = 'C:/Users/candi/Claude/SpaceCadetPinball/game_resources/PINBALL.DAT';
+const DAT = resource('PINBALL.DAT');
 const archive = (): ArrayBuffer | null => {
   if (!existsSync(DAT)) return null;
   const buf = readFileSync(DAT);
