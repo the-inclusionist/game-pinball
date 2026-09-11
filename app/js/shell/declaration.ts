@@ -44,6 +44,7 @@
 import type {
   Focus, GameDeclaration, Heading, Objective, Role, Speakable, Spot, Topology,
 } from '@the-inclusionist/engine/core/contract.js';
+import { cabinetKeyboard, cabinetPad } from './cabinet-declaration.js';
 
 export interface Rect {
   readonly x: number;
@@ -211,6 +212,21 @@ export function createDeclaration(world: PinballWorld): GameDeclaration {
      * It is the third axis the reach arithmetic reads, beside `holdsAtOnce` and `seguraTeclas`.
      */
     needsPointer: () => false,
+
+    /**
+     * ⚠️ THE CABINET, IN THE ENGINE'S OWN VOCABULARY — and until this line the engine ran on ITS factory.
+     *
+     * With no declaration `createGame` registers `null`, `initKB()` builds the engine's keyboard, and
+     * `resetKB()` — the "restore defaults" a child presses — hands back a layout this game's author did not
+     * choose. It was invisible only because the two tables coincide by accident, which `shell/pad`'s header
+     * records as DISCOVERED rather than designed.
+     *
+     * 📏 Measured by mutation: change the plunger from `KeyU` to `KeyP` and, without these two lines, the
+     * engine goes on answering `KeyU`. See `shell/cabinet-declaration` for how the mapping is derived from
+     * the two tables that already state it, and for the one question it answers itself.
+     */
+    mapeamentoDoTeclado: cabinetKeyboard,
+    mapeamentoDoPad: cabinetPad,
 
     // A pinball never waits for the player.
     tick: 'clock',

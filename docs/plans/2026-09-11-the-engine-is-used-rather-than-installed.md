@@ -175,6 +175,15 @@ Nothing about how a key is *read* changes — `main.ts:1583-1586` already bridge
 ⚠️ **`pinball:keymap` gets a read-once migration into the engine's store rather than being discarded.** A
 saved remap belongs to a child who needed one; fifteen lines is cheaper than asking them to do it again.
 
+📌 **MOVED TO §8, ON A DEPENDENCY THIS SECTION DID NOT SEE.** Retiring this game's store means its remap
+dialog stops being the one a child reaches and the ENGINE's panel becomes it — and that panel is
+unreachable while `isNavigable` answers `false`. Migrating first would leave a child with a store nothing
+writes and a screen nothing opens.
+
+⚠️ **AND THERE IS NO CONFUSION TO FIX YET, WHICH IS WHY THE ORDER IS SAFE.** Two stores exist, but exactly
+ONE remapper is reachable today — this game's. The «two remappers, one child» defect is CREATED by §8, so it
+is §8's to close, in the same commit that opens the door.
+
 ⚠️ The sweep and the palette keys stay OUT of the declaration — they are not `KeyScheme` positions, and
 inventing a shared-vocabulary slot for one pinball's accessibility keys is the wrong place to put them.
 

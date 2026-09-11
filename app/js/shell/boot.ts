@@ -101,6 +101,9 @@ import { layoutHud, DEFAULT_HUD, type HudConfig, type HudLayout } from './hud.js
 import { createTranslator, type Locale, type Translate } from '../i18n/index.js';
 import { pinballPreset } from './preset.js';
 import type { ActionPreset } from '@the-inclusionist/engine/core/actions.js';
+import type { KeyScheme } from '@the-inclusionist/engine/core/entity.js';
+import { KEYBOARD_SOLO } from '@the-inclusionist/engine/input/default-bindings.js';
+import { cabinetKeyboard } from './cabinet-declaration.js';
 import { createNamer, nameTableOf, type ComponentKind } from '../i18n/names.js';
 import { keyOf } from '../i18n/keys.js';
 
@@ -145,6 +148,15 @@ export interface PinballGameOptions {
    * answers `engine.alcance` with a permanent `{ ok: false, pedidas: 0 }` that nobody reads.
    */
   readonly preset: ActionPreset;
+  /**
+   * THE SEATS, FOR THE ENGINE'S REMAPPER — `Pick<ControlledPlayer, 'ctrl'>`, a key scheme and nothing else.
+   *
+   * ⚠️ ONE, AND THE ONE IS THE STATEMENT. With no list at all `createGame` falls back to a throwaway
+   * player whose scheme is `semAlcance` — fourteen declared absences — so the engine's remap screen was
+   * editing a cabinet that reaches nothing. A pinball is one child at one machine; when it grows a second
+   * seat, this is the line that says so, and `shell/cabinet-declaration` already takes the seat index.
+   */
+  readonly players: { ctrl: KeyScheme }[];
   readonly isNavigable: () => boolean;
   readonly isBlindMode?: () => boolean;
   /**
@@ -278,6 +290,12 @@ export function createPinballOptions(o: BootOptions): PinballGameOptions {
      * language change is `§9` of the plan and not a thing this line can answer by itself.
      */
     preset: pinballPreset(createTranslator(o.locale)),
+    /**
+     * ⚠️ THE ENGINE'S FACTORY WITH THIS CABINET OVER IT, which is the same precedence `fabricaComOJogo`
+     * applies — written here because `createGame` reads this list BEFORE it reads the declaration's mapping,
+     * and a seat built from the bare factory would show the remap screen the engine's keys for one frame.
+     */
+    players: [{ ctrl: { ...KEYBOARD_SOLO, ...cabinetKeyboard(1, 0) } as KeyScheme }],
     /**
      * ⚠️ NEVER, UNTIL AN ENGINE MENU IS ACTUALLY ON SCREEN. See this module's header: answering `true`
      * while paused handed the engine every navigation key at window-capture, for menus this game does
