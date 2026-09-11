@@ -149,6 +149,13 @@ export interface PinballGameOptions {
    */
   readonly preset: ActionPreset;
   /**
+   * ⚠️ WITHOUT THIS THE ENGINE'S OWN PAUSE CARD IS A ROOM WITH NO DOOR. `ui/menu-nav`'s `navPause`
+   * answers a root-level «no» with `ctx.setPhase('playing')`, and `createGame` defaults that to `() => {}`
+   * for a game that declares none — so a child who opens the engine's card and presses Escape at its root
+   * gets nothing at all. It is one line, and it is reached by exactly the child who most needs a way out.
+   */
+  readonly setPhase: (phase: Phase) => void;
+  /**
    * THE SEATS, FOR THE ENGINE'S REMAPPER — `Pick<ControlledPlayer, 'ctrl'>`, a key scheme and nothing else.
    *
    * ⚠️ ONE, AND THE ONE IS THE STATEMENT. With no list at all `createGame` falls back to a throwaway
@@ -228,6 +235,25 @@ export interface BootOptions {
    * ON SCREEN, which is a different question and takes a different argument.
    */
   readonly isBlindMode?: () => boolean;
+  /**
+   * IS A MENU ON SCREEN RIGHT NOW? — the argument this interface gave up and said it would want back.
+   *
+   * ⚠️ AND IT IS A DIFFERENT QUESTION FROM THE ONE THAT COST THE PAUSE MENU. That was
+   * `phase === 'paused'`, which answers yes over a stopped game with nothing open — and the engine
+   * listens at WINDOW CAPTURE, so it took every cabinet key before the game saw one. This asks whether
+   * there is a MENU, and the engine only consumes a key when it has something to navigate.
+   *
+   * ⚠️ ABSENT MEANS `false`, which is the behaviour that was safe. A host that does not answer the
+   * question does not get the engine's menu layer, rather than getting it on a guess.
+   */
+  readonly menuIsUp?: () => boolean;
+  /**
+   * Where the engine's own pause card sends a child who asks to leave it.
+   *
+   * ⚠️ ABSENT IS A ROOM WITH NO DOOR, and the engine cannot tell: `navPause` answers a root-level «no»
+   * with `setPhase('playing')` and `createGame` defaults it to `() => {}`. See `PinballGameOptions`.
+   */
+  readonly setPhase?: (phase: Phase) => void;
   readonly sonarPlayers?: () => SonarPlayerLike[];
   readonly camera?: CameraConfig;
   readonly hud?: HudConfig;
@@ -303,7 +329,8 @@ export function createPinballOptions(o: BootOptions): PinballGameOptions {
      * walks a menu either — both halves of the old comment were right about the game and wrong about
      * who was listening.
      */
-    isNavigable: () => false,
+    isNavigable: o.menuIsUp ?? (() => false),
+    setPhase: o.setPhase ?? (() => {}),
     ...(o.isBlindMode ? { isBlindMode: o.isBlindMode } : {}),
     ...(o.sonarPlayers ? { sonarPlayers: o.sonarPlayers } : {}),
   };

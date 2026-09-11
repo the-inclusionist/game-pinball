@@ -125,10 +125,30 @@ describe('the directions walk it and confirm takes an entry', () => {
 
     expect(walk).toEqual(['Continuar', 'Cores da mesa', 'Acessibilidade visual', 'Cores da mesa']);
 
-    // And back out, so the next test starts where this one found the game.
+    /**
+     * 🔴 THIS EPILOGUE USED TO EXPECT THE GAME TO RESUME, AND IT WAS ENCODING A DEFECT.
+     *
+     * The cursor is on «Cores da mesa». Enter resumed the game anyway, because `Enter` is bound to BOTH
+     * `confirm` and `pause` in this cabinet and the pause toggle bubbled past the button — `shell/controls`
+     * measured that sequence once and wrote it down: "keydown (which bubbled and toggled the pause on),
+     * then the click, then keyup". A player pointing at one entry and pressing confirm got a different
+     * entry's effect, and this line called it "back out, so the next test starts where this one found the
+     * game".
+     *
+     * 📏 MEASURED 2026-09-11, with the engine's menu layer switched on: `{ paletteOpen: true, phase:
+     * 'paused' }`. The engine consumes the key at window capture and activates the item the cursor is
+     * ACTUALLY ON, which is what a menu does. The game stays paused, because opening a palette is not
+     * leaving a pause.
+     *
+     * ⚠️ AND NOTHING NEEDS TO PUT THE GAME BACK: `playing()` at the top of every case in this file does
+     * it, which is what this file's own header says it is for.
+     */
     await userEvent.keyboard('{Enter}');
     await frames(4);
-    expect(debug().phase).toBe('playing');
+
+    const palette = document.getElementById('pinball-options')!;
+    expect(palette.hidden, 'confirm on «Cores da mesa» did not open the palette').toBe(false);
+    expect(debug().phase, 'and opening a palette is not leaving the pause').toBe('paused');
   });
 
   test('⚠️ and the plunger takes the entry under the cursor', async () => {

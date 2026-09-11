@@ -647,6 +647,25 @@ const shell = bootPinball({
   host: { doc: document, win: window, cvdHost: document.getElementById('cvd-filters') },
   isBlindMode: () => isBlind(),
   sonarPlayers: () => [sonarPlayer],
+  /**
+   * ⚠️ IS A MENU ON SCREEN? — the question that reopens the engine's menu layer, and the whole of §8.
+   *
+   * It asks the ENGINE rather than computing a second answer: `sharedDialogOpen()` is the same function
+   * the engine's own keyboard consults, so the predicate and the consumer cannot drift apart. §6 is what
+   * made that answer the truth — before it, four of this game's five screens were permanently «open» to
+   * the engine and this predicate would have said yes with a ball in play.
+   *
+   * ⚠️ AND THE ENGINE'S OWN CARD IS THE SECOND HALF. `#vp-pause-0` is mounted by `createGame` and is not
+   * one of this game's overlays, so `sharedDialogOpen()` does not see it; a predicate that missed it would
+   * leave the card unnavigable — which is the one surface this section exists to make reachable.
+   */
+  menuIsUp: (): boolean => shell.engine.nav.sharedDialogOpen() !== null
+    || document.querySelector('[id^="vp-pause-"]:not([hidden])') !== null,
+  /**
+   * Where the engine's own card sends a child who asks to leave it. `enterPhase` and not a bare
+   * assignment, because leaving the pause is also the hint line, the live region and the menu itself.
+   */
+  setPhase: (next) => enterPhase(next),
 }, createGame);
 
 // What the host document failed to provide. Empty is the good case; the engine does not throw for it,

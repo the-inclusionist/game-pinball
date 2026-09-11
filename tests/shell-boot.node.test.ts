@@ -436,6 +436,25 @@ describe('what is handed to the engine', () => {
       + 'baixarPesados: false now refuses a download that has a reader').toEqual([]);
   });
 
+  test('⚠️ and it is navigable WHEN A MENU IS ON SCREEN, which is what reopens the engine', () => {
+    /**
+     * ⚠️ THE PREDICATE STOPS BEING A CONSTANT. `shell/boot`'s own header named the shape this would take
+     * when it became possible: "when engine menus become reachable the predicate will ask whether ONE IS
+     * ON SCREEN, which is a different question and takes a different argument". This is that argument.
+     *
+     * ⚠️ IT IS NOT `phase === 'paused'`, WHICH IS WHAT IT USED TO BE AND WHAT COST THE PAUSE MENU. The
+     * engine listens at WINDOW CAPTURE, so a predicate that says yes while nothing is open hands it every
+     * cabinet key before the game sees them. The engine's own guard only consumes a key when there is
+     * something to navigate — but the thing it asks is `sharedDialogOpen()`, and §6 is what made that
+     * answer the truth.
+     *
+     * Absent, it is `false`: a host that does not answer the question gets the behaviour that was safe.
+     */
+    expect(createPinballOptions(options()).isNavigable(), 'no host answer means no navigation').toBe(false);
+    expect(createPinballOptions(options({ menuIsUp: () => true })).isNavigable()).toBe(true);
+    expect(createPinballOptions(options({ menuIsUp: () => false })).isNavigable()).toBe(false);
+  });
+
   test('⚠️ it is navigable for NOBODY, and that is a correction', () => {
     /**
      * This asserted `paused -> true` and was the decision, not a description of one: the engine may
