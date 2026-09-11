@@ -238,6 +238,16 @@ describe('⚠️ `crater-run`’s passage is a route the ball takes', () => {
     expect(crossings(false)).toBe(0);
   }, 15_000);
 
+  /**
+   * 🔴 THE SAME BUDGET AS ITS TWIN, AND IT WAS LEFT OUT OF THE FIRST FIX. The case above got 15 s when
+   * the flake was found; this one runs the SAME sixty launches of a thousand frames with the door open, and
+   * kept the 5-second default — so the fix held for one of a pair and the other went on waiting for a busy
+   * machine. Measured 2026-09-11: 6167 ms, on a run with nothing else competing for the box.
+   *
+   * ⚠️ WHICH IS THE ARGUMENT AGAINST FIXING A FLAKE WHERE IT FIRED rather than where it lives. The two
+   * cases are one survey called twice; budgeting the one that happened to fail first is treating a symptom,
+   * and the symptom moved next door within the hour.
+   */
   test('⚠️ and open, most of them do', () => {
     // Measured at 37 in 60. The gate asks for a quarter, so a change that halved the effect is still
     // caught and one that removed it — a door that opens in the model and stays solid in the physics
@@ -245,5 +255,5 @@ describe('⚠️ `crater-run`’s passage is a route the ball takes', () => {
     const used = crossings(true);
 
     expect(used, `${used}/${BALLS} crossed`).toBeGreaterThan(BALLS / 4);
-  });
+  }, 15_000);
 });
