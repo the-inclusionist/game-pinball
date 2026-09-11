@@ -24,6 +24,7 @@
 // written first and has to be RED before anything is changed.
 import { describe, test, expect, beforeAll } from 'vitest';
 import { PAGE_MARKUP } from './helpers/page.js';
+import { pinLanguage } from './helpers/pin-language.js';
 
 interface PinballDebug {
   phase: string;
@@ -44,6 +45,7 @@ const byId = (id: string): HTMLElement | null => document.getElementById(id);
 
 beforeAll(async () => {
   document.body.innerHTML = PAGE_MARKUP;
+  pinLanguage();
   await import('../app/js/main.js');
   await frames(10);
 });

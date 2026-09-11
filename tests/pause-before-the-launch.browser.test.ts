@@ -29,6 +29,7 @@
 import { describe, test, expect, beforeAll } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import { PAGE_MARKUP } from './helpers/page.js';
+import { pinLanguage } from './helpers/pin-language.js';
 
 interface PinballDebug { backdropLoaded: boolean; phase: string }
 const debug = (): PinballDebug => (window as unknown as { __pinball: PinballDebug }).__pinball;
@@ -42,6 +43,7 @@ const shown = (el: HTMLElement): boolean => getComputedStyle(el).display !== 'no
 
 beforeAll(async () => {
   document.body.innerHTML = PAGE_MARKUP;
+  pinLanguage();
   await import('../app/js/main.js');
   for (let i = 0; i < 600 && !debug().backdropLoaded; i++) await frames(1);
 });

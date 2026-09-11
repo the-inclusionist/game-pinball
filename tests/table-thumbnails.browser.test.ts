@@ -23,6 +23,7 @@
 import { describe, test, expect, beforeAll } from 'vitest';
 import { PLAYABLE_TABLES } from '../app/js/table/catalog.js';
 import { PAGE_MARKUP } from './helpers/page.js';
+import { pinLanguage } from './helpers/pin-language.js';
 
 interface PinballDebug { backdropLoaded: boolean }
 const debug = (): PinballDebug => (window as unknown as { __pinball: PinballDebug }).__pinball;
@@ -57,6 +58,7 @@ const apart = (a: number[], b: number[]): number =>
 
 beforeAll(async () => {
   document.body.innerHTML = PAGE_MARKUP;
+  pinLanguage();
   await import('../app/js/main.js');
   for (let i = 0; i < 600 && !debug().backdropLoaded; i++) await frames(1);
   document.querySelector<HTMLElement>('.pinball-title button')?.click();

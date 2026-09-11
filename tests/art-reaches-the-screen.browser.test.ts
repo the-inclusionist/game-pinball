@@ -52,6 +52,7 @@
 // pixel-level truth about those lives in `tests/gfx-surround` where it can be stated precisely.
 import { describe, test, expect, beforeAll } from 'vitest';
 import { PAGE_MARKUP } from './helpers/page.js';
+import { pinLanguage } from './helpers/pin-language.js';
 
 interface PinballDebug {
   problems: readonly string[];
@@ -100,6 +101,7 @@ beforeAll(async () => {
   // The page's own markup, as `app/index.html` writes it — a boot against different markup would be a
   // boot of a different program.
   document.body.innerHTML = PAGE_MARKUP;
+  pinLanguage();
   await import('../app/js/main.js');
 
   /**

@@ -20,6 +20,7 @@ import { COMET_BODY } from '../app/js/gfx/comet-view.js';
 import { WINNING_POINTS, MISSION_NUMBERS, MAX_COMETS, type Comet }
   from '../app/js/control/comet-mission.js';
 import { PAGE_MARKUP } from './helpers/page.js';
+import { pinLanguage } from './helpers/pin-language.js';
 
 interface PinballDebug {
   backdropLoaded: boolean;
@@ -35,6 +36,7 @@ const frames = async (n: number): Promise<void> => {
 
 beforeAll(async () => {
   document.body.innerHTML = PAGE_MARKUP;
+  pinLanguage();
   await import('../app/js/main.js');
   for (let i = 0; i < 600 && !debug().backdropLoaded; i++) await frames(1);
 });

@@ -81,6 +81,8 @@ import { MUSIC_WINDOW, MUSIC_LOOKAHEAD } from './shell/demo.js';
 import { playSchedule } from './audio/midi-player.js';
 import { createDemo, hintFor, type Demo } from './shell/demo.js';
 import { keyOf } from './i18n/keys.js';
+import { AVAILABLE_LOCALES, BASE_LOCALE, dictionaryOf, type Locale } from './i18n/index.js';
+import { initI18n, idiomaPronto, getLocale, registerDict, bcp47 } from '@the-inclusionist/engine/core/i18n.js';
 import { createSoundBoard, releaseVoice } from './audio/sfx.js';
 import { soundEntriesOf, VOICES } from './audio/voices.js';
 import { createWebAudioOutput } from './audio/web-audio.js';
@@ -618,8 +620,48 @@ function sayUnavailable(): void {
   if (status) status.textContent = shell.t('pinball.a11y.unavailableInDemo');
 }
 
+/**
+ * The language this game draws in — THE ENGINE'S, not a literal of its own.
+ *
+ * 🔴 IT WAS `'pt'`, WRITTEN OUT, AND THE TWO HALVES OF THE SCREEN DID NOT AGREE. Measured 2026-09-11 in
+ * both test browsers: the engine answered `en` and this game said `pt`. Everything the engine draws — the
+ * accessibility bar, the pause card, the reach notice — spoke one language over a HUD, a table list and a
+ * pause menu that spoke another. Three dictionaries shipped and a player could reach one.
+ *
+ * ⚠️ THE ENGINE IS THE ONE THAT ASKED THE CHILD'S MACHINE. `initI18n` reads a saved preference first and
+ * `navigator.language` second. This game asked nothing. Reading its answer is not a courtesy: it is the
+ * only way one screen speaks one language, and under ADR-0117 the language belongs to the SITE anyway.
+ *
+ * ⚠️ AND THE AWAIT IS NOT OPTIONAL, WHICH THE MEASUREMENT ALSO SHOWED. Every locale but `pt` is a chunk
+ * fetched on demand, so `getLocale()` answers `pt` until it lands — chromium and firefox disagreed with
+ * each other purely on that timing. `idiomaPronto()` is the engine's own handle for it, and
+ * `boot/create-game` waits on exactly the same one before it writes its icon labels.
+ *
+ * 📌 AND THE REGISTRATION IS THE SHELL'S, WHICH MATTERS FOR WHAT COMES NEXT. `ADR-0139` makes a cartridge
+ * EXPORT its dictionaries and never register them; `main.ts` is this game's standalone shell today, so the
+ * two lines below are the shell doing its job. When the cartridge conversion comes they move to
+ * `src/standalone.ts` and the platform does the same thing on its side — `app/js/i18n` is untouched.
+ */
+initI18n(document);
+for (const code of AVAILABLE_LOCALES) {
+  const refused = registerDict(code === 'pt' ? 'pt' : code, dictionaryOf(code));
+  // A non-empty answer is a key collision with the engine's own 558: one surface would silently start
+  // speaking the other's words. Gated in `tests/i18n-engine-registration`; reported here because a
+  // console line at boot is what the engine's own `registerDict` promises a writer.
+  if (refused.length) console.warn('[pinball] keys the engine refused:', refused);
+}
+await idiomaPronto();
+
+const chosen = getLocale();
+const locale: Locale = (AVAILABLE_LOCALES as readonly string[]).includes(chosen)
+  ? chosen as Locale
+  // The engine has locales this game has not been translated into. Falling back is the honest answer;
+  // drawing a half-translated screen would be worse than drawing a consistent one in the base language.
+  : BASE_LOCALE;
+document.documentElement.lang = bcp47(locale);
+
 const shell = bootPinball({
-  locale: 'pt',
+  locale,
   table,
   /**
    * ⚠️ THE TABLE'S OWN HEIGHT, AND WITHOUT THIS EVERY TALL TABLE LOSES ITS BOTTOM.
@@ -2226,6 +2268,8 @@ Object.assign(window as unknown as Record<string, unknown>, {
      * only inside the engine is a fact no boot check can confirm. `engine.alcance` was permanently
      * `{ ok: false, pedidas: 0 }` while this game declared no preset, and nothing anywhere could see it.
      */
+    /** The language this game is drawing in, so a gate can ask whether it is the engine's. */
+    get locale() { return locale; },
     get reach() { return shell.engine.alcance; },
     /**
      * ⚠️ WHAT THE ENGINE THINKS IS ON SCREEN, which is not the same question as what IS on screen.

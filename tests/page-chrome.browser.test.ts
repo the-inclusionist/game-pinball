@@ -21,6 +21,7 @@
 // from the one person they are for. The clip technique is the only one that does both.
 import { describe, test, expect, beforeAll } from 'vitest';
 import { TOPBAR_MARKUP } from './helpers/page.js';
+import { pinLanguage } from './helpers/pin-language.js';
 
 const frames = async (n: number): Promise<void> => {
   for (let i = 0; i < n; i++) await new Promise((r) => requestAnimationFrame(() => r(null)));
@@ -34,6 +35,7 @@ beforeAll(async () => {
     <div id="sr-alert" role="alert" aria-live="assertive"></div>
     <svg id="cvd-filters" width="0" height="0" aria-hidden="true" focusable="false"></svg>
   `;
+  pinLanguage();
   await import('../app/js/main.js');
   await frames(6);
 });

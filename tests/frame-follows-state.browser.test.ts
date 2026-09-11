@@ -25,6 +25,7 @@
 // pixels must differ. That is exactly the property both defects broke, and nothing more.
 import { describe, test, expect, beforeAll } from 'vitest';
 import { PAGE_MARKUP } from './helpers/page.js';
+import { pinLanguage } from './helpers/pin-language.js';
 
 interface PinballDebug {
   problems: readonly string[];
@@ -281,6 +282,7 @@ const key = (code: string, type: 'keydown' | 'keyup'): void => {
 
 beforeAll(async () => {
   document.body.innerHTML = PAGE_MARKUP;
+  pinLanguage();
   await import('../app/js/main.js');
   /**
    * ⚠️ INTO A GAME THE WAY A PLAYER GETS INTO ONE, which this file used not to do: it booted `main`

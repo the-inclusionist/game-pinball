@@ -17,6 +17,7 @@
 // spends its time on the question instead of on the clock.
 import { describe, test, expect, beforeAll } from 'vitest';
 import { PAGE_MARKUP } from './helpers/page.js';
+import { pinLanguage } from './helpers/pin-language.js';
 
 interface PinballDebug {
   problems: readonly string[];
@@ -45,6 +46,7 @@ beforeAll(async () => {
    */
   history.replaceState({}, '', '?table=ion-storm');
   document.body.innerHTML = PAGE_MARKUP;
+  pinLanguage();
   await import('../app/js/main.js');
 });
 

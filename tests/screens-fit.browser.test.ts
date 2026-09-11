@@ -22,6 +22,7 @@
 import { describe, test, expect, beforeAll } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import { TOPBAR_MARKUP } from './helpers/page.js';
+import { pinLanguage } from './helpers/pin-language.js';
 
 interface PinballDebug { backdropLoaded: boolean; phase: string }
 const debug = (): PinballDebug => (window as unknown as { __pinball: PinballDebug }).__pinball;
@@ -67,6 +68,7 @@ beforeAll(async () => {
     <div id="sr-alert" role="alert" aria-live="assertive"></div>
     <svg id="cvd-filters" width="0" height="0" aria-hidden="true" focusable="false"></svg>
   `;
+  pinLanguage();
   await import('../app/js/main.js');
   for (let i = 0; i < 600 && !debug().backdropLoaded; i++) await frames(1);
   await frames(5);

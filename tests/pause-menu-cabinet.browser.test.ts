@@ -31,6 +31,7 @@
 import { describe, test, expect, beforeAll } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import { PAGE_MARKUP } from './helpers/page.js';
+import { pinLanguage } from './helpers/pin-language.js';
 
 interface PinballDebug { phase: string; score: number }
 const debug = (): PinballDebug => (window as unknown as { __pinball: PinballDebug }).__pinball;
@@ -82,6 +83,7 @@ async function playing(): Promise<void> {
 
 beforeAll(async () => {
   document.body.innerHTML = PAGE_MARKUP;
+  pinLanguage();
   await import('../app/js/main.js');
   await frames(10);
   await play();

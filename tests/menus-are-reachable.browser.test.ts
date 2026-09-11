@@ -26,6 +26,7 @@
 import { describe, test, expect, beforeAll } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import { PAGE_MARKUP } from './helpers/page.js';
+import { pinLanguage } from './helpers/pin-language.js';
 
 interface PinballDebug {
   phase: string;
@@ -44,6 +45,7 @@ const region = (): HTMLElement => document.getElementById('game-region')!;
 
 beforeAll(async () => {
   document.body.innerHTML = PAGE_MARKUP;
+  pinLanguage();
   await import('../app/js/main.js');
   await frames(10);
 });

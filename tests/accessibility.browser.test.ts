@@ -16,6 +16,7 @@
 // keys are bound to `#game-region` and not to `window`, so only a real focus proves a real key arrives.
 import { describe, test, expect, beforeAll } from 'vitest';
 import { PAGE_MARKUP } from './helpers/page.js';
+import { pinLanguage } from './helpers/pin-language.js';
 
 interface PinballDebug {
   phase: string;
@@ -133,6 +134,7 @@ beforeAll(async () => {
    * Clearing it is what keeps `blindAtBoot` a measurement rather than a coincidence of ordering.
    */
   try { localStorage.removeItem('incl_modocego'); } catch { /* a private window refuses; the default is off anyway */ }
+  pinLanguage();
   await import('../app/js/main.js');
   blindAtBoot = debug().blind;
   /**
