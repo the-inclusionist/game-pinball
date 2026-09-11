@@ -29,6 +29,6 @@
     "vitest": "^4.0.0"
   },
   "dependencies": {
-    "@the-inclusionist/engine": "^8.0.0"
+    "@the-inclusionist/engine": "^9.0.0"
   }
 }
