@@ -742,6 +742,30 @@ const shell = bootPinball({
    * assignment, because leaving the pause is also the hint line, the live region and the menu itself.
    */
   setPhase: (next) => enterPhase(next),
+  /**
+   * ⚠️ WHAT THE ENGINE'S OWN PAUSE CARD CAN DO HERE, AND THE POINT IS NOT THE CARD.
+   *
+   * `entrarNaBarra` calls `acts.resume?.()` to leave the card before it hands the four directions to the
+   * accessibility bar. With no table that `resume` is `undefined`, the card stays over the game, and ADR-0044
+   * item 7 — the directional driving the bar — was unreachable from ANY game booted by `createGame` until
+   * engine 9.0.0 published the field.
+   *
+   * 📌 TWO ITEMS AND NOT SEVEN, because `refrescarItensDaPausa` hides what cannot act and `colours`,
+   * `tables` and `title` have no slot in the engine's own list. Those three are why this game keeps
+   * `shell/pause-menu` beside the card rather than instead of it.
+   */
+  pauseActs: () => ({
+    resume: () => { enterPhase(resumeTo); region.focus(); },
+    quit: () => endGame(endOfGame, live.score.curScore),
+  }),
+  /**
+   * ⚠️ AND THE COLOUR-CORRECTION ICON GETS ITS WRITER, which this game has had all along.
+   *
+   * `shell/boot` used to read the missing 🚥 as "this game has its own dialog" — true about the outcome
+   * and false about the cause: there was no field to hand a writer through. Now there is, and the icon and
+   * the dialog write the same state, so a child who changes it in one place sees it in the other.
+   */
+  setCorrection: (choice) => applyVision(choice),
 }, createGame);
 
 /**

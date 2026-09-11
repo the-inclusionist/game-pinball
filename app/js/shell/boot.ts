@@ -165,6 +165,29 @@ export interface PinballGameOptions {
    */
   readonly players: { ctrl: KeyScheme }[];
   readonly isNavigable: () => boolean;
+  /**
+   * WHAT EACH ITEM OF THE ENGINE'S PAUSE CARD DOES IN THIS GAME.
+   *
+   * ⚠️ THE CARD IS NOT THE POINT — THE BAR IS. `entrarNaBarra` calls `acts.resume?.()` to leave the card
+   * before handing the four directions to the accessibility bar; with an empty table that `resume` is
+   * `undefined`, the card stays over the game, and ADR-0044 item 7 — the directional driving the bar — was
+   * unreachable from ANY game until engine 9.0.0 published this field.
+   *
+   * 📌 AND THE LIST IS SHORT BECAUSE `refrescarItensDaPausa` HIDES WHAT CANNOT ACT (ADR-0106 §5). This
+   * cabinet answers `resume` and `quit`; `colours`, `tables` and `title` have no slot in the engine's
+   * `PM_BTNS` at all, which is why this game keeps its own pause menu beside the card.
+   */
+  readonly getPauseActs?: () => Record<string, (() => void) | undefined>;
+  /**
+   * HOW THIS GAME CORRECTS COLOUR — the writer that makes the 🚥 icon mountable.
+   *
+   * ⚠️ AND ⚫ HAS NO COMPANION HERE, WHICH IS A STATEMENT RATHER THAN A GAP. `iconesQueAccionam` mounts the
+   * high-contrast icon only for a game that supplies `setTemaDoJogador`, and high contrast is applied by
+   * repainting TEXTURES. This game's picture is a 320×180 framebuffer with none, so the icon stays absent
+   * because the game cannot honour it — an icon that does not act being worse than an icon fewer.
+   */
+  readonly setCorrecaoDoJogador?: (player: number, correcao: string) => void;
+  readonly setTemaDoJogador?: never;
   readonly isBlindMode?: () => boolean;
   /**
    * ⚠️ A STABLE ARRAY, NOT A FRESH ONE, AND THE REASON CHANGED UNDER THE RULE. The engine used to
@@ -247,6 +270,16 @@ export interface BootOptions {
    * question does not get the engine's menu layer, rather than getting it on a guess.
    */
   readonly menuIsUp?: () => boolean;
+  /** What the engine's pause card can action here. See `PinballGameOptions.getPauseActs`. */
+  readonly pauseActs?: () => Record<string, (() => void) | undefined>;
+  /**
+   * Applies a colour correction, in THIS GAME's words.
+   *
+   * ⚠️ THE TRANSLATION BETWEEN THE TWO VOCABULARIES HAPPENS BELOW AND NOT IN THE CALLER, because it is one
+   * fact about two names: the engine's `tricro` is "trichromatic vision", a NAME rather than an absence,
+   * and this game calls the same thing `normal`. Everything else is `fix-*` on both sides already.
+   */
+  readonly setCorrection?: (choice: string) => void;
   /**
    * Where the engine's own pause card sends a child who asks to leave it.
    *
@@ -330,6 +363,14 @@ export function createPinballOptions(o: BootOptions): PinballGameOptions {
      * who was listening.
      */
     isNavigable: o.menuIsUp ?? (() => false),
+    ...(o.pauseActs ? { getPauseActs: o.pauseActs } : {}),
+    ...(o.setCorrection
+      ? {
+        setCorrecaoDoJogador: (_player: number, correcao: string): void => {
+          o.setCorrection!(correcao === 'tricro' ? 'normal' : `fix-${correcao}`);
+        },
+      }
+      : {}),
     setPhase: o.setPhase ?? (() => {}),
     ...(o.isBlindMode ? { isBlindMode: o.isBlindMode } : {}),
     ...(o.sonarPlayers ? { sonarPlayers: o.sonarPlayers } : {}),

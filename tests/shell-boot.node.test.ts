@@ -144,6 +144,48 @@ describe('the camera on a table wider than the window', () => {
     expect(source, 'the debug surface carries both axes').toMatch(/get cameraX\(\) \{ return shell\.cameraX; \}/);
   });
 
+  test('⚠️ the pause card can ACTION this game’s items, which unblocks the accessibility bar', () => {
+    /**
+     * ⚠️ THE CARD WAS NOT THE POINT — THE BAR WAS. `ui/pause-icons.entrarNaBarra` calls `acts.resume?.()`
+     * to leave the card before it hands the four directions to the accessibility bar; with an empty table
+     * that `resume` is `undefined`, the card stays over the game, and **ADR-0044 item 7 is unreachable from
+     * any game at all**. The engine could not be told until 9.0.0 published the field.
+     *
+     * 📌 AND THE LIST IS SHORT ON PURPOSE. `refrescarItensDaPausa` hides an item with no action — ADR-0106
+     * §5, no dead buttons — so naming an item this game cannot honour would be worse than naming none.
+     * `resume` and `quit` are the two this cabinet answers; `colours`, `tables` and `title` have no slot in
+     * the engine's `PM_BTNS` at all, which is why this game keeps its own pause menu beside the card.
+     */
+    const acts = createPinballOptions(options({ pauseActs: () => ({ resume: () => {} }) })).getPauseActs?.();
+
+    expect(acts, 'the engine is handed no action table at all').toBeDefined();
+    expect(typeof acts!['resume'], 'the bar cannot leave the card without it').toBe('function');
+  });
+
+  test('⚠️ and the colour-correction icon gets a writer, because this game HAS one', () => {
+    /**
+     * `iconesQueAccionam` mounts 🚥 only for a game that supplies `setCorrecaoDoJogador`, and that rule is
+     * right: an icon that does not act is worse than an icon fewer. What was missing until 9.0.0 was the
+     * DOOR — `shell/boot`'s own note read the absence as "this game has its own", which was true about the
+     * outcome and false about the cause.
+     *
+     * ⚠️ AND ⚫ STAYS ABSENT, DELIBERATELY. High contrast is applied by repainting textures and this game's
+     * picture is a 320×180 framebuffer with none. The icon stays away because the game cannot honour it,
+     * which is the same rule working in the other direction.
+     */
+    const taken: string[] = [];
+    const built = createPinballOptions(options({ setCorrection: (choice) => taken.push(choice) }));
+
+    expect(built.setTemaDoJogador, 'this game cannot repaint a texture and must not say it can')
+      .toBeUndefined();
+    built.setCorrecaoDoJogador?.(0, 'deuter');
+    built.setCorrecaoDoJogador?.(0, 'tricro');
+
+    // ⚠️ THE ENGINE'S WORDS ARE NOT THIS GAME'S. `tricro` is "trichromatic vision" and is a NAME rather
+    // than an absence; this game calls that `normal`. The rest are `fix-*`, which both already agree on.
+    expect(taken).toEqual(['fix-deuter', 'normal']);
+  });
+
   test('⚠️ and the engine is told the WORDS of this game’s controls', () => {
     /**
      * ⚠️ WITHOUT THIS THE REACH CARD CANNOT FIRE AT ALL. `createGame` computes `acoesDoJogo` from the
@@ -241,9 +283,21 @@ describe('the camera on a table wider than the window', () => {
      */
     expect(source.match(/highScores\.offer\(/g) ?? [], 'offered at the drain and through the wire')
       .toHaveLength(2);
+    /**
+     * ⚠️ THREE DOORS NOW, AND THE CLAIM WAS NEVER ABOUT THE NUMBER. This asked for exactly TWO — the
+     * pause menu's «Encerrar partida» and the won comet drill — and a third arrived the day the engine's
+     * own pause card could action this game's items: `getPauseActs` gives it a `quit`, which is a new way
+     * for a player to ask for the same thing.
+     *
+     * What the case exists to refuse is a second WAY OF ENDING, not a second way of ASKING. A door that
+     * ended a game without going through `shell/end-of-game` would skip the scoreboard offer, and the
+     * board would quietly stop recording games that ended that way. So the assertion is that every
+     * deliberate end goes through the one function — and it counts them so that a new door has to be
+     * looked at rather than added.
+     */
     expect(source.match(/endGame\(endOfGame/g) ?? [],
-      'the deliberate ends of a game — Quit and the won drill — both go through one function')
-      .toHaveLength(2);
+      'a deliberate end of a game that does not go through `shell/end-of-game`')
+      .toHaveLength(3);
   });
 
   test('⚠️ a lit lamp reaches the PICTURE, not only the control layer', () => {

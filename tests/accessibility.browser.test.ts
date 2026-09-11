@@ -157,6 +157,34 @@ beforeAll(async () => {
   await frames(5);
 });
 
+describe('⚠️ the colour-correction icon, which no game could have until engine 9.0.0', () => {
+  test('🚥 is on the bar, because this game hands the engine a writer for it', () => {
+    /**
+     * ⚠️ `iconesQueAccionam` MOUNTS IT ONLY FOR A GAME THAT SUPPLIES `setCorrecaoDoJogador`, and that rule
+     * is right: an icon that does not act is worse than an icon fewer. What was missing was the DOOR —
+     * `createGame` had no field to hand a writer through, so NO game booted by it could show this icon.
+     * `shell/boot`'s own note read the absence as "this game has its own dialog", which was true about the
+     * outcome and false about the cause.
+     *
+     * This game has had the writer all along: `engine.aplicarFiltroDeVisao`, which `shell/vision` uses.
+     */
+    expect(document.querySelector('#title-icons [data-pi="cvd"]'), 'the icon is still not mounted')
+      .not.toBeNull();
+  });
+
+  test('⚠️ and ⚫ is NOT, because this game cannot repaint a texture it does not have', () => {
+    /**
+     * The same rule in the other direction, and it is the half that proves the first case is a decision
+     * rather than an accident. High contrast is applied by repainting TEXTURES; this game's picture is a
+     * 320×180 framebuffer composed by hand. Supplying a theme writer it could not honour would put an icon
+     * on the bar that does nothing — ADR-0106 §5's dead button, on the one strip a child who needs it reads
+     * first.
+     */
+    expect(document.querySelector('#title-icons [data-pi="contrast"]'), 'an icon the game cannot honour')
+      .toBeNull();
+  });
+});
+
 describe('blind mode, from the icon a player would actually press', () => {
   test('⚠️ the blind-mode icon turns it on, and the game KNOWS it is on', async () => {
     // ⚠️ AND THIS COVERS HALF OF THE DEFECT IT WAS WRITTEN FOR, which is worth saying exactly.
