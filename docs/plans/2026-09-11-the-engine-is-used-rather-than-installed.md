@@ -24,7 +24,7 @@
 | 9 | One language, chosen | ✅ `461d692` |
 | 10 | The game speaks out loud | ✅ `72e82bb` |
 | 12 | Left to the Dev | ⏸ ADR-0002 answered `0a6e6c0`; five open, all his |
-| B | The cartridge architecture | 🛠 **in progress** — **A0–A2 are DONE**: the cartridge calls no `createGame`, reads no address, draws from its own stream and is handed its element, its language and its translator. Left: **A3** (package + lib target) and **A4** (PWA) |
+| B | The cartridge architecture | 🛠 **A0–A3 are DONE** — the cartridge calls no `createGame`, reads no address, draws from its own stream, is handed its element, its language and its translator, and builds as an installable library. **Left: A4** (PWA), and the SLUG, which is the Dev's |
 
 **Part A is complete.** `npm run validate`: 235 suites, 2891 passing, 1 skipped, build — exit zero.
 
@@ -434,8 +434,8 @@ design decision.
 | **A2a** | ✅ `e3be145` — the seam: `bootPinball(o, engine)` receives the ENGINE instead of the factory that makes one, so the `createGame` call is one named line in the caller rather than buried in the boot | the whole suite, plus `tests/shell-boot` asking the BUILDER for the declaration instead of reading it back out of a fake engine |
 | **A2b** | ✅ `b28fb85` — `app/js/standalone.ts` takes the host's half: `initI18n`, `registerDict` over the cartridge's exported dictionaries, `idiomaPronto()` and the page's `lang`. `app/index.html` loads it; the seventeen browser suites boot through it | `tests/the-shell-does-the-hosts-work`, born red five times over. 🔴 And `tests/one-language` caught `documentElement.lang` going unwritten — a regression invisible in source and visible in a browser |
 | **A2c** | ✅ `67a1ec1` — `createGame` left the cartridge, over six commits: params, rng, region, the delegating declaration, the delegating hooks, and then the move | `tests/the-shell-does-the-hosts-work`'s ledger, with `createGame(` in it at last, born red from both sides |
-| **A3** | `package.json` — peer + dev dependencies, `exports`, `files`, `private` removed; `vite.config` gains the `lib` target | the lib build produces an ES module that externalises the engine |
-| **A4** | `vite-plugin-pwa` on the app build | ⚠️ **§1's GATE FIRES HERE, BY DESIGN** — a tracked service worker with `baixarPesados: false` is refused until ADR-0010 is reopened |
+| **A3** | ✅ `e9833f8` — `package.json` (peer + dev, `exports`, `files`, `private` gone) and a SECOND config, `vite.lib.config.ts`. 🔴 Not `build.lib`: see below | `tests/the-cartridge-can-be-installed`, which reads the BUILT output — engine external, no base64, every `exports` path resolving |
+| **A4** | **NEXT** — `vite-plugin-pwa` on the app build | ⚠️ **§1's GATE FIRES HERE, BY DESIGN** — a tracked service worker with `baixarPesados: false` is refused until ADR-0010 is reopened |
 
 ### 🔴 A2c measured, 2026-09-11: the obvious cut does not exist
 
@@ -564,6 +564,31 @@ loads the cartridge with `await import('./main.js')` — it has to, because a st
 registration it exists to run first — so `main.ts` would have stayed in the ledger as "imported by nobody"
 while being imported on every boot, with the entry underneath reading as verified. The scanner counts
 `import(` now, and `shell/cartridge` left the ledger exactly as its own entry had promised.
+
+🔴 **A3, MEASURED: VITE'S `build.lib` MAKES A CARTRIDGE THREE TIMES TOO BIG.** In library mode Vite
+inlines every asset as base64 **regardless of `assetsInlineLimit`** — documented behaviour, and right for
+a library of components. For this game it meant thirteen playfield PNGs inside the JavaScript:
+
+| build | module | gzip | base64 inside it |
+|---|---|---|---|
+| `build.lib` | 1,051 kB | 572 kB | 602 kB |
+| `rollupOptions.input` | **324 kB** | **90 kB** | none |
+
+⚠️ **AND THE BYTES ARE THE SMALLER HALF OF THE COST.** A picture inlined in the module cannot be cached
+on its own, cannot be fetched in parallel, and is re-downloaded whole every time one line of this game
+changes — on the school machines this port is for. ADR-0117 puts the platform in charge of loading heavy
+things ONCE, and a cartridge hiding 600 kB inside its own module has taken that decision away from it.
+
+🔴 **AND THE MANIFEST PROMISED A PATH THAT DID NOT EXIST**, for one commit: `exports` named the
+stylesheet without its hash. Every other packaging claim passed; only the promise was broken, and a
+consumer would have met it as `ERR_PACKAGE_PATH_NOT_EXPORTED` on their own machine. The gate resolves
+every path `exports` offers now.
+
+🔴 **THE SLUG IS STILL THE DEV'S, AND `private` GOING DOES NOT SETTLE IT.** `package.json` says
+`@the-inclusionist/game-space-cadet`; the folder and the remote say `game-pinball`; ADR-0082 §1 makes them
+one word. Removing `private` publishes nothing by itself — `npm publish` is a separate step and
+`.release-it.json` says the Dev runs it — but the package cannot be published under a name nobody has
+chosen. **This is the one thing in Part B that work cannot advance.**
 
 ⚠️ **THE DECLARATION IS THE ONE DESIGN PROBLEM, AND IT IS IN A1.** `Cartridge.declaration` is a value, and
 this game's declaration is built from a LIVE world that does not exist until `create(ctx)` has read
