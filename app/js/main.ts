@@ -25,6 +25,7 @@
 import '../css/style.css';
 
 import { createGame } from '@the-inclusionist/engine';
+import type { Rng } from '@the-inclusionist/engine/core/rng.js';
 import {
   bootPinball, createPinballOptions, type BootOptions, type LiveTable, type Phase,
 } from './shell/boot.js';
@@ -160,6 +161,21 @@ export interface PinballInstance {
  */
 export interface PinballCtx {
   /**
+   * THIS CARTRIDGE'S OWN STREAM OF NUMBERS.
+   *
+   * ⚠️ NOT `Math.random`, AND NOT THE ENGINE'S SHARED ONE EITHER — ADR-0141. `core/rng` exports
+   * `createRng(seed)`, which is independent, AND `rnd`/`randInt`/`shuffle`/`reseed`, which are all bound
+   * to one module-level stream. Two cartridges on the shared one is a `reseed` in one repositioning the
+   * other's, and `Math.random` is the same defect wearing the page's clothes: a stream owned by nobody,
+   * that a host cannot seed, replay or isolate.
+   *
+   * 📌 THE SEED IS THE HOST'S, AND IT IS NOT FIXED. `table/physics-build` argues why this pinball
+   * must not be reproducible — «a pinball that kicks the same way every time is one a player could learn
+   * to exploit» — so the shell seeds per session. What the stream buys is not determinism: it is that
+   * the randomness BELONGS to something, which is what makes two games on one page possible.
+   */
+  readonly rng: Rng;
+  /**
    * What the shell decided this cartridge may read from the address.
    *
    * ⚠️ NOT `location.search`, AND THE DIFFERENCE IS THE PLATFORM. One address carries every cartridge
@@ -219,6 +235,14 @@ const thrust: { up: boolean; left: boolean; right: boolean } = {
 };
 
 const physics = buildPhysics(authored, {
+  /**
+   * ⚠️ THE STREAM GOES IN HERE AND REACHES FOUR SEAMS, which is why this one line matters more than
+   * the others. `table/physics-build` forwards `random` to `physics/step`'s `throwBall` — every kickout,
+   * well and hole — to `physics/stuck`'s nudge, to the lamp animations of `table/light-group` and to the
+   * plunger's jitter. Without it each of those falls back to `Math.random` on its own, and the fallback
+   * is read ONCE when the seam is built, so nothing later can take it back.
+   */
+  random: ctx.rng.rnd,
   // Twenty nudges having failed, the ball goes back to the plunger rather than being nudged for ever.
   relaunch: () => { phase = 'title'; },
   /**
@@ -436,6 +460,10 @@ function launch(speed = launchSpeedFor(authored)): void {
  * ⚠️ ONE PER GAME AND NOT ONE PER TABLE, because `main.ts` boots a single table — the reload seam. Its
  * full-draw speed is that table's, so a taller table still gets a launch that can reach its top.
  */
+// 📌 NO STREAM HERE, AND THAT IS NOT AN OVERSIGHT. This is `shell/plunger`, which draws no random
+// numbers at all; the one that jitters is `table/plunger`, reached through `buildPhysics` above and
+// given the stream there. Two modules share the name, which is the trap `tests/no-unsanctioned-orphans`
+// records having fallen into once already.
 const plunger = createPlunger({ maxSpeed: launchSpeedFor(authored) });
 
 /**
@@ -2010,8 +2038,8 @@ const screens = titleScreen({
      * ⚠️ AND NOT IN THE DEMONSTRATION. That is the 1995 table, being validated against the player's
      * own archive; comets falling through it would be this project's mission on Microsoft's playfield.
      */
-    comets = demoRequested ? null : cometMission({ number: times });
-    powerUps = comets ? powerUpField() : null;
+    comets = demoRequested ? null : cometMission({ number: times, random: ctx.rng.rnd });
+    powerUps = comets ? powerUpField({ random: ctx.rng.rnd }) : null;
   },
 });
 
@@ -2390,7 +2418,7 @@ Object.assign(window as unknown as Record<string, unknown>, {
     loadOriginal(bytes: ArrayBuffer) {
       // The SAME options the page passes. A check that took a different path would be checking a
       // different program, which is how a discrepancy hides.
-      demo = createDemo(bytes, { textFor: (id) => shell.t(keyOf(id)) });
+      demo = createDemo(bytes, { textFor: (id) => shell.t(keyOf(id)), random: ctx.rng.rnd });
       demoPage?.destroy();
       return { walls: demo.table.wallCount, picture: [demo.playfield.width, demo.playfield.height] };
     },

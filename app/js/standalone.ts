@@ -26,6 +26,7 @@
 import {
   bcp47, initI18n, idiomaPronto, registerDict,
 } from '@the-inclusionist/engine/core/i18n.js';
+import { createRng } from '@the-inclusionist/engine/core/rng.js';
 import { AVAILABLE_LOCALES } from './i18n/index.js';
 import { cartridgeDicts, cartridgeLocale } from './shell/cartridge.js';
 
@@ -84,4 +85,20 @@ const { createPinball } = await import('./main.js');
  * decide differently, giving each cartridge a namespaced slice of one address. The cartridge does not
  * have to change for that, which is the point of handing it over rather than letting it read.
  */
-createPinball({ params: new URLSearchParams(location.search) });
+createPinball({
+  params: new URLSearchParams(location.search),
+  /**
+   * ONE STREAM, BUILT BY THE HOST, BELONGING TO THIS CARTRIDGE AND NOTHING ELSE.
+   *
+   * ⚠️ `createRng` IS THE HALF OF `core/rng` THE GAMES DID NOT REACH FOR. The other half — `rnd`,
+   * `randInt`, `shuffle`, `reseed` — is bound to a module-level stream shared by everyone who imports
+   * it, and on a page with two cartridges a `reseed` in one repositions the other's. The engine's own
+   * doc says it: «Reposiciona ESTA corrente. Não alcança nenhuma outra».
+   *
+   * 🔴 AND THE SEED IS THE CLOCK ON PURPOSE, WHICH IS THE OPPOSITE OF WHAT A SEEDED STREAM IS USUALLY
+   * FOR. `table/physics-build` spends a paragraph on it: a pinball whose kickouts, wells and holes throw
+   * the ball the same way every session is one a player learns to exploit, and that is a worse game. The
+   * stream is here so the randomness BELONGS to something a host can isolate — not so it repeats.
+   */
+  rng: createRng(Date.now()),
+});
