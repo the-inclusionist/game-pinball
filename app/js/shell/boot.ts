@@ -247,6 +247,19 @@ export interface LiveTable {
 
 export interface BootOptions {
   readonly locale: Locale;
+  /**
+   * The translator to draw with, when whoever settled the language already built one.
+   *
+   * ⚠️ `ctx.t` IS «TRANSLATE, ALREADY SCOPED TO THE ACTIVE LOCALE», AND THE WORD IS *ALREADY*. Under
+   * ADR-0117 the language belongs to the SITE: the host has chosen it and built a translator for it, and
+   * handing the CODE over for the game to build a second one is two constructions of one fact — which
+   * this repository has paid for often enough to name it at the field.
+   *
+   * 📌 OPTIONAL, BECAUSE `locale` IS STILL NEEDED FOR MORE THAN WORDS. `createPinballWorld` builds a
+   * NAMER and a name table from the code, and neither is a `Translate`. So the code stays and the
+   * translator joins it, rather than replacing it.
+   */
+  readonly t?: Translate;
   readonly table: LiveTable;
   readonly host: HostLike;
   /**
@@ -457,7 +470,12 @@ export function bootPinball<E extends EngineLike>(
      * table, which is what the sonar and the screen reader describe.
      */
     declaration: createPinballOptions(o).declaration,
-    t: createTranslator(o.locale),
+    /**
+     * 📌 THE HOST'S IF THERE IS ONE, AND OTHERWISE THIS SHELL'S. The standalone page is its own host
+     * and let the shell build it for a year; making the field required would be a breaking change to
+     * `BootOptions` for no gain, and the fallback is exactly what it always did.
+     */
+    t: o.t ?? createTranslator(o.locale),
     hud,
     get camera() { return camera; },
     get cameraX() { return cameraX; },

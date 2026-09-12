@@ -27,7 +27,7 @@ import {
   bcp47, initI18n, idiomaPronto, registerDict,
 } from '@the-inclusionist/engine/core/i18n.js';
 import { createRng } from '@the-inclusionist/engine/core/rng.js';
-import { AVAILABLE_LOCALES } from './i18n/index.js';
+import { AVAILABLE_LOCALES, createTranslator } from './i18n/index.js';
 import { createGame } from '@the-inclusionist/engine';
 import { cartridgeDicts, cartridgeLocale, delegatingCartridge } from './shell/cartridge.js';
 
@@ -49,6 +49,17 @@ for (const code of AVAILABLE_LOCALES) {
 await idiomaPronto();
 
 /**
+ * THE LANGUAGE, SETTLED ONCE, AND EVERYTHING THAT SPEAKS IT BUILT FROM THAT ONE ANSWER.
+ *
+ * 🔴 IT USED TO BE ASKED THREE TIMES — here for the page's `lang`, again for the declaration handed to
+ * `createGame`, and a third time inside the cartridge. Three reads of the engine's module state at three
+ * moments: they agree today, and the day they do not the engine would validate a declaration in one
+ * language while the game drew in another, with nothing to say which was right.
+ */
+const locale = cartridgeLocale();
+const t = createTranslator(locale);
+
+/**
  * WHAT LANGUAGE THIS PAGE IS IN, which is a fact about the PAGE and so belongs to its host.
  *
  * 🔴 IT WENT UNWRITTEN FOR ONE COMMIT AND A BROWSER GATE CAUGHT IT. The line moved out of the cartridge
@@ -61,7 +72,7 @@ await idiomaPronto();
  * asks for a language this cartridge does not have, the page is in the base language — saying otherwise
  * would hand a screen reader the wrong voice for words it can see perfectly well.
  */
-document.documentElement.lang = bcp47(cartridgeLocale());
+document.documentElement.lang = bcp47(locale);
 
 /**
  * ⚠️ AND THE CARTRIDGE IS LOADED AFTER, WHICH A STATIC IMPORT COULD NOT DO. `import` is a declaration
@@ -106,7 +117,7 @@ const params = new URLSearchParams(location.search);
  * is an engine. `shell/cartridge.delegatingCartridge` answers for a game that has not started yet, at the
  * safe end of every question, and `create(ctx)` publishes the real answers the moment it has them.
  */
-const cartridge = delegatingCartridge(cartridgeLocale(), params, host);
+const cartridge = delegatingCartridge(locale, params, host);
 
 /**
  * ⚠️ ONCE. NOT ONCE PER CARTRIDGE — ONCE PER PAGE.
@@ -144,6 +155,8 @@ createPinball({
   params,
   engine,
   publish: cartridge.publish,
+  locale,
+  t,
   /**
    * ONE STREAM, BUILT BY THE HOST, BELONGING TO THIS CARTRIDGE AND NOTHING ELSE.
    *

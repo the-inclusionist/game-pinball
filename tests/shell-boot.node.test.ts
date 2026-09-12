@@ -71,6 +71,34 @@ const fakeEngine = (problems: readonly string[] = []) => ({ problems });
  * of the screen, which a 183-wide window cannot do. Two of the five authored tables had never been
  * opened; this was in the first one.
  */
+describe('the translator belongs to whoever settled the language', () => {
+  test('⚠️ the shell uses the translator it was handed, rather than building a second one', () => {
+    /**
+     * ⚠️ `ctx.t` IS «TRANSLATE, ALREADY SCOPED TO THE ACTIVE LOCALE» — the contract, and the word
+     * that matters is ALREADY. On the platform the language is the SITE's (ADR-0117): the host has
+     * settled it, built a translator for it, and handing the code over for the game to build a second
+     * one is two constructions of one fact.
+     *
+     * 📌 AND IT IS IDENTITY AND NOT EQUALITY. Two translators for one locale answer the same for
+     * every key, so comparing what they SAY would pass over a shell that quietly ignored the one it was
+     * given. What is asserted is that the object reaching the game is the object the host built.
+     */
+    const mine = (key: string): string => `[${key}]`;
+
+    const shell = bootPinball({ ...options(), t: mine }, fakeEngine());
+
+    expect(shell.t, 'the shell built a second translator and dropped the one it was handed')
+      .toBe(mine);
+  });
+
+  test('📌 and it still builds one when nobody brings it', () => {
+    // The standalone page is its own host and has always let the shell build it. Removing that would be
+    // a breaking change to `BootOptions` for no gain, so the field is optional and this is the fallback.
+    expect(typeof bootPinball(options(), fakeEngine()).t,
+      'a shell with no translator at all cannot draw a word').toBe('function');
+  });
+});
+
 describe('the camera on a table wider than the window', () => {
   const wideTable = (x: number, speed = 20) => table({
     playfieldWidth: 360,

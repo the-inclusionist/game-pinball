@@ -84,8 +84,8 @@ import { MUSIC_WINDOW, MUSIC_LOOKAHEAD } from './shell/demo.js';
 import { playSchedule } from './audio/midi-player.js';
 import { createDemo, hintFor, type Demo } from './shell/demo.js';
 import { keyOf } from './i18n/keys.js';
-import { type Locale } from './i18n/index.js';
-import { cartridgeLocale, tableAskedFor, type LiveCartridge } from './shell/cartridge.js';
+import { type Locale, type Translate } from './i18n/index.js';
+import { tableAskedFor, type LiveCartridge } from './shell/cartridge.js';
 import { createSoundBoard, releaseVoice } from './audio/sfx.js';
 import { soundEntriesOf, VOICES } from './audio/voices.js';
 import { createWebAudioOutput } from './audio/web-audio.js';
@@ -197,6 +197,23 @@ export interface PinballCtx {
    */
   publish(live: LiveCartridge): void;
   /**
+   * THE LANGUAGE THIS GAME DRAWS IN, settled by whoever loaded it.
+   *
+   * 🔴 IT WAS READ HERE, AND THAT MADE THREE READERS OF ONE FACT. `cartridgeLocale()` was called once
+   * in this file and twice in the shell — for the page's `lang` and for the declaration handed to
+   * `createGame`. Three questions asked of the engine's module state at three different moments, which
+   * agree today and are the exact shape this repository keeps paying for: the day they do not, the
+   * engine validates a declaration in one language and the game draws in another.
+   *
+   * 📌 AND THE CODE IS CARRIED AS WELL AS THE TRANSLATOR, which is one field more than the contract
+   * names. `createPinballWorld` builds a NAMER and a name table from the code — how to say the name of a
+   * component in this language — and neither of those is a `Translate`. `ctx.t` alone would leave the
+   * game deriving the code back out of something, which is the duplication again wearing a hat.
+   */
+  readonly locale: Locale;
+  /** Translate, already scoped to that locale — built once, by the host. */
+  readonly t: Translate;
+  /**
    * What the shell decided this cartridge may read from the address.
    *
    * ⚠️ NOT `location.search`, AND THE DIFFERENCE IS THE PLATFORM. One address carries every cartridge
@@ -226,7 +243,7 @@ export function createPinball(ctx: PinballCtx): PinballInstance {
  * builds still need a `Locale` rather than a `Translate`, so the engine's own answer is the one place
  * both halves already agree on.
  */
-const locale: Locale = cartridgeLocale();
+const locale: Locale = ctx.locale;
 
 
 /**
@@ -765,6 +782,7 @@ function sayUnavailable(): void {
  */
 const bootOptions: BootOptions = {
   locale,
+  t: ctx.t,
   table,
   /**
    * ⚠️ THE TABLE'S OWN HEIGHT, AND WITHOUT THIS EVERY TALL TABLE LOSES ITS BOTTOM.

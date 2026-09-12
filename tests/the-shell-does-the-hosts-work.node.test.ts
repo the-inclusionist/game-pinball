@@ -64,6 +64,7 @@ const code = (...p: readonly string[]): string => {
  */
 const THE_HOSTS_WORK = [
   'initI18n(', 'registerDict(', 'idiomaPronto(', 'documentElement.lang', 'createGame(',
+  'cartridgeLocale(',
 ] as const;
 
 /**
