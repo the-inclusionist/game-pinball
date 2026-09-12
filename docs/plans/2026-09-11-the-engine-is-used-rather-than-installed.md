@@ -24,7 +24,7 @@
 | 9 | One language, chosen | ✅ `461d692` |
 | 10 | The game speaks out loud | ✅ `72e82bb` |
 | 12 | Left to the Dev | ⏸ ADR-0002 answered `0a6e6c0`; five open, all his |
-| B | The cartridge architecture | 🛠 **in progress** — **A2c is DONE** (`67a1ec1`): the cartridge no longer calls `createGame`. Left: `ctx.t`, then **A3** (package + lib target) and **A4** (PWA) |
+| B | The cartridge architecture | 🛠 **in progress** — **A0–A2 are DONE**: the cartridge calls no `createGame`, reads no address, draws from its own stream and is handed its element, its language and its translator. Left: **A3** (package + lib target) and **A4** (PWA) |
 
 **Part A is complete.** `npm run validate`: 235 suites, 2891 passing, 1 skipped, build — exit zero.
 
@@ -501,8 +501,12 @@ precedent for a `topology` that is recomputed rather than fixed.
      seeded from the CLOCK because `table/physics-build` argues this pinball must not be reproducible;
    - ✅ `ctx.region` instead of `#game-region` — `8fd95f5`, with the engine's pause card now looked
      for INSIDE it, and the module-scope locale read moved into `create` in `170623b`;
-   - ⏳ `ctx.t`, which waits on the knot: the options this game builds still need a `Locale` rather
-     than a `Translate`, and that is `createGame`'s side of the line;
+   - ✅ `ctx.t` — `f5199f4`, with `ctx.locale` beside it. 🔴 And the A2c wiring is what made it urgent:
+     `cartridgeLocale()` had acquired a THIRD reader (the cartridge, the page's `lang`, and the
+     declaration handed to `createGame`), three reads of the engine's module state at three moments. The
+     host settles it once now. `BootOptions.t` is optional so the hundred `shell.t` call sites did not
+     move, and the locale CODE travels too — one field more than the contract names, because
+     `createPinballWorld` builds a namer and a name table from it and neither is a `Translate`.
    - ⏳ publishing the world into the delegate — this one is step 1's, and is the knot;
 3. ✅ **AND `createGame` MOVED** — `67a1ec1`. `main.ts` no longer contains the call or the import;
    `app/js/standalone.ts` makes it ONCE, before the cartridge is imported, and hands the engine over in
