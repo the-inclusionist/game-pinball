@@ -24,7 +24,7 @@
 | 9 | One language, chosen | ✅ `461d692` |
 | 10 | The game speaks out loud | ✅ `72e82bb` |
 | 12 | Left to the Dev | ⏸ ADR-0002 answered `0a6e6c0`; five open, all his |
-| B | The cartridge architecture | 🛠 **in progress** — A0, A0.1, A2a, A2b, A2c's params/rng/region, and the delegating declaration (`5a252ef`). **Left: wiring it in** — `createGame` to the shell, then `ctx.t`, then A3 and A4 |
+| B | The cartridge architecture | 🛠 **in progress** — A0, A0.1, A2a, A2b, A2c's params/rng/region, and the whole delegating half (`5a252ef` + `fb48ae6`). **Left: wiring it in** — `createGame` to the shell, then `ctx.t`, then A3 and A4 |
 
 **Part A is complete.** `npm run validate`: 235 suites, 2891 passing, 1 skipped, build — exit zero.
 
@@ -481,6 +481,18 @@ precedent for a `topology` that is recomputed rather than fixed.
      read off the rules: «every extent must be positive», «unit must be positive». The refusal is right,
      so the delegate seeds from `tableAskedFor(params)` — the real extent, at rest, with nothing that
      moves. The extent was knowable all along, because `?table=` is in the ADDRESS.
+   - ✅ **AND THE HOOKS DELEGATE TOO** — `fb48ae6`, `delegatingCartridge(locale, params, host)`. They have
+     the same circularity and it hides better, because they read like configuration: `isNavigable`,
+     `setPhase`, `sonarPlayers` and `getPauseActs` are values at boot and every one answers a question
+     only a running game can. What delegates is the INPUT — a `BootOptions` whose callbacks forward — so
+     `createPinballOptions` stays the one description of how the half is assembled.
+   - 🔴 AND BUILDING THAT FOUND TWO HOOKS THE CARTRIDGE HAD BEEN DROPPING: `getPauseActs` and
+     `setCorrecaoDoJogador`, which are exactly what §5 existed to deliver — ADR-0044 item 7 and the
+     🚥 icon. Harmless today, because the boot passes them directly; silently fatal on the day the
+     shell builds its options from the cartridge, which is this conversion's whole point.
+     `tests/cartridge-halves` could not see it: it asked whether every hook the CARTRIDGE declares is one
+     the boot passes, so a field absent from BOTH sides of that question was never looked for. It asks in
+     both directions now.
 
 2. `createPinball` becoming `create(ctx)` — which splits into pieces that do NOT all wait on step 1:
    - ✅ `ctx.params` instead of `location.search` — `3bb5c85`, with the boot moved to the shell in the
