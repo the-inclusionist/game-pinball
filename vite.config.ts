@@ -1,5 +1,6 @@
 import { defineConfig } from 'vitest/config'; // not from 'vite': it is vitest/config that types the `test` field
 import { playwright } from '@vitest/browser-playwright';
+import { VitePWA } from 'vite-plugin-pwa';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -41,6 +42,79 @@ const RAIZ = dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   root: join(RAIZ, 'app'),
   build: { outDir: join(RAIZ, 'dist'), emptyOutDir: true },
+  plugins: [
+    /**
+     * ========================= THE STANDALONE HALF OF ADR-0140 BECOMES A PWA =========================
+     * ⚠️ IT IS FOR THE CHILD WHO ARRIVES ON THE SECOND DAY WITHOUT A NETWORK. That is the engine's own
+     * reasoning for its heavy precache (ADR-0110 (b), ADR-0116, ADR-0119) and it is the whole reason
+     * here too: a school machine, a connection that comes and goes, and a game that either opens or
+     * does not. Everything this game needs to run is its own bundle, its eleven playfields, two screens
+     * and two fonts — no CDN, no origin but this one.
+     *
+     * 📌 AND ONLY THE APP BUILD GETS ONE. A cartridge does not: ADR-0117 puts the service worker on the
+     * SITE, once per origin, and six cartridges each registering one would be six scopes fighting over
+     * the same paths. `vite.lib.config.ts` has no plugins for exactly that reason.
+     */
+    VitePWA({
+      /**
+       * ⚠️ `prompt` AND NOT `autoUpdate`, AND THE DIFFERENCE IS A BALL IN PLAY. `autoUpdate` claims the
+       * page as soon as a new worker installs — which, mid-game, takes the table away from a child who
+       * was two comets from winning. `prompt` leaves the new version waiting and it applies on the next
+       * visit, which for a game is the only honest moment.
+       *
+       * 📌 No prompt UI is shipped with it, deliberately: an update notice is a screen this game would
+       * have to make navigable, translate into three languages and fit inside 320×180. Until that is
+       * designed, waiting silently and applying next time is better than a button nobody can reach.
+       */
+      registerType: 'prompt',
+      workbox: {
+        /**
+         * ⚠️ THE PICTURES ARE IN THE LIST, which is most of the bytes and the point. A precache that
+         * held only the JavaScript would leave a child offline with a game that boots and cannot draw a
+         * table — which is worse than not opening, because it looks like the game is broken.
+         */
+        globPatterns: ['**/*.{js,css,html,png,woff2}'],
+        /**
+         * 📌 The playfields are large and there are eleven of them. The default cap is 2 MiB per FILE
+         * and none of ours approaches it; this raises the ceiling only so that a future authored table
+         * with a bigger picture fails loudly at build time rather than being silently dropped from the
+         * precache and going missing offline.
+         */
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+      },
+      manifest: {
+        name: 'Space Cadet Pinball',
+        short_name: 'Pinball',
+        description: 'Space Cadet pinball, rebuilt to be played by children who cannot see it.',
+        lang: 'pt-BR',
+        display: 'standalone',
+        orientation: 'portrait',
+        start_url: '.',
+        /**
+         * 📌 THE COLOURS ARE THE GAME'S OWN FRAME, not a theme chosen here: `#000` is what the page
+         * sits on while the 320×180 framebuffer is centred in it, so an installed window that paints
+         * anything else would flash a colour the game never shows.
+         */
+        background_color: '#000000',
+        theme_color: '#000000',
+        /**
+         * 🔴 NO ICONS, AND THAT IS A DEBT RATHER THAN AN OVERSIGHT — WITH THE SPECIFICATION ATTACHED.
+         *
+         * A browser will not offer to INSTALL a PWA without an icon of at least 192×192, so what ships
+         * today is the offline half: the game caches and runs with no network, and does not appear as an
+         * installable app. The half that works is the half that matters most on a school machine.
+         *
+         * ⚠️ THE ART IS THE DEV'S AND THIS DOES NOT INVENT IT. What is owed to him is the brief, and
+         * this is it:
+         *   · `app/public/icon-192.png` — 192×192, square, opaque, the wordmark or the ball
+         *   · `app/public/icon-512.png` — 512×512, same artwork
+         *   · `app/public/icon-maskable-512.png` — 512×512 with the artwork inside the central 80%, so
+         *     Android's circular and squircle masks do not cut it
+         * The day they land, they go in this array and the game becomes installable in one line.
+         */
+      },
+    }),
+  ],
   test: {
     /**
      * ⚠️ RANDOM ORDER, EVERY RUN, AND IT FOUND SOMETHING THE HOUR IT WAS TURNED ON.

@@ -98,3 +98,61 @@ consequences:
     - "⚠️ AND `baixarPesados: false` IS A DEFAULT REFUSED, WHICH IS THE KIND THAT ROTS QUIETLY. If this
        game gains a service worker and nobody reopens this record, the flag will go on refusing a
        download that by then WOULD have a reader. The gate names the condition; it cannot detect it."
+
+errata:
+  - date: 2026-09-11
+    title: "The first driver has expired: this game is a PWA, and something reads that cache now"
+    what-changed: |
+      ⚠️ `vite-plugin-pwa` IS ON THE APP BUILD (slice A4 of the plan's §B6). `npm run build` emits a
+      SERVICE WORKER and a web manifest, and precaches 28 entries — 979 KiB — so the standalone page
+      opens with no network at all.
+
+      That is exactly the condition this record wrote against itself: «the day this game becomes a PWA,
+      or opens the voice door, the reason stops holding and the flag comes out». The FIRST decision
+      driver — «nothing in this repository reads that cache» — is now false. `platform/pesados` writes
+      into a Cache Storage bucket a service worker serves from, and there is one.
+
+      🔴 AND THE GATE WRITTEN TO CATCH THIS DAY DID NOT CATCH IT, which is worth more than the day.
+      `tests/shell-boot` scanned `git ls-files` for a committed `sw.js` or `.webmanifest`, on the stated
+      reasoning that «a service worker built into `dist` is not the thing that changes this decision; a
+      service worker somebody COMMITTED is». The reasoning is right; the measurement did not follow it.
+      A plugin GENERATES both files into a gitignored folder, so the time bomb stayed green while the
+      game became a PWA. What is committed is the DECISION — `vite-plugin-pwa` in `package.json`,
+      `VitePWA({…})` in `vite.config.ts` — and that is what the gate reads now.
+
+    what-has-NOT-changed: |
+      ⚠️ `baixarPesados` IS STILL `false`, AND DELIBERATELY SO UNTIL THE DEV SAYS OTHERWISE. This
+      erratum records that the QUESTION is open. It does not answer it, because the answer is a download
+      of about 285 MB onto a school machine and the decision-makers on this record are `[Dev]`.
+
+      📌 THE SECOND AND THIRD DRIVERS ALSO STAND, UNCHANGED, and they were never about the cache:
+        · this game does not pass `carregarVozNeural`, so the four neural voice models are for a door it
+          never opens — `declines.semVozNeural` is not affected by any of this;
+        · a browser suite would still fire the download under Playwright, where `caches` is defined.
+
+    the-options-as-they-now-stand: |
+      · ⚠️ LEAVE IT `false`. Costs nothing today and keeps the suite safe. The cost is a child who
+        arrives offline on the second day with the game cached and the engine's vision runtime missing —
+        which is the exact scenario ADR-0110 (b), ADR-0116 and ADR-0119 exist for, one layer down.
+
+      · 📌 `baixarPesados({ apenas: […] })` FOR THE VISION RUNTIME ALONE. This record's own option list
+        already names it: «not taken, and not refused: it is the shape to reach for the day this game
+        gains a service worker». That day is today. It fetches what this game could USE — the colour
+        vision filters and the high-contrast runtime the 🚥 icon drives — and none of the neural voice
+        models, which is most of the 285 MB.
+
+      · LEAVE IT TO THE DEFAULT. Refused here on the same driver as before: the four voice models are for
+        a door this game does not open, and the bytes would be written for nobody.
+
+    who-decides: |
+      The Dev. The two halves ADR-0117 separates are still separate and this erratum does not merge
+      them: on the PLATFORM the download is the site's to pay once per origin, and `baixarPesados` is a
+      host field that the platform answers — this game's shell stopped passing it on the cartridge side
+      when `createGame` moved out (`67a1ec1`). What is open is the STANDALONE page, which is this
+      repository's own host and the one artefact where the answer is ours to give.
+
+    also-owed: |
+      🔴 THE PWA SHIPS WITHOUT ICONS, so a browser will cache and run it offline but will not offer to
+      INSTALL it — that needs an icon of at least 192×192. The art is the Dev's; the brief is in
+      `vite.config.ts` beside the empty `icons` field: 192×192 and 512×512 square opaque, plus a
+      512×512 maskable with the artwork inside the central 80%.

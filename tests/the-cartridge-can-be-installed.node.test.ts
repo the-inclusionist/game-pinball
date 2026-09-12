@@ -151,3 +151,73 @@ describe('the cartridge builds as a library', () => {
     }
   });
 });
+
+// ============================================================================================
+// AND THE OTHER ARTEFACT: A PAGE THAT OPENS WITHOUT A NETWORK.
+//
+// ⚠️ ADR-0140 SHIPS TWO AND THIS FILE NOW WATCHES BOTH, because they are the same claim seen twice:
+// what a consumer GETS is the output, and neither of these two can be checked from inside the source.
+//
+// 📌 THE PWA IS FOR THE CHILD WHO ARRIVES ON THE SECOND DAY WITHOUT A NETWORK — the engine's own
+// reasoning for its heavy precache (ADR-0110 (b), ADR-0116, ADR-0119), applied to this game's own bytes.
+// A school machine, a connection that comes and goes, and a game that either opens or does not.
+// ============================================================================================
+describe('the standalone page is a PWA', () => {
+  const DIST = join(ROOT, 'dist');
+
+  test('🔴 the build emits a service worker and a manifest, and their absence is a failure', () => {
+    /**
+     * 🔴 AND THE GATE THAT WAS SUPPOSED TO NOTICE THIS DAY DID NOT. `tests/shell-boot` carried a time
+     * bomb for ADR-0010: «if a service worker or a web manifest is ever tracked, `baixarPesados: false`
+     * fails». It scanned `git ls-files` — and `vite-plugin-pwa` GENERATES both files into a gitignored
+     * folder, so the game became a PWA with the bomb still green.
+     *
+     * It reads the committed DECISION now (the plugin in the manifest, `VitePWA(` in the config), which
+     * is what its own reasoning was reaching for. This case is the other half: that the decision
+     * actually produced the artefacts.
+     */
+    for (const name of ['sw.js', 'manifest.webmanifest', 'registerSW.js']) {
+      expect(existsSync(join(DIST, name)),
+        `dist/${name} is missing — the app build is not producing a PWA`).toBe(true);
+    }
+  });
+
+  test('⚠️ and the precache holds the PICTURES, not only the code', () => {
+    /**
+     * ⚠️ A PRECACHE OF JAVASCRIPT ALONE IS WORSE THAN NONE. The game would boot offline, find no
+     * playfield to draw, and look BROKEN rather than unavailable — and a child cannot tell those apart.
+     * Eleven tables, two screens and two fonts are most of the bytes and all of what is visible.
+     */
+    const worker = readFileSync(join(DIST, 'sw.js'), 'utf8');
+    const listed = (name: string): boolean => worker.includes(name)
+      || readdirSync(DIST).some((f) => f.startsWith('workbox-') && f.endsWith('.js')
+        && readFileSync(join(DIST, f), 'utf8').includes(name));
+
+    expect(listed('.png'), 'no playfield picture is precached, so an offline game draws nothing')
+      .toBe(true);
+    expect(listed('.woff2'), 'the fonts are not precached, so an offline game reflows into a fallback')
+      .toBe(true);
+  });
+
+  test('🔴 the manifest says what it is, and what it still owes', () => {
+    /**
+     * 🔴 NO ICONS, AND IT IS A DEBT WITH A SPECIFICATION RATHER THAN AN OVERSIGHT. A browser will not
+     * offer to INSTALL a PWA without an icon of at least 192×192, so what ships today is the offline
+     * half — which on a school machine is the half that matters most.
+     *
+     * ⚠️ THE ART IS THE DEV'S AND THIS DOES NOT INVENT IT. The brief is in `vite.config.ts` beside the
+     * empty field and in ADR-0010's erratum. This case PINS the absence so that it stays a decision
+     * somebody can find: when the icons land, it is this line that has to be rewritten, which is the
+     * point at which the debt is noticed rather than forgotten.
+     */
+    const manifest = JSON.parse(readFileSync(join(DIST, 'manifest.webmanifest'), 'utf8')) as {
+      name: string; display: string; icons?: readonly unknown[];
+    };
+
+    expect(manifest.name, 'the installed window would have no name').toBe('Space Cadet Pinball');
+    expect(manifest.display, 'a browser-chrome PWA is a bookmark, not an app').toBe('standalone');
+    expect(manifest.icons ?? [],
+      'icons landed: this game is installable now, so rewrite this case and ADR-0010 erratum with it')
+      .toEqual([]);
+  });
+});

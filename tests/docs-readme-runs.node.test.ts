@@ -42,10 +42,27 @@ describe('the commands the README gives', () => {
   });
 
   test('and the one that has to pass is the one named as such', () => {
-    // `validate` is what CI would run and what a contributor is told to run before opening anything.
-    // A README that recommends a subset teaches people to ship red.
-    expect(scripts().validate, 'validate covers types, tests and the build')
-      .toMatch(/typecheck.*vitest.*build/);
+    /**
+     * `validate` is what CI would run and what a contributor is told to run before opening anything. A
+     * README that recommends a subset teaches people to ship red.
+     *
+     * 🔴 AND THIS MEASURED THE ORDER WHILE CLAIMING TO MEASURE THE COVERAGE. It was
+     * `/typecheck.*vitest.*build/` — one regex over one string, which reads as "all three are in there"
+     * and actually says "in that sequence". The day the builds moved AHEAD of the suite it failed, with
+     * a message about coverage, over a script that covered everything.
+     *
+     * ⚠️ AND THE BUILDS MOVED FOR A REASON WORTH KEEPING. Two gates read build OUTPUT —
+     * `tests/the-cartridge-can-be-installed` reads `dist-lib` and `dist` — and both FAIL when the
+     * artefact is missing rather than skipping over it, which is the vacuous-skip shape this repository
+     * has been bitten by. For that to work the artefacts have to exist before vitest starts.
+     *
+     * So each part is asked for on its own, and the order is left to whoever knows why it is what it is.
+     */
+    const validate = scripts().validate ?? '';
+
+    for (const part of ['typecheck', 'build:lib', 'run build', 'vitest']) {
+      expect(validate, `validate does not run ${part}`).toContain(part);
+    }
     expect(readme()).toContain('npm run validate');
   });
 });

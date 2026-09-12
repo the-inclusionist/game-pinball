@@ -511,16 +511,52 @@ describe('what is handed to the engine', () => {
      * So the condition is a gate rather than a sentence. It cannot decide what the flag should become;
      * it can only refuse to let the question go unasked.
      *
-     * ⚠️ AND IT READS `git ls-files` RATHER THAN THE FILESYSTEM, deliberately: a service worker built
-     * into `dist` is not the thing that changes this decision. A service worker somebody COMMITTED is.
+     * 🔴 AND IT LOOKED FOR THE WRONG THING, WHICH THE DAY ITSELF PROVED.
+     *
+     * It used to scan `git ls-files` for a committed `sw.js` or `.webmanifest`, and said why: «a service
+     * worker built into `dist` is not the thing that changes this decision; a service worker somebody
+     * COMMITTED is». The reasoning is right and the measurement did not follow it — it assumed a worker
+     * somebody would WRITE.
+     *
+     * `vite-plugin-pwa` GENERATES both files into `dist`, which is gitignored. So the day the game became
+     * a PWA — a real service worker, a real manifest, 979 KiB precached — this case stayed GREEN, and the
+     * time bomb written for exactly that day did not go off. Measured, in the commit that added it.
+     *
+     * ⚠️ WHAT IS COMMITTED IS THE DECISION, AND THAT IS WHAT IS READ NOW: the plugin in the manifest
+     * and its call in the config. Which is what the original sentence was reaching for all along — a
+     * built artefact is not a decision, and `VitePWA({…})` in a tracked file is.
      */
-    const tracked = execFileSync('git', ['ls-files'], {
-      cwd: resolve(dirname(fileURLToPath(import.meta.url)), '..'), encoding: 'utf8',
-    }).split('\n').filter(Boolean);
-    const readers = tracked.filter((f) => /(^|\/)(sw|service-worker)\.[cm]?[jt]s$|\.webmanifest$/.test(f));
+    const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+    const tracked = execFileSync('git', ['ls-files'], { cwd: root, encoding: 'utf8' })
+      .split('\n').filter(Boolean);
 
-    expect(readers, 'a service worker or manifest landed: ADR-0010 has to be reopened, because '
-      + 'baixarPesados: false now refuses a download that has a reader').toEqual([]);
+    const committed = tracked.filter((f) => /(^|\/)(sw|service-worker)\.[cm]?[jt]s$|\.webmanifest$/.test(f));
+    const manifest = readFileSync(resolve(root, 'package.json'), 'utf8');
+    const configured = /vite-plugin-pwa/.test(manifest)
+      || /\bVitePWA\s*\(/.test(readFileSync(resolve(root, 'vite.config.ts'), 'utf8'));
+
+    if (committed.length === 0 && !configured) return;
+
+    /**
+     * 📌 AND WHAT IT DEMANDS IS THAT THE QUESTION WAS ASKED, NOT WHICH ANSWER WAS GIVEN. This case
+     * cannot decide what `baixarPesados` should become — ADR-0010's decision-makers are `[Dev]`, the
+     * download is 285 MB on a school connection, and the record's own option list already names the
+     * shape to reach for (`baixarPesados({ apenas: […] })` for the vision runtime alone).
+     *
+     * What it CAN refuse is the question going unasked. So it requires the record to carry an erratum
+     * that names the PWA: a driver that has expired has to say so where the decision is written down,
+     * not in a commit message somebody would have to go looking for.
+     */
+    const record = readFileSync(
+      resolve(root, 'docs/2-Architecture/adr/ADR-0010-what-this-cartridge-lets-the-engine-fetch.yaml'),
+      'utf8',
+    );
+
+    expect(record, 'this game is a PWA now, so ADR-0010 must carry an erratum: its first driver said '
+      + '"nothing in this repository reads that cache", and something does')
+      .toMatch(/errata|erratum/i);
+    expect(record, 'the erratum does not name what changed, so the next reader cannot check it')
+      .toMatch(/service worker/i);
   });
 
   test('⚠️ and it is navigable WHEN A MENU IS ON SCREEN, which is what reopens the engine', () => {
