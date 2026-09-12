@@ -28,7 +28,8 @@ import {
 } from '@the-inclusionist/engine/core/i18n.js';
 import { createRng } from '@the-inclusionist/engine/core/rng.js';
 import { AVAILABLE_LOCALES } from './i18n/index.js';
-import { cartridgeDicts, cartridgeLocale } from './shell/cartridge.js';
+import { createGame } from '@the-inclusionist/engine';
+import { cartridgeDicts, cartridgeLocale, delegatingCartridge } from './shell/cartridge.js';
 
 initI18n(document);
 for (const code of AVAILABLE_LOCALES) {
@@ -86,6 +87,47 @@ function mustFind(id: string): HTMLElement {
 const { createPinball } = await import('./main.js');
 
 /**
+ * WHAT THE PAGE IS, in the engine's words. The host's half of `CreateGameOptions` and nobody else's.
+ *
+ * 📌 `cvdHost` IS WHERE THE ENGINE MOUNTS ITS SIX COLOUR-VISION FILTERS. Omitting it is not an error —
+ * `createGame` reports it in `problems` rather than throwing — which is exactly how it went unnoticed
+ * until somebody booted the game and read that list.
+ */
+const host = { doc: document, win: window, cvdHost: document.getElementById('cvd-filters') };
+
+const params = new URLSearchParams(location.search);
+
+/**
+ * THE CARTRIDGE'S HALF, HELD BEFORE THE CARTRIDGE EXISTS.
+ *
+ * ⚠️ THIS IS THE CIRCLE ADR-0139 LEAVES A HOST TO BREAK. `createGame` takes a DECLARATION and a set of
+ * HOOKS as values, and every one of them answers a question only a running game can — how big the
+ * playfield is, whether a menu is open, what the pause card can do. But the game cannot run until there
+ * is an engine. `shell/cartridge.delegatingCartridge` answers for a game that has not started yet, at the
+ * safe end of every question, and `create(ctx)` publishes the real answers the moment it has them.
+ */
+const cartridge = delegatingCartridge(cartridgeLocale(), params, host);
+
+/**
+ * ⚠️ ONCE. NOT ONCE PER CARTRIDGE — ONCE PER PAGE.
+ *
+ * N calls are N accessibility bars, N screen readers and N keyboard runtimes competing for one document,
+ * and the damage shows up as behaviour rather than as weight: two runtimes bound at window capture, and a
+ * child pressing a key that reaches whichever of them listened last.
+ *
+ * 📌 `baixarPesados` AND `host` ARE HERE BECAUSE THEY ARE THE HOST'S, which is what the engine's own
+ * `GanchosDoCartucho` says by leaving them out of the game's half. ADR-0010's decision does not move with
+ * the field: this game declines the heavy download, and on the platform of ADR-0117 the platform answers
+ * it — once, for every cartridge.
+ */
+const engine = createGame({
+  ...cartridge.hooks,
+  declaration: cartridge.declaration,
+  host,
+  baixarPesados: false,
+});
+
+/**
  * AND THE HOST DECIDES WHEN A GAME BEGINS.
  *
  * ⚠️ "NOTHING RUNS UNTIL `create(ctx)` IS CALLED. NO SIDE EFFECTS AT MODULE SCOPE" — the contract, and
@@ -99,7 +141,9 @@ const { createPinball } = await import('./main.js');
  * have to change for that, which is the point of handing it over rather than letting it read.
  */
 createPinball({
-  params: new URLSearchParams(location.search),
+  params,
+  engine,
+  publish: cartridge.publish,
   /**
    * ONE STREAM, BUILT BY THE HOST, BELONGING TO THIS CARTRIDGE AND NOTHING ELSE.
    *

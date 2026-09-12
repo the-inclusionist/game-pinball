@@ -63,7 +63,7 @@ const code = (...p: readonly string[]): string => {
  * the first of those is a screen reader choosing which voice to read the page in.
  */
 const THE_HOSTS_WORK = [
-  'initI18n(', 'registerDict(', 'idiomaPronto(', 'documentElement.lang',
+  'initI18n(', 'registerDict(', 'idiomaPronto(', 'documentElement.lang', 'createGame(',
 ] as const;
 
 /**

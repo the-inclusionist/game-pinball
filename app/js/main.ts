@@ -24,10 +24,10 @@
  */
 import '../css/style.css';
 
-import { createGame } from '@the-inclusionist/engine';
+import type { Engine } from '@the-inclusionist/engine';
 import type { Rng } from '@the-inclusionist/engine/core/rng.js';
 import {
-  bootPinball, createPinballOptions, type BootOptions, type LiveTable, type Phase,
+  bootPinball, type BootOptions, type LiveTable, type Phase,
 } from './shell/boot.js';
 import { CATALOG } from './table/catalog.js';
 import { toLiveTable, validateTable, type TableState } from './table/authored.js';
@@ -85,7 +85,7 @@ import { playSchedule } from './audio/midi-player.js';
 import { createDemo, hintFor, type Demo } from './shell/demo.js';
 import { keyOf } from './i18n/keys.js';
 import { type Locale } from './i18n/index.js';
-import { cartridgeLocale, tableAskedFor } from './shell/cartridge.js';
+import { cartridgeLocale, tableAskedFor, type LiveCartridge } from './shell/cartridge.js';
 import { createSoundBoard, releaseVoice } from './audio/sfx.js';
 import { soundEntriesOf, VOICES } from './audio/voices.js';
 import { createWebAudioOutput } from './audio/web-audio.js';
@@ -174,6 +174,28 @@ export interface PinballCtx {
    * appended anywhere else survives and the next game inherits it.
    */
   readonly region: HTMLElement;
+  /**
+   * THE ENGINE, ALREADY BUILT. Exactly what `createGame` returned — one instance, however many
+   * cartridges exist.
+   *
+   * ⚠️ AND THE CARTRIDGE DOES NOT MAKE IT, WHICH IS THE WHOLE OF ADR-0139. `createGame` mounts an
+   * accessibility bar, a screen reader and a keyboard runtime; N calls on one page are N of each,
+   * competing for one document. The host calls it once and hands the result to every cartridge.
+   */
+  readonly engine: Engine;
+  /**
+   * Points the half the host is already holding at this game.
+   *
+   * ⚠️ THE ENGINE WAS BUILT BEFORE THIS BODY RAN, from a declaration and a set of hooks that forward
+   * here. Until this is called they answer for a game that is not running — no menu open, no sonar
+   * listener, a pause card with nothing to action — which is the safe end of every one of those
+   * questions. Calling it is what makes the engine start describing THIS table.
+   *
+   * 📌 AND IT IS CALLED AS SOON AS THE ANSWERS EXIST, not at the end of the boot. Everything it hands
+   * over is a closure, so the functions are valid long before the things they read are built — what
+   * matters is that the engine stops answering for nobody at the earliest possible moment.
+   */
+  publish(live: LiveCartridge): void;
   /**
    * What the shell decided this cartridge may read from the address.
    *
@@ -822,11 +844,29 @@ const bootOptions: BootOptions = {
 };
 
 /**
- * ⚠️ AND THIS IS THE LINE A CARTRIDGE MAY NOT HAVE. `createGame` mounts a whole accessibility stack — a
- * bar, a screen reader, a keyboard runtime — and N calls on one page mean N of each competing for one
- * document. ADR-0139 puts it on the shell; slice A2 is when this line leaves.
+ * AND HERE THE HALF THE HOST IS HOLDING IS POINTED AT THIS GAME.
+ *
+ * ✅ THE LINE THAT USED TO SIT HERE WAS THE ONE ADR-0139 FORBIDS: `bootPinball(bootOptions,
+ * createGame(createPinballOptions(bootOptions)))`. `createGame` mounts a whole accessibility stack — a
+ * bar, a screen reader, a keyboard runtime — and N calls on one page are N of each competing for one
+ * document. `app/js/standalone.ts` calls it once now, before this file is even imported.
+ *
+ * ⚠️ AND WHAT IS PUBLISHED IS `bootOptions` ITSELF, FIELD BY FIELD, rather than a set of functions
+ * written again here. The engine has to be answered by exactly what the boot would have passed it; two
+ * expressions that agree today are two that diverge the first time one is edited, and the divergence
+ * would read as the engine describing a game nobody is playing.
  */
-const shell = bootPinball(bootOptions, createGame(createPinballOptions(bootOptions)));
+ctx.publish({
+  table: bootOptions.table,
+  isNavigable: bootOptions.menuIsUp!,
+  isBlindMode: bootOptions.isBlindMode!,
+  sonarPlayers: bootOptions.sonarPlayers!,
+  setPhase: bootOptions.setPhase!,
+  pauseActs: bootOptions.pauseActs!,
+  setCorrection: bootOptions.setCorrection!,
+});
+
+const shell = bootPinball(bootOptions, ctx.engine);
 
 /**
  * ⚠️ HOW THIS GAME SAYS ANYTHING, AND IT USED TO BE EIGHT `textContent =` AND ONE CHANNEL.
