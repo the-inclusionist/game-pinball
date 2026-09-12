@@ -23,7 +23,7 @@
 | 8 | The menus become reachable | ✅ `8c6a8b3` + `9c5456f` |
 | 9 | One language, chosen | ✅ `461d692` |
 | 10 | The game speaks out loud | ✅ `72e82bb` |
-| 12 | Left to the Dev | ⏸ ADR-0002 answered `0a6e6c0`; five open, plus **three from Part B**: the slug, `baixarPesados` after the PWA, and the PWA icons |
+| 12 | Left to the Dev | ⏸ **eight open, all decisions** — and the only things left in this plan. The slug is the one that gates shipping |
 | B | The cartridge architecture | ✅ **A0–A4 are DONE.** The cartridge calls no `createGame`, reads no address, draws from its own stream, is handed its element, language and translator, builds as an installable library, and the standalone page opens offline. **Left: the SLUG and two decisions, all the Dev's** |
 
 **Part A and Part B are complete.** `npm run validate`: typecheck, the library build, the app build
@@ -356,9 +356,14 @@ node gate cannot even be written against today's code, because there is no seam.
 - `table/parts.ts` stays a sanctioned orphan until the editor lands — `tests/no-unsanctioned-orphans:42-53`
   is the line that says somebody wrote a library nobody uses, and the editor is what discharges it.
 
-## ⏸ 12 · Left to the Dev, named rather than assumed — ONE ANSWERED (`0a6e6c0`), FIVE OPEN
+## ⏸ 12 · Left to the Dev, named rather than assumed — EIGHT OPEN, AND ALL OF THEM DECISIONS
 
-None of these blocks a stage above; each is a decision only he can take.
+None of these blocks anything; each is a decision only he can take, and **there is no work item left in
+this plan that is not one of them.**
+
+📌 The list below used to carry SIX entries under a heading that said five were open, because ADR-0002
+was answered in `0a6e6c0` and stayed on the list. Struck, and the three Part B added are folded in, so the
+count and the list agree.
 
 1. **`ring-belt` owes a re-authoring.** `tests/table-reachable.node.test.ts:186-220` — four `KNOWN_RARE`
    entries, all on that table, and the file's own rule is that a ledger that empties is the only kind worth
@@ -371,10 +376,28 @@ None of these blocks a stage above; each is a decision only he can take.
    `makeLinks` and delete the per-kind wiring.
 4. **ADR-0004** — the settings menu sits outside the 320×180 screen; the record says this is an open
    question for the Dev rather than a decision taken.
-5. **ADR-0002** — the HUD block sizes were derived from a font that did not exist; it landed on 2026-09-07
-   and nothing records whether the numbers moved.
-6. **ADR-0001** — four camera constants with no principled derivation, tuned for the 1995 playfield. They
+5. **ADR-0001** — four camera constants with no principled derivation, tuned for the 1995 playfield. They
    want a session of play on the authored tables.
+
+✅ **ADR-0002 WAS THE SIXTH AND IT IS ANSWERED** (`0a6e6c0`): the HUD block sizes were derived from a font
+that did not exist, and the measurement after the real face landed is in the record. Struck rather than
+left on a list of open questions, which is where a closed one does the most damage.
+
+### And three from Part B, which are the same shape
+
+6. 🔴 **THE SLUG.** `package.json` says `@the-inclusionist/game-space-cadet`; the folder and the git
+   remote say `game-pinball`; ADR-0082 §1 makes them one word. `private` is gone from the manifest, so
+   nothing technical blocks publication any more — but a package cannot be published under a name nobody
+   has chosen, and `.release-it.json` says he runs the release. **This is the one that gates shipping.**
+7. 🔴 **`baixarPesados`, NOW THAT THE CACHE HAS A READER.** ADR-0010's first driver — «nothing in this
+   repository reads that cache» — became false when A4 landed a service worker. The erratum transcribes
+   the three options with their consequences, including the one the record itself pre-identified:
+   `baixarPesados({ apenas: […] })` for the vision runtime alone, which fetches what this game could USE
+   and none of the ~285 MB of neural voice models. The flag is still `false` meanwhile.
+8. 🔴 **THE PWA ICONS.** It caches and runs offline; a browser will not offer to INSTALL it without an
+   icon of at least 192×192. The art is his and the brief is written beside the empty field in
+   `vite.config.ts`: 192×192 and 512×512 square opaque, plus a 512×512 maskable with the artwork inside
+   the central 80%.
 
 ---
 
