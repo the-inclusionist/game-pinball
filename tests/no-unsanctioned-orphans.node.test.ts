@@ -22,10 +22,19 @@ import { fileURLToPath } from 'node:url';
 const APP = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'app', 'js');
 
 /**
- * The five that are allowed to be orphans, and why. Each was decided in a commit and the reason lives in
+ * The six that are allowed to be orphans, and why. Each was decided in a commit and the reason lives in
  * the module's own header; this is the ledger, not the argument.
  */
 const SANCTIONED: Readonly<Record<string, string>> = {
+  /**
+   * ⚠️ THE SECOND ENTRY POINT, AND ADR-0140 IS WHY THERE ARE TWO. One source, two artefacts: the
+   * standalone page has a shell that starts the game, and a HOST that installs this cartridge imports
+   * this instead — re-exports and no logic, so that the two never become two descriptions of the game.
+   */
+  'cartridge-entry.ts':
+    'the library entry point — what a host that INSTALLS this game imports. Nothing in `app/js` should, '
+    + 'and `vite.lib.config.ts` is what reaches it; `tests/the-cartridge-can-be-installed` reads the '
+    + 'built output rather than this file, because what a consumer gets is the OUTPUT',
   'standalone.ts':
     'the browser entry point — `index.html` loads it, and nothing in `app/js` should. It is the HOST '
     + 'half of ADR-0139: it registers the dictionaries the cartridge exports, settles the language, and '

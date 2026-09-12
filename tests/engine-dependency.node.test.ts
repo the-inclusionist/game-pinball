@@ -32,7 +32,9 @@ import { describe, test, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 
 const manifest = JSON.parse(readFileSync('package.json', 'utf8')) as {
-  dependencies: Record<string, string>;
+  dependencies?: Record<string, string>;
+  peerDependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
 };
 const lock = JSON.parse(readFileSync('package-lock.json', 'utf8')) as {
   packages: Record<string, { resolved?: string; integrity?: string; link?: boolean }>;
@@ -41,13 +43,43 @@ const lock = JSON.parse(readFileSync('package-lock.json', 'utf8')) as {
 const NAME = '@the-inclusionist/engine';
 
 describe('the engine dependency', () => {
-  test('⚠️ is a registry range, not a path', () => {
-    const spec = manifest.dependencies[NAME];
+  test('⚠️ is a registry range wherever it is declared, and never a path', () => {
+    /**
+     * 📌 IT MOVED OUT OF `dependencies` WHEN THE CARTRIDGE BECAME INSTALLABLE, and this case moved
+     * with it rather than being relaxed. A `file:` in `peerDependencies` or `devDependencies` is the same
+     * mistake wearing a different key: no version, no integrity hash, and another repository's working
+     * tree as a build input.
+     */
+    const declared = [
+      ['peerDependencies', manifest.peerDependencies?.[NAME]],
+      ['devDependencies', manifest.devDependencies?.[NAME]],
+    ] as const;
 
-    // `file:`, `link:`, `../`, `/` and `C:\` are all the same mistake wearing different syntax.
-    expect(spec, `${NAME} is declared`).toBeDefined();
-    expect(spec, `${NAME} = ${spec} points at a filesystem path`)
-      .not.toMatch(/^(file:|link:|portal:|\.{0,2}\/|[A-Za-z]:)/);
+    for (const [where, spec] of declared) {
+      expect(spec, `${NAME} is not in ${where}`).toBeDefined();
+      // `file:`, `link:`, `../`, `/` and `C:\` are all the same mistake wearing different syntax.
+      expect(spec, `${where}.${NAME} = ${spec} points at a filesystem path`)
+        .not.toMatch(/^(file:|link:|portal:|\.{0,2}\/|[A-Za-z]:)/);
+    }
+  });
+
+  test('⚠️ and it is a PEER rather than a dependency, which is not bookkeeping', () => {
+    /**
+     * ⚠️ A CARTRIDGE THAT DEPENDS ON THE ENGINE CAN BE INSTALLED WITH ITS OWN COPY OF IT, and two
+     * copies on one page are two module scopes: two `core/state.modoCego`, two `core/i18n` dictionary
+     * tables, two `core/rng` streams. The host writes one and the cartridge reads the other, and the
+     * damage is silent — blind mode that turns on and does nothing, a language change that moves half
+     * the screen.
+     *
+     * 📌 `rollupOptions.external` SAYS THE SAME THING TO THE BUNDLER, and this says it to npm. Only one
+     * of the two is enforced at install time, and it is this one.
+     *
+     * It stays a DEV dependency as well, because this repository builds and tests against it: `npm ci`
+     * on a clean clone must install it or nothing here runs.
+     */
+    expect(manifest.dependencies?.[NAME],
+      `${NAME} is a runtime dependency, so a host could install a second engine beside its own`)
+      .toBeUndefined();
   });
 
   test('⚠️ and the lockfile pins a tarball with an integrity hash', () => {

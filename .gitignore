@@ -9,6 +9,9 @@ game_resources/
 # Dependencies / build
 node_modules/
 dist/
+# The cartridge build (ADR-0140's second artefact). Built by `npm run build:lib`, shipped by npm
+# through `files`, and never committed — a build output in git is a second source of truth.
+dist-lib/
 .vite/
 *.tsbuildinfo
 
