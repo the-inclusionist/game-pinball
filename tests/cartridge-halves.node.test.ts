@@ -21,11 +21,14 @@
 // ever diverge, the divergence shows up here rather than inside a refactor where it would read as a
 // mistake in the move.
 //
-// 📌 AND THE TYPES ARE THIS REPOSITORY'S, NOT THE ENGINE'S. `GanchosDoCartucho` lives at engine HEAD and the
-// registry answers `8.0.0`, which is older; `shell/cartridge` declares the shape from the contract document
-// so that nothing here depends on a version a consumer cannot install.
+// 🔴 AND THIS PARAGRAPH SAID THE OPPOSITE UNTIL 9.0.0. It read: «the types are this repository's, not the
+// engine's — `GanchosDoCartucho` lives at engine HEAD and the registry answers 8.0.0, which is older». The
+// registry answers 9.0.0 now and `shell/cartridge` imports the published type, so a local copy would be a
+// second description of one fact. Corrected here rather than left to read as still true.
 import { describe, test, expect } from 'vitest';
-import { CARTRIDGE_SLUG, cartridgeDicts, cartridgeHooks } from '../app/js/shell/cartridge.js';
+import {
+  CARTRIDGE_SLUG, cartridgeDicts, cartridgeHooks, delegatingCartridge, type LiveCartridge,
+} from '../app/js/shell/cartridge.js';
 import { createPinballOptions, type BootOptions } from '../app/js/shell/boot.js';
 import { AVAILABLE_LOCALES, dictionaryOf } from '../app/js/i18n/index.js';
 
@@ -95,6 +98,35 @@ describe('⚠️ and its hooks ARE what this game already hands the engine', () 
     }
   });
 
+  test('🔴 and NOTHING the boot passes is missing from the cartridge, which is the other direction', () => {
+    /**
+     * 🔴 THE CASE ABOVE COULD NOT SEE A HOOK THAT WAS ABSENT FROM BOTH SIDES OF ITS OWN QUESTION, and
+     * two were: `getPauseActs` and `setCorrecaoDoJogador`. It walks the hooks the CARTRIDGE declares and
+     * asks whether the boot passes each — so a field the cartridge simply never mentioned was never
+     * looked for. Both had been added to the boot by §5 the same week.
+     *
+     * ⚠️ AND THEY ARE PRECISELY THE TWO THAT REACH A CHILD. `getPauseActs` is what lets the engine's
+     * pause card be LEFT — `entrarNaBarra` calls `resume` before handing the directions to the
+     * accessibility bar (ADR-0044 item 7). `setCorrecaoDoJogador` is what mounts the 🚥 icon, because
+     * `iconesQueAccionam` will not mount one that cannot act. Dropping them would have cost nothing until
+     * the shell began building its options from the cartridge, and then it would have cost both, silently.
+     *
+     * 📌 THE GAME-OWNED HALF IS WHAT IS COMPARED, not everything `createGame` takes: `host`,
+     * `baixarPesados` and the declaration are the HOST's, which is what `GanchosDoCartucho` says by
+     * omitting them.
+     */
+    const HOST_OWNED = ['declaration', 'host', 'baixarPesados'];
+    const passed = createPinballOptions(options()) as unknown as Record<string, unknown>;
+    const hooks = cartridgeHooks(options());
+
+    const missing = Object.keys(passed)
+      .filter((name) => !HOST_OWNED.includes(name))
+      .filter((name) => !(name in hooks));
+
+    expect(missing, 'the boot hands the engine these and the cartridge does not carry them')
+      .toEqual([]);
+  });
+
   test('⚠️ and `baixarPesados` is NOT among them, because it is the host’s', () => {
     /**
      * 🔴 IT WAS, FOR ONE DAY. `shell/cartridge` first declared its own hooks type and put the field in it,
@@ -122,5 +154,107 @@ describe('⚠️ and its hooks ARE what this game already hands the engine', () 
     for (const name of Object.keys(cartridgeHooks(options()))) {
       expect(passed.has(name), `${name} is not a name this engine reads`).toBe(true);
     }
+  });
+});
+
+describe('⚠️ and the whole half can be handed over before the game exists', () => {
+  /**
+   * ⚠️ THE HOOKS HAVE THE SAME CIRCULARITY THE DECLARATION HAD, and it is easy to miss because they
+   * look like configuration. `createGame` reads `isNavigable`, `setPhase`, `sonarPlayers` and
+   * `getPauseActs` as VALUES at boot — and every one of them answers a question only a running game can:
+   * is a menu on screen, what are the pause card's actions, where is the sonar's listener.
+   *
+   * So the same answer applies, and `shell/cartridge.delegatingCartridge` is where both halves meet: one
+   * object a host holds from the start, pointed at each live game in turn.
+   */
+  const live = (over: Partial<LiveCartridge> = {}): LiveCartridge => ({
+    table: options().table,
+    isNavigable: () => true,
+    isBlindMode: () => true,
+    sonarPlayers: () => [{ i: 0, x: 7, y: 9 }],
+    setPhase: () => {},
+    pauseActs: () => ({ resume: () => {}, quit: () => {} }),
+    setCorrection: () => {},
+    ...over,
+  });
+
+  test('⚠️ published, every hook answers what the live game answers', () => {
+    const port = delegatingCartridge('pt', new URLSearchParams(), options().host);
+    port.publish(live());
+
+    const hooks = port.hooks as unknown as Record<string, () => unknown>;
+    expect(hooks['isNavigable']!(), 'a menu is open and the engine was told there is none').toBe(true);
+    expect(hooks['isBlindMode']!(), 'blind mode is on and the engine was told it is off').toBe(true);
+    expect(hooks['sonarPlayers']!(), 'the sonar has nobody to listen for')
+      .toEqual([{ i: 0, x: 7, y: 9 }]);
+    expect(Object.keys((hooks['getPauseActs']!() ?? {}) as object).sort(),
+      'the engine pause card has no actions, so entering the bar cannot leave it')
+      .toEqual(['quit', 'resume']);
+  });
+
+  test('🔴 unpublished, it answers the SAFE end of every question', () => {
+    /**
+     * 🔴 AND "SAFE" IS A DIRECTION, NOT A PLACEHOLDER, which is the whole of this case. Between
+     * `createGame` and `create(ctx)` the engine is mounted and no game is running, and each hook has one
+     * answer that costs nothing and one that breaks something:
+     *
+     *   · `isNavigable` → FALSE. `ui/menu-nav` listens at WINDOW CAPTURE; answering true over a page with
+     *     no menu is how this game lost its cabinet keys for a whole release.
+     *   · `sonarPlayers` → EMPTY. A listener at a position no ball is near would narrate distances to a
+     *     table that is not there yet.
+     *   · `getPauseActs` → nothing to action, because a card whose «resume» does nothing is worse than a
+     *     card with one item fewer: `entrarNaBarra` calls it to LEAVE, and a no-op leaves it on screen.
+     */
+    const port = delegatingCartridge('pt', new URLSearchParams(), options().host);
+
+    const hooks = port.hooks as unknown as Record<string, () => unknown>;
+    expect(hooks['isNavigable']!(), 'the engine takes the keyboard before a game exists').toBe(false);
+    expect(hooks['sonarPlayers']!(), 'the sonar is given a listener with no table').toEqual([]);
+    expect(() => hooks['setPhase']!(), 'a hook that throws takes the engine down with it').not.toThrow();
+  });
+
+  test('⚠️ and republishing moves every hook, not only the table', () => {
+    /**
+     * The half that makes it a delegate rather than a copy, asked of the hooks instead of the topology.
+     * An implementation that read them once, at publish, would pass both cases above — and on the
+     * platform's `unmount()`/`mount()` the engine would go on asking the game that had left.
+     */
+    const port = delegatingCartridge('pt', new URLSearchParams(), options().host);
+    port.publish(live());
+    port.publish(live({ isNavigable: () => false, sonarPlayers: () => [] }));
+
+    const hooks = port.hooks as unknown as Record<string, () => unknown>;
+    expect(hooks['isNavigable']!(), 'the engine is still asking the game that left').toBe(false);
+    expect(hooks['sonarPlayers']!()).toEqual([]);
+  });
+
+  test('⚠️ the delegating half is the SAME SHAPE as the one the boot hands over', () => {
+    /**
+     * 📌 THE CLAIM `tests/cartridge-halves` EXISTS FOR, ASKED OF THE NEW ROUTE. A delegate that
+     * forwarded five of six hooks would pass every case above: the sixth would simply be absent, and an
+     * absent hook is not an error — `createGame` defaults it and the game silently loses whatever it
+     * bought. So the two key sets are compared, not sampled.
+     */
+    const port = delegatingCartridge('pt', new URLSearchParams(), options().host);
+    port.publish(live());
+
+    /**
+     * 📌 COMPARED AGAINST A FULL GAME AND NOT THE MINIMAL FIXTURE. `cartridgeHooks` includes the
+     * optional hooks only when the boot was given them, and `options()` above is a table and nothing
+     * else — so it produces a SHORTER half than any real boot does. The delegate always forwards
+     * everything, because a running game always answers everything. Comparing the two straight would
+     * assert that the delegate is as incomplete as the fixture.
+     */
+    const full: BootOptions = {
+      ...options(),
+      isBlindMode: () => false,
+      menuIsUp: () => false,
+      sonarPlayers: () => [],
+      setPhase: () => {},
+      pauseActs: () => ({}),
+      setCorrection: () => {},
+    };
+
+    expect(Object.keys(port.hooks).sort()).toEqual(Object.keys(cartridgeHooks(full)).sort());
   });
 });

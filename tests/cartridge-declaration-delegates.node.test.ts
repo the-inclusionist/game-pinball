@@ -26,7 +26,8 @@
 import { describe, test, expect } from 'vitest';
 import { conformanceProblems } from '@the-inclusionist/engine/core/contract.js';
 import { createPinballOptions, type BootOptions, type LiveTable } from '../app/js/shell/boot.js';
-import { delegatingDeclaration } from '../app/js/shell/cartridge.js';
+import type { LiveCartridge } from '../app/js/shell/cartridge.js';
+import { delegatingCartridge } from '../app/js/shell/cartridge.js';
 
 function table(over: Partial<LiveTable> = {}): LiveTable {
   return {
@@ -59,6 +60,26 @@ function sizeOf(port: { declaration: { topology(): { kind: string } } }): readon
   return (topology as unknown as { size: readonly number[] }).size;
 }
 
+const HOST = { doc: {} as Document, win: {} as Window };
+
+/**
+ * A published game that is nothing but its table.
+ *
+ * ⚠️ THE HOOKS ARE THE OTHER HALF AND THEY ARE `tests/cartridge-halves`'s, DELIBERATELY. This file
+ * asks one question — does a declaration handed over early say what a declaration built late says — and
+ * answering it needs a table and nothing else. Stubbing the hooks here as well would put the same claim
+ * in two files, and the one that is not read is the one that rots.
+ */
+const asLive = (t: LiveTable): LiveCartridge => ({
+  table: t,
+  isNavigable: () => false,
+  isBlindMode: () => false,
+  sonarPlayers: () => [],
+  setPhase: () => {},
+  pauseActs: () => ({}),
+  setCorrection: () => {},
+});
+
 const options = (over: Partial<BootOptions> = {}): BootOptions => ({
   locale: 'pt', table: table(), host: { doc: {} as Document, win: {} as Window }, ...over,
 });
@@ -72,8 +93,8 @@ describe('a declaration can be handed over before the table exists', () => {
      */
     const direct = createPinballOptions(options()).declaration;
 
-    const port = delegatingDeclaration('pt', new URLSearchParams());
-    port.publish(table());
+    const port = delegatingCartridge('pt', new URLSearchParams(), HOST);
+    port.publish(asLive(table()));
 
     expect(port.declaration.topology()).toEqual(direct.topology());
   });
@@ -86,8 +107,8 @@ describe('a declaration can be handed over before the table exists', () => {
      */
     const direct = createPinballOptions(options()).declaration;
 
-    const port = delegatingDeclaration('pt', new URLSearchParams());
-    port.publish(table());
+    const port = delegatingCartridge('pt', new URLSearchParams(), HOST);
+    port.publish(asLive(table()));
 
     const at = { x: 90, y: 230 };
     expect(port.declaration.tick).toBe(direct.tick);
@@ -106,11 +127,11 @@ describe('a declaration can be handed over before the table exists', () => {
      * It is not hypothetical: this game rebuilds its world when a player picks another table, and the
      * platform's `mount()`/`unmount()` is the same thing at a larger scale.
      */
-    const port = delegatingDeclaration('pt', new URLSearchParams());
-    port.publish(table());
+    const port = delegatingCartridge('pt', new URLSearchParams(), HOST);
+    port.publish(asLive(table()));
     const before = sizeOf(port);
 
-    port.publish(table({ playfieldWidth: 360, playfieldHeight: 300 }));
+    port.publish(asLive(table({ playfieldWidth: 360, playfieldHeight: 300 })));
 
     expect(sizeOf(port), 'the declaration is a snapshot, not a view').not.toEqual(before);
     expect(sizeOf(port)).toEqual([360, 300]);
@@ -133,8 +154,8 @@ describe('a declaration can be handed over before the table exists', () => {
      * 📌 SO THE ONLY THING MISSING BEFORE `publish` IS WHAT MOVES — no balls, no live mission, no
      * components. Which is exactly what `create(ctx)` builds, and what the delegate exists to swap in.
      */
-    const chosen = delegatingDeclaration('pt', new URLSearchParams('table=wide-arc'));
-    const fallback = delegatingDeclaration('pt', new URLSearchParams());
+    const chosen = delegatingCartridge('pt', new URLSearchParams('table=wide-arc'), HOST);
+    const fallback = delegatingCartridge('pt', new URLSearchParams(), HOST);
 
     expect(sizeOf(chosen), 'the address named a table and the declaration did not follow it')
       .not.toEqual(sizeOf(fallback));
@@ -155,7 +176,7 @@ describe('a declaration can be handed over before the table exists', () => {
      * difference between this case and a paraphrase: `conformanceProblems` is what `createGame` actually
      * calls, and a borrowed guarantee is a claim about somebody else's code.
      */
-    const port = delegatingDeclaration('pt', new URLSearchParams());
+    const port = delegatingCartridge('pt', new URLSearchParams(), HOST);
 
     expect(conformanceProblems(port.declaration),
       'the engine refuses this declaration, so it cannot be handed over before a table is live')

@@ -37,7 +37,7 @@
 // read as "forgotten".
 
 import {
-  createPinballOptions, createPinballWorld, type BootOptions, type LiveTable,
+  createPinballOptions, type BootOptions, type LiveTable, type Phase, type SonarPlayerLike,
 } from './boot.js';
 import { createDeclaration } from './declaration.js';
 import { DEFAULT_TABLE, tableNamed } from '../table/catalog.js';
@@ -90,12 +90,56 @@ export const CARTRIDGE_SLUG = 'game-pinball';
  * 📌 THE MUTABLE POINTER LIVES IN THIS CLOSURE AND NOT AT MODULE SCOPE, which is spec D14 — module
  * state survives `teardown()` and leaks into the next game. One call gives one host one declaration.
  */
-export interface DelegatingDeclaration {
+export interface DelegatingCartridge {
   /** The value a host hands to `createGame`. Stable for the life of the cartridge. */
   readonly declaration: ReturnType<typeof createDeclaration>;
-  /** Points it at the world a `create(ctx)` has just built. Idempotent, and repeatable. */
-  publish(table: LiveTable): void;
+  /** The rest of the game-owned half, every member of it forwarding the same way. */
+  readonly hooks: CartridgeHooks;
+  /** Points them at the game a `create(ctx)` has just built. Idempotent, and repeatable. */
+  publish(live: LiveCartridge): void;
 }
+
+/**
+ * WHAT A RUNNING GAME ANSWERS, which is everything in the half that a table alone cannot.
+ *
+ * ⚠️ THE HOOKS HAVE THE SAME CIRCULARITY THE DECLARATION HAS, and it is easy to miss because they
+ * read like configuration. `createGame` takes `isNavigable`, `setPhase`, `sonarPlayers` and
+ * `getPauseActs` as VALUES at boot, and every one of them answers a question only a running game can: is
+ * a menu on screen, where is the sonar's listener, what can the pause card do here.
+ */
+export interface LiveCartridge {
+  readonly table: LiveTable;
+  isNavigable(): boolean;
+  isBlindMode(): boolean;
+  sonarPlayers(): SonarPlayerLike[];
+  setPhase(phase: Phase): void;
+  pauseActs(): Record<string, (() => void) | undefined>;
+  setCorrection(choice: string): void;
+}
+
+/**
+ * The answers between `createGame` and `create(ctx)` — a window in which the engine is mounted and no
+ * game is running.
+ *
+ * ⚠️ "SAFE" IS A DIRECTION HERE AND NOT A PLACEHOLDER. Each of these has one answer that costs
+ * nothing and one that breaks something:
+ *
+ *   · `isNavigable` → FALSE. `ui/menu-nav` listens at WINDOW CAPTURE, so answering true over a page with
+ *     nothing open is how this game lost its cabinet keys for a whole release (§6 of the plan).
+ *   · `sonarPlayers` → EMPTY. A listener placed where no ball is would narrate distances across a table
+ *     that does not exist yet.
+ *   · `pauseActs` → NOTHING TO ACTION, which is not the same as a no-op `resume`: `ui/pause-icons`
+ *     calls `resume` to LEAVE the card before handing the directions to the accessibility bar, and a
+ *     `resume` that does nothing leaves the card sitting over the game. Absent, the engine hides the item.
+ */
+const NOT_RUNNING: Omit<LiveCartridge, 'table'> = {
+  isNavigable: () => false,
+  isBlindMode: () => false,
+  sonarPlayers: () => [],
+  setPhase: () => {},
+  pauseActs: () => ({}),
+  setCorrection: () => {},
+};
 
 /**
  * WHICH TABLE THE ADDRESS ASKS FOR — the one choice this game can make with no engine and no world.
@@ -143,8 +187,10 @@ function tableAtRest(authored: AuthoredTable): LiveTable {
   };
 }
 
-export function delegatingDeclaration(locale: Locale, params: URLSearchParams): DelegatingDeclaration {
-  let current: LiveTable = tableAtRest(tableAskedFor(params));
+export function delegatingCartridge(
+  locale: Locale, params: URLSearchParams, host: BootOptions['host'],
+): DelegatingCartridge {
+  let current: LiveCartridge = { table: tableAtRest(tableAskedFor(params)), ...NOT_RUNNING };
 
   /**
    * ⚠️ EVERY MEMBER IS A GETTER, INCLUDING THE ONES THAT LOOK CONSTANT. `ballRadius` does not change
@@ -152,24 +198,47 @@ export function delegatingDeclaration(locale: Locale, params: URLSearchParams): 
    * one that went stale — silently, because a radius that is wrong by a pixel reads as a rounding error
    * rather than as the wrong table.
    */
-  const live: LiveTable = {
-    get playfieldWidth() { return current.playfieldWidth; },
-    get playfieldHeight() { return current.playfieldHeight; },
-    get ballRadius() { return current.ballRadius; },
-    get balls() { return current.balls; },
-    get components() { return current.components; },
+  const table: LiveTable = {
+    get playfieldWidth() { return current.table.playfieldWidth; },
+    get playfieldHeight() { return current.table.playfieldHeight; },
+    get ballRadius() { return current.table.ballRadius; },
+    get balls() { return current.table.balls; },
+    get components() { return current.table.components; },
     // Forwarded as a function that is always present: `createPinballWorld` treats a null answer as "not
     // declared" and falls back to guessing the kind from the name, which is what an absent one does too.
-    kindOfComponent: (name) => current.kindOfComponent?.(name) ?? null,
-    get missionTextId() { return current.missionTextId; },
-    get missionHave() { return current.missionHave; },
-    get missionNeed() { return current.missionNeed; },
-    get missionTargets() { return current.missionTargets; },
+    kindOfComponent: (name) => current.table.kindOfComponent?.(name) ?? null,
+    get missionTextId() { return current.table.missionTextId; },
+    get missionHave() { return current.table.missionHave; },
+    get missionNeed() { return current.table.missionNeed; },
+    get missionTargets() { return current.table.missionTargets; },
+  };
+
+  /**
+   * ⚠️ BUILT THROUGH `createPinballOptions` RATHER THAN BESIDE IT, WHICH IS THE POINT OF THE SHAPE.
+   * That function already knows how this game's half is assembled — the preset from the locale, the
+   * players from the cabinet, `isNavigable` from `menuIsUp`, the two translations `getPauseActs` and
+   * `setCorrecaoDoJogador` need. Writing a delegating version beside it would be a SECOND description of
+   * the half, which is the defect `tests/cartridge-halves` was written to catch.
+   *
+   * So what delegates is the INPUT: a `BootOptions` whose every callback forwards. Everything downstream
+   * is the one description, unchanged, and it keeps working the day somebody adds a field to it.
+   */
+  const delegating: BootOptions = {
+    locale,
+    table,
+    host,
+    isBlindMode: () => current.isBlindMode(),
+    menuIsUp: () => current.isNavigable(),
+    sonarPlayers: () => current.sonarPlayers(),
+    setPhase: (phase) => current.setPhase(phase),
+    pauseActs: () => current.pauseActs(),
+    setCorrection: (choice) => current.setCorrection(choice),
   };
 
   return {
-    declaration: createDeclaration(createPinballWorld(live, locale)),
-    publish(table: LiveTable): void { current = table; },
+    declaration: createPinballOptions(delegating).declaration,
+    hooks: cartridgeHooks(delegating),
+    publish(live: LiveCartridge): void { current = live; },
   };
 }
 
@@ -235,6 +304,29 @@ export function cartridgeHooks(o: BootOptions): CartridgeHooks {
     ...(options['isBlindMode'] ? { isBlindMode: options['isBlindMode'] as () => boolean } : {}),
     ...(options['sonarPlayers']
       ? { sonarPlayers: options['sonarPlayers'] as CartridgeHooks['sonarPlayers'] } : {}),
+    /**
+     * 🔴 THESE TWO WERE MISSING, AND THEY ARE THE TWO §5 EXISTED TO DELIVER.
+     *
+     * `getPauseActs` is what lets `ui/pause-icons.entrarNaBarra` call `resume` and LEAVE the engine's
+     * card before handing the four directions to the accessibility bar — ADR-0044 item 7, unreachable
+     * from any game until engine 9.0.0 published the field. `setCorrecaoDoJogador` is what mounts the
+     * 🚥 colour-correction icon at all: `iconesQueAccionam` refuses to mount an icon that cannot act.
+     *
+     * ⚠️ AND DROPPING THEM WOULD HAVE COST NOTHING UNTIL THE DAY IT COST EVERYTHING. Today the boot
+     * passes them straight to `createGame` and this object is a second description nobody reads. The day
+     * the shell builds its options FROM here — which is the whole point of the conversion — the pause
+     * card would have lost its actions and the bar would have lost its icon, with no error anywhere and
+     * nothing on screen to say a field had gone missing.
+     *
+     * 📌 FOUND BY THE DELEGATE, NOT BY THE LEDGER. `tests/cartridge-halves` asked whether every hook
+     * the CARTRIDGE declares is one the boot passes, and a hook that is absent from both sides of that
+     * question is invisible to it. The case is two-directional now.
+     */
+    ...(options['getPauseActs']
+      ? { getPauseActs: options['getPauseActs'] as CartridgeHooks['getPauseActs'] } : {}),
+    ...(options['setCorrecaoDoJogador']
+      ? { setCorrecaoDoJogador:
+        options['setCorrecaoDoJogador'] as CartridgeHooks['setCorrecaoDoJogador'] } : {}),
     preset: options['preset'] as CartridgeHooks['preset'],
     players: options['players'] as CartridgeHooks['players'],
     declines: options['declines'] as CartridgeHooks['declines'],
