@@ -62,6 +62,30 @@ describe('the entry point carries no state of its own', () => {
       .toBeGreaterThan(20);
   });
 
+  test('⚠️ nothing at module scope CALLS anything, which is the third half of it', () => {
+    /**
+     * ⚠️ «NOTHING RUNS UNTIL `create(ctx)` IS CALLED. NO SIDE EFFECTS AT MODULE SCOPE» — and a `const`
+     * is not automatically innocent. `const locale = cartridgeLocale()` ran on IMPORT: it asked the
+     * engine what language had been chosen, at a moment the host may not have chosen one yet, and froze
+     * the answer for the life of the module.
+     *
+     * 📌 IT IS NOT ABOUT MUTABILITY, WHICH IS WHY THE `let` CASE ABOVE DOES NOT CATCH IT. The value
+     * never changes; what happens too early is the QUESTION. On the platform the host settles the
+     * language before it creates a cartridge and after it has imported one, so an answer read at import
+     * is an answer read from the wrong moment — and a wrong language is not a crash, it is a screen a
+     * child cannot read.
+     *
+     * A literal at module scope is fine and stays fine: it computes nothing and asks nobody.
+     */
+    const callers = SOURCE
+      .map((line, n) => ({ line, n }))
+      .filter(({ line, n }) => n < opensAt && /^(?:const|let|var)\s+\w[^=]*=.*\(/.test(line))
+      .map(({ line, n }) => `${n + 1}: ${line.trim()}`);
+
+    expect(callers, 'these run when the cartridge is imported, before any host has asked for a game')
+      .toEqual([]);
+  });
+
   test('⚠️ and importing this file RUNS NOTHING, which is the other half of D14', () => {
     /**
      * ⚠️ "NOTHING RUNS UNTIL `create(ctx)` IS CALLED. No side effects at module scope" —

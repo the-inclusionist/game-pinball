@@ -109,20 +109,6 @@ import { srSay, srAlert } from '@the-inclusionist/engine/core/a11y-sr.js';
  */
 import * as engineState from '@the-inclusionist/engine/core/state.js';
 
-/**
- * THE LANGUAGE THIS GAME DRAWS IN, decided by whoever loaded it.
- *
- * ⚠️ IT IS NOT CHOSEN HERE ANY MORE, AND THAT IS ADR-0139. Settling a locale and writing the page's
- * `lang` is work a HOST does — `app/js/standalone.ts` does it for the standalone page, and the platform
- * does it on its side. What a cartridge does is READ the answer, which is why this is a call and not a
- * literal, and why there is no `await` beside it: by the time the cartridge is imported the shell has
- * already waited on `idiomaPronto()`.
- *
- * 📌 AND IT STILL READS THE ENGINE RATHER THAN A PARAMETER, because `ctx` does not exist yet: the
- * contract hands the translator over in `create(ctx)`, and that is a later slice. Until then the engine's
- * own module state is the one place both halves already agree on.
- */
-const locale: Locale = cartridgeLocale();
 
 /* ======================= AND HERE THE CARTRIDGE BEGINS =======================
  *
@@ -199,6 +185,26 @@ export interface PinballCtx {
 }
 
 export function createPinball(ctx: PinballCtx): PinballInstance {
+/**
+ * THE LANGUAGE THIS GAME DRAWS IN, decided by whoever loaded it.
+ *
+ * ⚠️ IT IS NOT CHOSEN HERE, AND THAT IS ADR-0139. Settling a locale and writing the page's `lang` is
+ * work a HOST does — `app/js/standalone.ts` does it for this page and the platform does it on its side.
+ * What a cartridge does is READ the answer, which is why this is a call and not a literal.
+ *
+ * 🔴 AND IT IS READ HERE RATHER THAN AT MODULE SCOPE, WHICH IS A CORRECTION. It used to sit beside
+ * the imports, so it ran when the file was IMPORTED — asking the engine what language had been chosen at
+ * a moment the host may not have chosen one yet, and freezing that answer for the life of the module.
+ * The contract's rule is «nothing runs until `create(ctx)` is called», and a `const` is not innocent just
+ * because it never changes: what happened too early was the QUESTION. Gated in
+ * `tests/cartridge-no-module-state`.
+ *
+ * 📌 AND IT BECOMES `ctx.t` WHEN THE HOST BUILDS THE OPTIONS. The contract hands a cartridge a
+ * translator already scoped to the active locale; until `createGame` moves out, the options this game
+ * builds still need a `Locale` rather than a `Translate`, so the engine's own answer is the one place
+ * both halves already agree on.
+ */
+const locale: Locale = cartridgeLocale();
 
 
 /**
