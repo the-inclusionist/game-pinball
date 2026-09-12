@@ -24,7 +24,7 @@
 | 9 | One language, chosen | ✅ `461d692` |
 | 10 | The game speaks out loud | ✅ `72e82bb` |
 | 12 | Left to the Dev | ⏸ ADR-0002 answered `0a6e6c0`; five open, all his |
-| B | The cartridge architecture | 🛠 **in progress** — A0, A0.1, A2a, A2b, and A2c's params, rng and region. **Left: the delegating declaration**, which `ctx.t` and `createGame` both wait on |
+| B | The cartridge architecture | 🛠 **in progress** — A0, A0.1, A2a, A2b, A2c's params/rng/region, and the delegating declaration (`5a252ef`). **Left: wiring it in** — `createGame` to the shell, then `ctx.t`, then A3 and A4 |
 
 **Part A is complete.** `npm run validate`: 235 suites, 2891 passing, 1 skipped, build — exit zero.
 
@@ -470,7 +470,18 @@ precedent for a `topology` that is recomputed rather than fixed.
 
 **So A2c is A1's work, and the slice table had them in the wrong order.** What it actually takes:
 
-1. a stable `declaration` exported from `shell/cartridge`, forwarding to whichever instance is current;
+1. ✅ a stable `declaration` from `shell/cartridge`, forwarding to whichever world is current — `5a252ef`,
+   `delegatingDeclaration(locale, params)`, proved in isolation before anything is rewired. Two findings
+   came out of building it:
+   - 🔴 `shell/declaration` MEMORISED THE TOPOLOGY. It built a constant and returned `() => topology`,
+     defending it with «a pinball's playfield is one size for the life of the game» — true while one
+     declaration meant one page load, and precisely what this conversion ends. A function that returns a
+     constant is a constant, which is the defect ADR-0084 exists for. It reads the world at call time now.
+   - 🔴 AN EMPTY DECLARATION IS REFUSED BY THE ENGINE, measured with `conformanceProblems` rather than
+     read off the rules: «every extent must be positive», «unit must be positive». The refusal is right,
+     so the delegate seeds from `tableAskedFor(params)` — the real extent, at rest, with nothing that
+     moves. The extent was knowable all along, because `?table=` is in the ADDRESS.
+
 2. `createPinball` becoming `create(ctx)` — which splits into pieces that do NOT all wait on step 1:
    - ✅ `ctx.params` instead of `location.search` — `3bb5c85`, with the boot moved to the shell in the
      same commit, because "nothing runs until `create(ctx)` is called" is the same seam from the other end;
