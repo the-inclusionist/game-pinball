@@ -541,6 +541,30 @@ precedent for a `topology` that is recomputed rather than fixed.
    screen says so. Whoever pays this debt unregisters the worker and clears the caches BEFORE reading
    anything, or they will be verifying a build from an hour earlier and calling it green.
 
+   ✅ **AND MOST OF IT IS PAID WITHOUT A SERVER, BY READING THE BUILT BUNDLE.** A boot proves BEHAVIOUR;
+   the claim A2c actually made was STRUCTURAL — who calls `createGame` — and that is in the output to be
+   read. Measured on `dist/assets/index-*.js`, which is the 51 kB shell chunk:
+
+   ```js
+   const {createPinball} = await import('./main-mnLMU60a.js');          // dynamic, and LAST
+   host = {doc: document, win: window, cvdHost: getElementById('cvd-filters')};
+   params = new URLSearchParams(location.search);
+   cartridge = delegatingCartridge(locale, params, host);
+   createPinball({params, engine: createGame({...cartridge.hooks, declaration: cartridge.declaration,
+                                              host, baixarPesados: !1}),
+                  publish: cartridge.publish, locale, t, rng: createRng(Date.now()),
+                  region: mustFind('game-region')});
+   ```
+
+   And the other half, in the two cartridge chunks (`main-*.js`, 226 kB; `cartridge-*.js`, 141 kB):
+   **zero occurrences of `createGame`, zero of `location.search`.** The service worker registers at scope
+   `/`, and the precache manifest names the playfield pictures.
+
+   📌 **WHAT IS STILL OWED IS THE BEHAVIOUR, AND IT IS THE SMALLER HALF NOW.** A running page would add
+   what the bundle cannot say: that the engine reports no `problems`, that the table draws, that a key
+   reaches a flipper. All three are exercised on the source path by 239 suites in two real browsers; what
+   is unverified is only whether the BUILT bundle behaves as the source does.
+
 🔴 **AND A SECOND QUESTION FOR THE CONTRACT, FOUND THE SAME WAY: WHERE DOES A CARTRIDGE'S OWN BAR
 BUTTON GO?** This game appends its sonar sweep and its palette cycler into `.pinball-topbar`, which is the
 page's header and **not inside `ctx.region`** — so those two survive `teardown()`, and the next cartridge
