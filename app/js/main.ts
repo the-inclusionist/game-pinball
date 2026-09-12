@@ -29,7 +29,7 @@ import type { Rng } from '@the-inclusionist/engine/core/rng.js';
 import {
   bootPinball, createPinballOptions, type BootOptions, type LiveTable, type Phase,
 } from './shell/boot.js';
-import { CATALOG, DEFAULT_TABLE, tableNamed } from './table/catalog.js';
+import { CATALOG } from './table/catalog.js';
 import { toLiveTable, validateTable, type TableState } from './table/authored.js';
 import { DEFAULT_CAMERA } from './shell/camera.js';
 import { DEFAULT_HUD } from './shell/hud.js';
@@ -85,7 +85,7 @@ import { playSchedule } from './audio/midi-player.js';
 import { createDemo, hintFor, type Demo } from './shell/demo.js';
 import { keyOf } from './i18n/keys.js';
 import { type Locale } from './i18n/index.js';
-import { cartridgeLocale } from './shell/cartridge.js';
+import { cartridgeLocale, tableAskedFor } from './shell/cartridge.js';
 import { createSoundBoard, releaseVoice } from './audio/sfx.js';
 import { soundEntriesOf, VOICES } from './audio/voices.js';
 import { createWebAudioOutput } from './audio/web-audio.js';
@@ -216,7 +216,12 @@ let palette: PaletteChoice = readPalette(localStorage);
 
 // `?table=wide-arc` opens another one of the five. There is no menu yet, and a query parameter is
 // enough to look at all of them without one.
-const requested = ctx.params.get('table');
+/**
+ * ⚠️ THROUGH `shell/cartridge` RATHER THAN HERE, because the DECLARATION handed to the host has to
+ * describe the same table this body builds. Two expressions reading one parameter agree until one of
+ * them is edited, and then the engine validates one playfield at boot and narrates another.
+ */
+const authored = tableAskedFor(ctx.params);
 /**
  * The times table, carried in the address beside the table for the same reason the table is.
  *
@@ -226,7 +231,6 @@ const requested = ctx.params.get('table');
  * on the number screen for a drill they had just chosen.
  */
 const requestedTimes = Number(ctx.params.get('times'));
-const authored = (requested && tableNamed(requested)) || DEFAULT_TABLE;
 
 // A table that does not validate must not open. The rules are in `table/authored` and every one of
 // them is there because this port hit the failure it prevents.
@@ -2341,7 +2345,7 @@ showHud(screens.current === 'playing');
  * `?table=` in the address IS a choice. `?demo=original` is the validation configuration and skips the
  * screens for the same reason: a file picker is what somebody came to that URL for.
  */
-if (demoRequested || requested) {
+if (demoRequested || ctx.params.get('table')) {
   screens.advance();
   screens.choose(authored.name);
   /**

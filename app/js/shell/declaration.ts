@@ -136,27 +136,35 @@ export function createDeclaration(world: PinballWorld): GameDeclaration {
    * esquerda" needs nothing an eight-year-old has not got, and "às dez horas" needs a skill some of
    * them are still being taught.
    */
-  const topology: Topology = {
+  const topology = (): Topology => ({
     kind: 'continuous',
     size: [world.playfield.width, world.playfield.height],
     unit: world.ballRadius,
     move: 'free',
     frame: 'compass',
-  };
+  });
 
   return {
     /**
-     * ⚠️ A FUNCTION SINCE THE ENGINE'S ADR-0084, AND IT WAS A VALUE HERE. The engine changed under this
-     * game — `conformanceProblems` began answering "topology: must be a FUNCTION (it was a value until
-     * ADR-0084)" — and the reason it changed is one this table does not have: `game-15puzzle` is 3x3,
-     * 4x4 or 5x5, so a memorised topology went stale in silence. A pinball's playfield is one size for
-     * the life of the game, so the constant above is still the whole answer and this is the shape the
-     * contract now asks it in.
+     * ⚠️ A FUNCTION SINCE THE ENGINE'S ADR-0084, AND IT IS ONE ALL THE WAY DOWN NOW.
      *
-     * The plan called this risk out in one line — "a engine é alvo móvel... um consumidor externo vai
-     * encostar em APIs que ainda mudam" — and this is the first time it has cost anything.
+     * 🔴 IT USED TO BE `() => topology` OVER A CONSTANT BUILT ABOVE, and the paragraph here defended
+     * that: «a pinball's playfield is one size for the life of the game, so the constant is still the
+     * whole answer». TRUE WHILE ONE DECLARATION MEANT ONE GAME ON ONE PAGE LOAD, and the conversion is
+     * exactly what ends that. `shell/cartridge.delegatingDeclaration` builds ONE declaration before any
+     * table has been chosen and points it at each world in turn — so a memorised size is the size of the
+     * EMPTY table the delegate started with, for ever.
+     *
+     * 📌 WHICH IS THE DEFECT ADR-0084 EXISTS FOR, ARRIVING HERE BY A DIFFERENT ROAD. The engine's own
+     * note: «quem memorizasse a topologia ficava defasado em silêncio». `game-15puzzle` met it by being
+     * 3x3 or 4x4 or 5x5; this game meets it by outliving its own table. The shape the contract asked for
+     * was right and the reading of it here was one layer too shallow — a function that returns a
+     * constant is a constant.
+     *
+     * Gated in `tests/cartridge-declaration-delegates`: publish one table, publish another, and the
+     * answer has to move.
      */
-    topology: () => topology,
+    topology,
 
     /**
      * ⚠️ AND `world` IS NEW AND REQUIRED, which the engine's own note explains better than a paraphrase

@@ -36,7 +36,12 @@
 // whatever instance is current, which is slice A1 of the plan's §B6. Named here so that "not yet" is not
 // read as "forgotten".
 
-import { createPinballOptions, type BootOptions } from './boot.js';
+import {
+  createPinballOptions, createPinballWorld, type BootOptions, type LiveTable,
+} from './boot.js';
+import { createDeclaration } from './declaration.js';
+import { DEFAULT_TABLE, tableNamed } from '../table/catalog.js';
+import type { AuthoredTable } from '../table/authored.js';
 import type { GanchosDoCartucho } from '@the-inclusionist/engine';
 import { getLocale } from '@the-inclusionist/engine/core/i18n.js';
 import { AVAILABLE_LOCALES, BASE_LOCALE, dictionaryOf, type Locale } from '../i18n/index.js';
@@ -50,6 +55,123 @@ import { AVAILABLE_LOCALES, BASE_LOCALE, dictionaryOf, type Locale } from '../i1
  * constant follows the two that already match rather than inventing a third answer.
  */
 export const CARTRIDGE_SLUG = 'game-pinball';
+
+/**
+ * A DECLARATION THE HOST CAN HOLD BEFORE THIS GAME HAS A TABLE.
+ *
+ * ========================= THE CIRCLE THIS BREAKS =========================
+ * ⚠️ `createGame` TAKES `declaration` AS A VALUE and runs `conformanceProblems` on it once, at boot; so
+ * `cartridge-contract.md` makes `Cartridge.declaration` something a host reads BEFORE calling
+ * `create(ctx)`. But this game's declaration describes the playfield that is actually on screen, and
+ * which table that is comes from `ctx.params` — which the cartridge cannot read until `create(ctx)` has
+ * been called. Each requirement is upstream of the other.
+ *
+ * 📌 THE CONTRACT NAMES THE WAY OUT AND THIS IS IT, VERBATIM: option (a) under "the one hard
+ * problem", «a declaration whose every member forwards to the mounted cartridge», which it says works
+ * today with no engine change. The engine reached the same shape from the inside for `mount()`
+ * (`let cartucho: MetadeDoJogo = o`), and `ADR-0084` is the precedent for a `topology` that is asked
+ * rather than fixed.
+ *
+ * ✅ AND THIS GAME WAS ALREADY BUILT FOR IT WITHOUT KNOWING. `createPinballWorld` returns GETTERS and
+ * `createDeclaration` reads them at call time, so nothing handed to the engine is looked at until the
+ * engine asks. The delegate below is one more layer of the same idea and not a new mechanism.
+ *
+ * ========================= WHAT IT ANSWERS BEFORE THERE IS A TABLE =========================
+ * ⚠️ AN EMPTY TABLE, AND NEVER A THROW. `createGame` throws on a malformed declaration, and a host
+ * that could not boot a cartridge until the cartridge had run would be back inside the circle. So the
+ * unpublished state is a real, conformant, EMPTY playfield: no balls, no components, nothing to describe.
+ * Measured in `tests/cartridge-declaration-delegates` rather than assumed.
+ *
+ * ⚠️ AND `publish` MAY BE CALLED MORE THAN ONCE, which is the half that makes it a delegate rather
+ * than a copy. This game rebuilds its world when a player picks another table, and the platform's
+ * `mount()`/`unmount()` is the same thing at a larger scale. An implementation that read the table once,
+ * at publish, would pass every other case and tell a child about the table they played an hour ago.
+ *
+ * 📌 THE MUTABLE POINTER LIVES IN THIS CLOSURE AND NOT AT MODULE SCOPE, which is spec D14 — module
+ * state survives `teardown()` and leaks into the next game. One call gives one host one declaration.
+ */
+export interface DelegatingDeclaration {
+  /** The value a host hands to `createGame`. Stable for the life of the cartridge. */
+  readonly declaration: ReturnType<typeof createDeclaration>;
+  /** Points it at the world a `create(ctx)` has just built. Idempotent, and repeatable. */
+  publish(table: LiveTable): void;
+}
+
+/**
+ * WHICH TABLE THE ADDRESS ASKS FOR — the one choice this game can make with no engine and no world.
+ *
+ * ⚠️ IT LIVES HERE BECAUSE TWO CALLERS NEED THE SAME ANSWER. `create(ctx)` builds its world from it,
+ * and the DECLARATION handed over before that has to describe the same table — otherwise the engine
+ * validates one playfield at boot and narrates another a moment later. Two expressions agreeing by
+ * coincidence is the defect this repository has paid for most often.
+ */
+export function tableAskedFor(params: URLSearchParams): AuthoredTable {
+  const requested = params.get('table');
+  return (requested && tableNamed(requested)) || DEFAULT_TABLE;
+}
+
+/**
+ * What the chosen table looks like before a ball exists: its extent, and nothing that moves.
+ *
+ * 🔴 AND IT IS THE REAL TABLE RATHER THAN A PLACEHOLDER, WHICH A MEASUREMENT DECIDED. The first
+ * version seeded an EMPTY one — zero by zero, no components — on the reasoning that nothing is on screen
+ * until `create(ctx)` runs. The engine refuses it, in its own words:
+ *
+ *     topology.size: every extent must be positive
+ *     topology.continuous: unit must be positive (it is the metric the narration counts in)
+ *
+ * ⚠️ AND THE REFUSAL IS RIGHT, WHICH IS THE USEFUL PART. `createGame` runs `conformanceProblems` at
+ * boot; a declaration that says «this space is zero wide» is not a space a child can be told about, and
+ * an engine that accepted it would have mounted a sonar whose metric divides by nothing. The answer is
+ * not to soften the check — it is that the extent was knowable all along. `?table=` is read from the
+ * address, and the address is the host's before the game runs.
+ *
+ * 📌 SO THE ONLY THING MISSING BEFORE `publish` IS WHAT MOVES: no balls, no live mission, no
+ * components yet. Those are what `create(ctx)` builds, and they are what the delegate is for.
+ */
+function tableAtRest(authored: AuthoredTable): LiveTable {
+  return {
+    playfieldWidth: authored.size.width,
+    playfieldHeight: authored.size.height,
+    ballRadius: authored.ballRadius,
+    balls: [],
+    components: [],
+    missionTextId: '',
+    missionHave: 0,
+    missionNeed: 0,
+    missionTargets: [],
+  };
+}
+
+export function delegatingDeclaration(locale: Locale, params: URLSearchParams): DelegatingDeclaration {
+  let current: LiveTable = tableAtRest(tableAskedFor(params));
+
+  /**
+   * ⚠️ EVERY MEMBER IS A GETTER, INCLUDING THE ONES THAT LOOK CONSTANT. `ballRadius` does not change
+   * within a table and DOES change between two of them, and a field copied at construction would be the
+   * one that went stale — silently, because a radius that is wrong by a pixel reads as a rounding error
+   * rather than as the wrong table.
+   */
+  const live: LiveTable = {
+    get playfieldWidth() { return current.playfieldWidth; },
+    get playfieldHeight() { return current.playfieldHeight; },
+    get ballRadius() { return current.ballRadius; },
+    get balls() { return current.balls; },
+    get components() { return current.components; },
+    // Forwarded as a function that is always present: `createPinballWorld` treats a null answer as "not
+    // declared" and falls back to guessing the kind from the name, which is what an absent one does too.
+    kindOfComponent: (name) => current.kindOfComponent?.(name) ?? null,
+    get missionTextId() { return current.missionTextId; },
+    get missionHave() { return current.missionHave; },
+    get missionNeed() { return current.missionNeed; },
+    get missionTargets() { return current.missionTargets; },
+  };
+
+  return {
+    declaration: createDeclaration(createPinballWorld(live, locale)),
+    publish(table: LiveTable): void { current = table; },
+  };
+}
 
 /**
  * WHICH OF THIS CARTRIDGE'S LANGUAGES THE ENGINE'S CHOICE LANDS ON.
