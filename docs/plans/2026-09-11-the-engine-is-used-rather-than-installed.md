@@ -24,7 +24,7 @@
 | 9 | One language, chosen | ✅ `461d692` |
 | 10 | The game speaks out loud | ✅ `72e82bb` |
 | 12 | Left to the Dev | ⏸ ADR-0002 answered `0a6e6c0`; five open, all his |
-| B | The cartridge architecture | 🛠 **in progress** — A0, A0.1, A2a, A2b, A2c's params/rng/region, and the whole delegating half (`5a252ef` + `fb48ae6`). **Left: wiring it in** — `createGame` to the shell, then `ctx.t`, then A3 and A4 |
+| B | The cartridge architecture | 🛠 **in progress** — **A2c is DONE** (`67a1ec1`): the cartridge no longer calls `createGame`. Left: `ctx.t`, then **A3** (package + lib target) and **A4** (PWA) |
 
 **Part A is complete.** `npm run validate`: 235 suites, 2891 passing, 1 skipped, build — exit zero.
 
@@ -433,7 +433,7 @@ design decision.
 | **A1** | The factory: the body of `main.ts` becomes `create(ctx)` returning `{ update, teardown }`, with `main.ts` still calling it at import | the whole existing suite — identical behaviour is the claim, and 232 files are the check |
 | **A2a** | ✅ `e3be145` — the seam: `bootPinball(o, engine)` receives the ENGINE instead of the factory that makes one, so the `createGame` call is one named line in the caller rather than buried in the boot | the whole suite, plus `tests/shell-boot` asking the BUILDER for the declaration instead of reading it back out of a fake engine |
 | **A2b** | ✅ `b28fb85` — `app/js/standalone.ts` takes the host's half: `initI18n`, `registerDict` over the cartridge's exported dictionaries, `idiomaPronto()` and the page's `lang`. `app/index.html` loads it; the seventeen browser suites boot through it | `tests/the-shell-does-the-hosts-work`, born red five times over. 🔴 And `tests/one-language` caught `documentElement.lang` going unwritten — a regression invisible in source and visible in a browser |
-| **A2c** | `createGame` leaves the cartridge entirely, with the loop. 🔴 **MEASURED AND IT IS NOT A MOVE — see below** | the same suite, plus that nothing in `app/js` calls `createGame` any more |
+| **A2c** | ✅ `67a1ec1` — `createGame` left the cartridge, over six commits: params, rng, region, the delegating declaration, the delegating hooks, and then the move | `tests/the-shell-does-the-hosts-work`'s ledger, with `createGame(` in it at last, born red from both sides |
 | **A3** | `package.json` — peer + dev dependencies, `exports`, `files`, `private` removed; `vite.config` gains the `lib` target | the lib build produces an ES module that externalises the engine |
 | **A4** | `vite-plugin-pwa` on the app build | ⚠️ **§1's GATE FIRES HERE, BY DESIGN** — a tracked service worker with `baixarPesados: false` is refused until ADR-0010 is reopened |
 
@@ -504,8 +504,20 @@ precedent for a `topology` that is recomputed rather than fixed.
    - ⏳ `ctx.t`, which waits on the knot: the options this game builds still need a `Locale` rather
      than a `Translate`, and that is `createGame`'s side of the line;
    - ⏳ publishing the world into the delegate — this one is step 1's, and is the knot;
-3. only then does `createGame` move to the shell, because only then does the shell have a declaration to
-   hand it.
+3. ✅ **AND `createGame` MOVED** — `67a1ec1`. `main.ts` no longer contains the call or the import;
+   `app/js/standalone.ts` makes it ONCE, before the cartridge is imported, and hands the engine over in
+   `ctx`. `host` and `baixarPesados` went with it, because `GanchosDoCartucho` says they are the host's by
+   leaving them out of the game's half.
+
+   📌 **AND THE SLICE WAS SMALL, WHICH IS THE POINT OF HAVING TAKEN THE DESIGN FIRST.** Both halves of
+   the delegate were built and proved in isolation, so this moved a call rather than discovering a design:
+   one commit, green on the first full run.
+
+   ⚠️ **ONE VERIFICATION GAP, STATED RATHER THAN GLOSSED.** No boot over `dist`: all five preview slots
+   for this folder belong to other sessions. The same boot path IS exercised in two real browsers by 238
+   suites, and `tests/frame-loop-joins` asserts the ENGINE's own `problems` list is empty after the
+   rewire — which is what a `dist` boot would have been read for. What is missing is the built bundle over
+   a static server, and it is owed the next time a slot is free.
 
 🔴 **AND A SECOND QUESTION FOR THE CONTRACT, FOUND THE SAME WAY: WHERE DOES A CARTRIDGE'S OWN BAR
 BUTTON GO?** This game appends its sonar sweep and its palette cycler into `.pinball-topbar`, which is the
