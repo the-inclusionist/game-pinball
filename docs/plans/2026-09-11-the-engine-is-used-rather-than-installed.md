@@ -24,7 +24,7 @@
 | 9 | One language, chosen | ✅ `461d692` |
 | 10 | The game speaks out loud | ✅ `72e82bb` |
 | 12 | Left to the Dev | ⏸ ADR-0002 answered `0a6e6c0`; five open, all his |
-| B | The cartridge architecture | 🛠 **in progress** — A0, A0.1, A2a, A2b, **A2c step 2's params** (`3bb5c85`) done. What is left of A2c is A1's work: the delegating declaration |
+| B | The cartridge architecture | 🛠 **in progress** — A0, A0.1, A2a, A2b, A2c's params (`3bb5c85`) and rng (`f3e7489`) done. Left: `ctx.region`/`ctx.t`, then the delegating declaration |
 
 **Part A is complete.** `npm run validate`: 235 suites, 2891 passing, 1 skipped, build — exit zero.
 
@@ -474,7 +474,8 @@ precedent for a `topology` that is recomputed rather than fixed.
 2. `createPinball` becoming `create(ctx)` — which splits into pieces that do NOT all wait on step 1:
    - ✅ `ctx.params` instead of `location.search` — `3bb5c85`, with the boot moved to the shell in the
      same commit, because "nothing runs until `create(ctx)` is called" is the same seam from the other end;
-   - ⏳ `ctx.rng` instead of the seven `o.random ?? Math.random` defaults (**ADR-0141**);
+   - ✅ `ctx.rng` instead of the seven `o.random ?? Math.random` defaults (**ADR-0141**) — `f3e7489`,
+     seeded from the CLOCK because `table/physics-build` argues this pinball must not be reproducible;
    - ⏳ `ctx.region` instead of `#game-region`, and `ctx.t` instead of this game's own translator value;
    - ⏳ publishing the world into the delegate — this one is step 1's, and is the knot;
 3. only then does `createGame` move to the shell, because only then does the shell have a declaration to
