@@ -176,6 +176,19 @@ export interface PinballCtx {
    */
   readonly rng: Rng;
   /**
+   * THIS CARTRIDGE'S ELEMENT. It may write inside it and nothing outside it.
+   *
+   * ⚠️ HANDED IN RATHER THAN LOOKED UP, BECAUSE THE ID IS THE PAGE'S. `#game-region` is a name
+   * `app/index.html` chose; on the platform every cartridge gets a different element and none of them is
+   * called that. A game that looks the name up finds the site's own element, or another game's, or
+   * nothing at all — and the last of those is the only one that fails loudly.
+   *
+   * 📌 AND IT IS THE TEARDOWN BOUNDARY, which is the half that bites later. «After this returns,
+   * `region` is emptied by the shell» is enforceable only because the shell knows what to empty; a node
+   * appended anywhere else survives and the next game inherits it.
+   */
+  readonly region: HTMLElement;
+  /**
    * What the shell decided this cartridge may read from the address.
    *
    * ⚠️ NOT `location.search`, AND THE DIFFERENCE IS THE PLATFORM. One address carries every cartridge
@@ -760,7 +773,13 @@ const bootOptions: BootOptions = {
    * leave the card unnavigable — which is the one surface this section exists to make reachable.
    */
   menuIsUp: (): boolean => shell.engine.nav.sharedDialogOpen() !== null
-    || document.querySelector('[id^="vp-pause-"]:not([hidden])') !== null,
+    /**
+     * ⚠️ SEARCHED INSIDE THE REGION, NOT ACROSS THE DOCUMENT. Today they are the same answer — the
+     * engine mounts its card into `#game-region`, which is what `ui/settings-panel.topVisibleOverlay`
+     * scans. On a page with six cartridges `document` would answer for ANY of them, and this game would
+     * hand the engine its keyboard because a card was open over somebody else's table.
+     */
+    || ctx.region.querySelector('[id^="vp-pause-"]:not([hidden])') !== null,
   /**
    * Where the engine's own card sends a child who asks to leave it. `enterPhase` and not a bare
    * assignment, because leaving the pause is also the hint line, the live region and the menu itself.
@@ -838,7 +857,7 @@ canvas.style.imageRendering = 'pixelated';
 // vanishes in one place and doubles in another, and the ball changes size as it crosses the table.
 canvas.style.display = 'block';
 canvas.style.margin = '0 auto';
-const region = document.getElementById('game-region')!;
+const region = ctx.region;
 // ⚠️ RELATIVE, because the HUD's four blocks are absolutely positioned INSIDE it. Without this they
 // would be placed against the page and land wherever the document happens to put them.
 region.style.position = 'relative';
@@ -2241,6 +2260,25 @@ const hud = mountHud({
  *
  * So `app/index.html` carries the header, `REQUIRED_MARKUP` names the id, and this appends the game's
  * own two buttons beside the engine's.
+ */
+/**
+ * 🔴 AND THIS IS THE CARTRIDGE WRITING OUTSIDE ITS REGION, WHICH THE CONTRACT FORBIDS.
+ *
+ * «This cartridge's element. It may write inside it and nothing outside it» — and `.pinball-topbar` is
+ * not inside `ctx.region`. It is the page's header, above the game. So these two buttons survive
+ * `teardown()`: the shell empties the region and this strip is not in it, and the next cartridge mounted
+ * on that page inherits a pinball's sonar sweep and a pinball's palette cycler.
+ *
+ * ⚠️ IT IS NOT FIXED BY MOVING THEM INSIDE. The paragraph above says why they are here: the ENGINE
+ * mounts its own half of the accessibility strip into `#title-icons` at BOOT, and a child reads that one
+ * strip. Two strips — the engine's above and a game's inside the region — is a worse answer than one
+ * strip a teardown has to be told about.
+ *
+ * 📌 AND THERE IS NO HOOK FOR IT YET, WHICH IS THE USEFUL HALF. `CartridgeHooks` has `naBarraDe` and
+ * `navBar`, and neither is this: they are about NAVIGATING the bar, not about mounting into it. So a
+ * cartridge contributing its own bar buttons is a question `cartridge-contract.md` has not answered —
+ * recorded in the plan's §B6 beside the `restart(params)` one, to take back to the contract rather than
+ * invent here.
  */
 const topbar = document.querySelector<HTMLElement>('.pinball-topbar');
 if (!topbar) throw new Error('the accessibility strip is missing from the document');

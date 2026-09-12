@@ -70,6 +70,19 @@ document.documentElement.lang = bcp47(cartridgeLocale());
  *
  * Gated in `tests/the-shell-does-the-hosts-work`, which refuses a static one by name.
  */
+/**
+ * The page's own elements, by the names `app/index.html` gives them.
+ *
+ * ⚠️ IT THROWS RATHER THAN PASSING `null` ONWARDS. A missing region is a page that cannot show a game
+ * at all, and the alternative is a cartridge writing into nothing and a blank screen with no error — the
+ * shape `#cvd-filters` already went missing in once, found by booting rather than by reading.
+ */
+function mustFind(id: string): HTMLElement {
+  const found = document.getElementById(id);
+  if (!found) throw new Error(`[pinball] the page has no #${id}, so there is nowhere to mount a game`);
+  return found;
+}
+
 const { createPinball } = await import('./main.js');
 
 /**
@@ -101,4 +114,11 @@ createPinball({
    * stream is here so the randomness BELONGS to something a host can isolate — not so it repeats.
    */
   rng: createRng(Date.now()),
+  /**
+   * ⚠️ THE HOST NAMES THE ELEMENT, AND ON THIS PAGE THERE IS EXACTLY ONE. `app/index.html` carries
+   * `#game-region` because the ENGINE binds the keyboard to it by that id — it is not decorative and it
+   * is not this cartridge's to choose. The platform will hand each cartridge its own element with a name
+   * of its own, and the game will not notice, which is the whole point of handing it over.
+   */
+  region: mustFind('game-region'),
 });

@@ -142,6 +142,23 @@ describe('the standalone shell hosts the cartridge', () => {
       .not.toMatch(/location\.search/);
   });
 
+  test('⚠️ the cartridge does not go looking for its own element', () => {
+    /**
+     * ⚠️ "THIS CARTRIDGE'S ELEMENT. IT MAY WRITE INSIDE IT AND NOTHING OUTSIDE IT" — the contract, and
+     * the reason it is `ctx.region` rather than an id the game knows is that the id is the PAGE's. On the
+     * platform every cartridge is handed a different element and none of them is called `game-region`; a
+     * game that looks the name up finds the site's own, or another game's, or nothing.
+     *
+     * 📌 AND IT IS THE TEARDOWN BOUNDARY, WHICH IS THE HALF THAT BITES LATER. "After this returns,
+     * `region` is emptied by the shell" is only enforceable if the shell knows what to empty — a node
+     * appended anywhere else survives the teardown and the next game inherits it.
+     */
+    const source = code('app/js/main.ts');
+
+    expect(source, 'the cartridge is looking its region up by an id that belongs to the page')
+      .not.toMatch(/getElementById\(\s*'game-region'/);
+  });
+
   test('⚠️ and the page loads the shell rather than the game', () => {
     /**
      * The shell existing is not the same as the shell being used. The page is the one place that decides,
