@@ -24,7 +24,7 @@
 | 9 | One language, chosen | ✅ `461d692` |
 | 10 | The game speaks out loud | ✅ `72e82bb` |
 | 12 | Left to the Dev | ⏸ ADR-0002 answered `0a6e6c0`; five open, all his |
-| B | The cartridge architecture | 🛠 **in progress** — A0, A0.1, A2a, A2b, A2c's params (`3bb5c85`) and rng (`f3e7489`) done. Left: `ctx.region`/`ctx.t`, then the delegating declaration |
+| B | The cartridge architecture | 🛠 **in progress** — A0, A0.1, A2a, A2b, and A2c's params, rng and region. **Left: the delegating declaration**, which `ctx.t` and `createGame` both wait on |
 
 **Part A is complete.** `npm run validate`: 235 suites, 2891 passing, 1 skipped, build — exit zero.
 
@@ -476,10 +476,24 @@ precedent for a `topology` that is recomputed rather than fixed.
      same commit, because "nothing runs until `create(ctx)` is called" is the same seam from the other end;
    - ✅ `ctx.rng` instead of the seven `o.random ?? Math.random` defaults (**ADR-0141**) — `f3e7489`,
      seeded from the CLOCK because `table/physics-build` argues this pinball must not be reproducible;
-   - ⏳ `ctx.region` instead of `#game-region`, and `ctx.t` instead of this game's own translator value;
+   - ✅ `ctx.region` instead of `#game-region` — `8fd95f5`, with the engine's pause card now looked
+     for INSIDE it, and the module-scope locale read moved into `create` in `170623b`;
+   - ⏳ `ctx.t`, which waits on the knot: the options this game builds still need a `Locale` rather
+     than a `Translate`, and that is `createGame`'s side of the line;
    - ⏳ publishing the world into the delegate — this one is step 1's, and is the knot;
 3. only then does `createGame` move to the shell, because only then does the shell have a declaration to
    hand it.
+
+🔴 **AND A SECOND QUESTION FOR THE CONTRACT, FOUND THE SAME WAY: WHERE DOES A CARTRIDGE'S OWN BAR
+BUTTON GO?** This game appends its sonar sweep and its palette cycler into `.pinball-topbar`, which is the
+page's header and **not inside `ctx.region`** — so those two survive `teardown()`, and the next cartridge
+on that page inherits a pinball's buttons.
+
+⚠️ **IT IS NOT FIXED BY MOVING THEM INSIDE THE REGION.** The engine mounts its own half of the
+accessibility strip into `#title-icons` at BOOT and a child reads ONE strip; two strips — the engine's
+above and a game's inside the region — is a worse answer than one strip a teardown has to be told about.
+And `CartridgeHooks` has no hook for it: `naBarraDe` and `navBar` are about NAVIGATING the bar, not about
+mounting into it. Named at the line in `main.ts` and here, to take back to the contract.
 
 🔴 **AND ONE DEBT WAS FOUND WHILE DOING 2, WHICH IS WORSE THAN THE ONE IT CLOSED.**
 `titleScreen.onStart` changes the table by NAVIGATING THE WHOLE PAGE — `location.assign` with a new
