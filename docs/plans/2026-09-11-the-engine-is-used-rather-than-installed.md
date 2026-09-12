@@ -26,7 +26,11 @@
 | 12 | Left to the Dev | ⏸ ADR-0002 answered `0a6e6c0`; five open, plus **three from Part B**: the slug, `baixarPesados` after the PWA, and the PWA icons |
 | B | The cartridge architecture | ✅ **A0–A4 are DONE.** The cartridge calls no `createGame`, reads no address, draws from its own stream, is handed its element, language and translator, builds as an installable library, and the standalone page opens offline. **Left: the SLUG and two decisions, all the Dev's** |
 
-**Part A is complete.** `npm run validate`: 235 suites, 2891 passing, 1 skipped, build — exit zero.
+**Part A and Part B are complete.** `npm run validate`: typecheck, the library build, the app build
+(a PWA of 28 precached entries) and **239 suites, 2919 passing, 1 skipped** — exit zero.
+
+📌 Re-measured rather than carried forward, which is §1's own rule applied to this file: the line
+here said 235 suites and 2891 passing for eleven commits after it stopped being true.
 
 ✅ **AND THE RELEASE CAME: `9.0.0`, ON 2026-09-11.** It carries the four fields §5 added AND ADR-0142's
 `mount()`/`unmount()`, which is why it is a major rather than the 8.1.0 §5 asked for. See **B7** for what it
@@ -223,6 +227,13 @@ the store would move a child's saved keys to a screen they cannot open.
 ⚠️ **THE CONDITION IS NAMED SO IT CANNOT PASS UNNOTICED:** the day anything in this game opens the
 engine's pause card, the migration is owed in that same commit.
 
+📏 **RE-MEASURED AGAIN AFTER §5'S CONSUMER HALF LANDED (`f5064f1`), AND IT HAS STILL NOT TRIGGERED** —
+which is worth saying because that commit changed the neighbourhood. `getPauseActs` made the engine's
+pause card ACTIONABLE for the first time: it now has a `resume` and a `quit` that do something. It did not
+make it REACHABLE. `git grep` over `app/js` still finds nothing calling `engine.pausa.mostrar`, so a
+player cannot open it and the migration would still move a child's saved keys to a screen they cannot get
+to. Actionable and reachable are different questions, and only the second one is this condition.
+
 ⚠️ The sweep and the palette keys stay OUT of the declaration — they are not `KeyScheme` positions, and
 inventing a shared-vocabulary slot for one pinball's accessibility keys is the wrong place to put them.
 
@@ -386,7 +397,7 @@ Per stage, and none of it is optional:
 
 ---
 
-# 📋 Part B · The cartridge architecture, folded in — RECORDED, NOT SCHEDULED
+# ✅ Part B · The cartridge architecture — DONE, A0 THROUGH A4
 
 > Read on 2026-09-11 at the Dev's instruction: `the-inclusionist-site/docs/{cartridge-brief,
 > cartridge-contract,architecture}.md` and **ADR-0117, ADR-0139, ADR-0140, ADR-0141, ADR-0142** in
@@ -507,7 +518,9 @@ precedent for a `topology` that is recomputed rather than fixed.
      host settles it once now. `BootOptions.t` is optional so the hundred `shell.t` call sites did not
      move, and the locale CODE travels too — one field more than the contract names, because
      `createPinballWorld` builds a namer and a name table from it and neither is a `Translate`.
-   - ⏳ publishing the world into the delegate — this one is step 1's, and is the knot;
+   - ✅ publishing the world into the delegate — `67a1ec1`, and it turned out to be four lines: what
+     is published is `bootOptions` itself, field by field, so the engine is answered by exactly what the
+     boot would have passed it;
 3. ✅ **AND `createGame` MOVED** — `67a1ec1`. `main.ts` no longer contains the call or the import;
    `app/js/standalone.ts` makes it ONCE, before the cartridge is imported, and hands the engine over in
    `ctx`. `host` and `baixarPesados` went with it, because `GanchosDoCartucho` says they are the host's by
@@ -522,6 +535,11 @@ precedent for a `topology` that is recomputed rather than fixed.
    suites, and `tests/frame-loop-joins` asserts the ENGINE's own `problems` list is empty after the
    rewire — which is what a `dist` boot would have been read for. What is missing is the built bundle over
    a static server, and it is owed the next time a slot is free.
+
+   ⚠️ **AND A4 PUT A HAZARD ON THAT DEBT.** The page is a PWA now, so a `dist` preview SERVES FROM THE
+   SERVICE WORKER'S PRECACHE — an old build can answer long after a new one was written, and nothing on
+   screen says so. Whoever pays this debt unregisters the worker and clears the caches BEFORE reading
+   anything, or they will be verifying a build from an hour earlier and calling it green.
 
 🔴 **AND A SECOND QUESTION FOR THE CONTRACT, FOUND THE SAME WAY: WHERE DOES A CARTRIDGE'S OWN BAR
 BUTTON GO?** This game appends its sonar sweep and its palette cycler into `.pinball-topbar`, which is the
@@ -635,6 +653,12 @@ itself lists four things it says must not be invented — including the exact sh
 
 **So Part B is not scheduled work.** It is what §§1–10 must not contradict, plus the inventory that the
 conversion will start from. The conversion begins when the Dev says whackwhack has landed.
+
+> ✅ **AND THAT PARAGRAPH IS HISTORY, KEPT BECAUSE THE REASONING IS.** The Dev set the ordering aside on
+> 2026-09-11 — *"Não é pra esperar o whackwhack. Continue."* — and Part B is done. What the brief was
+> right about survived the override: the four things it said must not be invented were not, and the two
+> this work ran into that the contract has no answer for (`restart(params)`, and where a cartridge's own
+> accessibility-bar button goes) are recorded as questions rather than resolved in one repository.
 
 ## B2 · What §§1–7 got right, measured against the contract
 
