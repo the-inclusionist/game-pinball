@@ -89,7 +89,8 @@ import { tableAskedFor, type LiveCartridge } from './shell/cartridge.js';
 import { createSoundBoard, releaseVoice } from './audio/sfx.js';
 import { soundEntriesOf, VOICES } from './audio/voices.js';
 import { createWebAudioOutput } from './audio/web-audio.js';
-import { ensureAC } from '@the-inclusionist/engine/platform/audio.js';
+import { createAudioGuide } from './audio/guide.js';
+import { ensureAC, audioCtx, soundOn, volume } from '@the-inclusionist/engine/platform/audio.js';
 import { startFrames } from './shell/frame-loop.js';
 import { createAnnouncer } from './shell/announce.js';
 import { srSay, srAlert } from '@the-inclusionist/engine/core/a11y-sr.js';
@@ -753,10 +754,11 @@ const isBlind = (): boolean => engineState.modoCego;
  * OF THAT ARE NOW FALSE and the note is kept because a stale explanation of a live rule is the worse
  * defect: the beep became a CONTINUOUS audio graph, and `guideT` left the engine's entity with it.
  *
- * What the engine hangs on the player now is `_guia` — an oscillator, a filter, a gain and a panner that
- * have to SURVIVE FROM ONE FRAME TO THE NEXT, with `desdeARota` counting frames until the route is worth
- * recomputing. A fresh object each call drops the live oscillator instead of resetting a counter. Same
- * rule, and it matters more than it did.
+ * What the guide hangs on the player now is `_guide` — an oscillator, a filter, a gain and a panner that
+ * have to SURVIVE FROM ONE FRAME TO THE NEXT, with `framesSinceRoute` counting frames until the route is
+ * worth recomputing. A fresh object each call drops the live oscillator instead of resetting a counter.
+ * Same rule, and it matters more than it did. The guide is this game's own since engine ADR-0257 — see
+ * `audio/guide` — and this is the one player it is handed.
  *
  * ⚠️ AND `viz` IS GONE TOO, which is the other half of the same change: the sonar stopped knowing what
  * a visual mode IS. It used to read the string and ask itself "blindness or low vision?"; that question
@@ -885,6 +887,31 @@ ctx.publish({
 });
 
 const shell = bootPinball(bootOptions, ctx.engine);
+
+/**
+ * THE CONTINUOUS SOUND GUIDE, AND IT IS THIS GAME'S OWN NOW (engine ADR-0257; the Dev, 2026-09-27: «Fica
+ * com uma cópia do guia, feito o platformer.»). See `audio/guide` for what it is.
+ *
+ * ⚠️ IT IS HANDED WHAT THE ENGINE'S GUIDE WAS HANDED BY `createGame`, answer for answer, so that moving it
+ * changes where it lives and not what a child hears: the engine's own sonar for the device, the pan and
+ * «needs cues?»; this table's declaration for the metric, the targets and the roles the route goes round
+ * (`shell.declaration` reads the same table the engine's delegating one does); the engine's audio context,
+ * sound switch and master volume; and the ONE `sonarPlayer`, never a fresh array of fresh objects.
+ *
+ * 📌 THE ONE THING IT IS NOT HANDED IS THE MIXER'S `guide` BUS, because the engine is removing that category —
+ * so it plays to the context's destination, the way the platformer's copy does.
+ */
+const guidePlayers = [sonarPlayer];
+const guide = createAudioGuide({
+  sonar: shell.engine.sonar,
+  topology: () => shell.declaration.topology(),
+  targetsOf: (i) => shell.declaration.targetsOf(i),
+  roleAt: (at) => shell.declaration.roleAt(at),
+  getVolume: () => volume,
+  getPlayers: () => guidePlayers,
+  getAudioCtx: () => audioCtx,
+  getSoundOn: () => soundOn,
+});
 
 /**
  * ⚠️ HOW THIS GAME SAYS ANYTHING, AND IT USED TO BE EIGHT `textContent =` AND ONE CHANNEL.
@@ -1047,10 +1074,10 @@ let audio: AudioContext | null = null;
 let audioOutput: ((voice: import('./audio/sfx.js').Voice) => void) | null = null;
 
 function ensureAudio(): void {
-  // ⚠️ THE ENGINE HAS ITS OWN AUDIO CONTEXT AND IT ALSO NEEDS THE GESTURE. `audio-sonar.updateGuide`
-  // returns immediately when `getAudioCtx()` is null, and the engine only builds one when something
-  // calls `ensureAC` — so blind mode toggled on, the sweep answered, and the automatic guide stayed
-  // silent through two hundred frames. Nothing errored; it simply never fired.
+  // ⚠️ THE ENGINE HAS ITS OWN AUDIO CONTEXT AND IT ALSO NEEDS THE GESTURE. `audio/guide.updateGuide`
+  // plays on the engine's context and returns immediately when it is null, and the engine only builds
+  // one when something calls `ensureAC` — so blind mode toggled on, the sweep answered, and the
+  // automatic guide stayed silent through two hundred frames. Nothing errored; it simply never fired.
   //
   // `platform/*.js` is a declared export of the package, so this is a published API rather than a reach
   // past the facade. It is still coupling to a moving target, which the plan lists as a known risk.
@@ -1166,13 +1193,13 @@ function step(frames: number): void {
   if (demoRequested) {
     if (demo) {
       demo.step(frames);
-      // ⚠️ AND THE GUIDE FOLLOWS THIS BALL. `sonarPlayer` is the position the engine pings from, and in
+      // ⚠️ AND THE GUIDE FOLLOWS THIS BALL. `sonarPlayer` is the position the guide measures from, and in
       // the demonstration's early return nothing had ever moved it: the guide pointed from wherever the
       // authored table left it at boot.
       const at = demo.ballOnScreen();
       sonarPlayer.x = at.x;
       sonarPlayer.y = at.y;
-      shell.engine.sonar.updateGuide();
+      guide.updateGuide();
       topUpMusic();
       demoPage!.blit(demo);
       paint();
@@ -1355,7 +1382,7 @@ function step(frames: number): void {
     // rather than looking is trying to find their way around.
     sonarPlayer.x = ball.position.x;
     sonarPlayer.y = ball.position.y;
-    shell.engine.sonar.updateGuide();
+    guide.updateGuide();
   }
 
   if (phase === 'playing') {
@@ -1810,12 +1837,12 @@ const accessibility = {
     announce.say(shell.t(isBlind() ? 'pinball.a11y.blindOn' : 'pinball.a11y.blindOff'));
   },
   /**
-   * ⚠️ THE SWEEP IS THE PART THAT ANSWERS TODAY, AND THE AUTOMATIC GUIDE IS OFF BY THE ENGINE'S OWN
-   * DECISION. `platform/audio-mixer` lists `guide` in `NASCEM_DESLIGADAS` — born off, "por decisão do
-   * Dev, 2026-08-26", and described there as a deliberate measure. So `updateGuide` returning without
-   * pinging is correct behaviour and not a fault in this wiring; a player turns the beacon on in the
-   * engine's audio mixer. I chased that to zero twice before reading the reason, and it is written here
-   * so nobody chases it a third time.
+   * ⚠️ THE SWEEP IS ASKED FOR; THE AUTOMATIC GUIDE IS NOT, AND NO MIXER ROW GATES IT ANY MORE. Until
+   * engine ADR-0257 the guide was the engine's and waited for the mixer's `guide` category, which the
+   * engine's `platform/audio-mixer` lists in `NASCEM_DESLIGADAS` — born off, so a child had to turn the
+   * beacon on there first. The guide is `audio/guide` now and the engine is removing that category, so
+   * it sounds whenever blind mode is on and the game's sound is on; the mixer's `guide` row, while the
+   * installed engine still draws it, no longer reaches it.
    */
   sweep: () => {
     if (demoRequested && !demoView) return sayUnavailable();
@@ -2517,7 +2544,7 @@ Object.assign(window as unknown as Record<string, unknown>, {
     get engineSeesOpen() { return shell.engine.nav.sharedDialogOpen(); },
     engineItemsIn(element: HTMLElement) { return shell.engine.nav.menuItems(element); },
     get sonar() {
-      return { guideCount: shell.engine.sonar.guideCount, sonarCount: shell.engine.sonar.sonarCount };
+      return { guideCount: guide.guideCount, sonarCount: shell.engine.sonar.sonarCount };
     },
     /** The demonstration, so a check can drive it without a file dialog it cannot open. */
     get demo() { return demo; },

@@ -15,6 +15,7 @@
 // What makes these browser tests rather than node ones is the same thing as everywhere else here: the
 // keys are bound to `#game-region` and not to `window`, so only a real focus proves a real key arrives.
 import { describe, test, expect, beforeAll } from 'vitest';
+import { ensureAC } from '@the-inclusionist/engine/platform/audio.js';
 import { PAGE_MARKUP } from './helpers/page.js';
 import { pinLanguage } from './helpers/pin-language.js';
 
@@ -257,6 +258,37 @@ describe('the sonar, which is what makes a pinball explorable at all', () => {
   });
 });
 
+describe('⚠️ the continuous guide, which is this game\'s own since engine ADR-0257', () => {
+  test('in blind mode it SOUNDS every frame, with no mixer row to turn on first — and stops when blind mode does', async () => {
+    /**
+     * ⚠️ THIS IS THE WIRING, WHICH `tests/audio-guide` CANNOT SEE: that file proves the guide against a double, and
+     * this proves `main.ts` runs it every frame, hands it a player with somewhere to go, and asks no mixer category.
+     * The engine's `guide` category is BORN OFF, so a guide still gated on it would count nothing here.
+     *
+     * `ensureAC` stands for the first gesture: the engine's context exists only after one, and the game's own first
+     * sound is what calls it (see `ensureAudio` in `main.ts`).
+     */
+    ensureAC();
+    const wasBlind = debug().blind;
+    if (!wasBlind) await icon('blind');
+
+    const before = debug().sonar.guideCount;
+    await frames(10);
+    const during = debug().sonar.guideCount;
+
+    await icon('blind');
+    await frames(2);
+    const stopped = debug().sonar.guideCount;
+    await frames(10);
+    const after = debug().sonar.guideCount;
+
+    if (wasBlind) await icon('blind');
+
+    expect(during, 'blind mode is on, there are targets, and the guide did not sound').toBeGreaterThan(before);
+    expect(after, 'blind mode went off and the guide kept sounding').toBe(stopped);
+  });
+});
+
 describe('and there is something to point at', () => {
   test('the objective reports a need and its targets, rather than an empty promise', () => {
     // The sonar sweeping an empty target list is a sweep that says nothing, and it would satisfy every
@@ -301,3 +333,10 @@ describe('⚠️ pause says so, because a silent pause reads as a hang', () => {
     expect(said(), 'and so is the resume').not.toBe(paused);
   });
 });
+
+// ========================= MUTATIONS CHECKED — the continuous guide's case =========================
+// Run on 2026-09-27, each alone, the source restored from a copy — all red, in chromium and in firefox:
+//   · W1 `guide.updateGuide()` dropped from the ball's frame in `main.ts` → it did not sound.
+//   · W2 `main.ts` gating the guide on the engine's `guide` category (`soundOn && audioCat.guide.on`) → it did not
+//     sound, because that category is born off. This is the mutation that holds the move's one change of behavior.
+//   · W3 `audio/guide` not asking `needsAudioCues` → blind mode went off and it kept sounding.

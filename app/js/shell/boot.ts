@@ -190,12 +190,10 @@ export interface PinballGameOptions {
   readonly setTemaDoJogador?: never;
   readonly isBlindMode?: () => boolean;
   /**
-   * ⚠️ A STABLE ARRAY, NOT A FRESH ONE, AND THE REASON CHANGED UNDER THE RULE. The engine used to
-   * count frames on a `guideT` it wrote onto the player and ping at 48; since engine 7 the guide is a
-   * CONTINUOUS audio graph hung on the player as `_guia`, with its own frame counter inside it. So a
-   * fresh object each call now drops a live oscillator rather than resetting a counter — which is the
-   * engine's own default behaviour, since it derives a fresh player from `focusOf` when a game supplies
-   * no list.
+   * ⚠️ THE ENGINE READS THIS ONLY IN ITS OWN `updateGuide`, WHICH THIS GAME NO LONGER CALLS. The guide
+   * left the engine (engine ADR-0257) and this game runs its own copy, `audio/guide`, which `main.ts`
+   * hands the same `sonarPlayer` directly — the stable object the live graph hangs on. So on engine 9.0.0
+   * this list feeds nothing, and the field goes with the engine version that removes it.
    */
   readonly sonarPlayers?: () => SonarPlayerLike[];
 }
