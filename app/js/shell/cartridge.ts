@@ -37,7 +37,7 @@
 // read as "forgotten".
 
 import {
-  createPinballOptions, type BootOptions, type LiveTable, type Phase, type SonarPlayerLike,
+  createPinballOptions, type BootOptions, type LiveTable, type Phase,
 } from './boot.js';
 import { createDeclaration } from './declaration.js';
 import { DEFAULT_TABLE, tableNamed } from '../table/catalog.js';
@@ -111,7 +111,6 @@ export interface LiveCartridge {
   readonly table: LiveTable;
   isNavigable(): boolean;
   isBlindMode(): boolean;
-  sonarPlayers(): SonarPlayerLike[];
   setPhase(phase: Phase): void;
   pauseActs(): Record<string, (() => void) | undefined>;
   setCorrection(choice: string): void;
@@ -126,8 +125,6 @@ export interface LiveCartridge {
  *
  *   · `isNavigable` → FALSE. `ui/menu-nav` listens at WINDOW CAPTURE, so answering true over a page with
  *     nothing open is how this game lost its cabinet keys for a whole release (§6 of the plan).
- *   · `sonarPlayers` → EMPTY. A listener placed where no ball is would narrate distances across a table
- *     that does not exist yet.
  *   · `pauseActs` → NOTHING TO ACTION, which is not the same as a no-op `resume`: `ui/pause-icons`
  *     calls `resume` to LEAVE the card before handing the directions to the accessibility bar, and a
  *     `resume` that does nothing leaves the card sitting over the game. Absent, the engine hides the item.
@@ -135,7 +132,6 @@ export interface LiveCartridge {
 const NOT_RUNNING: Omit<LiveCartridge, 'table'> = {
   isNavigable: () => false,
   isBlindMode: () => false,
-  sonarPlayers: () => [],
   setPhase: () => {},
   pauseActs: () => ({}),
   setCorrection: () => {},
@@ -229,7 +225,6 @@ export function delegatingCartridge(
     host,
     isBlindMode: () => current.isBlindMode(),
     menuIsUp: () => current.isNavigable(),
-    sonarPlayers: () => current.sonarPlayers(),
     setPhase: (phase) => current.setPhase(phase),
     pauseActs: () => current.pauseActs(),
     setCorrection: (choice) => current.setCorrection(choice),
@@ -302,8 +297,6 @@ export function cartridgeHooks(o: BootOptions): CartridgeHooks {
     isNavigable: options['isNavigable'] as () => boolean,
     setPhase: options['setPhase'] as (p: 'title' | 'playing' | 'paused') => void,
     ...(options['isBlindMode'] ? { isBlindMode: options['isBlindMode'] as () => boolean } : {}),
-    ...(options['sonarPlayers']
-      ? { sonarPlayers: options['sonarPlayers'] as CartridgeHooks['sonarPlayers'] } : {}),
     /**
      * 🔴 THESE TWO WERE MISSING, AND THEY ARE THE TWO §5 EXISTED TO DELIVER.
      *

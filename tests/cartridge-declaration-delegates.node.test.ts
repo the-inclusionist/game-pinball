@@ -74,7 +74,6 @@ const asLive = (t: LiveTable): LiveCartridge => ({
   table: t,
   isNavigable: () => false,
   isBlindMode: () => false,
-  sonarPlayers: () => [],
   setPhase: () => {},
   pauseActs: () => ({}),
   setCorrection: () => {},

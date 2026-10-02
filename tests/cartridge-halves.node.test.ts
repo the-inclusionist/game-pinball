@@ -10,6 +10,10 @@
 //     type MetadeDoJogo = Pick<CreateGameOptions,
 //       'declaration' | 'isNavigable' | 'comIndice' | 'naBarraDe' | 'navBar' | 'players' | 'setPhase'
 //       | 'sonarPlayers' | 'isBlindMode' | 'preset' | 'declines' | 'getPauseActs' | 'setPauseActor'
+//
+// 🔴 AND `sonarPlayers` HAS SINCE LEFT THAT LIST (engine ADR-0258, note EB). The quote above is 9.0.0's,
+// kept as the quote it is; what this game offers is one field shorter, and the case below is what holds
+// the removal in place.
 //       | 'setTemaDoJogador' | 'setCorrecaoDoJogador'>;
 //
 // — which also answers one of the four questions `cartridge-contract.md` says not to invent: `declines`
@@ -143,6 +147,35 @@ describe('⚠️ and its hooks ARE what this game already hands the engine', () 
       'the boot stopped passing it, which is a different change from this one').toBe(false);
   });
 
+  test('🔴 and `sonarPlayers` is NOT among them either, because the engine stopped reading it', () => {
+    /**
+     * ⚠️ ADR-0258 (engine), note EB: `CreateGameOptions.sonarPlayers` LEAVES THE TYPE. It fed the sonar's
+     * `getPlayers`, which only the engine's continuous guide read — and the guide left the engine for the
+     * games that want one (note DZ). A field the engine does not read is a question the game believes it
+     * answered.
+     *
+     * 📏 MEASURED BEFORE REMOVING IT, because the obvious worry was two guides sounding at once: this game
+     * grew its own (`app/js/audio/guide.ts`) while still passing the option. Nothing in engine 9's `boot/`
+     * or `core/loop` calls `updateGuide`, and this game's frame loop calls only its own — so the option was
+     * already inert, and taking it out silences nothing.
+     *
+     * ⚠️ AND THE PLAYER ITSELF STAYS. `main.ts`'s one reused `sonarPlayer` is what `audio/guide` listens
+     * for and what `engine.sonar.sonar(pl)` is rung with; what leaves is handing it to `createGame`.
+     */
+    /**
+     * 🔴 AND IT IS ASKED OF A BOOT THAT SUPPLIES IT, which the first version of this case did not. The
+     * minimal `options()` fixture names no `sonarPlayers`, and both builders include the field only when
+     * the boot gave them one — so the case passed over two objects that never had it, measuring nothing.
+     * The same shape bit this file in September over `isBlindMode`.
+     */
+    const offering = { ...options(), sonarPlayers: () => [{ i: 0, x: 1, y: 2 }] } as BootOptions;
+
+    expect(Object.keys(cartridgeHooks(offering)), 'the game still offers a field the engine dropped')
+      .not.toContain('sonarPlayers');
+    expect(Object.keys(createPinballOptions(offering) as unknown as object),
+      'the boot still hands it to `createGame`').not.toContain('sonarPlayers');
+  });
+
   test('⚠️ and it declares nothing the engine does not take, which a typo would', () => {
     /**
      * A hook named `isNavigible` would be accepted by `Object.entries` and ignored by the engine for ever:
@@ -160,7 +193,7 @@ describe('⚠️ and its hooks ARE what this game already hands the engine', () 
 describe('⚠️ and the whole half can be handed over before the game exists', () => {
   /**
    * ⚠️ THE HOOKS HAVE THE SAME CIRCULARITY THE DECLARATION HAD, and it is easy to miss because they
-   * look like configuration. `createGame` reads `isNavigable`, `setPhase`, `sonarPlayers` and
+   * look like configuration. `createGame` reads `isNavigable`, `setPhase` and
    * `getPauseActs` as VALUES at boot — and every one of them answers a question only a running game can:
    * is a menu on screen, what are the pause card's actions, where is the sonar's listener.
    *
@@ -171,7 +204,6 @@ describe('⚠️ and the whole half can be handed over before the game exists', 
     table: options().table,
     isNavigable: () => true,
     isBlindMode: () => true,
-    sonarPlayers: () => [{ i: 0, x: 7, y: 9 }],
     setPhase: () => {},
     pauseActs: () => ({ resume: () => {}, quit: () => {} }),
     setCorrection: () => {},
@@ -185,8 +217,6 @@ describe('⚠️ and the whole half can be handed over before the game exists', 
     const hooks = port.hooks as unknown as Record<string, () => unknown>;
     expect(hooks['isNavigable']!(), 'a menu is open and the engine was told there is none').toBe(true);
     expect(hooks['isBlindMode']!(), 'blind mode is on and the engine was told it is off').toBe(true);
-    expect(hooks['sonarPlayers']!(), 'the sonar has nobody to listen for')
-      .toEqual([{ i: 0, x: 7, y: 9 }]);
     expect(Object.keys((hooks['getPauseActs']!() ?? {}) as object).sort(),
       'the engine pause card has no actions, so entering the bar cannot leave it')
       .toEqual(['quit', 'resume']);
@@ -209,7 +239,6 @@ describe('⚠️ and the whole half can be handed over before the game exists', 
 
     const hooks = port.hooks as unknown as Record<string, () => unknown>;
     expect(hooks['isNavigable']!(), 'the engine takes the keyboard before a game exists').toBe(false);
-    expect(hooks['sonarPlayers']!(), 'the sonar is given a listener with no table').toEqual([]);
     expect(() => hooks['setPhase']!(), 'a hook that throws takes the engine down with it').not.toThrow();
   });
 
@@ -221,11 +250,10 @@ describe('⚠️ and the whole half can be handed over before the game exists', 
      */
     const port = delegatingCartridge('pt', new URLSearchParams(), options().host);
     port.publish(live());
-    port.publish(live({ isNavigable: () => false, sonarPlayers: () => [] }));
+    port.publish(live({ isNavigable: () => false, isBlindMode: () => false }));
 
     const hooks = port.hooks as unknown as Record<string, () => unknown>;
     expect(hooks['isNavigable']!(), 'the engine is still asking the game that left').toBe(false);
-    expect(hooks['sonarPlayers']!()).toEqual([]);
   });
 
   test('⚠️ the delegating half is the SAME SHAPE as the one the boot hands over', () => {
@@ -249,7 +277,6 @@ describe('⚠️ and the whole half can be handed over before the game exists', 
       ...options(),
       isBlindMode: () => false,
       menuIsUp: () => false,
-      sonarPlayers: () => [],
       setPhase: () => {},
       pauseActs: () => ({}),
       setCorrection: () => {},

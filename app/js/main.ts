@@ -811,7 +811,6 @@ const bootOptions: BootOptions = {
   // until the game was actually booted.
   host: { doc: document, win: window, cvdHost: document.getElementById('cvd-filters') },
   isBlindMode: () => isBlind(),
-  sonarPlayers: () => [sonarPlayer],
   /**
    * ⚠️ IS A MENU ON SCREEN? — the question that reopens the engine's menu layer, and the whole of §8.
    *
@@ -880,7 +879,6 @@ ctx.publish({
   table: bootOptions.table,
   isNavigable: bootOptions.menuIsUp!,
   isBlindMode: bootOptions.isBlindMode!,
-  sonarPlayers: bootOptions.sonarPlayers!,
   setPhase: bootOptions.setPhase!,
   pauseActs: bootOptions.pauseActs!,
   setCorrection: bootOptions.setCorrection!,

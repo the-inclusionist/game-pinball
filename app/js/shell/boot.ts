@@ -189,13 +189,6 @@ export interface PinballGameOptions {
   readonly setCorrecaoDoJogador?: (player: number, correcao: string) => void;
   readonly setTemaDoJogador?: never;
   readonly isBlindMode?: () => boolean;
-  /**
-   * ⚠️ THE ENGINE READS THIS ONLY IN ITS OWN `updateGuide`, WHICH THIS GAME NO LONGER CALLS. The guide
-   * left the engine (engine ADR-0257) and this game runs its own copy, `audio/guide`, which `main.ts`
-   * hands the same `sonarPlayer` directly — the stable object the live graph hangs on. So on engine 9.0.0
-   * this list feeds nothing, and the field goes with the engine version that removes it.
-   */
-  readonly sonarPlayers?: () => SonarPlayerLike[];
 }
 
 /**
@@ -298,7 +291,6 @@ export interface BootOptions {
    * with `setPhase('playing')` and `createGame` defaults it to `() => {}`. See `PinballGameOptions`.
    */
   readonly setPhase?: (phase: Phase) => void;
-  readonly sonarPlayers?: () => SonarPlayerLike[];
   readonly camera?: CameraConfig;
   readonly hud?: HudConfig;
 }
@@ -384,7 +376,16 @@ export function createPinballOptions(o: BootOptions): PinballGameOptions {
       : {}),
     setPhase: o.setPhase ?? (() => {}),
     ...(o.isBlindMode ? { isBlindMode: o.isBlindMode } : {}),
-    ...(o.sonarPlayers ? { sonarPlayers: o.sonarPlayers } : {}),
+    /**
+     * 🔴 `sonarPlayers` USED TO BE FORWARDED HERE, AND THE ENGINE STOPPED READING IT (ADR-0258, note
+     * EB). It fed the sonar's `getPlayers`, which only the engine's own continuous guide read — and that
+     * guide left the engine for the games that want one (note DZ). This game grew its own,
+     * `app/js/audio/guide`, which listens to the one reused `sonarPlayer` directly.
+     *
+     * 📏 MEASURED BEFORE REMOVING IT, because the obvious worry was two guides at once: nothing in
+     * engine 9's `boot/` or `core/loop` calls `updateGuide`, and this game's frame loop calls only its
+     * own. The option was already inert, so taking it out silences nothing.
+     */
   };
 }
 
